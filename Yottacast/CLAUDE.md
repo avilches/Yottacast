@@ -5,6 +5,18 @@ It's a frameless, transparent dark-themed window where the user types to search 
 
 Update the CLAUDE.md when something non-obvious is worth keeping in mind for later.
 
+Estructura
+
+Yottacast/
+├── Views/
+│   ├── MainWindow.axaml          ← UI: ventana sin bordes, dark
+│   └── MainWindow.axaml.cs       ← Teclado: ESC, ↑↓, Enter
+├── ViewModels/
+│   ├── MainWindowViewModel.cs    ← Búsqueda reactiva + filtrado
+│   ├── ResultItemViewModel.cs    ← Modelo de cada resultado
+│   └── ViewModelBase.cs
+└── App.axaml                     ← Tema Dark forzado
+
 ## Build & Run
 
 ```bash
@@ -27,3 +39,10 @@ using SharpHook.Data;  // KeyCode, EventMask
 - **Compiled bindings** are enabled globally (`AvaloniaUseCompiledBindingsByDefault=true`) — bindings must be type-resolvable at compile time.
 - **`DataAnnotationsValidationPlugin`** is disabled in `App.axaml.cs` to avoid conflicts with CommunityToolkit.Mvvm validation.
 - **Window hide vs close** — la ventana usa `Hide()` en Escape (no `Close()`) para poder restaurarla con el hotkey global. `Show()` + `Activate()` la devuelve.
+       
+
+## Fixes/Features
+
+Al arrancar, se registra ALT+Espacio. 
+Al mostrar, se hace trim() para evitar que se añada un espacio al haber pulsado ALT+Espacio
+Con texto, ESC limpia el texto solo. Sin texto, ESC cierra

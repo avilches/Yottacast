@@ -1,3 +1,4 @@
+using System;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core;
@@ -39,9 +40,11 @@ public partial class App : Application {
             var isAlt = e.RawEvent.Mask.HasFlag(EventMask.LeftAlt) ||
                         e.RawEvent.Mask.HasFlag(EventMask.RightAlt);
             if (e.Data.KeyCode == KeyCode.VcSpace && isAlt) {
+                Console.WriteLine($"[Hook] ALT+Space detected"); //, IsEnabled={e.}");
                 Dispatcher.UIThread.InvokeAsync(() => {
                     var window = desktop.MainWindow;
                     if (window is null) return;
+                    Console.WriteLine($"[Hook] UI thread - window.IsVisible={window.IsVisible}");
                     if (window.IsVisible) {
                         window.Hide();
                     } else {

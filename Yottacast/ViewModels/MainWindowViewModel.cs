@@ -41,7 +41,10 @@ public partial class MainWindowViewModel : ViewModelBase
         FilterResults("");
     }
 
-    partial void OnSearchTextChanged(string value) => FilterResults(value);
+    partial void OnSearchTextChanged(string value) {
+        Console.WriteLine($"[ViewModel] SearchText changed to '{value}'");
+        FilterResults(value);
+    }
 
     private void FilterResults(string query)
     {

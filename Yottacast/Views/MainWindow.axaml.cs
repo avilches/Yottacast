@@ -1,3 +1,5 @@
+using System;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Yottacast.ViewModels;
@@ -10,6 +12,26 @@ public partial class MainWindow : Window {
         Opened += (_, _) => SearchBox.Focus();
     }
 
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change) {
+        base.OnPropertyChanged(change);
+        if (change.Property == IsVisibleProperty) {
+            var isVisible = change.GetNewValue<bool>();
+            SearchBox.IsEnabled = isVisible;
+            if (isVisible) {
+                SearchBox.Focus();
+            } else if (DataContext is MainWindowViewModel vm) {
+                var trimmed = vm.SearchText.Trim();
+                Console.WriteLine($"[Window] Hiding - SearchText='{vm.SearchText}' trimmed='{trimmed}'");
+                vm.SearchText = trimmed;
+            }
+        }
+    }
+
+    protected override void OnTextInput(TextInputEventArgs e) {
+        Console.WriteLine($"[Window] OnTextInput text='{e.Text}'");
+        base.OnTextInput(e);
+    }
+
     protected override void OnKeyDown(KeyEventArgs e) {
         base.OnKeyDown(e);
 
@@ -18,8 +40,11 @@ public partial class MainWindow : Window {
 
         switch (e.Key) {
             case Key.Escape:
-                vm.SearchText = "";
-                Hide();
+                if (string.IsNullOrEmpty(vm.SearchText)) {
+                    Hide();
+                } else {
+                    vm.SearchText = "";
+                }
                 e.Handled = true;
                 break;
 
