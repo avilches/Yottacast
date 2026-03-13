@@ -18,10 +18,8 @@ public partial class MainWindow : Window {
 
         switch (e.Key) {
             case Key.Escape:
-                if (!string.IsNullOrEmpty(vm.SearchText))
-                    vm.SearchText = "";
-                else
-                    Close();
+                vm.SearchText = "";
+                Hide();
                 e.Handled = true;
                 break;
 
