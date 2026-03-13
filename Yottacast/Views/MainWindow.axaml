@@ -74,11 +74,9 @@
         </Style>
     </Window.Styles>
 
-    <!-- Margin creates room for the drop-shadow to be visible -->
     <Border Margin="28"
             CornerRadius="14"
-            Background="#F21C1C22"
-            BoxShadow="0 24 80 8 #CC000000, 0 4 16 0 #44000000">
+            Background="#F21C1C22">
         <DockPanel>
 
             <!-- ── Search row ── -->
