@@ -1,0 +1,239 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Yottacast.ViewModels"
+        xmlns:conv="using:Avalonia.Data.Converters"
+        x:Class="Yottacast.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Yottacast"
+        Width="700"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterScreen"
+        SystemDecorations="None"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent"
+        CanResize="False"
+        ShowInTaskbar="False">
+
+    <Window.Styles>
+        <!-- Strip all default TextBox chrome -->
+        <Style Selector="TextBox">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="TextBox:focus">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="TextBox:pointerover">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="TextBox /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="BoxShadow" Value="none"/>
+        </Style>
+        <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="BoxShadow" Value="none"/>
+        </Style>
+        <!-- Placeholder text -->
+        <Style Selector="TextBox /template/ TextBlock[Name=PART_Watermark]">
+            <Setter Property="Foreground" Value="#505055"/>
+        </Style>
+
+        <!-- ListBox chrome -->
+        <Style Selector="ListBox">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="ListBoxItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="Margin" Value="0,1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="MinHeight" Value="52"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#20FFFFFF"/>
+        </Style>
+        <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="#2C5AF0"/>
+        </Style>
+        <Style Selector="ListBoxItem:selected:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#3564FF"/>
+        </Style>
+        <!-- Keep text white on selection -->
+        <Style Selector="ListBoxItem:selected TextBlock">
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        <Style Selector="ListBoxItem:selected Border.icon-box">
+            <Setter Property="Background" Value="#FFFFFF20"/>
+        </Style>
+    </Window.Styles>
+
+    <!-- Margin creates room for the drop-shadow to be visible -->
+    <Border Margin="28"
+            CornerRadius="14"
+            Background="#F21C1C22"
+            BoxShadow="0 24 80 8 #CC000000, 0 4 16 0 #44000000">
+        <DockPanel>
+
+            <!-- ── Search row ── -->
+            <Grid DockPanel.Dock="Top"
+                  ColumnDefinitions="Auto,*,Auto"
+                  Margin="18,0"
+                  Height="64">
+
+                <!-- Magnifier icon -->
+                <PathIcon Grid.Column="0"
+                          Width="19" Height="19"
+                          Margin="0,0,12,0"
+                          Foreground="#505055"
+                          VerticalAlignment="Center"
+                          Data="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+
+                <!-- Search input -->
+                <TextBox Grid.Column="1"
+                         x:Name="SearchBox"
+                         Text="{Binding SearchText}"
+                         Watermark="Search for apps, files, commands…"
+                         FontSize="18"
+                         FontWeight="Regular"
+                         VerticalAlignment="Center"
+                         VerticalContentAlignment="Center"
+                         Foreground="White"
+                         CaretBrush="#5E8FFF"
+                         SelectionBrush="#3560EE"/>
+
+                <!-- ESC badge (visible only when input is empty) -->
+                <Border Grid.Column="2"
+                        Background="#252529"
+                        CornerRadius="6"
+                        Padding="8,4"
+                        VerticalAlignment="Center"
+                        IsVisible="{Binding SearchText, Converter={x:Static StringConverters.IsNullOrEmpty}}">
+                    <TextBlock Text="ESC"
+                               Foreground="#444448"
+                               FontSize="11"
+                               FontWeight="Medium"/>
+                </Border>
+            </Grid>
+
+            <!-- ── Divider ── -->
+            <Rectangle DockPanel.Dock="Top"
+                       Height="1"
+                       Fill="#2A2A30"
+                       IsVisible="{Binding HasResults}"/>
+
+            <!-- ── No results ── -->
+            <Border DockPanel.Dock="Top"
+                    Padding="0,28,0,28"
+                    IsVisible="{Binding ShowNoResults}">
+                <StackPanel HorizontalAlignment="Center" Spacing="8">
+                    <TextBlock Text="No results"
+                               Foreground="#505055"
+                               FontSize="16"
+                               FontWeight="Medium"
+                               HorizontalAlignment="Center"/>
+                    <TextBlock Text="Try a different search term"
+                               Foreground="#36363C"
+                               FontSize="13"
+                               HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+
+            <!-- ── Results list ── -->
+            <ListBox DockPanel.Dock="Top"
+                     ItemsSource="{Binding Results}"
+                     SelectedItem="{Binding SelectedResult}"
+                     MaxHeight="416"
+                     Padding="8,6"
+                     IsVisible="{Binding HasResults}"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ResultItemViewModel">
+                        <Grid ColumnDefinitions="Auto,*,Auto" MinHeight="44">
+
+                            <!-- Icon box -->
+                            <Border Grid.Column="0"
+                                    Classes="icon-box"
+                                    Width="36" Height="36"
+                                    CornerRadius="8"
+                                    Background="#252529"
+                                    VerticalAlignment="Center"
+                                    Margin="0,0,12,0">
+                                <TextBlock Text="{Binding Icon}"
+                                           FontSize="17"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                            </Border>
+
+                            <!-- Title + subtitle -->
+                            <StackPanel Grid.Column="1"
+                                        Orientation="Vertical"
+                                        VerticalAlignment="Center"
+                                        Spacing="2">
+                                <TextBlock Text="{Binding Title}"
+                                           Foreground="#EAEAEE"
+                                           FontSize="14"
+                                           FontWeight="Medium"/>
+                                <TextBlock Text="{Binding Subtitle}"
+                                           Foreground="#505055"
+                                           FontSize="12"
+                                           TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+
+                            <!-- Category + shortcut -->
+                            <StackPanel Grid.Column="2"
+                                        Orientation="Horizontal"
+                                        VerticalAlignment="Center"
+                                        Spacing="8"
+                                        Margin="12,0,0,0">
+                                <TextBlock Text="{Binding Category}"
+                                           Foreground="#36363C"
+                                           FontSize="11"
+                                           VerticalAlignment="Center"/>
+                                <Border Background="#252529"
+                                        CornerRadius="5"
+                                        Padding="7,3"
+                                        IsVisible="{Binding Shortcut, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                    <TextBlock Text="{Binding Shortcut}"
+                                               Foreground="#505055"
+                                               FontSize="11"/>
+                                </Border>
+                            </StackPanel>
+
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <!-- ── Footer ── -->
+            <Border DockPanel.Dock="Bottom"
+                    Padding="18,7"
+                    BorderBrush="#1E1E24"
+                    BorderThickness="0,1,0,0"
+                    IsVisible="{Binding HasResults}">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4">
+                        <TextBlock Foreground="#36363C" FontSize="11">
+                            <Run Text="{Binding Results.Count}"/>
+                            <Run Text="results"/>
+                        </TextBlock>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16">
+                        <TextBlock Text="↑↓  navigate"  Foreground="#36363C" FontSize="11"/>
+                        <TextBlock Text="↵  open"        Foreground="#36363C" FontSize="11"/>
+                        <TextBlock Text="⌘K  actions"   Foreground="#36363C" FontSize="11"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+        </DockPanel>
+    </Border>
+
+</Window>

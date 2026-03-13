@@ -1,16 +1,35 @@
-# Default ignored files
-/shelf/
-/workspace.xml
-# Rider ignored files
-/contentModel.xml
-/modules.xml
-/.idea.Yottacast.iml
-/projectSettingsUpdater.xml
-# Ignored default folder with query files
-/queries/
-# Datasource local storage ignored files
-/dataSources/
-/dataSources.local.xml
-# Editor-based HTTP Client requests
-/httpRequests/
-.idea
+# Build output
+bin/
+obj/
+
+# .NET / NuGet
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+packages/
+*.nupkg
+.nuget/
+
+# Rider / JetBrains
+.idea/
+*.DotSettings.user
+
+# Visual Studio
+.vs/
+*.rsuser
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+
+# Avalonia designer cache
+**/.avalonia/
