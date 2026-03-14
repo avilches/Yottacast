@@ -1,0 +1,45 @@
+{
+  "name": "Dark macOS",
+  "variant": "dark",
+  "colors": {
+    "windowBackground":            "#E81C1C1E",
+    "searchText":                  "#F2F2F7",
+    "searchPlaceholder":           "#636366",
+    "searchCaret":                 "#0A84FF",
+    "searchSelection":             "#0866CC",
+    "icon":                        "#636366",
+    "divider":                     "#38383A",
+    "itemIconBackground":          "#3A3A3C",
+    "itemTitle":                   "#F2F2F7",
+    "itemSubtitle":                "#8E8E93",
+    "itemCategory":                "#48484A",
+    "itemShortcutText":            "#8E8E93",
+    "itemShortcutBackground":      "#3A3A3C",
+    "itemSelection":               "#0A84FF",
+    "itemSelectionHover":          "#2D9AFF",
+    "itemHover":                   "#15FFFFFF",
+    "itemSelectionText":           "#FFFFFF",
+    "itemSelectionIconBackground": "#30FFFFFF",
+    "escBadgeBackground":          "#3A3A3C",
+    "escBadgeText":                "#636366",
+    "footerBorder":                "#252528",
+    "footerText":                  "#636366",
+    "noResultsTitle":              "#8E8E93",
+    "noResultsSubtitle":           "#636366"
+  },
+  "fonts": {
+    "search":    17,
+    "title":     14,
+    "subtitle":  12,
+    "small":     11,
+    "noResults": 15
+  },
+  "layout": {
+    "windowCornerRadius":   16,
+    "itemCornerRadius":     10,
+    "iconCornerRadius":      8,
+    "escCornerRadius":       6,
+    "shortcutCornerRadius":  6,
+    "windowWidth":         680
+  }
+}

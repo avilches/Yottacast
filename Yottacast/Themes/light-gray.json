@@ -1,0 +1,45 @@
+{
+  "name": "Light Gray",
+  "variant": "light",
+  "colors": {
+    "windowBackground":            "#F5F4F4F5",
+    "searchText":                  "#111827",
+    "searchPlaceholder":           "#9CA3AF",
+    "searchCaret":                 "#6B7280",
+    "searchSelection":             "#D1D5DB",
+    "icon":                        "#9CA3AF",
+    "divider":                     "#E5E7EB",
+    "itemIconBackground":          "#F3F4F6",
+    "itemTitle":                   "#111827",
+    "itemSubtitle":                "#6B7280",
+    "itemCategory":                "#9CA3AF",
+    "itemShortcutText":            "#6B7280",
+    "itemShortcutBackground":      "#E5E7EB",
+    "itemSelection":               "#374151",
+    "itemSelectionHover":          "#1F2937",
+    "itemHover":                   "#10000000",
+    "itemSelectionText":           "#FFFFFF",
+    "itemSelectionIconBackground": "#40FFFFFF",
+    "escBadgeBackground":          "#F3F4F6",
+    "escBadgeText":                "#9CA3AF",
+    "footerBorder":                "#E5E7EB",
+    "footerText":                  "#9CA3AF",
+    "noResultsTitle":              "#6B7280",
+    "noResultsSubtitle":           "#9CA3AF"
+  },
+  "fonts": {
+    "search":    18,
+    "title":     14,
+    "subtitle":  12,
+    "small":     11,
+    "noResults": 16
+  },
+  "layout": {
+    "windowCornerRadius":   14,
+    "itemCornerRadius":      8,
+    "iconCornerRadius":      8,
+    "escCornerRadius":       6,
+    "shortcutCornerRadius":  5,
+    "windowWidth":         700
+  }
+}

@@ -1,0 +1,76 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Yottacast.ViewModels"
+        x:Class="Yottacast.Views.SettingsWindow"
+        x:DataType="vm:SettingsWindowViewModel"
+        Title="Yottacast Settings"
+        Width="440"
+        SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource Theme.WindowBackground}">
+
+    <Window.Styles>
+        <Style Selector="TextBlock.label">
+            <Setter Property="Foreground" Value="{DynamicResource Theme.ItemCategory}"/>
+            <Setter Property="FontSize"   Value="{DynamicResource Theme.FontSizeSmall}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin"     Value="0,0,0,6"/>
+        </Style>
+        <Style Selector="ComboBox">
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="Padding"             Value="10,8"/>
+        </Style>
+    </Window.Styles>
+
+    <StackPanel Margin="28,24" Spacing="20">
+
+        <!-- Title -->
+        <TextBlock Text="Preferences"
+                   Foreground="{DynamicResource Theme.ItemTitle}"
+                   FontSize="{DynamicResource Theme.FontSizeNoResults}"
+                   FontWeight="SemiBold"
+                   Margin="0,0,0,4"/>
+
+        <!-- Divider -->
+        <Rectangle Height="1" Fill="{DynamicResource Theme.Divider}" Margin="0,-8,0,0"/>
+
+        <!-- Browser -->
+        <StackPanel Spacing="0">
+            <TextBlock Classes="label" Text="DEFAULT BROWSER"/>
+            <ComboBox ItemsSource="{Binding Browsers}"
+                      SelectedItem="{Binding SelectedBrowser}"
+                      PlaceholderText="No browsers found"/>
+        </StackPanel>
+
+        <!-- Terminal -->
+        <StackPanel Spacing="0">
+            <TextBlock Classes="label" Text="DEFAULT TERMINAL"/>
+            <ComboBox ItemsSource="{Binding Terminals}"
+                      SelectedItem="{Binding SelectedTerminal}"
+                      PlaceholderText="No terminals found"/>
+        </StackPanel>
+
+        <!-- Theme -->
+        <StackPanel Spacing="0">
+            <TextBlock Classes="label" Text="THEME"/>
+            <ComboBox ItemsSource="{Binding Themes}"
+                      SelectedItem="{Binding SelectedTheme}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ThemeOption">
+                        <TextBlock Text="{Binding DisplayName}"/>
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+        </StackPanel>
+
+        <!-- Bottom hint -->
+        <TextBlock Text="Settings are saved automatically."
+                   Foreground="{DynamicResource Theme.FooterText}"
+                   FontSize="{DynamicResource Theme.FontSizeSmall}"
+                   HorizontalAlignment="Center"
+                   Margin="0,4,0,0"/>
+
+    </StackPanel>
+
+</Window>
