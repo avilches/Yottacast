@@ -5,7 +5,7 @@
         x:Class="Yottacast.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="Yottacast"
-        Width="700"
+        Width="{DynamicResource Theme.WindowWidth}"
         SizeToContent="Height"
         WindowStartupLocation="CenterScreen"
         SystemDecorations="None"
@@ -40,7 +40,7 @@
         </Style>
         <!-- Placeholder text -->
         <Style Selector="TextBox /template/ TextBlock[Name=PART_Watermark]">
-            <Setter Property="Foreground" Value="#505055"/>
+            <Setter Property="Foreground" Value="{DynamicResource Theme.SearchPlaceholder}"/>
         </Style>
 
         <!-- ListBox chrome -->
@@ -52,31 +52,31 @@
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Padding" Value="10,0"/>
             <Setter Property="Margin" Value="0,1"/>
-            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="CornerRadius" Value="{DynamicResource Theme.CornerRadiusItem}"/>
             <Setter Property="MinHeight" Value="52"/>
             <Setter Property="Cursor" Value="Hand"/>
         </Style>
         <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#20FFFFFF"/>
+            <Setter Property="Background" Value="{DynamicResource Theme.ItemHover}"/>
         </Style>
         <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
-            <Setter Property="Background" Value="#2C5AF0"/>
+            <Setter Property="Background" Value="{DynamicResource Theme.ItemSelection}"/>
         </Style>
         <Style Selector="ListBoxItem:selected:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#3564FF"/>
+            <Setter Property="Background" Value="{DynamicResource Theme.ItemSelectionHover}"/>
         </Style>
-        <!-- Keep text white on selection -->
+        <!-- Keep text visible on selection -->
         <Style Selector="ListBoxItem:selected TextBlock">
-            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Foreground" Value="{DynamicResource Theme.ItemSelectionText}"/>
         </Style>
         <Style Selector="ListBoxItem:selected Border.icon-box">
-            <Setter Property="Background" Value="#FFFFFF20"/>
+            <Setter Property="Background" Value="{DynamicResource Theme.ItemSelectionIconBackground}"/>
         </Style>
     </Window.Styles>
 
     <Border Margin="28"
-            CornerRadius="14"
-            Background="#F21C1C22">
+            CornerRadius="{DynamicResource Theme.CornerRadiusWindow}"
+            Background="{DynamicResource Theme.WindowBackground}">
         <DockPanel>
 
             <!-- ── Search row ── -->
@@ -89,7 +89,7 @@
                 <PathIcon Grid.Column="0"
                           Width="19" Height="19"
                           Margin="0,0,12,0"
-                          Foreground="#505055"
+                          Foreground="{DynamicResource Theme.Icon}"
                           VerticalAlignment="Center"
                           Data="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
 
@@ -98,24 +98,24 @@
                          x:Name="SearchBox"
                          Text="{Binding SearchText}"
                          Watermark="Search for apps, files, commands…"
-                         FontSize="18"
+                         FontSize="{DynamicResource Theme.FontSizeSearch}"
                          FontWeight="Regular"
                          VerticalAlignment="Center"
                          VerticalContentAlignment="Center"
-                         Foreground="White"
-                         CaretBrush="#5E8FFF"
-                         SelectionBrush="#3560EE"/>
+                         Foreground="{DynamicResource Theme.SearchText}"
+                         CaretBrush="{DynamicResource Theme.SearchCaret}"
+                         SelectionBrush="{DynamicResource Theme.SearchSelection}"/>
 
                 <!-- ESC badge (visible only when input is empty) -->
                 <Border Grid.Column="2"
-                        Background="#252529"
-                        CornerRadius="6"
+                        Background="{DynamicResource Theme.EscBadgeBackground}"
+                        CornerRadius="{DynamicResource Theme.CornerRadiusEsc}"
                         Padding="8,4"
                         VerticalAlignment="Center"
                         IsVisible="{Binding SearchText, Converter={x:Static StringConverters.IsNullOrEmpty}}">
                     <TextBlock Text="ESC"
-                               Foreground="#444448"
-                               FontSize="11"
+                               Foreground="{DynamicResource Theme.EscBadgeText}"
+                               FontSize="{DynamicResource Theme.FontSizeSmall}"
                                FontWeight="Medium"/>
                 </Border>
             </Grid>
@@ -123,7 +123,7 @@
             <!-- ── Divider ── -->
             <Rectangle DockPanel.Dock="Top"
                        Height="1"
-                       Fill="#2A2A30"
+                       Fill="{DynamicResource Theme.Divider}"
                        IsVisible="{Binding HasResults}"/>
 
             <!-- ── No results ── -->
@@ -132,13 +132,13 @@
                     IsVisible="{Binding ShowNoResults}">
                 <StackPanel HorizontalAlignment="Center" Spacing="8">
                     <TextBlock Text="No results"
-                               Foreground="#505055"
-                               FontSize="16"
+                               Foreground="{DynamicResource Theme.NoResultsTitle}"
+                               FontSize="{DynamicResource Theme.FontSizeNoResults}"
                                FontWeight="Medium"
                                HorizontalAlignment="Center"/>
                     <TextBlock Text="Try a different search term"
-                               Foreground="#36363C"
-                               FontSize="13"
+                               Foreground="{DynamicResource Theme.NoResultsSubtitle}"
+                               FontSize="{DynamicResource Theme.FontSizeTitle}"
                                HorizontalAlignment="Center"/>
                 </StackPanel>
             </Border>
@@ -160,8 +160,8 @@
                             <Border Grid.Column="0"
                                     Classes="icon-box"
                                     Width="36" Height="36"
-                                    CornerRadius="8"
-                                    Background="#252529"
+                                    CornerRadius="{DynamicResource Theme.CornerRadiusIcon}"
+                                    Background="{DynamicResource Theme.ItemIconBackground}"
                                     VerticalAlignment="Center"
                                     Margin="0,0,12,0">
                                 <TextBlock Text="{Binding Icon}"
@@ -176,12 +176,12 @@
                                         VerticalAlignment="Center"
                                         Spacing="2">
                                 <TextBlock Text="{Binding Title}"
-                                           Foreground="#EAEAEE"
-                                           FontSize="14"
+                                           Foreground="{DynamicResource Theme.ItemTitle}"
+                                           FontSize="{DynamicResource Theme.FontSizeTitle}"
                                            FontWeight="Medium"/>
                                 <TextBlock Text="{Binding Subtitle}"
-                                           Foreground="#505055"
-                                           FontSize="12"
+                                           Foreground="{DynamicResource Theme.ItemSubtitle}"
+                                           FontSize="{DynamicResource Theme.FontSizeSubtitle}"
                                            TextTrimming="CharacterEllipsis"/>
                             </StackPanel>
 
@@ -192,16 +192,16 @@
                                         Spacing="8"
                                         Margin="12,0,0,0">
                                 <TextBlock Text="{Binding Category}"
-                                           Foreground="#36363C"
-                                           FontSize="11"
+                                           Foreground="{DynamicResource Theme.ItemCategory}"
+                                           FontSize="{DynamicResource Theme.FontSizeSmall}"
                                            VerticalAlignment="Center"/>
-                                <Border Background="#252529"
-                                        CornerRadius="5"
+                                <Border Background="{DynamicResource Theme.ItemShortcutBackground}"
+                                        CornerRadius="{DynamicResource Theme.CornerRadiusShortcut}"
                                         Padding="7,3"
                                         IsVisible="{Binding Shortcut, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                                     <TextBlock Text="{Binding Shortcut}"
-                                               Foreground="#505055"
-                                               FontSize="11"/>
+                                               Foreground="{DynamicResource Theme.ItemShortcutText}"
+                                               FontSize="{DynamicResource Theme.FontSizeSmall}"/>
                                 </Border>
                             </StackPanel>
 
@@ -213,20 +213,21 @@
             <!-- ── Footer ── -->
             <Border DockPanel.Dock="Bottom"
                     Padding="18,7"
-                    BorderBrush="#1E1E24"
+                    BorderBrush="{DynamicResource Theme.FooterBorder}"
                     BorderThickness="0,1,0,0"
                     IsVisible="{Binding HasResults}">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4">
-                        <TextBlock Foreground="#36363C" FontSize="11">
+                        <TextBlock Foreground="{DynamicResource Theme.FooterText}"
+                                   FontSize="{DynamicResource Theme.FontSizeSmall}">
                             <Run Text="{Binding Results.Count}"/>
                             <Run Text="results"/>
                         </TextBlock>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16">
-                        <TextBlock Text="↑↓  navigate"  Foreground="#36363C" FontSize="11"/>
-                        <TextBlock Text="↵  open"        Foreground="#36363C" FontSize="11"/>
-                        <TextBlock Text="⌘K  actions"   Foreground="#36363C" FontSize="11"/>
+                        <TextBlock Text="↑↓  navigate"  Foreground="{DynamicResource Theme.FooterText}" FontSize="{DynamicResource Theme.FontSizeSmall}"/>
+                        <TextBlock Text="↵  open"        Foreground="{DynamicResource Theme.FooterText}" FontSize="{DynamicResource Theme.FontSizeSmall}"/>
+                        <TextBlock Text="⌘K  actions"   Foreground="{DynamicResource Theme.FooterText}" FontSize="{DynamicResource Theme.FontSizeSmall}"/>
                     </StackPanel>
                 </Grid>
             </Border>

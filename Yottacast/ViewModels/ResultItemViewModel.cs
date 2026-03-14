@@ -1,3 +1,5 @@
+using System;
+
 namespace Yottacast.ViewModels;
 
 public class ResultItemViewModel
@@ -7,4 +9,5 @@ public class ResultItemViewModel
     public string Subtitle { get; init; } = "";
     public string Category { get; init; } = "";
     public string Shortcut { get; init; } = "";
+    public Action? OnActivate { get; init; }
 }

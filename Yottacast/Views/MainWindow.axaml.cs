@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Yottacast.ViewModels;
+using Yottacast;
 
 namespace Yottacast.Views;
 
@@ -59,7 +60,17 @@ public partial class MainWindow : Window {
                 break;
 
             case Key.Return:
-                // TODO: execute selected result
+                if (vm.SelectedResult?.OnActivate is { } action)
+                {
+                    action();
+                    vm.SearchText = "";
+                    Hide();
+                }
+                e.Handled = true;
+                break;
+
+            case Key.OemComma when e.KeyModifiers.HasFlag(KeyModifiers.Meta):
+                (Application.Current as App)?.OpenSettings();
                 e.Handled = true;
                 break;
         }
