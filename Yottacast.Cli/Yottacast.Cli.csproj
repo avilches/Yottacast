@@ -8,12 +8,8 @@
     <RootNamespace>Yottacast.Services</RootNamespace>
   </PropertyGroup>
 
-  <!-- Link service files from the main project — no duplication -->
   <ItemGroup>
-    <Compile Include="..\Yottacast\Services\BrowserDiscovery.cs" Link="Services\BrowserDiscovery.cs" />
-    <Compile Include="..\Yottacast\Services\TerminalDiscovery.cs" Link="Services\TerminalDiscovery.cs" />
-    <Compile Include="..\Yottacast\Services\FileSearch.cs" Link="Services\FileSearch.cs" />
-    <Compile Include="..\Yottacast\Services\ProcessRunner.cs" Link="Services\ProcessRunner.cs" />
+    <ProjectReference Include="..\Yottacast.Core\Yottacast.Core.csproj" />
   </ItemGroup>
 
 </Project>
