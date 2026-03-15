@@ -1,9 +1,7 @@
-using System;
-using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace Yottacast.Services;
+namespace Yottacast.Core.Services;
 
 public class UserSettings {
     public string Browser  { get; set; } = "";

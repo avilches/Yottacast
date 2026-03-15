@@ -1,9 +1,7 @@
-using System;
 using System.Diagnostics;
-using System.IO;
 using System.Runtime.InteropServices;
 
-namespace Yottacast.Services;
+namespace Yottacast.Core.Services;
 
 public static class TerminalLauncher
 {
@@ -36,7 +34,7 @@ public static class TerminalLauncher
             case "Warp":
                 // Warp supports a custom URL scheme.
                 var warpUrl = $"warp://action/new_tab?command={Uri.EscapeDataString(command)}";
-                Process.Start(new ProcessStartInfo { FileName = "open", ArgumentList = { warpUrl }, UseShellExecute = false });
+                System.Diagnostics.Process.Start(new ProcessStartInfo { FileName = "open", ArgumentList = { warpUrl }, UseShellExecute = false });
                 break;
 
             default:
@@ -44,8 +42,8 @@ public static class TerminalLauncher
                 var script = Path.GetTempFileName() + ".command";
                 File.WriteAllText(script, $"#!/bin/sh\n{command}\n");
                 File.SetAttributes(script, File.GetAttributes(script)); // keep, chmod below
-                Process.Start("chmod", $"+x \"{script}\"")?.WaitForExit();
-                Process.Start(new ProcessStartInfo
+                System.Diagnostics.Process.Start("chmod", $"+x \"{script}\"")?.WaitForExit();
+                System.Diagnostics.Process.Start(new ProcessStartInfo
                 {
                     FileName = "open",
                     ArgumentList = { "-a", terminal.Name, script },
@@ -64,7 +62,7 @@ public static class TerminalLauncher
             _ => (terminal.ExecutablePath, command),
         };
 
-        Process.Start(new ProcessStartInfo
+        System.Diagnostics.Process.Start(new ProcessStartInfo
         {
             FileName = fileName,
             Arguments = args,
@@ -74,7 +72,7 @@ public static class TerminalLauncher
 
     private static void RunAppleScript(string script)
     {
-        Process.Start(new ProcessStartInfo
+        System.Diagnostics.Process.Start(new ProcessStartInfo
         {
             FileName = "osascript",
             ArgumentList = { "-e", script },

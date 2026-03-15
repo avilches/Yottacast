@@ -1,7 +1,10 @@
-namespace Yottacast.Services;
+using Yottacast.Core.Process;
+using Yottacast.Core.Services;
+
+namespace Yottacast.Cli;
 
 internal static class Program {
-    static async Task Main(string[] args) {
+    private static async Task Main(string[] args) {
         if (args.Length == 0) {
             await RunInteractiveAsync();
             return;
@@ -11,7 +14,7 @@ internal static class Program {
         Console.WriteLine();
     }
 
-    static async Task RunInteractiveAsync() {
+    private static async Task RunInteractiveAsync() {
         Console.ForegroundColor = ConsoleColor.Cyan;
         Console.WriteLine("Yottacast CLI — interactive mode  (type 'help' or 'exit')");
         Console.ResetColor();
@@ -33,7 +36,7 @@ internal static class Program {
         }
     }
 
-    static async Task DispatchAsync(string[] args) {
+    private static async Task DispatchAsync(string[] args) {
         switch (args[0].ToLowerInvariant()) {
             case "b":
             case "browsers":
@@ -61,7 +64,8 @@ internal static class Program {
                     break;
                 }
                 var runArgs = args.Length >= 3 ? string.Join(" ", args[2..]) : string.Empty;
-                await CmdRunAsync(args[1], runArgs);
+                await CmdRunAsync(StandardCommandRunner.Instance, args[1], runArgs);
+                await CmdRunAsync(PtyRunner.Instance, args[1], runArgs);
                 break;
 
             case "help":
@@ -113,17 +117,17 @@ internal static class Program {
         Console.WriteLine($"\n  {found}/{candidates.Count} installed");
     }
 
-    static async Task CmdRunAsync(string binary, string runArgs) {
+    static async Task CmdRunAsync(ICommandRunner runner, string binary, string runArgs) {
         Header($"RunAsync {binary} {runArgs}");
 
-        using var handle = ProcessRunner.Execute(binary, runArgs,
-            timeout: TimeSpan.FromSeconds(10),
-            onLine: Console.WriteLine);
+        var argArray = string.IsNullOrEmpty(runArgs) ? [] : runArgs.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var result = await runner.RunAsync(
+            binary, argArray, Environment.CurrentDirectory,
+            line => { Console.WriteLine(line); return true; },
+            cts.Token);
 
-        var result = await handle.Completion;
-        Console.Write("\r                    \r"); // clear spinner
-        Console.WriteLine($"  Elapsed   : {result.Elapsed.TotalMilliseconds:F0} ms");
-        Console.WriteLine($"  Exit code : {result.ExitCode}");
+        Header($"Exit code: {result.ExitCode} ({result.Elapsed.TotalMilliseconds:F0} ms)");
         if (result.Cancelled) Warn("Process was cancelled or timed out.");
     }
 
@@ -131,7 +135,7 @@ internal static class Program {
         Header($"File Search: \"{query}\"");
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        await FileSearch.SearchAsync(query, r => Ok($"{r.Name,-40} {r.Path}"), 100, ct: cts.Token);
+        await FileSearch.SearchAsync(query, r => Ok($"{r.Name,-40} {r.Path}"), 1, ct: cts.Token);
         sw.Stop();
         Console.WriteLine($"\n  {sw.Elapsed.TotalMilliseconds:F0} ms");
     }

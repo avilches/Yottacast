@@ -8,6 +8,7 @@ using System.Linq;
 using Avalonia.Markup.Xaml;
 using SharpHook;
 using SharpHook.Data;
+using Yottacast.Core.Services;
 using Yottacast.Services;
 using Yottacast.ViewModels;
 using Yottacast.Views;
