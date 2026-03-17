@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Yottacast.Cli", "Yottacast.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Yottacast.Core", "Yottacast.Core\Yottacast.Core.csproj", "{1487E518-CCAB-40E9-BE1E-8D69A24BD95D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Yottacast.Core.Tests", "Yottacast.Core.Tests\Yottacast.Core.Tests.csproj", "{569B2363-A60F-4397-A065-E5AD3E144C0A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +32,9 @@ Global
 		{1487E518-CCAB-40E9-BE1E-8D69A24BD95D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1487E518-CCAB-40E9-BE1E-8D69A24BD95D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1487E518-CCAB-40E9-BE1E-8D69A24BD95D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{569B2363-A60F-4397-A065-E5AD3E144C0A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{569B2363-A60F-4397-A065-E5AD3E144C0A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{569B2363-A60F-4397-A065-E5AD3E144C0A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{569B2363-A60F-4397-A065-E5AD3E144C0A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

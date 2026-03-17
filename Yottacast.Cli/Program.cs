@@ -88,9 +88,9 @@ internal static class Program {
             Warn("No browsers found.");
             return;
         }
-        int found = 0;
+        var found = 0;
         foreach (var (name, path) in candidates) {
-            bool exists = Directory.Exists(path) || File.Exists(path);
+            var exists = Directory.Exists(path) || File.Exists(path);
             if (exists) {
                 Ok($"{name,-20} → {path}");
                 found++;
