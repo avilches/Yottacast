@@ -4,11 +4,6 @@ using Yottacast.Core.Process;
 
 namespace Yottacast.Core.Services;
 
-public enum FileSearchMode {
-    ByName,
-    Interpret
-}
-
 public record FileResult(string Name, string Path);
 
 /// <summary>
@@ -22,8 +17,8 @@ public record FileResult(string Name, string Path);
 public static class FileSearch {
     public static Task SearchAsync(
         string query, Action<FileResult> onResult, int maxResults = 10,
-        FileSearchMode mode = FileSearchMode.ByName,
         RunnerBackend backend = RunnerBackend.Pty,
+        IReadOnlyList<string>? searchFolders = null,
         CancellationToken ct = default) {
         if (string.IsNullOrWhiteSpace(query)) return Task.CompletedTask;
 
@@ -33,54 +28,56 @@ public static class FileSearch {
 
         var count = 0;
         Func<string, bool> onLine = line => {
-            onResult(new FileResult(Path.GetFileName(line), line));
+            onResult(new FileResult(System.IO.Path.GetFileName(line), line));
             return ++count < maxResults;
         };
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            return SpotlightAsync(query, mode, onLine, runner, ct);
+            return SpotlightAsync(query, onLine, runner, searchFolders, ct);
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            return WindowsSearchAsync(query, onLine, runner, ct);
+            return WindowsSearchAsync(query, onLine, runner, searchFolders, ct);
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            return LocateAsync(query, maxResults, onLine, runner, ct);
+            return LocateAsync(query, maxResults, onLine, runner, searchFolders, ct);
         return Task.CompletedTask;
     }
 
     // ── macOS ────────────────────────────────────────────────────────────────
 
     private static Task SpotlightAsync(
-        string query, FileSearchMode mode,
-        Func<string, bool> onLine, ICommandRunner runner, CancellationToken ct) {
-        
-        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        string query, Func<string, bool> onLine, ICommandRunner runner,
+        IReadOnlyList<string>? searchFolders, CancellationToken ct) {
 
-        string[] args;
-        if (mode == FileSearchMode.Interpret) {
-            if (string.IsNullOrEmpty(query)) return Task.CompletedTask;
-            args = ["-onlyin", home, "-interpret", query];
-        } else {
-            var safeQuery = query.Replace("'", "\\'");
-            if (string.IsNullOrEmpty(safeQuery)) return Task.CompletedTask;
-            var pattern = safeQuery.Contains('*') ? safeQuery : $"*{safeQuery}*";
-            var predicate = $"kMDItemFSName == '{pattern}'cd";
-            args = ["-onlyin", home, predicate];
-        }
-        return runner.RunAsync("/usr/bin/mdfind", args, home, onLine, ct);
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var folders = searchFolders?.Where(Directory.Exists).ToList();
+        var scope = folders?.Count > 0 ? folders : [home];
+        var onlyInArgs = scope.SelectMany(f => new[] { "-onlyin", f }).ToList();
+
+        var safeQuery = query.Replace("'", "\\'");
+        if (string.IsNullOrEmpty(safeQuery)) return Task.CompletedTask;
+        var pattern = safeQuery.Contains('*') ? safeQuery : $"*{safeQuery}*";
+        var predicate = $"kMDItemFSName == '{pattern}'cd";
+        return runner.RunAsync("/usr/bin/mdfind", [.. onlyInArgs, predicate], home, onLine, ct);
     }
 
     // ── Windows ──────────────────────────────────────────────────────────────
 
     private static Task WindowsSearchAsync(
         string query,
-        Func<string, bool> onLine, ICommandRunner runner, CancellationToken ct) {
-        
+        Func<string, bool> onLine, ICommandRunner runner,
+        IReadOnlyList<string>? searchFolders, CancellationToken ct) {
+
         var safeQuery = query.Replace("'", "").Replace("\"", "").Replace("*", "").Trim();
         if (string.IsNullOrEmpty(safeQuery)) return Task.CompletedTask;
+
+        var scopeFilter = searchFolders?.Count > 0
+            ? "AND (" + string.Join(" OR ", searchFolders.Select(f =>
+                $"System.ItemPathDisplay LIKE '{f.Replace("'", "''")}%'")) + ")"
+            : "";
 
         var script = $$"""
             $c = New-Object -ComObject ADODB.Connection
             $c.Open("Provider=Search.CollatorDSO;Extended Properties='Application=Windows';")
-            $sql = "SELECT System.ItemPathDisplay FROM SystemIndex WHERE CONTAINS(System.FileName, '{{safeQuery}}*')"
+            $sql = "SELECT System.ItemPathDisplay FROM SystemIndex WHERE CONTAINS(System.FileName, '{{safeQuery}}*') {{scopeFilter}}"
             $rs  = $c.Execute($sql)
             while (-not $rs.EOF) { $rs.Fields.Item(0).Value; [void]$rs.MoveNext() }
             $c.Close()
@@ -97,12 +94,18 @@ public static class FileSearch {
 
     private static Task LocateAsync(
         string query, int maxResults,
-        Func<string, bool> onLine, ICommandRunner runner, CancellationToken ct) {
+        Func<string, bool> onLine, ICommandRunner runner,
+        IReadOnlyList<string>? searchFolders, CancellationToken ct) {
         var binary = File.Exists("/usr/bin/plocate") ? "/usr/bin/plocate" : "/usr/bin/locate";
         var safeQuery = query.Replace("\"", "");
         var cwd = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+        Func<string, bool> filteredOnLine = string.IsNullOrEmpty(searchFolders?.FirstOrDefault())
+            ? onLine
+            : line => searchFolders!.Any(f => line.StartsWith(f, StringComparison.Ordinal)) && onLine(line);
+
         return runner.RunAsync(binary,
             ["-b", "-l", maxResults.ToString(), $"*{safeQuery}*"],
-            cwd, onLine, ct);
+            cwd, filteredOnLine, ct);
     }
 }

@@ -1,10 +1,16 @@
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
+using Yottacast.Core.Storage;
 
 namespace Yottacast.Core.Services;
 
 public record BrowserInfo(string Name, string ExecutablePath);
 
-public static class BrowserDiscovery {
+public class BrowserDiscovery(ApplicationStorage appStorage) {
     private static readonly string[] KnownMacBrowsers = [
         "Safari",
         "Google Chrome",
@@ -36,62 +42,59 @@ public static class BrowserDiscovery {
         ("Vivaldi",         [@"C:\Program Files\Vivaldi\Application\vivaldi.exe"]),
     ];
 
-    public static IReadOnlyList<(string Name, string Path)> GetCandidatePaths() {
+    /// <summary>
+    /// Returns all known browsers from the application cache (installed ones first,
+    /// then falls back to the primary search-path candidate for settings pickers).
+    /// </summary>
+    public IReadOnlyList<(string Name, string Path)> GetCandidatePaths() {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
             var searchPaths = MacSearchPaths;
             return KnownMacBrowsers
                 .Select(name => {
-                    var found = searchPaths
-                        .Select(b => Path.Combine(b, $"{name}.app"))
-                        .FirstOrDefault(Directory.Exists);
+                    var app = appStorage.Find(name);
+                    if (app is not null) return (name, app.Path);
                     var primary = Path.Combine(searchPaths[0], $"{name}.app");
-                    return (name, found ?? primary);
+                    return (name, primary);
                 })
                 .ToList();
         }
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             return KnownWindowsBrowsers
-                .Select(c => (c.Name, c.Paths.FirstOrDefault(File.Exists) ?? c.Paths[0]))
+                .Select(c => {
+                    var app = appStorage.Find(c.Name);
+                    return (c.Name, app?.Path ?? c.Paths.FirstOrDefault(File.Exists) ?? c.Paths[0]);
+                })
                 .ToList();
         }
         return [];
     }
 
-    public static IReadOnlyList<BrowserInfo> Discover() {
+    /// <summary>
+    /// Returns only the browsers that are actually installed, using the application cache.
+    /// </summary>
+    public IReadOnlyList<BrowserInfo> Discover() {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
-            return DiscoverMac();
+            return KnownMacBrowsers
+                .Select(n => appStorage.Find(n))
+                .Where(a => a is not null)
+                .Select(a => new BrowserInfo(a!.Name, a.Path))
+                .ToList();
         }
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
-            return DiscoverWindows();
+            return KnownWindowsBrowsers
+                .Select(c => {
+                    var app = appStorage.Find(c.Name);
+                    if (app is not null) return new BrowserInfo(app.Name, app.Path);
+                    var path = c.Paths.FirstOrDefault(File.Exists);
+                    return path is not null ? new BrowserInfo(c.Name, path) : null;
+                })
+                .Where(b => b is not null)
+                .Select(b => b!)
+                .ToList();
         }
-        // TODO: missing Linux?
         return [];
     }
 
-    private static List<BrowserInfo> DiscoverMac() {
-        var results = new List<BrowserInfo>();
-
-        foreach (var name in KnownMacBrowsers) {
-            foreach (var basePath in MacSearchPaths) {
-                var appPath = Path.Combine(basePath, $"{name}.app");
-                if (!Directory.Exists(appPath)) continue;
-                results.Add(new BrowserInfo(name, appPath));
-                break;
-            }
-        }
-
-        return results;
-    }
-
-    private static List<BrowserInfo> DiscoverWindows() {
-        var results = new List<BrowserInfo>();
-
-        foreach (var (name, paths) in KnownWindowsBrowsers) {
-            var found = paths.FirstOrDefault(File.Exists);
-            if (found is not null)
-                results.Add(new BrowserInfo(name, found));
-        }
-
-        return results;
-    }
+    public Task<IReadOnlyList<BrowserInfo>> DiscoverAsync(CancellationToken ct = default) =>
+        Task.FromResult(Discover());
 }

@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Yottacast.ViewModels"
         xmlns:conv="using:Avalonia.Data.Converters"
+        xmlns:viewModels="clr-namespace:Yottacast.Core.ViewModels;assembly=Yottacast.Core"
         x:Class="Yottacast.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="Yottacast"
@@ -153,7 +154,7 @@
                      ScrollViewer.VerticalScrollBarVisibility="Auto"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                 <ListBox.ItemTemplate>
-                    <DataTemplate x:DataType="vm:ResultItemViewModel">
+                    <DataTemplate x:DataType="viewModels:ResultItemViewModel">
                         <Grid ColumnDefinitions="Auto,*,Auto" MinHeight="44">
 
                             <!-- Icon box -->

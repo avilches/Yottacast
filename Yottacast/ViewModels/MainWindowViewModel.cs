@@ -5,7 +5,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Yottacast.Core.Search;
 using Yottacast.Core.Services;
+using Yottacast.Core.ViewModels;
 using Yottacast.Services;
 
 namespace Yottacast.ViewModels;
@@ -27,12 +29,14 @@ public partial class MainWindowViewModel : ViewModelBase
     public ObservableCollection<ResultItemViewModel> Results { get; } = [];
 
     private readonly UserSettings _settings;
+    private readonly SearchService _searchService;
     private readonly IReadOnlyList<BrowserInfo> _browsers;
     private CancellationTokenSource? _cts;
 
-    public MainWindowViewModel(UserSettings settings) {
+    public MainWindowViewModel(UserSettings settings, SearchService searchService, BrowserDiscovery browserDiscovery) {
         _settings = settings;
-        _browsers = BrowserDiscovery.Discover();
+        _searchService = searchService;
+        _browsers = browserDiscovery.Discover();
     }
 
     partial void OnSearchTextChanged(string value)
@@ -56,21 +60,14 @@ public partial class MainWindowViewModel : ViewModelBase
         HasResults = true;
         SelectedResult = googleItem;
 
-        // Debounce before hitting the filesystem
+        // Debounce before hitting the filesystem / cache
         try { await Task.Delay(250, ct); } catch (OperationCanceledException) { return; }
 
-        var files = new System.Collections.Generic.List<FileResult>();
-        await FileSearch.SearchAsync(query, files.Add, 15, ct: ct);
+        var items = await _searchService.SearchAsync(query, ct);
         if (ct.IsCancellationRequested) return;
 
-        foreach (var file in files)
-            Results.Add(new ResultItemViewModel
-            {
-                Icon = "📄",
-                Title = file.Name,
-                Subtitle = file.Path,
-                Category = "Files",
-            });
+        foreach (var item in items)
+            Results.Add(item);
 
         HasResults = Results.Count > 0;
         ShowNoResults = !HasResults;

@@ -22,11 +22,11 @@ public partial class SettingsWindowViewModel : ViewModelBase {
 
     private readonly UserSettings _settings;
 
-    public SettingsWindowViewModel(UserSettings settings) {
+    public SettingsWindowViewModel(UserSettings settings, BrowserDiscovery browserDiscovery, TerminalDiscovery terminalDiscovery) {
         _settings = settings;
 
-        Browsers  = BrowserDiscovery.Discover().Select(b => b.Name).ToList();
-        Terminals = TerminalDiscovery.Discover().Select(t => t.Name).ToList();
+        Browsers  = browserDiscovery.Discover().Select(b => b.Name).ToList();
+        Terminals = terminalDiscovery.Discover().Select(t => t.Name).ToList();
         Themes    = LoadThemes();
 
         // Set initial selections without triggering the partial callbacks (fields, not properties)

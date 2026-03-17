@@ -1,13 +1,17 @@
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
+using Yottacast.Core.Storage;
 
 namespace Yottacast.Core.Services;
 
 public record TerminalInfo(string Name, string ExecutablePath);
 
-public static class TerminalDiscovery
-{
-    private static readonly string[] KnownMacTerminals =
-    [
+public class TerminalDiscovery {
+    private static readonly string[] KnownMacTerminals = [
         "Terminal",
         "iTerm",
         "Warp",
@@ -18,98 +22,83 @@ public static class TerminalDiscovery
         "Tabby",
     ];
 
-    public static IReadOnlyList<(string Name, string Path)> GetCandidatePaths()
-    {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-        {
-            var searchPaths = new[]
-            {
+    private static readonly (string Name, string[] Paths)[] KnownWindowsTerminals = [
+        ("Windows Terminal", [@"C:\Program Files\WindowsApps\Microsoft.WindowsTerminal*\wt.exe"]),
+        ("PowerShell", [
+            @"C:\Program Files\PowerShell\7\pwsh.exe",
+            @"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+        ]),
+        ("Command Prompt", [@"C:\Windows\System32\cmd.exe"]),
+        ("Git Bash", [
+            @"C:\Program Files\Git\bin\bash.exe",
+            @"C:\Program Files (x86)\Git\bin\bash.exe"
+        ]),
+    ];
+
+    private readonly ApplicationStorage _appStorage;
+
+    public TerminalDiscovery(ApplicationStorage appStorage) {
+        _appStorage = appStorage;
+    }
+
+    /// <summary>
+    /// Returns all known terminals from the application cache (installed ones first,
+    /// then falls back to the primary search-path candidate for settings pickers).
+    /// </summary>
+    public IReadOnlyList<(string Name, string Path)> GetCandidatePaths() {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
+            var searchPaths = new[] {
                 "/Applications",
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Applications"),
                 "/System/Applications/Utilities",
             };
             return KnownMacTerminals
                 .Select(name => {
-                    var found = searchPaths
-                        .Select(b => Path.Combine(b, $"{name}.app"))
-                        .FirstOrDefault(Directory.Exists);
+                    var app = _appStorage.Find(name);
+                    if (app is not null) return (name, app.Path);
                     var primary = Path.Combine(searchPaths[0], $"{name}.app");
-                    return (name, found ?? primary);
+                    return (name, primary);
                 })
                 .ToList();
         }
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            return new (string Name, string[] Paths)[]
-            {
-                ("Windows Terminal", [@"C:\Program Files\WindowsApps\Microsoft.WindowsTerminal*\wt.exe"]),
-                ("PowerShell",       [@"C:\Program Files\PowerShell\7\pwsh.exe",
-                                      @"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"]),
-                ("Command Prompt",   [@"C:\Windows\System32\cmd.exe"]),
-                ("Git Bash",         [@"C:\Program Files\Git\bin\bash.exe",
-                                      @"C:\Program Files (x86)\Git\bin\bash.exe"]),
-            }
-            .Select(c => (c.Name, c.Paths.FirstOrDefault(p => !p.Contains('*') && File.Exists(p)) ?? c.Paths[0]))
-            .ToList();
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            return KnownWindowsTerminals
+                .Select(c => {
+                    var app = _appStorage.Find(c.Name);
+                    if (app is not null) return (c.Name, app.Path);
+                    return (c.Name, c.Paths.FirstOrDefault(p => !p.Contains('*') && File.Exists(p)) ?? c.Paths[0]);
+                })
+                .ToList();
         }
         return [];
     }
 
-    public static IReadOnlyList<TerminalInfo> Discover()
-    {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            return DiscoverMac();
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            return DiscoverWindows();
+    /// <summary>
+    /// Returns only the terminals that are actually installed, using the application cache.
+    /// </summary>
+    public IReadOnlyList<TerminalInfo> Discover() {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
+            return KnownMacTerminals
+                .Select(n => _appStorage.Find(n))
+                .Where(a => a is not null)
+                .Select(a => new TerminalInfo(a!.Name, a.Path))
+                .ToList();
+        }
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            return KnownWindowsTerminals
+                .Select(c => {
+                    var app = _appStorage.Find(c.Name);
+                    if (app is not null) return new TerminalInfo(app.Name, app.Path);
+                    var path = c.Paths.FirstOrDefault(p => !p.Contains('*') && File.Exists(p));
+                    return path is not null ? new TerminalInfo(c.Name, path) : null;
+                })
+                .Where(t => t is not null)
+                .Select(t => t!)
+                .ToList();
+        }
         return [];
     }
 
-    private static List<TerminalInfo> DiscoverMac()
-    {
-        var results = new List<TerminalInfo>();
-        var searchPaths = new[]
-        {
-            "/Applications",
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Applications"),
-            "/System/Applications/Utilities",
-        };
-
-        foreach (var name in KnownMacTerminals)
-        {
-            foreach (var basePath in searchPaths)
-            {
-                var appPath = Path.Combine(basePath, $"{name}.app");
-                if (Directory.Exists(appPath))
-                {
-                    results.Add(new TerminalInfo(name, appPath));
-                    break;
-                }
-            }
-        }
-
-        return results;
-    }
-
-    private static List<TerminalInfo> DiscoverWindows()
-    {
-        var results = new List<TerminalInfo>();
-        var candidates = new (string Name, string[] Paths)[]
-        {
-            ("Windows Terminal", [@"C:\Program Files\WindowsApps\Microsoft.WindowsTerminal*\wt.exe"]),
-            ("PowerShell",       [@"C:\Program Files\PowerShell\7\pwsh.exe",
-                                  @"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"]),
-            ("Command Prompt",   [@"C:\Windows\System32\cmd.exe"]),
-            ("Git Bash",         [@"C:\Program Files\Git\bin\bash.exe",
-                                  @"C:\Program Files (x86)\Git\bin\bash.exe"]),
-        };
-
-        foreach (var (name, paths) in candidates)
-        {
-            var found = paths.FirstOrDefault(p => !p.Contains('*') && File.Exists(p));
-            if (found is not null)
-                results.Add(new TerminalInfo(name, found));
-        }
-
-        return results;
-    }
+    public Task<IReadOnlyList<TerminalInfo>> DiscoverAsync(CancellationToken ct = default) =>
+        Task.FromResult(Discover());
 }

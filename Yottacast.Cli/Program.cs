@@ -1,10 +1,17 @@
 using Yottacast.Core.Process;
 using Yottacast.Core.Services;
+using Yottacast.Core.Storage;
 
 namespace Yottacast.Cli;
 
 internal static class Program {
+    private static readonly ApplicationStorage AppStorage = new();
+    private static readonly BrowserDiscovery Browsers = new(AppStorage);
+    private static readonly TerminalDiscovery Terminals = new(AppStorage);
+
     private static async Task Main(string[] args) {
+        await AppStorage.Start();
+
         if (args.Length == 0) {
             await RunInteractiveAsync();
             return;
@@ -68,6 +75,11 @@ internal static class Program {
                 await CmdRunAsync(PtyRunner.Instance, args[1], runArgs);
                 break;
 
+            case "a":
+            case "apps":
+                CmdApps();
+                break;
+
             case "help":
                 Usage();
                 break;
@@ -83,7 +95,7 @@ internal static class Program {
 
     static void CmdBrowsers() {
         Header("Browser Discovery");
-        var candidates = BrowserDiscovery.GetCandidatePaths();
+        var candidates = Browsers.GetCandidatePaths();
         if (candidates.Count == 0) {
             Warn("No browsers found.");
             return;
@@ -101,7 +113,7 @@ internal static class Program {
 
     static void CmdTerminals() {
         Header("Terminal Discovery");
-        var candidates = TerminalDiscovery.GetCandidatePaths();
+        var candidates = Terminals.GetCandidatePaths();
         if (candidates.Count == 0) {
             Warn("No terminals found.");
             return;
@@ -131,6 +143,18 @@ internal static class Program {
         if (result.Cancelled) Warn("Process was cancelled or timed out.");
     }
 
+    static void CmdApps() {
+        Header("Applications in AppStorage");
+        var apps = AppStorage.FindAll().OrderBy(a => a.Name).ToList();
+        if (apps.Count == 0) {
+            Warn("No applications found.");
+            return;
+        }
+        foreach (var app in apps)
+            Ok($"{app.Name,-40} {app.Path}");
+        Console.WriteLine($"\n  {apps.Count} application(s)");
+    }
+
     static async Task CmdSearchAsync(string query) {
         Header($"File Search: \"{query}\"");
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
@@ -149,12 +173,14 @@ internal static class Program {
                           USAGE:
                             yc browsers
                             yc terminals
+                            yc apps
                             yc search <query words...>
                             yc run <binary> [args...]
 
                           EXAMPLES:
                             yc browsers
                             yc terminals
+                            yc apps
                             yc search my project readme
                             yc run ls -l
                           """);
@@ -164,11 +190,6 @@ internal static class Program {
         Console.ForegroundColor = ConsoleColor.Cyan;
         Console.WriteLine($"\n── {title} ──────────────────────────────────");
         Console.ResetColor();
-    }
-
-    static void Log(string msg) {
-        Console.ResetColor();
-        Console.WriteLine(msg);
     }
 
     static void Ok(string msg) {
