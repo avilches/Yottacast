@@ -1,5 +1,7 @@
 {
   "name": "Dark macOS",
+  "author": "",
+  "url": "",
   "variant": "dark",
   "colors": {
     "windowBackground":            "#E81C1C1E",

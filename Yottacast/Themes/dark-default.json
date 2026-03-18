@@ -1,5 +1,7 @@
 {
   "name": "Dark Default",
+  "author": "",
+  "url": "",
   "variant": "dark",
   "colors": {
     "windowBackground":            "#F21C1C22",

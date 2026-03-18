@@ -55,13 +55,14 @@ public sealed class AppInfo {
 
 /// <summary>
 /// In-memory cache of all installed applications. Implements <see cref="ISearchSource"/>
-/// so it can be registered in <see cref="DocumentSearch"/>.
+/// so it can be registered in <see cref="GlobalSearch"/>.
 ///
-/// macOS  — subscribes to <see cref="FileSearch.SearchLiveAsync"/> (mdfind -live).
-///          Receives the initial batch of apps and then live updates as apps are installed.
+/// macOS  — one-shot mdfind via <see cref="StandardCommandRunner"/> for the initial batch,
+///          then <see cref="FileSystemWatcher"/> on each AppDirectory for live *.app updates.
 /// Windows/Linux — initial directory scan + FileSystemWatcher for live updates.
 ///
 /// Call <see cref="Start"/> to begin scanning. Call <see cref="Stop"/> to cancel it.
+/// Call <see cref="ReloadAppDirectories"/> to restart scanning after AppDirectories changes.
 /// BrowserDiscovery and TerminalDiscovery query this store instead of hitting the filesystem themselves.
 /// </summary>
 public sealed class ApplicationSearch : ISearchSource, IDisposable {
@@ -107,21 +108,32 @@ public sealed class ApplicationSearch : ISearchSource, IDisposable {
         _liveCts = new CancellationTokenSource();
         foreach (var w in _watchers) w.Dispose();
         _watchers.Clear();
+        _apps.Clear();
     }
 
-    public Task<IReadOnlyList<ResultItemViewModel>> SearchAsync(string query, CancellationToken ct = default) {
-        var results = _apps.Values
-            .Where(a => a.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
-            .Select(a => new ResultItemViewModel {
+    /// <summary>
+    /// Restarts scanning with the current AppDirectories from UserSettings.
+    /// Call this after the user changes AppDirectories in Settings.
+    /// </summary>
+    public Task ReloadAppDirectories() {
+        Stop();
+        return Start();
+    }
+
+    public async IAsyncEnumerable<ResultItemViewModel> SearchAsync(
+        string query, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default) {
+        foreach (var a in _apps.Values.Where(a => a.Name.Contains(query, StringComparison.OrdinalIgnoreCase))) {
+            ct.ThrowIfCancellationRequested();
+            yield return new ResultItemViewModel {
                 Icon = "📱",
                 Title = a.Name,
                 Subtitle = a.Path,
                 Category = "Applications",
-                Score = 0,
+                Score = 1,
                 OnActivate = () => LaunchApp(a.Path),
-            })
-            .ToList();
-        return Task.FromResult<IReadOnlyList<ResultItemViewModel>>(results);
+            };
+        }
+        await Task.CompletedTask; // async iterator requires at least one await
     }
 
     // ── Queries ───────────────────────────────────────────────────────────────

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.Json.Nodes;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Yottacast.Core.Services;
+using Yottacast.Core.Storage;
 using Yottacast.Services;
 
 namespace Yottacast.ViewModels;
@@ -21,8 +22,10 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     public IReadOnlyList<ThemeOption> Themes { get; }
 
     private readonly UserSettings _settings;
+    private readonly ApplicationSearch _applicationSearch;
 
-    public SettingsWindowViewModel(UserSettings settings, BrowserDiscovery browserDiscovery, TerminalDiscovery terminalDiscovery) {
+    public SettingsWindowViewModel(UserSettings settings, BrowserDiscovery browserDiscovery, TerminalDiscovery terminalDiscovery, ApplicationSearch applicationSearch) {
+        _applicationSearch = applicationSearch;
         _settings = settings;
 
         Browsers  = browserDiscovery.Discover().Select(b => b.Name).ToList();

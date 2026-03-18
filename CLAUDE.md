@@ -43,10 +43,10 @@ Yottacast.sln
 │   ├── PtyRunner.cs                    ← Usa Pty.Net (line-buffered, más rápido) — preferido
 │   └── ProcessResult.cs                ← (Elapsed, ExitCode, Cancelled, Error?)
 ├── Search/
-│   ├── ISearchSource.cs                ← Interfaz: Start(), Stop(), SearchAsync(query, ct)
-│   └── DocumentSearch.cs               ← Agrega ISearchSource[], merge por Score desc
+│   ├── ISearchSource.cs                ← Interfaz: Start(), Stop(), SearchAsync → IAsyncEnumerable
+│   └── GlobalSearch.cs                 ← Agrega ISearchSource[], merge streaming vía Channel
 ├── Services/
-│   ├── FileSearch.cs                   ← Búsqueda de archivos: mdfind / Windows Search / locate
+│   ├── UserDocumentSearch.cs           ← Búsqueda de archivos: mdfind / Windows Search / locate
 │   ├── UserSettings.cs                 ← Config persistida en JSON
 │   ├── BrowserDiscovery.cs             ← Detecta navegadores instalados (usa ApplicationSearch)
 │   ├── BrowserLauncher.cs              ← Abre URL en navegador concreto
@@ -54,7 +54,7 @@ Yottacast.sln
 │   └── TerminalLauncher.cs             ← Ejecuta comando en terminal concreto
 ├── Storage/
 │   ├── AppInfo.cs + ApplicationSearch.cs  ← ISearchSource: caché en memoria de apps
-│   └── FileStorage.cs                     ← ISearchSource: delega en FileSearch
+│   └── FileStorage.cs                     ← ISearchSource: delega en UserDocumentSearch (streaming)
 └── ViewModels/
     ├── ResultItemViewModel.cs           ← (Icon, Title, Subtitle, Category, Score, OnActivate)
     └── ViewModelBase.cs                 ← ObservableObject (CommunityToolkit.Mvvm)
@@ -88,7 +88,7 @@ cd Yottacast.Core.Tests && dotnet test
 `App.OnFrameworkInitializationCompleted` construye el contenedor DI (`BuildServices`) y arranca la búsqueda:
 
 ```csharp
-var searchService = _services.GetRequiredService<DocumentSearch>();
+var searchService = _services.GetRequiredService<GlobalSearch>();
 _ = searchService.Start();   // arranca todas las ISearchSource en paralelo
 ```
 
@@ -96,20 +96,20 @@ Servicios registrados en DI:
 - `UserSettings` (singleton, cargado con `UserSettings.Load()`)
 - `ApplicationSearch` (singleton, ISearchSource)
 - `FileStorage` (singleton, ISearchSource)
-- `DocumentSearch` (singleton, recibe `IEnumerable<ISearchSource>`)
+- `GlobalSearch` (singleton, recibe `IEnumerable<ISearchSource>`)
 - `BrowserDiscovery`, `TerminalDiscovery` (singleton)
 - `MainWindowViewModel`, `SettingsWindowViewModel` (transient)
 
-### Motor de búsqueda: DocumentSearch
+### Motor de búsqueda: GlobalSearch
 
-Clase: `Yottacast.Core.Search.DocumentSearch`
+Clase: `Yottacast.Core.Search.GlobalSearch`
 
-Agrega múltiples `ISearchSource` recibidas por inyección. `SearchAsync` lanza todas en paralelo con `Task.WhenAll` y ordena el resultado por `Score` descendente.
+Agrega múltiples `ISearchSource` recibidas por inyección. `SearchAsync` devuelve `IAsyncEnumerable<ResultItemViewModel>` — las fuentes corren en paralelo y los resultados se entregan conforme llegan vía un `Channel<T>` interno.
 
 ```
 ISearchSource
 ├── ApplicationSearch   ← apps instaladas (desde caché en memoria)
-└── FileStorage         ← documentos (delega en FileSearch, sin caché)
+└── FileStorage         ← documentos (delega en UserDocumentSearch, streaming via Channel)
 ```
 
 Para añadir una nueva fuente: implementar `ISearchSource` y registrarla en `BuildServices` como `services.AddSingleton<ISearchSource>(...)`.
@@ -119,24 +119,21 @@ Para añadir una nueva fuente: implementar `ISearchSource` y registrarla en `Bui
 El debounce está en el ViewModel, **no** en las fuentes de búsqueda:
 
 ```
-OnSearchTextChanged → cancela CTS anterior → espera 250ms → llama DocumentSearch.SearchAsync
+OnSearchTextChanged → cancela CTS anterior → espera 250ms → await foreach GlobalSearch.SearchAsync
 ```
 
 Antes del debounce, se añade inmediatamente un resultado de "Search en Google" para que la UI siempre tenga algo mientras el usuario escribe.
 
-### Resultados: streaming vs batch
+### Resultados: streaming
 
-**Intención**: los resultados deberían llegar de forma incremental a la UI a medida que cada fuente los produce.
-
-**Estado actual** ⚠️ TODO: `DocumentSearch.SearchAsync` hace `Task.WhenAll` y devuelve todos los resultados juntos. `FileStorage` también acumula en una lista antes de retornar. La UI recibe los resultados en un único batch, no en streaming. `FileSearch` ya tiene callback `Action<FileResult>` que podría usarse para streaming real — falta conectarlo hasta la UI.
+Los resultados llegan incrementalmente a la UI conforme cada fuente los produce:
+- `ApplicationSearch` → yield de resultados en memoria (rápido, primero)
+- `FileStorage` → streaming via `Channel<T>` desde `UserDocumentSearch.SearchAsync` callback
+- `GlobalSearch` → merge de fuentes via `Channel<T>`, `await foreach` en `MainWindowViewModel`
 
 ### Scoring
 
-**Intención**: score = 1 para todos los resultados, ordenados por score desc y luego alfabéticamente.
-
-**Estado actual** ⚠️ TODO:
-- Ambas fuentes (`ApplicationSearch`, `FileStorage`) devuelven `Score = 0`.
-- El sort secundario alfabético no está implementado (solo `OrderByDescending(r => r.Score)`).
+Score = 1 para todos los resultados. Los resultados llegan en orden de fuente (apps primero, luego archivos) ya que el streaming no permite un sort global sin buffering.
 
 ---
 
@@ -158,16 +155,15 @@ La búsqueda es substring case-insensitive sobre el nombre de la app (ej. "saf" 
 
 Evento `AppAdded` notifica cuando se detecta una app nueva (lo usan `BrowserDiscovery` / `TerminalDiscovery`).
 
-**Cambio de AppDirectories en settings** ⚠️ TODO: si el usuario cambia `AppDirectories` en SettingsWindow, `ApplicationSearch` no se actualiza automáticamente — los watchers se crean una sola vez en `Start()`. Requeriría `Stop()` + `Start()` para releer la config.
-
-**Nota en comentario del código**: el XML-doc de `ApplicationSearch` menciona `FileSearch.SearchLiveAsync (mdfind -live)` pero el código real usa `StandardCommandRunner` + `FileSystemWatcher`. El comentario es incorrecto y debe corregirse.
+**Cambio de AppDirectories en settings**: `ApplicationSearch.ReloadAppDirectories()` hace `Stop()` + `Start()` limpiando el caché (`_apps.Clear()` en `Stop()`). `SettingsWindowViewModel` tiene `ApplicationSearch` inyectado — cuando se añada UI para `AppDirectories`, llamar `_applicationSearch.ReloadAppDirectories()`.
 
 ### FileStorage (búsqueda de documentos)
 
 Clase: `Yottacast.Core.Storage.FileStorage` (implementa `ISearchSource`)
 
-Sin caché. Cada búsqueda llama a `FileSearch.SearchAsync` con los `SearchFolders` de `UserSettings`.
+Sin caché. Cada búsqueda llama a `UserDocumentSearch.SearchAsync` con los `SearchFolders` de `UserSettings`.
 Si los directorios cambian en settings, la siguiente búsqueda los usará automáticamente.
+Los resultados se entregan vía `Channel<T>` para streaming real hacia la UI.
 
 `Start()` y `Stop()` son no-ops (no hay estado que gestionar).
 
@@ -217,7 +213,7 @@ Los JSON se copian al output vía `CopyToOutputDirectory=PreserveNewest`.
 
 Temas incluidos: `dark-default`, `dark-raycast`, `dark-macos`, `light-blue`, `light-gray`.
 
-**Metadata en JSON (author, url)** ⚠️ TODO: la intención es que cada tema tenga nombre real, author y url para poder descargar nuevos temas en el futuro. No está implementado aún en los ficheros JSON.
+**Metadata en JSON (author, url)**: todos los temas tienen `"author": ""` y `"url": ""`. `ThemeService` los ignora hoy; estarán disponibles cuando se implemente la descarga de temas.
 
 ---
 
@@ -228,7 +224,7 @@ Ambos aceptan `Func<string, bool> onLine` — retorna `false` para parar antes d
 - **`StandardCommandRunner`** — redirige stdout al pipe del proceso. El SO hace buffer del pipe hasta llenarlo o que el proceso acabe (block-buffered). Útil para comandos que terminan solos y donde no importa la latencia.
 - **`PtyRunner`** — abre un pseudo-terminal (Pty.Net). La terminal fuerza flush línea a línea. Resultados llegan en tiempo real: se puede consumir, hacer timeout y cortar el proceso antes de que termine. Preferido para `mdfind`, `locate`, etc.
 
-`FileSearch` usa `PtyRunner` por defecto (configurable via `RunnerBackend` enum).
+`UserDocumentSearch` usa `PtyRunner` por defecto (configurable via `RunnerBackend` enum).
 `ApplicationSearch` usa `StandardCommandRunner` para la carga inicial de macOS.
 
 **Gotcha tests PTY**: `PtyRunnerTests` deshabilita paralelización (`[assembly: CollectionBehavior(DisableTestParallelization = true)]`) por race conditions de kqueue en Pty.Net.
@@ -254,13 +250,13 @@ macOS varía por terminal:
 
 Windows: PowerShell usa `-NoExit -Command`, CMD usa `/K`.
 
-### FileSearch
+### UserDocumentSearch
 Búsqueda de archivos vía índice nativo del SO:
 - **macOS** → `mdfind` con predicado `kMDItemFSName == '*query*'cd` (Spotlight, case-insensitive)
 - **Windows** → PowerShell + ADODB.Connection (`Provider=Search.CollatorDSO`)
 - **Linux** → `plocate` o `locate -b`
 
-API: `FileSearch.SearchAsync(query, onResult, maxResults, backend, searchFolders, ct)`.
+API: `UserDocumentSearch.SearchAsync(query, onResult, maxResults, backend, searchFolders, ct)`.
 `onResult` es un callback `Action<FileResult>` — los resultados llegan conforme `mdfind` los emite.
 
 ---

@@ -30,7 +30,7 @@ public partial class App : Application {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop) {
             _services = BuildServices();
 
-            var searchService = _services.GetRequiredService<DocumentSearch>();
+            var searchService = _services.GetRequiredService<GlobalSearch>();
             _ = searchService.Start();
 
             var userSettings = _services.GetRequiredService<UserSettings>();
@@ -77,7 +77,7 @@ public partial class App : Application {
         services.AddSingleton<ISearchSource>(sp => sp.GetRequiredService<ApplicationSearch>());
         services.AddSingleton<ISearchSource>(sp => sp.GetRequiredService<FileStorage>());
 
-        services.AddSingleton<DocumentSearch>();
+        services.AddSingleton<GlobalSearch>();
 
         services.AddTransient<MainWindowViewModel>();
         services.AddTransient<SettingsWindowViewModel>();

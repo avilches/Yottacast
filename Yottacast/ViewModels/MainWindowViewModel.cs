@@ -29,13 +29,13 @@ public partial class MainWindowViewModel : ViewModelBase
     public ObservableCollection<ResultItemViewModel> Results { get; } = [];
 
     private readonly UserSettings _settings;
-    private readonly DocumentSearch _documentSearch;
+    private readonly GlobalSearch _globalSearch;
     private readonly IReadOnlyList<BrowserInfo> _browsers;
     private CancellationTokenSource? _cts;
 
-    public MainWindowViewModel(UserSettings settings, DocumentSearch documentSearch, BrowserDiscovery browserDiscovery) {
+    public MainWindowViewModel(UserSettings settings, GlobalSearch globalSearch, BrowserDiscovery browserDiscovery) {
         _settings = settings;
-        _documentSearch = documentSearch;
+        _globalSearch = globalSearch;
         _browsers = browserDiscovery.Discover();
     }
 
@@ -63,11 +63,13 @@ public partial class MainWindowViewModel : ViewModelBase
         // Debounce before hitting the filesystem / cache
         try { await Task.Delay(250, ct); } catch (OperationCanceledException) { return; }
 
-        var items = await _documentSearch.SearchAsync(query, ct);
-        if (ct.IsCancellationRequested) return;
-
-        foreach (var item in items)
-            Results.Add(item);
+        try {
+            await foreach (var item in _globalSearch.SearchAsync(query, ct)) {
+                Results.Add(item);
+            }
+        } catch (OperationCanceledException) {
+            return;
+        }
 
         HasResults = Results.Count > 0;
         ShowNoResults = !HasResults;

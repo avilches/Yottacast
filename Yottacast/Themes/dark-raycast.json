@@ -1,5 +1,7 @@
 {
   "name": "Dark Raycast",
+  "author": "",
+  "url": "",
   "variant": "dark",
   "colors": {
     "windowBackground":            "#F01A1917",
