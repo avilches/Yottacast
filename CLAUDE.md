@@ -270,7 +270,7 @@ using SharpHook;       // TaskPoolGlobalHook
 using SharpHook.Data;  // KeyCode, EventMask
 ```
 
-ALT+Space muestra/oculta la ventana. Al mostrar se hace `.Trim()` para no añadir el espacio al texto.
+ALT+Space muestra/oculta la ventana.
 
 ---
 
@@ -279,7 +279,7 @@ ALT+Space muestra/oculta la ventana. Al mostrar se hace `.Trim()` para no añadi
 - **No `BoxShadow` en el root Border** — Avalonia lo renderiza como rectángulo independientemente del `CornerRadius`. macOS provee sombra redondeada nativa vía la ventana frameless transparente.
 - **Compiled bindings** habilitados globalmente (`AvaloniaUseCompiledBindingsByDefault=true`) — los bindings deben ser type-resolvable en compile time.
 - **`DataAnnotationsValidationPlugin`** deshabilitado en `App.axaml.cs` para evitar conflictos con CommunityToolkit.Mvvm.
-- **Window hide vs close** — `Hide()` en Escape (no `Close()`); `Show()` + `Activate()` restaura. El SettingsWindow es singleton reutilizado.
+- **Window hide vs close** — `Hide()` en Escape (no `Close()`); `Show()` + `Activate()` restaura. El SettingsWindow evita duplicados: si ya está visible lo activa, si no crea una nueva instancia.
 - **Raw string literals con variables PowerShell** — usar `$$"""..."""` en lugar de `$"""..."""` cuando el contenido tiene `$var`. Con `$$`, interpolación C# pasa a `{{expr}}` y los `$` sueltos son literales.
 - **Lazy icon en AppInfo** — usa `Lazy<T>` para diferir la lectura de `Info.plist` hasta el primer acceso al icono (evita parsear cientos de plists al arranque).
 

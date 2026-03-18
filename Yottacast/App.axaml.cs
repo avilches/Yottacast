@@ -71,8 +71,7 @@ public partial class App : Application {
         services.AddSingleton<BrowserDiscovery>();
         services.AddSingleton<TerminalDiscovery>();
 
-        // Register ApplicationStorage as the active ISearchSource.
-        // Add BrowserDiscovery / TerminalDiscovery here when ready.
+        // Register ApplicationSearch and FileStorage as ISearchSource implementations.
         services.AddSingleton<FileStorage>();
         services.AddSingleton<ISearchSource>(sp => sp.GetRequiredService<ApplicationSearch>());
         services.AddSingleton<ISearchSource>(sp => sp.GetRequiredService<FileStorage>());
