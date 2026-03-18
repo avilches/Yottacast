@@ -14,7 +14,7 @@ public record FileResult(string Name, string Path);
 ///   Windows → Windows Search Index (via PowerShell + OLE DB)
 ///   Linux   → plocate / locate
 /// </summary>
-public static class UserDocumentSearch {
+public static class FileSearch {
     public static Task SearchAsync(
         string query, Action<FileResult> onResult, int maxResults = 10,
         RunnerBackend backend = RunnerBackend.Pty,

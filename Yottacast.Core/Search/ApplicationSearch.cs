@@ -2,56 +2,10 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Yottacast.Core.Process;
-using Yottacast.Core.Search;
 using Yottacast.Core.Services;
 using Yottacast.Core.ViewModels;
 
-namespace Yottacast.Core.Storage;
-
-/// <summary>
-/// Represents an installed application with a lazily-resolved icon path.
-/// </summary>
-public sealed class AppInfo {
-    public string Name { get; }
-    public string Path { get; }
-
-    // Read Info.plist on first access — avoids parsing hundreds of files at startup
-    private readonly Lazy<string?> _iconPath;
-    public string? IconPath => _iconPath.Value;
-
-    internal AppInfo(string name, string path) {
-        Name = name;
-        Path = path;
-        _iconPath = new Lazy<string?>(
-            () => RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? TryGetMacIconPath(path) : null,
-            LazyThreadSafetyMode.ExecutionAndPublication);
-    }
-
-    private static string? TryGetMacIconPath(string appPath) {
-        try {
-            var plist = System.IO.Path.Combine(appPath, "Contents", "Info.plist");
-            if (!File.Exists(plist)) return null;
-
-            var content = File.ReadAllText(plist);
-            var keyIdx = content.IndexOf("<key>CFBundleIconFile</key>", StringComparison.Ordinal);
-            if (keyIdx < 0) return null;
-
-            var stringStart = content.IndexOf("<string>", keyIdx, StringComparison.Ordinal);
-            if (stringStart < 0) return null;
-            var stringEnd = content.IndexOf("</string>", stringStart + 8, StringComparison.Ordinal);
-            if (stringEnd < 0) return null;
-
-            var iconFile = content[(stringStart + 8)..stringEnd].Trim();
-            if (!iconFile.EndsWith(".icns", StringComparison.OrdinalIgnoreCase))
-                iconFile += ".icns";
-
-            var iconPath = System.IO.Path.Combine(appPath, "Contents", "Resources", iconFile);
-            return File.Exists(iconPath) ? iconPath : null;
-        } catch {
-            return null;
-        }
-    }
-}
+namespace Yottacast.Core.Search;
 
 /// <summary>
 /// In-memory cache of all installed applications. Implements <see cref="ISearchSource"/>
@@ -65,16 +19,11 @@ public sealed class AppInfo {
 /// Call <see cref="ReloadAppDirectories"/> to restart scanning after AppDirectories changes.
 /// BrowserDiscovery and TerminalDiscovery query this store instead of hitting the filesystem themselves.
 /// </summary>
-public sealed class ApplicationSearch : ISearchSource, IDisposable {
+public sealed class ApplicationSearch(UserSettings settings) : ISearchSource, IDisposable {
     private const string MacAppBundleQuery = "kMDItemContentType == 'com.apple.application-bundle'";
 
-    private readonly UserSettings _settings;
     private readonly ConcurrentDictionary<string, AppInfo> _apps =
         new(StringComparer.OrdinalIgnoreCase);
-
-    public ApplicationSearch(UserSettings settings) {
-        _settings = settings;
-    }
 
     private bool _started;
 
@@ -101,7 +50,7 @@ public sealed class ApplicationSearch : ISearchSource, IDisposable {
         return Task.CompletedTask;
     }
 
-    public void Stop() {
+    public Task Stop() {
         _started = false;
         _liveCts.Cancel();
         _liveCts.Dispose();
@@ -109,15 +58,16 @@ public sealed class ApplicationSearch : ISearchSource, IDisposable {
         foreach (var w in _watchers) w.Dispose();
         _watchers.Clear();
         _apps.Clear();
+        return Task.CompletedTask;
     }
 
     /// <summary>
     /// Restarts scanning with the current AppDirectories from UserSettings.
     /// Call this after the user changes AppDirectories in Settings.
     /// </summary>
-    public Task ReloadAppDirectories() {
-        Stop();
-        return Start();
+    public async Task ReloadAppDirectories() {
+        await Stop();
+        await Start();
     }
 
     public async IAsyncEnumerable<ResultItemViewModel> SearchAsync(
@@ -160,7 +110,7 @@ public sealed class ApplicationSearch : ISearchSource, IDisposable {
 
         // 2. Live updates via FileSystemWatcher on the configured app directories.
         //    mdfind -live only reports the match count, not which paths changed.
-        foreach (var dir in _settings.AppDirectories.Where(Directory.Exists)) {
+        foreach (var dir in settings.AppDirectories.Where(Directory.Exists)) {
             var watcher = new FileSystemWatcher(dir) {
                 Filter = "*.app",
                 NotifyFilter = NotifyFilters.DirectoryName,
@@ -176,7 +126,7 @@ public sealed class ApplicationSearch : ISearchSource, IDisposable {
     // ── Windows — scan + FileSystemWatcher ───────────────────────────────────
 
     private void ScanWindows() {
-        foreach (var dir in _settings.AppDirectories.Where(Directory.Exists)) {
+        foreach (var dir in settings.AppDirectories.Where(Directory.Exists)) {
             foreach (var subDir in Directory.EnumerateDirectories(dir)) {
                 // Prefer exe that matches the folder name (most common pattern), else first exe found
                 var folderName = System.IO.Path.GetFileName(subDir);
@@ -202,7 +152,7 @@ public sealed class ApplicationSearch : ISearchSource, IDisposable {
     // ── Linux — scan + FileSystemWatcher ─────────────────────────────────────
 
     private void ScanLinux() {
-        foreach (var dir in _settings.AppDirectories.Where(Directory.Exists)) {
+        foreach (var dir in settings.AppDirectories.Where(Directory.Exists)) {
             foreach (var desktop in Directory.EnumerateFiles(dir, "*.desktop"))
                 AddApp(desktop);
 
@@ -213,7 +163,7 @@ public sealed class ApplicationSearch : ISearchSource, IDisposable {
             };
             watcher.Created += (_, e) => AddApp(e.FullPath);
             watcher.Deleted += (_, e) =>
-                _apps.TryRemove(System.IO.Path.GetFileNameWithoutExtension(e.Name ?? ""), out AppInfo? _);
+                _apps.TryRemove(Path.GetFileNameWithoutExtension(e.Name ?? ""), out AppInfo? _);
             _watchers.Add(watcher);
         }
     }
@@ -221,7 +171,7 @@ public sealed class ApplicationSearch : ISearchSource, IDisposable {
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private void AddApp(string path) {
-        var name = System.IO.Path.GetFileNameWithoutExtension(path);
+        var name = Path.GetFileNameWithoutExtension(path);
         if (string.IsNullOrEmpty(name)) return;
         var isNew = !_apps.ContainsKey(name);
         var app = new AppInfo(name, path);
@@ -240,5 +190,5 @@ public sealed class ApplicationSearch : ISearchSource, IDisposable {
         }
     }
 
-    public void Dispose() => Stop();
+    public void Dispose() => Stop().GetAwaiter().GetResult();
 }

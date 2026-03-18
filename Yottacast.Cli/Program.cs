@@ -1,6 +1,6 @@
 using Yottacast.Core.Process;
+using Yottacast.Core.Search;
 using Yottacast.Core.Services;
-using Yottacast.Core.Storage;
 
 namespace Yottacast.Cli;
 
@@ -161,7 +161,7 @@ internal static class Program {
         Header($"File Search: \"{query}\"");
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        await UserDocumentSearch.SearchAsync(query, r => Ok($"{r.Name,-40} {r.Path}"), 1, ct: cts.Token);
+        await FileSearch.SearchAsync(query, r => Ok($"{r.Name,-40} {r.Path}"), 1, ct: cts.Token);
         sw.Stop();
         Console.WriteLine($"\n  {sw.Elapsed.TotalMilliseconds:F0} ms");
     }

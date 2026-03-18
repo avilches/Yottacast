@@ -4,19 +4,11 @@ using Yottacast.Core.ViewModels;
 
 namespace Yottacast.Core.Search;
 
-public class GlobalSearch {
-    private readonly IEnumerable<ISearchSource> _sources;
+public class GlobalSearch(IEnumerable<ISearchSource> sources) : ISearchSource {
+    
+    public Task Start() => Task.WhenAll(sources.Select(s => s.Start()));
 
-    public GlobalSearch(IEnumerable<ISearchSource> sources) {
-        _sources = sources;
-    }
-
-    public Task Start() => Task.WhenAll(_sources.Select(s => s.Start()));
-
-    public void Stop() {
-        foreach (var source in _sources)
-            source.Stop();
-    }
+    public Task Stop() => Task.WhenAll(sources.Select(s => s.Stop()));
 
     /// <summary>
     /// Merges results from all sources in real-time via a channel, yielding items
@@ -27,7 +19,7 @@ public class GlobalSearch {
 
         var channel = Channel.CreateUnbounded<ResultItemViewModel>();
 
-        var tasks = _sources.Select(async s => {
+        var tasks = sources.Select(async s => {
             try {
                 await foreach (var item in s.SearchAsync(query, ct).ConfigureAwait(false))
                     await channel.Writer.WriteAsync(item, ct).ConfigureAwait(false);

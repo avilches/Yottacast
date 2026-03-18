@@ -10,7 +10,6 @@ using SharpHook;
 using SharpHook.Data;
 using Yottacast.Core.Search;
 using Yottacast.Core.Services;
-using Yottacast.Core.Storage;
 using Yottacast.Services;
 using Yottacast.ViewModels;
 using Yottacast.Views;
@@ -44,7 +43,7 @@ public partial class App : Application {
                 DataContext = _services.GetRequiredService<MainWindowViewModel>(),
             };
 
-            desktop.Exit += (_, _) => searchService.Stop();
+            desktop.Exit += async (_, _) => await searchService.Stop();
 
             RegisterGlobalHotKey(desktop);
         }
@@ -72,9 +71,9 @@ public partial class App : Application {
         services.AddSingleton<TerminalDiscovery>();
 
         // Register ApplicationSearch and FileStorage as ISearchSource implementations.
-        services.AddSingleton<FileStorage>();
+        services.AddSingleton<UserDocumentSearch>();
         services.AddSingleton<ISearchSource>(sp => sp.GetRequiredService<ApplicationSearch>());
-        services.AddSingleton<ISearchSource>(sp => sp.GetRequiredService<FileStorage>());
+        services.AddSingleton<ISearchSource>(sp => sp.GetRequiredService<UserDocumentSearch>());
 
         services.AddSingleton<GlobalSearch>();
 
