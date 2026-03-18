@@ -73,8 +73,8 @@ internal static class Program {
                     break;
                 }
                 var runArgs = args.Length >= 3 ? string.Join(" ", args[2..]) : string.Empty;
-                await CmdRunAsync(StandardCommandRunner.Instance, args[1], runArgs);
-                await CmdRunAsync(PtyRunner.Instance, args[1], runArgs);
+                await CmdRunAsync(RunnerBackend.Standard, args[1], runArgs);
+                await CmdRunAsync(RunnerBackend.Pty, args[1], runArgs);
                 break;
 
             case "a":
@@ -131,13 +131,13 @@ internal static class Program {
         Console.WriteLine($"\n  {found}/{candidates.Count} installed");
     }
 
-    static async Task CmdRunAsync(ICommandRunner runner, string binary, string runArgs) {
+    static async Task CmdRunAsync(RunnerBackend backend, string binary, string runArgs) {
         Header($"RunAsync {binary} {runArgs}");
 
         var argArray = string.IsNullOrEmpty(runArgs) ? [] : runArgs.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-        var result = await runner.RunAsync(
-            binary, argArray, Environment.CurrentDirectory,
+        var result = await CommandRunner.RunAsync(
+            backend, binary, argArray, Environment.CurrentDirectory,
             line => { Console.WriteLine(line); return true; },
             cts.Token);
 

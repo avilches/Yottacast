@@ -4,8 +4,8 @@ using Pty.Net;
 
 namespace Yottacast.Core.Process;
 
-public sealed class PtyRunner : ICommandRunner {
-    public static readonly PtyRunner Instance = new();
+internal sealed class PtyRunner : ICommandRunner {
+    public static readonly ICommandRunner Instance = new PtyRunner();
 
     public async Task<ProcessResult> RunAsync(string binary, string[] args, string cwd, Func<string, bool> onLine, CancellationToken ct) {
         var sw = Stopwatch.StartNew();

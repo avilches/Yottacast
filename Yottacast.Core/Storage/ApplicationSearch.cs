@@ -153,7 +153,7 @@ public sealed class ApplicationSearch : ISearchSource, IDisposable {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
         // 1. Initial batch: one-shot mdfind — awaitable, populates the store before returning.
-        await StandardCommandRunner.Instance.RunAsync(
+        await CommandRunner.RunAsync(RunnerBackend.Standard,
             "/usr/bin/mdfind", [MacAppBundleQuery], home,
             line => { if (!string.IsNullOrWhiteSpace(line)) AddApp(line); return true; },
             _liveCts.Token);

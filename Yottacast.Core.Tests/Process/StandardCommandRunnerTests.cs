@@ -5,12 +5,11 @@ namespace Yottacast.Core.Tests.Process;
 
 public class StandardCommandRunnerTests {
     private static readonly string Cwd = "/tmp";
-    private readonly StandardCommandRunner _runner = StandardCommandRunner.Instance;
 
     [Fact]
     public async Task SingleLine_Echo_ReturnsLine() {
         var lines = new List<string>();
-        await _runner.RunAsync("/bin/echo", ["hello"], Cwd, line => { lines.Add(line); return true; }, CancellationToken.None);
+        await CommandRunner.RunAsync(RunnerBackend.Standard, "/bin/echo", ["hello"], Cwd, line => { lines.Add(line); return true; }, CancellationToken.None);
         Assert.Single(lines);
         Assert.Equal("hello", lines[0]);
     }
@@ -18,39 +17,39 @@ public class StandardCommandRunnerTests {
     [Fact]
     public async Task MultipleLines_InOrder() {
         var lines = new List<string>();
-        await _runner.RunAsync("/bin/sh", ["-c", "printf 'a\\nb\\nc\\n'"], Cwd,
+        await CommandRunner.RunAsync(RunnerBackend.Standard, "/bin/sh", ["-c", "printf 'a\\nb\\nc\\n'"], Cwd,
             line => { lines.Add(line); return true; }, CancellationToken.None);
         Assert.Equal(["a", "b", "c"], lines);
     }
 
     [Fact]
     public async Task ExitCode_Zero_OnSuccess() {
-        var result = await _runner.RunAsync("/bin/echo", ["ok"], Cwd, _ => true, CancellationToken.None);
+        var result = await CommandRunner.RunAsync(RunnerBackend.Standard, "/bin/echo", ["ok"], Cwd, _ => true, CancellationToken.None);
         Assert.Equal(0, result.ExitCode);
     }
 
     [Fact]
     public async Task ExitCode_NonZero_OnFailure() {
-        var result = await _runner.RunAsync("/usr/bin/false", [], Cwd, _ => true, CancellationToken.None);
+        var result = await CommandRunner.RunAsync(RunnerBackend.Standard, "/usr/bin/false", [], Cwd, _ => true, CancellationToken.None);
         Assert.NotEqual(0, result.ExitCode);
     }
 
     [Fact]
     public async Task IsSuccess_True_OnEcho() {
-        var result = await _runner.RunAsync("/bin/echo", ["ok"], Cwd, _ => true, CancellationToken.None);
+        var result = await CommandRunner.RunAsync(RunnerBackend.Standard, "/bin/echo", ["ok"], Cwd, _ => true, CancellationToken.None);
         Assert.True(result.IsSuccess);
     }
 
     [Fact]
     public async Task IsSuccess_False_OnFalse() {
-        var result = await _runner.RunAsync("/usr/bin/false", [], Cwd, _ => true, CancellationToken.None);
+        var result = await CommandRunner.RunAsync(RunnerBackend.Standard, "/usr/bin/false", [], Cwd, _ => true, CancellationToken.None);
         Assert.False(result.IsSuccess);
     }
 
     [Fact]
     public async Task EarlyTermination_OnLineReturnsFalse_StopsAfterFirstLine() {
         var lines = new List<string>();
-        await _runner.RunAsync("/bin/sh", ["-c", "printf 'a\\nb\\nc\\n'"], Cwd,
+        await CommandRunner.RunAsync(RunnerBackend.Standard, "/bin/sh", ["-c", "printf 'a\\nb\\nc\\n'"], Cwd,
             line => { lines.Add(line); return false; }, CancellationToken.None);
         Assert.Single(lines);
     }
@@ -59,7 +58,7 @@ public class StandardCommandRunnerTests {
     public async Task Cancellation_ViaTokenInsideOnLine() {
         using var cts = new CancellationTokenSource();
         var lines = new List<string>();
-        await _runner.RunAsync("/bin/sh", ["-c", "echo start; sleep 30"], Cwd,
+        await CommandRunner.RunAsync(RunnerBackend.Standard, "/bin/sh", ["-c", "echo start; sleep 30"], Cwd,
             line => {
                 lines.Add(line);
                 cts.Cancel();
@@ -71,13 +70,13 @@ public class StandardCommandRunnerTests {
     [Fact]
     public async Task Cancellation_ViaToken_AgainstLongRunning() {
         using var cts = new CancellationTokenSource(50);
-        var result = await _runner.RunAsync("/bin/sh", ["-c", "sleep 30"], Cwd, _ => true, cts.Token);
+        var result = await CommandRunner.RunAsync(RunnerBackend.Standard, "/bin/sh", ["-c", "sleep 30"], Cwd, _ => true, cts.Token);
         Assert.True(result.Cancelled);
     }
 
     [Fact]
     public async Task Elapsed_IsGreaterThanZero() {
-        var result = await _runner.RunAsync("/bin/echo", ["ok"], Cwd, _ => true, CancellationToken.None);
+        var result = await CommandRunner.RunAsync(RunnerBackend.Standard, "/bin/echo", ["ok"], Cwd, _ => true, CancellationToken.None);
         Assert.True(result.Elapsed > TimeSpan.Zero);
     }
 }

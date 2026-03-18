@@ -9,12 +9,11 @@ namespace Yottacast.Core.Tests.Process;
 // to avoid a Pty.Net race where process-exit is not detected, blocking ReadLineAsync.
 public class PtyRunnerTests {
     private static readonly string Cwd = "/tmp";
-    private readonly PtyRunner _runner = PtyRunner.Instance;
 
     [Fact(Timeout = 10000)]
     public async Task Output_Echo_ContainsExpectedText() {
         var lines = new List<string>();
-        await _runner.RunAsync("/bin/echo", ["hello"], Cwd,
+        await CommandRunner.RunAsync(RunnerBackend.Pty, "/bin/echo", ["hello"], Cwd,
             line => { lines.Add(line); return false; }, CancellationToken.None);
         Assert.Contains(lines, l => l.Contains("hello"));
     }
@@ -23,7 +22,7 @@ public class PtyRunnerTests {
     public async Task NoLine_HasTrailingCarriageReturn() {
         var lines = new List<string>();
         // Stop after 3 non-empty lines to avoid blocking on EOF detection.
-        await _runner.RunAsync("/bin/sh", ["-c", "printf 'a\\nb\\nc\\n'"], Cwd,
+        await CommandRunner.RunAsync(RunnerBackend.Pty, "/bin/sh", ["-c", "printf 'a\\nb\\nc\\n'"], Cwd,
             line => { lines.Add(line); return lines.Count < 3; }, CancellationToken.None);
         Assert.NotEmpty(lines);
         Assert.All(lines, l => Assert.DoesNotContain('\r', l));
@@ -34,7 +33,7 @@ public class PtyRunnerTests {
     [Fact(Timeout = 10000)]
     public async Task EmptyLines_AreSkipped() {
         var lines = new List<string>();
-        await _runner.RunAsync("/bin/echo", ["hello"], Cwd,
+        await CommandRunner.RunAsync(RunnerBackend.Pty, "/bin/echo", ["hello"], Cwd,
             line => { lines.Add(line); return false; }, CancellationToken.None);
         Assert.All(lines, l => Assert.False(string.IsNullOrWhiteSpace(l)));
     }
@@ -42,7 +41,7 @@ public class PtyRunnerTests {
     [Fact(Timeout = 10000)]
     public async Task EarlyTermination_OnLineReturnsFalse_FewerLines() {
         var lines = new List<string>();
-        await _runner.RunAsync("/bin/sh", ["-c", "printf 'a\\nb\\nc\\nd\\ne\\n'"], Cwd,
+        await CommandRunner.RunAsync(RunnerBackend.Pty, "/bin/sh", ["-c", "printf 'a\\nb\\nc\\nd\\ne\\n'"], Cwd,
             line => { lines.Add(line); return lines.Count < 2; }, CancellationToken.None);
         Assert.True(lines.Count < 5);
     }
@@ -53,7 +52,7 @@ public class PtyRunnerTests {
     public async Task Cancellation_ViaToken_StopsReading() {
         using var cts = new CancellationTokenSource();
         var lines = new List<string>();
-        await _runner.RunAsync("/bin/sh", ["-c", "echo start; sleep 30"], Cwd,
+        await CommandRunner.RunAsync(RunnerBackend.Pty, "/bin/sh", ["-c", "echo start; sleep 30"], Cwd,
             line => {
                 lines.Add(line);
                 cts.Cancel();
@@ -66,7 +65,7 @@ public class PtyRunnerTests {
     // WaitForExit(1000) in PtyRunner will capture the exit code.
     [Fact(Timeout = 10000)]
     public async Task ExitCode_Zero_OnEcho() {
-        var result = await _runner.RunAsync("/bin/echo", ["ok"], Cwd,
+        var result = await CommandRunner.RunAsync(RunnerBackend.Pty, "/bin/echo", ["ok"], Cwd,
             _ => false, CancellationToken.None);
         Assert.Equal(0, result.ExitCode);
     }
@@ -74,14 +73,14 @@ public class PtyRunnerTests {
     // /usr/bin/false produces no output, so ReadLineAsync gets EOF immediately.
     [Fact(Timeout = 10000)]
     public async Task ExitCode_NonZero_OnFalse() {
-        var result = await _runner.RunAsync("/usr/bin/false", [], Cwd,
+        var result = await CommandRunner.RunAsync(RunnerBackend.Pty, "/usr/bin/false", [], Cwd,
             _ => true, CancellationToken.None);
         Assert.NotEqual(0, result.ExitCode);
     }
 
     [Fact(Timeout = 10000)]
     public async Task Elapsed_IsGreaterThanZero() {
-        var result = await _runner.RunAsync("/bin/echo", ["ok"], Cwd,
+        var result = await CommandRunner.RunAsync(RunnerBackend.Pty, "/bin/echo", ["ok"], Cwd,
             _ => false, CancellationToken.None);
         Assert.True(result.Elapsed > TimeSpan.Zero);
     }

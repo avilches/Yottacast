@@ -2,8 +2,8 @@ using System.Diagnostics;
 
 namespace Yottacast.Core.Process;
 
-public sealed class StandardCommandRunner : ICommandRunner {
-    public static readonly StandardCommandRunner Instance = new();
+internal sealed class StandardCommandRunner : ICommandRunner {
+    public static readonly ICommandRunner Instance = new StandardCommandRunner();
 
     public async Task<ProcessResult> RunAsync(
         string binary, string[] args, string cwd,

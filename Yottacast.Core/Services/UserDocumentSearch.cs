@@ -22,10 +22,6 @@ public static class UserDocumentSearch {
         CancellationToken ct = default) {
         if (string.IsNullOrWhiteSpace(query)) return Task.CompletedTask;
 
-        ICommandRunner runner = backend == RunnerBackend.Pty
-            ? PtyRunner.Instance
-            : StandardCommandRunner.Instance;
-
         var count = 0;
         Func<string, bool> onLine = line => {
             onResult(new FileResult(System.IO.Path.GetFileName(line), line));
@@ -33,18 +29,18 @@ public static class UserDocumentSearch {
         };
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            return SpotlightAsync(query, onLine, runner, searchFolders, ct);
+            return SpotlightAsync(query, onLine, backend, searchFolders, ct);
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            return WindowsSearchAsync(query, onLine, runner, searchFolders, ct);
+            return WindowsSearchAsync(query, onLine, backend, searchFolders, ct);
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            return LocateAsync(query, maxResults, onLine, runner, searchFolders, ct);
+            return LocateAsync(query, maxResults, onLine, backend, searchFolders, ct);
         return Task.CompletedTask;
     }
 
     // ── macOS ────────────────────────────────────────────────────────────────
 
     private static Task SpotlightAsync(
-        string query, Func<string, bool> onLine, ICommandRunner runner,
+        string query, Func<string, bool> onLine, RunnerBackend backend,
         IReadOnlyList<string>? searchFolders, CancellationToken ct) {
 
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
@@ -56,14 +52,14 @@ public static class UserDocumentSearch {
         if (string.IsNullOrEmpty(safeQuery)) return Task.CompletedTask;
         var pattern = safeQuery.Contains('*') ? safeQuery : $"*{safeQuery}*";
         var predicate = $"kMDItemFSName == '{pattern}'cd";
-        return runner.RunAsync("/usr/bin/mdfind", [.. onlyInArgs, predicate], home, onLine, ct);
+        return CommandRunner.RunAsync(backend, "/usr/bin/mdfind", [.. onlyInArgs, predicate], home, onLine, ct);
     }
 
     // ── Windows ──────────────────────────────────────────────────────────────
 
     private static Task WindowsSearchAsync(
         string query,
-        Func<string, bool> onLine, ICommandRunner runner,
+        Func<string, bool> onLine, RunnerBackend backend,
         IReadOnlyList<string>? searchFolders, CancellationToken ct) {
 
         var safeQuery = query.Replace("'", "").Replace("\"", "").Replace("*", "").Trim();
@@ -85,7 +81,7 @@ public static class UserDocumentSearch {
 
         var encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
         var cwd = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        return runner.RunAsync("powershell",
+        return CommandRunner.RunAsync(backend, "powershell",
             ["-NoProfile", "-NonInteractive", "-EncodedCommand", encoded],
             cwd, onLine, ct);
     }
@@ -94,7 +90,7 @@ public static class UserDocumentSearch {
 
     private static Task LocateAsync(
         string query, int maxResults,
-        Func<string, bool> onLine, ICommandRunner runner,
+        Func<string, bool> onLine, RunnerBackend backend,
         IReadOnlyList<string>? searchFolders, CancellationToken ct) {
         var binary = File.Exists("/usr/bin/plocate") ? "/usr/bin/plocate" : "/usr/bin/locate";
         var safeQuery = query.Replace("\"", "");
@@ -104,7 +100,7 @@ public static class UserDocumentSearch {
             ? onLine
             : line => searchFolders!.Any(f => line.StartsWith(f, StringComparison.Ordinal)) && onLine(line);
 
-        return runner.RunAsync(binary,
+        return CommandRunner.RunAsync(backend, binary,
             ["-b", "-l", maxResults.ToString(), $"*{safeQuery}*"],
             cwd, filteredOnLine, ct);
     }

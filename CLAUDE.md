@@ -38,9 +38,10 @@ Yottacast.sln
 
 ```
 ├── Process/
-│   ├── ICommandRunner.cs               ← Abstracción: stream líneas de salida en tiempo real
-│   ├── StandardCommandRunner.cs        ← Usa Process.RedirectStandardOutput (block-buffered)
-│   ├── PtyRunner.cs                    ← Usa Pty.Net (line-buffered, más rápido) — preferido
+│   ├── CommandRunner.cs                ← Punto de entrada público: CommandRunner.RunAsync(backend, ...)
+│   ├── ICommandRunner.cs               ← internal: abstracción stream de líneas
+│   ├── StandardCommandRunner.cs        ← internal: Process.RedirectStandardOutput (block-buffered)
+│   ├── PtyRunner.cs                    ← internal: Pty.Net (line-buffered, más rápido) — preferido
 │   └── ProcessResult.cs                ← (Elapsed, ExitCode, Cancelled, Error?)
 ├── Search/
 │   ├── ISearchSource.cs                ← Interfaz: Start(), Stop(), SearchAsync → IAsyncEnumerable
@@ -217,15 +218,18 @@ Temas incluidos: `dark-default`, `dark-raycast`, `dark-macos`, `light-blue`, `li
 
 ---
 
-## Process runners (ICommandRunner)
+## Process runners (CommandRunner)
 
-Ambos aceptan `Func<string, bool> onLine` — retorna `false` para parar antes del EOF:
+Punto de entrada público: `CommandRunner.RunAsync(backend, binary, args, cwd, onLine, ct)`.
+`ICommandRunner`, `StandardCommandRunner` y `PtyRunner` son **internal** — no usar directamente.
 
-- **`StandardCommandRunner`** — redirige stdout al pipe del proceso. El SO hace buffer del pipe hasta llenarlo o que el proceso acabe (block-buffered). Útil para comandos que terminan solos y donde no importa la latencia.
-- **`PtyRunner`** — abre un pseudo-terminal (Pty.Net). La terminal fuerza flush línea a línea. Resultados llegan en tiempo real: se puede consumir, hacer timeout y cortar el proceso antes de que termine. Preferido para `mdfind`, `locate`, etc.
+Acepta `Func<string, bool> onLine` — retorna `false` para parar antes del EOF:
 
-`UserDocumentSearch` usa `PtyRunner` por defecto (configurable via `RunnerBackend` enum).
-`ApplicationSearch` usa `StandardCommandRunner` para la carga inicial de macOS.
+- **`RunnerBackend.Standard`** (`StandardCommandRunner`) — redirige stdout al pipe del proceso. El SO hace buffer del pipe hasta llenarlo o que el proceso acabe (block-buffered). Útil para comandos que terminan solos y donde no importa la latencia.
+- **`RunnerBackend.Pty`** (`PtyRunner`) — abre un pseudo-terminal (Pty.Net). La terminal fuerza flush línea a línea. Resultados llegan en tiempo real: se puede consumir, hacer timeout y cortar el proceso antes de que termine. Preferido para `mdfind`, `locate`, etc.
+
+`UserDocumentSearch` usa `RunnerBackend.Pty` por defecto (configurable via `RunnerBackend` enum).
+`ApplicationSearch` usa `RunnerBackend.Standard` para la carga inicial de macOS.
 
 **Gotcha tests PTY**: `PtyRunnerTests` deshabilita paralelización (`[assembly: CollectionBehavior(DisableTestParallelization = true)]`) por race conditions de kqueue en Pty.Net.
 
