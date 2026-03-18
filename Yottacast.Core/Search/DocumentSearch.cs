@@ -1,16 +1,11 @@
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Yottacast.Core.ViewModels;
-using Yottacast.ViewModels;
 
 namespace Yottacast.Core.Search;
 
-public class SearchService {
+public class DocumentSearch {
     private readonly IEnumerable<ISearchSource> _sources;
 
-    public SearchService(IEnumerable<ISearchSource> sources) {
+    public DocumentSearch(IEnumerable<ISearchSource> sources) {
         _sources = sources;
     }
 

@@ -10,7 +10,7 @@ namespace Yottacast.Core.Services;
 
 public record BrowserInfo(string Name, string ExecutablePath);
 
-public class BrowserDiscovery(ApplicationStorage appStorage) {
+public class BrowserDiscovery(ApplicationSearch appSearch) {
     private static readonly string[] KnownMacBrowsers = [
         "Safari",
         "Google Chrome",
@@ -51,7 +51,7 @@ public class BrowserDiscovery(ApplicationStorage appStorage) {
             var searchPaths = MacSearchPaths;
             return KnownMacBrowsers
                 .Select(name => {
-                    var app = appStorage.Find(name);
+                    var app = appSearch.Find(name);
                     if (app is not null) return (name, app.Path);
                     var primary = Path.Combine(searchPaths[0], $"{name}.app");
                     return (name, primary);
@@ -61,7 +61,7 @@ public class BrowserDiscovery(ApplicationStorage appStorage) {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             return KnownWindowsBrowsers
                 .Select(c => {
-                    var app = appStorage.Find(c.Name);
+                    var app = appSearch.Find(c.Name);
                     return (c.Name, app?.Path ?? c.Paths.FirstOrDefault(File.Exists) ?? c.Paths[0]);
                 })
                 .ToList();
@@ -75,7 +75,7 @@ public class BrowserDiscovery(ApplicationStorage appStorage) {
     public IReadOnlyList<BrowserInfo> Discover() {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
             return KnownMacBrowsers
-                .Select(n => appStorage.Find(n))
+                .Select(n => appSearch.Find(n))
                 .Where(a => a is not null)
                 .Select(a => new BrowserInfo(a!.Name, a.Path))
                 .ToList();
@@ -83,7 +83,7 @@ public class BrowserDiscovery(ApplicationStorage appStorage) {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             return KnownWindowsBrowsers
                 .Select(c => {
-                    var app = appStorage.Find(c.Name);
+                    var app = appSearch.Find(c.Name);
                     if (app is not null) return new BrowserInfo(app.Name, app.Path);
                     var path = c.Paths.FirstOrDefault(File.Exists);
                     return path is not null ? new BrowserInfo(c.Name, path) : null;

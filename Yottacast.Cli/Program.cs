@@ -5,12 +5,14 @@ using Yottacast.Core.Storage;
 namespace Yottacast.Cli;
 
 internal static class Program {
-    private static readonly ApplicationStorage AppStorage = new();
-    private static readonly BrowserDiscovery Browsers = new(AppStorage);
-    private static readonly TerminalDiscovery Terminals = new(AppStorage);
+    private static readonly UserSettings Settings = UserSettings.Load();
+    private static readonly ApplicationSearch AppSearch = new(Settings);
+    private static readonly BrowserDiscovery Browsers = new(AppSearch);
+    private static readonly TerminalDiscovery Terminals = new(AppSearch);
 
     private static async Task Main(string[] args) {
-        await AppStorage.Start();
+        AppSearch.AppAdded += app => Ok($"[new app] {app.Name,-40} {app.Path}");
+        await AppSearch.Start();
 
         if (args.Length == 0) {
             await RunInteractiveAsync();
@@ -145,7 +147,7 @@ internal static class Program {
 
     static void CmdApps() {
         Header("Applications in AppStorage");
-        var apps = AppStorage.FindAll().OrderBy(a => a.Name).ToList();
+        var apps = AppSearch.FindAll().OrderBy(a => a.Name).ToList();
         if (apps.Count == 0) {
             Warn("No applications found.");
             return;

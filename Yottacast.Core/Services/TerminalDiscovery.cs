@@ -35,10 +35,10 @@ public class TerminalDiscovery {
         ]),
     ];
 
-    private readonly ApplicationStorage _appStorage;
+    private readonly ApplicationSearch _appSearch;
 
-    public TerminalDiscovery(ApplicationStorage appStorage) {
-        _appStorage = appStorage;
+    public TerminalDiscovery(ApplicationSearch appSearch) {
+        _appSearch = appSearch;
     }
 
     /// <summary>
@@ -54,7 +54,7 @@ public class TerminalDiscovery {
             };
             return KnownMacTerminals
                 .Select(name => {
-                    var app = _appStorage.Find(name);
+                    var app = _appSearch.Find(name);
                     if (app is not null) return (name, app.Path);
                     var primary = Path.Combine(searchPaths[0], $"{name}.app");
                     return (name, primary);
@@ -64,7 +64,7 @@ public class TerminalDiscovery {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             return KnownWindowsTerminals
                 .Select(c => {
-                    var app = _appStorage.Find(c.Name);
+                    var app = _appSearch.Find(c.Name);
                     if (app is not null) return (c.Name, app.Path);
                     return (c.Name, c.Paths.FirstOrDefault(p => !p.Contains('*') && File.Exists(p)) ?? c.Paths[0]);
                 })
@@ -79,7 +79,7 @@ public class TerminalDiscovery {
     public IReadOnlyList<TerminalInfo> Discover() {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
             return KnownMacTerminals
-                .Select(n => _appStorage.Find(n))
+                .Select(n => _appSearch.Find(n))
                 .Where(a => a is not null)
                 .Select(a => new TerminalInfo(a!.Name, a.Path))
                 .ToList();
@@ -87,7 +87,7 @@ public class TerminalDiscovery {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             return KnownWindowsTerminals
                 .Select(c => {
-                    var app = _appStorage.Find(c.Name);
+                    var app = _appSearch.Find(c.Name);
                     if (app is not null) return new TerminalInfo(app.Name, app.Path);
                     var path = c.Paths.FirstOrDefault(p => !p.Contains('*') && File.Exists(p));
                     return path is not null ? new TerminalInfo(c.Name, path) : null;

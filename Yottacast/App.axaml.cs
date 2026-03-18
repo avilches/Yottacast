@@ -30,7 +30,7 @@ public partial class App : Application {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop) {
             _services = BuildServices();
 
-            var searchService = _services.GetRequiredService<SearchService>();
+            var searchService = _services.GetRequiredService<DocumentSearch>();
             _ = searchService.Start();
 
             var userSettings = _services.GetRequiredService<UserSettings>();
@@ -67,17 +67,17 @@ public partial class App : Application {
         var services = new ServiceCollection();
 
         services.AddSingleton(_ => UserSettings.Load());
-        services.AddSingleton<ApplicationStorage>();
+        services.AddSingleton<ApplicationSearch>();
         services.AddSingleton<BrowserDiscovery>();
         services.AddSingleton<TerminalDiscovery>();
 
         // Register ApplicationStorage as the active ISearchSource.
         // Add BrowserDiscovery / TerminalDiscovery here when ready.
         services.AddSingleton<FileStorage>();
-        services.AddSingleton<ISearchSource>(sp => sp.GetRequiredService<ApplicationStorage>());
+        services.AddSingleton<ISearchSource>(sp => sp.GetRequiredService<ApplicationSearch>());
         services.AddSingleton<ISearchSource>(sp => sp.GetRequiredService<FileStorage>());
 
-        services.AddSingleton<SearchService>();
+        services.AddSingleton<DocumentSearch>();
 
         services.AddTransient<MainWindowViewModel>();
         services.AddTransient<SettingsWindowViewModel>();

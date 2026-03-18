@@ -5,57 +5,242 @@ It's a frameless, transparent dark-themed window where the user types to search 
 
 Update the CLAUDE.md when something non-obvious is worth keeping in mind for later.
 
-Estructura
+## Estructura de la solución
 
-Yottacast/
+```
+Yottacast.sln
+├── Yottacast/                          ← GUI app (Avalonia, WinExe, net9.0)
+├── Yottacast.Core/                     ← Shared library (net9.0, sin UI)
+├── Yottacast.Cli/                      ← CLI para testear servicios (Exe, net9.0)
+└── Yottacast.Core.Tests/               ← Tests xUnit
+```
+
+### Yottacast/ (GUI)
+
+```
 ├── Views/
-│   ├── MainWindow.axaml          ← UI: ventana sin bordes, dark
-│   ├── MainWindow.axaml.cs       ← Teclado: ESC, ↑↓, Enter, ⌘,
-│   ├── SettingsWindow.axaml      ← Ventana de preferencias (decorada, no frameless)
-│   └── SettingsWindow.axaml.cs
+│   ├── MainWindow.axaml/.cs            ← Ventana frameless; teclado: ESC, ↑↓, Enter, ⌘,
+│   ├── SettingsWindow.axaml/.cs        ← Preferencias (decorada, no frameless)
+│   └── ViewLocator.cs
 ├── ViewModels/
-│   ├── MainWindowViewModel.cs    ← Búsqueda reactiva + filtrado
-│   ├── ResultItemViewModel.cs    ← Modelo de cada resultado
-│   ├── SettingsWindowViewModel.cs ← Browser, terminal, theme pickers
-│   └── ViewModelBase.cs
+│   ├── MainWindowViewModel.cs          ← Búsqueda con debounce, resultado inmediato Google
+│   └── SettingsWindowViewModel.cs      ← Browser, terminal, theme pickers
 ├── Services/
-│   ├── BrowserDiscovery.cs       ← Detecta navegadores instalados → List<BrowserInfo>
-│   ├── TerminalDiscovery.cs      ← Detecta terminales instalados  → List<TerminalInfo>
-│   ├── BrowserLauncher.cs        ← Abre una URL en un navegador concreto
-│   ├── TerminalLauncher.cs       ← Ejecuta un comando en un terminal concreto
-│   ├── FileSearch.cs             ← Búsqueda de archivos via Spotlight / Windows Search / locate
-│   ├── ThemeService.cs           ← Aplica tema JSON en runtime (colores, fuentes, radios)
-│   └── UserSettings.cs           ← Configuración de usuario persistida en JSON
-└── App.axaml                     ← Tema Dark forzado
+│   └── ThemeService.cs                 ← Aplica tema JSON en runtime
+├── Themes/
+│   ├── dark-default.json / dark-raycast.json / dark-macos.json
+│   ├── light-blue.json / light-gray.json
+│   └── settings.json                   ← Tema activo: { "theme": "dark-default" }
+└── App.axaml / App.axaml.cs            ← DI, hotkey global, singleton SettingsWindow
+```
+
+### Yottacast.Core/ (lib compartida)
+
+```
+├── Process/
+│   ├── ICommandRunner.cs               ← Abstracción: stream líneas de salida en tiempo real
+│   ├── StandardCommandRunner.cs        ← Usa Process.RedirectStandardOutput (block-buffered)
+│   ├── PtyRunner.cs                    ← Usa Pty.Net (line-buffered, más rápido) — preferido
+│   └── ProcessResult.cs                ← (Elapsed, ExitCode, Cancelled, Error?)
+├── Search/
+│   ├── ISearchSource.cs                ← Interfaz: Start(), Stop(), SearchAsync(query, ct)
+│   └── DocumentSearch.cs               ← Agrega ISearchSource[], merge por Score desc
+├── Services/
+│   ├── FileSearch.cs                   ← Búsqueda de archivos: mdfind / Windows Search / locate
+│   ├── UserSettings.cs                 ← Config persistida en JSON
+│   ├── BrowserDiscovery.cs             ← Detecta navegadores instalados (usa ApplicationSearch)
+│   ├── BrowserLauncher.cs              ← Abre URL en navegador concreto
+│   ├── TerminalDiscovery.cs            ← Detecta terminales instalados
+│   └── TerminalLauncher.cs             ← Ejecuta comando en terminal concreto
+├── Storage/
+│   ├── AppInfo.cs + ApplicationSearch.cs  ← ISearchSource: caché en memoria de apps
+│   └── FileStorage.cs                     ← ISearchSource: delega en FileSearch
+└── ViewModels/
+    ├── ResultItemViewModel.cs           ← (Icon, Title, Subtitle, Category, Score, OnActivate)
+    └── ViewModelBase.cs                 ← ObservableObject (CommunityToolkit.Mvvm)
+```
+
+### Yottacast.Cli/
+
+CLI interactivo para probar servicios. Comandos: `browsers`, `terminals`, `apps`, `search <query>`, `run <binary> [args]`.
+
+```bash
+cd Yottacast.Cli && dotnet run
+```
 
 ## Build & Run
 
 ```bash
-dotnet run
+# GUI
+cd Yottacast && dotnet run
 dotnet publish -c Release -r osx-arm64 --self-contained
+
+# Tests
+cd Yottacast.Core.Tests && dotnet test
 ```
 
-## SharpHook (global hotkey)
+---
 
-En v7 los tipos están en `SharpHook.Data`, no en `SharpHook.Native` (que era v5). `ModifierMask` se llama `EventMask`.
+## Diseño de búsqueda (intención + estado actual)
+
+### Arranque (App.axaml.cs)
+
+`App.OnFrameworkInitializationCompleted` construye el contenedor DI (`BuildServices`) y arranca la búsqueda:
 
 ```csharp
-using SharpHook;       // TaskPoolGlobalHook
-using SharpHook.Data;  // KeyCode, EventMask
+var searchService = _services.GetRequiredService<DocumentSearch>();
+_ = searchService.Start();   // arranca todas las ISearchSource en paralelo
 ```
 
-## Gotchas
+Servicios registrados en DI:
+- `UserSettings` (singleton, cargado con `UserSettings.Load()`)
+- `ApplicationSearch` (singleton, ISearchSource)
+- `FileStorage` (singleton, ISearchSource)
+- `DocumentSearch` (singleton, recibe `IEnumerable<ISearchSource>`)
+- `BrowserDiscovery`, `TerminalDiscovery` (singleton)
+- `MainWindowViewModel`, `SettingsWindowViewModel` (transient)
 
-- **No `BoxShadow` on the root Border** — Avalonia renders it as a rectangle regardless of `CornerRadius`. macOS provides the native rounded shadow automatically via the transparent frameless window.
-- **Compiled bindings** are enabled globally (`AvaloniaUseCompiledBindingsByDefault=true`) — bindings must be type-resolvable at compile time.
-- **`DataAnnotationsValidationPlugin`** is disabled in `App.axaml.cs` to avoid conflicts with CommunityToolkit.Mvvm validation.
-- **Window hide vs close** — la ventana usa `Hide()` en Escape (no `Close()`) para poder restaurarla con el hotkey global. `Show()` + `Activate()` la devuelve.
-       
+### Motor de búsqueda: DocumentSearch
 
-## Services
+Clase: `Yottacast.Core.Search.DocumentSearch`
 
-### BrowserDiscovery / TerminalDiscovery
-Buscan en `/Applications` y `~/Applications` (macOS) o rutas de `Program Files` (Windows) contra una lista de nombres conocidos. No usan ninguna API de sistema, solo comprueba si existe el `.app` o el `.exe`.
+Agrega múltiples `ISearchSource` recibidas por inyección. `SearchAsync` lanza todas en paralelo con `Task.WhenAll` y ordena el resultado por `Score` descendente.
+
+```
+ISearchSource
+├── ApplicationSearch   ← apps instaladas (desde caché en memoria)
+└── FileStorage         ← documentos (delega en FileSearch, sin caché)
+```
+
+Para añadir una nueva fuente: implementar `ISearchSource` y registrarla en `BuildServices` como `services.AddSingleton<ISearchSource>(...)`.
+
+### Debounce (MainWindowViewModel)
+
+El debounce está en el ViewModel, **no** en las fuentes de búsqueda:
+
+```
+OnSearchTextChanged → cancela CTS anterior → espera 250ms → llama DocumentSearch.SearchAsync
+```
+
+Antes del debounce, se añade inmediatamente un resultado de "Search en Google" para que la UI siempre tenga algo mientras el usuario escribe.
+
+### Resultados: streaming vs batch
+
+**Intención**: los resultados deberían llegar de forma incremental a la UI a medida que cada fuente los produce.
+
+**Estado actual** ⚠️ TODO: `DocumentSearch.SearchAsync` hace `Task.WhenAll` y devuelve todos los resultados juntos. `FileStorage` también acumula en una lista antes de retornar. La UI recibe los resultados en un único batch, no en streaming. `FileSearch` ya tiene callback `Action<FileResult>` que podría usarse para streaming real — falta conectarlo hasta la UI.
+
+### Scoring
+
+**Intención**: score = 1 para todos los resultados, ordenados por score desc y luego alfabéticamente.
+
+**Estado actual** ⚠️ TODO:
+- Ambas fuentes (`ApplicationSearch`, `FileStorage`) devuelven `Score = 0`.
+- El sort secundario alfabético no está implementado (solo `OrderByDescending(r => r.Score)`).
+
+---
+
+## Fuentes de búsqueda
+
+### ApplicationSearch
+
+Clase: `Yottacast.Core.Storage.ApplicationSearch` (implementa `ISearchSource`)
+
+Mantiene un `ConcurrentDictionary<string, AppInfo>` en memoria con las apps instaladas.
+Inyecta `UserSettings` para leer `AppDirectories`.
+
+**Arranque por plataforma:**
+- **macOS**: `mdfind` one-shot con `StandardCommandRunner` para carga inicial síncrona, luego `FileSystemWatcher` en cada directorio de `AppDirectories` para actualizaciones en vivo (`*.app`).
+- **Windows**: escaneo de `AppDirectories` buscando `.exe`, luego `FileSystemWatcher`.
+- **Linux**: escaneo de `AppDirectories` buscando `.desktop`, luego `FileSystemWatcher`.
+
+La búsqueda es substring case-insensitive sobre el nombre de la app (ej. "saf" encuentra "Safari").
+
+Evento `AppAdded` notifica cuando se detecta una app nueva (lo usan `BrowserDiscovery` / `TerminalDiscovery`).
+
+**Cambio de AppDirectories en settings** ⚠️ TODO: si el usuario cambia `AppDirectories` en SettingsWindow, `ApplicationSearch` no se actualiza automáticamente — los watchers se crean una sola vez en `Start()`. Requeriría `Stop()` + `Start()` para releer la config.
+
+**Nota en comentario del código**: el XML-doc de `ApplicationSearch` menciona `FileSearch.SearchLiveAsync (mdfind -live)` pero el código real usa `StandardCommandRunner` + `FileSystemWatcher`. El comentario es incorrecto y debe corregirse.
+
+### FileStorage (búsqueda de documentos)
+
+Clase: `Yottacast.Core.Storage.FileStorage` (implementa `ISearchSource`)
+
+Sin caché. Cada búsqueda llama a `FileSearch.SearchAsync` con los `SearchFolders` de `UserSettings`.
+Si los directorios cambian en settings, la siguiente búsqueda los usará automáticamente.
+
+`Start()` y `Stop()` son no-ops (no hay estado que gestionar).
+
+---
+
+## UserSettings
+
+Clase: `Yottacast.Core.Services.UserSettings`
+
+Persiste en JSON. Todos los campos tienen defaults multiplataforma; nunca lanza excepción.
+
+**Ruta del fichero:**
+- macOS: `~/Library/Application Support/Yottacast/settings.json` (usa `SpecialFolder.ApplicationData`)
+- Windows: `%APPDATA%\Yottacast\settings.json`
+
+> **Nota**: la ruta macOS es `~/Library/Application Support/`, **no** `~/.config/` (error en versiones anteriores de este doc).
+
+**Campos:**
+
+| Campo | Tipo | Default |
+|---|---|---|
+| `Browser` | string | `""` (auto-selecciona el primero disponible) |
+| `Terminal` | string | `""` |
+| `Theme` | string | `"dark-default"` |
+| `SearchFolders` | `List<string>` | Downloads, Desktop, Documents, Movies/Videos, Pictures |
+| `AppDirectories` | `List<string>` | `/Applications`, `~/Applications` (macOS) / `Program Files` (Win) / `.desktop` dirs (Linux) |
+
+**Browser/Terminal preferido**: el usuario elige entre los detectados por `BrowserDiscovery`/`TerminalDiscovery` (solo apps instaladas). Se muestra en `SettingsWindowViewModel`.
+
+**Detección del browser predeterminado del sistema** ⚠️ TODO: no implementado. El default es `""` y se selecciona el primero de la lista de `BrowserDiscovery`.
+
+API: `UserSettings.Load()` → instancia. `settings.Save()` guarda cambios. Se guarda automáticamente al cambiar cada campo en SettingsWindow.
+
+---
+
+## Themes
+
+Clase: `Yottacast.Services.ThemeService`
+
+Lee `Themes/{name}.json`, aplica tokens en `Application.Current.Resources` en runtime.
+
+`ThemeService.Apply(themeName)` — carga el JSON indicado.
+`ThemeService.ApplyBuiltinDefault()` — aplica dark-default hardcodeado como fallback (no puede fallar).
+
+Tokens: `Theme.*` (ej. `Theme.WindowBackground`). Colores: `#AARRGGBB` (no `#RRGGBBAA`).
+Los JSON se copian al output vía `CopyToOutputDirectory=PreserveNewest`.
+
+Temas incluidos: `dark-default`, `dark-raycast`, `dark-macos`, `light-blue`, `light-gray`.
+
+**Metadata en JSON (author, url)** ⚠️ TODO: la intención es que cada tema tenga nombre real, author y url para poder descargar nuevos temas en el futuro. No está implementado aún en los ficheros JSON.
+
+---
+
+## Process runners (ICommandRunner)
+
+Ambos aceptan `Func<string, bool> onLine` — retorna `false` para parar antes del EOF:
+
+- **`StandardCommandRunner`** — redirige stdout al pipe del proceso. El SO hace buffer del pipe hasta llenarlo o que el proceso acabe (block-buffered). Útil para comandos que terminan solos y donde no importa la latencia.
+- **`PtyRunner`** — abre un pseudo-terminal (Pty.Net). La terminal fuerza flush línea a línea. Resultados llegan en tiempo real: se puede consumir, hacer timeout y cortar el proceso antes de que termine. Preferido para `mdfind`, `locate`, etc.
+
+`FileSearch` usa `PtyRunner` por defecto (configurable via `RunnerBackend` enum).
+`ApplicationSearch` usa `StandardCommandRunner` para la carga inicial de macOS.
+
+**Gotcha tests PTY**: `PtyRunnerTests` deshabilita paralelización (`[assembly: CollectionBehavior(DisableTestParallelization = true)]`) por race conditions de kqueue en Pty.Net.
+
+---
+
+## BrowserDiscovery / TerminalDiscovery
+
+- Usan `ApplicationSearch` como caché primaria (buscan por nombre exacto).
+- Fallback a rutas hardcodeadas si la app no está en la caché.
+- `Discover()` → solo apps instaladas. `GetCandidatePaths()` → lista completa (para el picker de settings).
+- Linux: no implementado (devuelve lista vacía).
 
 ### BrowserLauncher
 macOS: `open -a "Nombre" "url"`. Windows: lanza el `.exe` con la URL como argumento.
@@ -70,45 +255,42 @@ macOS varía por terminal:
 Windows: PowerShell usa `-NoExit -Command`, CMD usa `/K`.
 
 ### FileSearch
-Busca ficheros usando el índice nativo del SO:
-- **macOS** → `mdfind -name` (Spotlight), scope limitado a `$HOME` por defecto
-- **Windows** → PowerShell + ADODB.Connection contra `Provider=Search.CollatorDSO` (Windows Search Index)
-- **Linux** → `plocate` (si existe en `/usr/bin/plocate`) o `locate -b`
+Búsqueda de archivos vía índice nativo del SO:
+- **macOS** → `mdfind` con predicado `kMDItemFSName == '*query*'cd` (Spotlight, case-insensitive)
+- **Windows** → PowerShell + ADODB.Connection (`Provider=Search.CollatorDSO`)
+- **Linux** → `plocate` o `locate -b`
 
-API: `await FileSearch.SearchAsync(query, maxResults, ct)` → `IReadOnlyList<FileResult>` con `.Name` y `.Path`.
-Errores de proceso se silencian (devuelve lista vacía) para no romper el launcher.
+API: `FileSearch.SearchAsync(query, onResult, maxResults, backend, searchFolders, ct)`.
+`onResult` es un callback `Action<FileResult>` — los resultados llegan conforme `mdfind` los emite.
 
-### ThemeService
-Lee `Themes/settings.json` → nombre del tema → carga `Themes/{name}.json` y aplica colores, fuentes y `CornerRadius` directamente en `Application.Current.Resources` en runtime. Los tokens siguen el patrón `Theme.*` (ej. `Theme.WindowBackground`).
+---
 
-Para cambiar de tema: editar `Themes/settings.json` → `{ "theme": "dark-raycast" }`.
-Temas disponibles: `dark-default`, `dark-raycast`, `dark-macos`, `light-blue`, `light-gray`.
-`MainWindow.axaml` usa `{DynamicResource Theme.X}` — ningún color/tamaño está hardcodeado.
-Colores: `#AARRGGBB`. Para transparencia usar `#20FFFFFF` (no `#FFFFFF20`).
-Los JSON se copian al output via `CopyToOutputDirectory=PreserveNewest` en el `.csproj`.
+## SharpHook (global hotkey)
 
-### Gotcha: implicit usings desactivados
-El proyecto no tiene `<ImplicitUsings>enable</ImplicitUsings>` en el .csproj — hay que añadir todos los `using System.*` manualmente en cada archivo.
+En v7 los tipos están en `SharpHook.Data`, no en `SharpHook.Native` (v5). `ModifierMask` → `EventMask`.
 
-### Gotcha: raw string literals con variables PowerShell
-Usar `$$"""..."""` en lugar de `$"""..."""` cuando el contenido tiene variables PowerShell (`$var`). Con `$$`, la sintaxis de interpolación C# pasa a ser `{{expr}}` y los `$` sueltos son literales.
+```csharp
+using SharpHook;       // TaskPoolGlobalHook
+using SharpHook.Data;  // KeyCode, EventMask
+```
 
-### UserSettings
-Persiste browser preferido, terminal preferido y tema en:
-- macOS: `~/Library/Application Support/Yottacast/settings.json`
-- Windows: `%APPDATA%\Yottacast\settings.json`
+ALT+Space muestra/oculta la ventana. Al mostrar se hace `.Trim()` para no añadir el espacio al texto.
 
-API: `UserSettings.Load()` → instancia. `settings.Save()` guarda cambios.
-`App.axaml.cs` carga la instancia al inicio y la pasa a `MainWindowViewModel` y `SettingsWindowViewModel`.
-Las preferencias se guardan automáticamente al cambiar cada campo en el SettingsWindow.
+---
 
-`ThemeService.Apply(string themeName)` ya no lee `Themes/settings.json` — recibe el nombre directamente.
-`ThemeService.ApplyBuiltinDefault()` aplica hardcoded dark-default por si el JSON de tema falla o no existe.
+## Gotchas
 
-⌘, abre el SettingsWindow (si la MainWindow está visible). La instancia se reutiliza — si ya está abierta, la trae al frente.
+- **No `BoxShadow` en el root Border** — Avalonia lo renderiza como rectángulo independientemente del `CornerRadius`. macOS provee sombra redondeada nativa vía la ventana frameless transparente.
+- **Compiled bindings** habilitados globalmente (`AvaloniaUseCompiledBindingsByDefault=true`) — los bindings deben ser type-resolvable en compile time.
+- **`DataAnnotationsValidationPlugin`** deshabilitado en `App.axaml.cs` para evitar conflictos con CommunityToolkit.Mvvm.
+- **Window hide vs close** — `Hide()` en Escape (no `Close()`); `Show()` + `Activate()` restaura. El SettingsWindow es singleton reutilizado.
+- **Raw string literals con variables PowerShell** — usar `$$"""..."""` en lugar de `$"""..."""` cuando el contenido tiene `$var`. Con `$$`, interpolación C# pasa a `{{expr}}` y los `$` sueltos son literales.
+- **Lazy icon en AppInfo** — usa `Lazy<T>` para diferir la lectura de `Info.plist` hasta el primer acceso al icono (evita parsear cientos de plists al arranque).
 
-## Fixes/Features
+## Keyboard shortcuts (MainWindow)
 
-Al arrancar, se registra ALT+Espacio.
-Al mostrar, se hace trim() para evitar que se añada un espacio al haber pulsado ALT+Espacio
-Con texto, ESC limpia el texto solo. Sin texto, ESC cierra
+- `ESC` con texto → limpia el texto. Sin texto → oculta la ventana.
+- `↑` / `↓` → navega resultados
+- `Enter` → activa resultado seleccionado
+- `⌘,` → abre SettingsWindow (si MainWindow está visible)
+- `ALT+Space` → global hotkey para mostrar/ocultar

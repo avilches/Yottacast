@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Yottacast.Core.Process;
 using Yottacast.Core.Search;
+using Yottacast.Core.Services;
 using Yottacast.Core.ViewModels;
 
 namespace Yottacast.Core.Storage;
@@ -54,7 +55,7 @@ public sealed class AppInfo {
 
 /// <summary>
 /// In-memory cache of all installed applications. Implements <see cref="ISearchSource"/>
-/// so it can be registered in <see cref="Search.SearchService"/>.
+/// so it can be registered in <see cref="DocumentSearch"/>.
 ///
 /// macOS  — subscribes to <see cref="FileSearch.SearchLiveAsync"/> (mdfind -live).
 ///          Receives the initial batch of apps and then live updates as apps are installed.
@@ -63,13 +64,20 @@ public sealed class AppInfo {
 /// Call <see cref="Start"/> to begin scanning. Call <see cref="Stop"/> to cancel it.
 /// BrowserDiscovery and TerminalDiscovery query this store instead of hitting the filesystem themselves.
 /// </summary>
-public sealed class ApplicationStorage : ISearchSource, IDisposable {
+public sealed class ApplicationSearch : ISearchSource, IDisposable {
     private const string MacAppBundleQuery = "kMDItemContentType == 'com.apple.application-bundle'";
 
+    private readonly UserSettings _settings;
     private readonly ConcurrentDictionary<string, AppInfo> _apps =
         new(StringComparer.OrdinalIgnoreCase);
 
+    public ApplicationSearch(UserSettings settings) {
+        _settings = settings;
+    }
+
     private bool _started;
+
+    public event Action<AppInfo>? AppAdded;
 
     // macOS: task handle for the mdfind -live process (cancelled on Stop)
     private CancellationTokenSource _liveCts = new();
@@ -131,32 +139,32 @@ public sealed class ApplicationStorage : ISearchSource, IDisposable {
 
     private async Task StartMacAsync() {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        Func<string, bool> onLine = line => {
-            if (!string.IsNullOrWhiteSpace(line)) AddApp(line);
-            return true;
-        };
 
         // 1. Initial batch: one-shot mdfind — awaitable, populates the store before returning.
         await StandardCommandRunner.Instance.RunAsync(
-            "/usr/bin/mdfind", [MacAppBundleQuery], home, onLine, _liveCts.Token);
+            "/usr/bin/mdfind", [MacAppBundleQuery], home,
+            line => { if (!string.IsNullOrWhiteSpace(line)) AddApp(line); return true; },
+            _liveCts.Token);
 
-        // 2. Live updates in background — keeps the store in sync as apps are installed/removed.
-        //    Duplicate adds are harmless: ConcurrentDictionary keyed by name just overwrites.
-        _ = StandardCommandRunner.Instance.RunAsync(
-            "/usr/bin/mdfind", ["-live", MacAppBundleQuery], home, onLine, _liveCts.Token);
+        // 2. Live updates via FileSystemWatcher on the configured app directories.
+        //    mdfind -live only reports the match count, not which paths changed.
+        foreach (var dir in _settings.AppDirectories.Where(Directory.Exists)) {
+            var watcher = new FileSystemWatcher(dir) {
+                Filter = "*.app",
+                NotifyFilter = NotifyFilters.DirectoryName,
+                EnableRaisingEvents = true,
+            };
+            watcher.Created += (_, e) => AddApp(e.FullPath);
+            watcher.Deleted += (_, e) =>
+                _apps.TryRemove(System.IO.Path.GetFileNameWithoutExtension(e.Name ?? ""), out AppInfo? _);
+            _watchers.Add(watcher);
+        }
     }
 
     // ── Windows — scan + FileSystemWatcher ───────────────────────────────────
 
     private void ScanWindows() {
-        var dirs = new[] {
-            @"C:\Program Files",
-            @"C:\Program Files (x86)",
-            System.IO.Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs"),
-        };
-
-        foreach (var dir in dirs.Where(Directory.Exists)) {
+        foreach (var dir in _settings.AppDirectories.Where(Directory.Exists)) {
             foreach (var subDir in Directory.EnumerateDirectories(dir)) {
                 // Prefer exe that matches the folder name (most common pattern), else first exe found
                 var folderName = System.IO.Path.GetFileName(subDir);
@@ -182,15 +190,7 @@ public sealed class ApplicationStorage : ISearchSource, IDisposable {
     // ── Linux — scan + FileSystemWatcher ─────────────────────────────────────
 
     private void ScanLinux() {
-        var dirs = new[] {
-            "/usr/share/applications",
-            "/usr/local/share/applications",
-            System.IO.Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                ".local", "share", "applications"),
-        };
-
-        foreach (var dir in dirs.Where(Directory.Exists)) {
+        foreach (var dir in _settings.AppDirectories.Where(Directory.Exists)) {
             foreach (var desktop in Directory.EnumerateFiles(dir, "*.desktop"))
                 AddApp(desktop);
 
@@ -211,7 +211,10 @@ public sealed class ApplicationStorage : ISearchSource, IDisposable {
     private void AddApp(string path) {
         var name = System.IO.Path.GetFileNameWithoutExtension(path);
         if (string.IsNullOrEmpty(name)) return;
-        _apps[name] = new AppInfo(name, path);
+        var isNew = !_apps.ContainsKey(name);
+        var app = new AppInfo(name, path);
+        _apps[name] = app;
+        if (isNew) AppAdded?.Invoke(app);
     }
 
     private static void LaunchApp(string path) {
