@@ -157,7 +157,7 @@ Los resultados llegan incrementalmente a la UI conforme cada fuente los produce:
 
 ### Scoring
 
-Score = 1 para todos los resultados. Los resultados llegan en orden de fuente (apps primero, luego archivos) ya que el streaming no permite un sort global sin buffering.
+`ApplicationSearch` y `UserDocumentSearch` asignan `Score = 1` a sus resultados. El resultado de Google (creado en `MakeGoogleItem`) no asigna `Score`, por lo que vale 0. Los resultados llegan en orden de fuente (apps primero, luego archivos) ya que el streaming no permite un sort global sin buffering.
 
 ---
 
@@ -185,11 +185,13 @@ Evento `AppAdded` notifica cuando se detecta una app nueva (disponible para susc
 
 Clase: `Yottacast.Core.Search.UserDocumentSearch` (implementa `ISearchSource`)
 
-Sin caché. Cada búsqueda llama a `FileSearch.SearchAsync` con los `SearchFolders` de `UserSettings`.
+Sin caché. Cada búsqueda llama a `FileSearch.SearchAsync` con los `SearchFolders` de `UserSettings`, con `maxResults: 15` hardcodeado.
 Si los directorios cambian en settings, la siguiente búsqueda los usará automáticamente.
 Los resultados se entregan vía `Channel<T>` para streaming real hacia la UI.
 
 `Start()` y `Stop()` son no-ops (no hay estado que gestionar).
+
+**Queries vacías**: `FileSearch` y los `PlatformProvider` hacen early return (`Task.CompletedTask`) para queries vacías.
 
 ---
 
@@ -335,7 +337,10 @@ ALT+Space muestra/oculta la ventana.
 - **No `BoxShadow` en el root Border** — Avalonia lo renderiza como rectángulo independientemente del `CornerRadius`. macOS provee sombra redondeada nativa vía la ventana frameless transparente.
 - **Compiled bindings** habilitados globalmente (`AvaloniaUseCompiledBindingsByDefault=true`) — los bindings deben ser type-resolvable en compile time.
 - **`DataAnnotationsValidationPlugin`** deshabilitado en `App.axaml.cs` para evitar conflictos con CommunityToolkit.Mvvm.
-- **Window hide vs close** — `Hide()` en Escape (no `Close()`); `Show()` + `Activate()` restaura. El SettingsWindow evita duplicados: si ya está visible lo activa, si no crea una nueva instancia.
+- **Window hide vs close** — `Hide()` en Escape (no `Close()`); `Show()` + `Activate()` restaura. El SettingsWindow evita duplicados: si ya está visible lo activa; si está oculto lo muestra; solo crea instancia nueva en el primer arranque o tras `Close()`.
+- **Temas cargados síncronamente en SettingsWindow** — `SettingsWindowViewModel` llama `LoadThemes()` en su constructor, que lee del disco los JSON de `Themes/`. Si ninguno carga, añade `"dark-default"` como fallback.
+- **`ResultItemViewModel.Shortcut`** — propiedad definida pero sin uso: nunca se asigna desde las fuentes de búsqueda ni se muestra en la UI. Placeholder para futuros atajos de teclado por resultado.
+- **PtyRunner dimensions hardcodeadas** — `Rows = 24, Cols = 220`. Irrelevante para el uso actual (parsing de líneas), pero a tener en cuenta si algún comando formatea su salida según el ancho del terminal.
 - **Raw string literals con variables PowerShell** — usar `$$"""..."""` en lugar de `$"""..."""` cuando el contenido tiene `$var`. Con `$$`, interpolación C# pasa a `{{expr}}` y los `$` sueltos son literales.
 - **Lazy icon en AppInfo** — usa `Lazy<T>` para diferir la lectura de `Info.plist` hasta el primer acceso al icono (evita parsear cientos de plists al arranque).
 
