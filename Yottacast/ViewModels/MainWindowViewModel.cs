@@ -105,7 +105,7 @@ public partial class MainWindowViewModel(
         var capturedQuery = query;
         return new ResultItemViewModel {
             Icon = "🔍",
-            Score = 1,
+            Score = 3,
             Title = $"Search \"{capturedQuery}\" on Google",
             Subtitle = "Open in browser",
             Category = "Web",

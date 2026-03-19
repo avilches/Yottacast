@@ -173,7 +173,7 @@ OnSearchTextChanged → cancela CTS anterior
 
 Stem = `Path.GetFileNameWithoutExtension(name)`, por lo que `"report"` puntúa 2.5 contra `"report.pdf"`. No hay bonus por ser directorio (solo afecta icono y categoría).
 
-**Snapshots progresivos**: `UserDocumentSearch` emite un snapshot cada 10 resultados (mientras mdfind sigue corriendo) y uno final al terminar o cancelar. La UI muestra los mejores N en tiempo real, actualizándose conforme llegan más resultados.
+**Snapshots progresivos**: `UserDocumentSearch` emite un snapshot máximo cada 200ms (throttling por tiempo, `SnapshotIntervalMs`) y uno final al terminar o cancelar. Esto evita que queries con muchos resultados (p.ej. "a") saturen la UI con decenas de actualizaciones por segundo.
 
 ---
 

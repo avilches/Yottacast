@@ -15,7 +15,7 @@ public record FileResult(string Name, string Path);
 /// </summary>
 public class FileSearch(PlatformProvider platform) {
     public Task SearchAsync(
-        string query, Action<FileResult> onResult, int maxResults = 10,
+        string query, Action<FileResult> onResult, int maxResults,
         RunnerBackend backend = RunnerBackend.Pty,
         IReadOnlyList<string>? searchFolders = null,
         CancellationToken ct = default) {

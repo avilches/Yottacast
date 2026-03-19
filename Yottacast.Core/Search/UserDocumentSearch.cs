@@ -28,7 +28,7 @@ public class UserDocumentSearch(
     public async IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>> SearchAsync(
         string query, int limit, [EnumeratorCancellation] CancellationToken ct = default) {
 
-        const int SnapshotEvery = 10;
+        const int SnapshotIntervalMs = 200;
 
         var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(timeoutMs);
@@ -38,6 +38,7 @@ public class UserDocumentSearch(
             var buffer = new List<ResultItemViewModel>();
             var queryLower = query.ToLowerInvariant();
             var hasWildcard = query.Contains('*');
+            var lastSnapshot = Environment.TickCount64 - SnapshotIntervalMs;
 
             try {
                 await fileSearch.SearchAsync(
@@ -62,10 +63,14 @@ public class UserDocumentSearch(
                             Category = isDir ? "Folders" : "Files",
                             Score = score,
                         });
+                        Console.WriteLine(r.Path+ " "+score);
 
-                        if (buffer.Count % SnapshotEvery == 0)
+                        var now = Environment.TickCount64;
+                        if (now - lastSnapshot >= SnapshotIntervalMs) {
+                            lastSnapshot = now;
                             channel.Writer.TryWrite(
                                 buffer.OrderByDescending(x => x.Score).Take(limit).ToList());
+                        }
                     },
                     maxResults: int.MaxValue,
                     searchFolders: settings.ExpandedSearchFolders,
