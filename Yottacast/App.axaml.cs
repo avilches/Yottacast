@@ -86,8 +86,10 @@ public partial class App : Application {
 
         // Register ApplicationSearch and FileSearch as ISearchSource implementations.
         services.AddSingleton<UserDocumentSearch>();
+        services.AddSingleton<RandomSearch>();
         services.AddSingleton<ISearchSource>(sp => sp.GetRequiredService<ApplicationSearch>());
         services.AddSingleton<ISearchSource>(sp => sp.GetRequiredService<UserDocumentSearch>());
+        // services.AddSingleton<ISearchSource>(sp => sp.GetRequiredService<RandomSearch>());
 
         services.AddSingleton<GlobalSearch>();
 

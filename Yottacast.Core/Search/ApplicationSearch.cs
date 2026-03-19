@@ -17,7 +17,6 @@ namespace Yottacast.Core.Search;
 /// </summary>
 public sealed class ApplicationSearch(UserSettings settings, PlatformProvider platform)
     : ISearchSource, IDisposable {
-
     private readonly ConcurrentDictionary<string, AppInfo> _apps =
         new(StringComparer.OrdinalIgnoreCase);
 
@@ -62,7 +61,7 @@ public sealed class ApplicationSearch(UserSettings settings, PlatformProvider pl
                 Title = a.Name,
                 Subtitle = a.Path,
                 Category = "Applications",
-                Score = 1,
+                Score = 0.5,
                 OnActivate = () => platform.LaunchApp(a.Path),
             };
         }

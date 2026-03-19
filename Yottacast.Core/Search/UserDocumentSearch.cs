@@ -31,7 +31,7 @@ public class UserDocumentSearch(UserSettings settings, FileSearch fileSearch) : 
                 Title = r.Name,
                 Subtitle = r.Path,
                 Category = "Files",
-                Score = 1,
+                Score = 0.5,
             }),
             maxResults: limit,
             searchFolders: settings.SearchFolders,

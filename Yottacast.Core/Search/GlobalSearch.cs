@@ -4,7 +4,7 @@ using Yottacast.Core.ViewModels;
 
 namespace Yottacast.Core.Search;
 
-public class GlobalSearch(IEnumerable<ISearchSource> sources) : ISearchSource {
+public class GlobalSearch(IEnumerable<ISearchSource> sources) {
 
     private readonly IReadOnlyList<ISearchSource> _sources = sources.ToList();
 
@@ -15,10 +15,6 @@ public class GlobalSearch(IEnumerable<ISearchSource> sources) : ISearchSource {
     public Task Ready() => Task.WhenAll(_sources.Select(s => s.Ready()));
 
     public Task Stop() => Task.WhenAll(_sources.Select(s => s.Stop()));
-
-    public IAsyncEnumerable<ResultItemViewModel> SearchAsync(
-        string query, int limit, CancellationToken ct = default)
-        => SearchSourcesAsync(_sources, query, limit, ct);
 
     public IAsyncEnumerable<ResultItemViewModel> SearchInstantAsync(
         string query, int limit, CancellationToken ct = default)

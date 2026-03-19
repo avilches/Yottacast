@@ -10,36 +10,25 @@ using Yottacast.Services;
 
 namespace Yottacast.ViewModels;
 
-public partial class MainWindowViewModel : ViewModelBase
-{
-    [ObservableProperty]
-    private string _searchText = "";
+public partial class MainWindowViewModel(
+    UserSettings settings,
+    GlobalSearch globalSearch,
+    BrowserDiscovery browserDiscovery)
+    : ViewModelBase {
+    
+    [ObservableProperty] private string _searchText = "";
 
-    [ObservableProperty]
-    private ResultItemViewModel? _selectedResult;
+    [ObservableProperty] private ResultItemViewModel? _selectedResult;
 
-    [ObservableProperty]
-    private bool _hasResults;
+    [ObservableProperty] private bool _hasResults;
 
-    [ObservableProperty]
-    private bool _showNoResults;
+    [ObservableProperty] private bool _showNoResults;
 
     public ObservableCollection<ResultItemViewModel> Results { get; } = [];
 
-    private readonly UserSettings _settings;
-    private readonly GlobalSearch _globalSearch;
-    private readonly BrowserDiscovery _browserDiscovery;
     private CancellationTokenSource? _cts;
 
-    public MainWindowViewModel(
-        UserSettings settings, GlobalSearch globalSearch, BrowserDiscovery browserDiscovery) {
-        _settings = settings;
-        _globalSearch = globalSearch;
-        _browserDiscovery = browserDiscovery;
-    }
-
-    partial void OnSearchTextChanged(string value)
-    {
+    partial void OnSearchTextChanged(string value) {
         _cts?.Cancel();
         _cts = new CancellationTokenSource();
 
@@ -53,8 +42,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _ = SearchAsync(value, _cts.Token);
     }
 
-    private async Task SearchAsync(string query, CancellationToken ct)
-    {
+    private async Task SearchAsync(string query, CancellationToken ct) {
         Results.Clear();
         HasResults = false;
         ShowNoResults = false;
@@ -66,37 +54,49 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // Phase 1: instant sources (in-memory cache) — no delay
         try {
-            await foreach (var item in _globalSearch.SearchInstantAsync(query, limit: 2, ct))
-                Results.Add(item);
-        } catch (OperationCanceledException) { return; }
+            await foreach (var item in globalSearch.SearchInstantAsync(query, limit: 2, ct))
+                InsertSorted(item);
+        } catch (OperationCanceledException) {
+            return;
+        }
 
         // Phase 2: deferred sources (disk) — debounce 250ms before hitting disk
-        try { await Task.Delay(250, ct); } catch (OperationCanceledException) { return; }
+        try {
+            await Task.Delay(250, ct);
+        } catch (OperationCanceledException) {
+            return;
+        }
 
         try {
-            await foreach (var item in _globalSearch.SearchDeferredAsync(query, limit: 10, ct))
-                Results.Add(item);
-        } catch (OperationCanceledException) { return; }
+            await foreach (var item in globalSearch.SearchDeferredAsync(query, limit: 10, ct))
+                InsertSorted(item);
+        } catch (OperationCanceledException) {
+            return;
+        }
 
         HasResults = Results.Count > 0;
         ShowNoResults = !HasResults;
     }
 
-    private ResultItemViewModel MakeGoogleItem(string query)
-    {
+    private void InsertSorted(ResultItemViewModel item) {
+        var i = 0;
+        while (i < Results.Count && Results[i].Score >= item.Score) i++;
+        Results.Insert(i, item);
+    }
+
+    private ResultItemViewModel MakeGoogleItem(string query) {
         var capturedQuery = query;
-        return new ResultItemViewModel
-        {
+        return new ResultItemViewModel {
             Icon = "🔍",
+            Score = 1,
             Title = $"Search \"{capturedQuery}\" on Google",
             Subtitle = "Open in browser",
             Category = "Web",
-            OnActivate = () =>
-            {
-                var browser = _settings.ActiveBrowser;
+            OnActivate = () => {
+                var browser = settings.ActiveBrowser;
                 if (browser is null) return;
                 var url = $"https://www.google.com/search?q={Uri.EscapeDataString(capturedQuery)}";
-                _browserDiscovery.OpenUrl(url, browser);
+                browserDiscovery.OpenUrl(url, browser);
             },
         };
     }

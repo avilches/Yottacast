@@ -1,0 +1,45 @@
+using System.Runtime.CompilerServices;
+using Yottacast.Core.ViewModels;
+
+namespace Yottacast.Core.Search;
+
+/// <summary>
+/// Fake search source that yields random results with scores between 0.5 and 1.0,
+/// emitting each item after a 250ms delay. Used for integration testing of the
+/// streaming + sorted-insertion pipeline.
+/// </summary>
+public class RandomSearch : ISearchSource {
+    private static readonly Random Rng = new();
+
+    private static readonly string[] Icons = ["🎲", "🌟", "🔥", "💡", "🎯", "🚀", "✨", "🌈"];
+
+    private static readonly string[] Words = [
+        "Alpha", "Bravo", "Charlie", "Delta", "Echo",
+        "Foxtrot", "Golf", "Hotel", "India", "Juliet"
+    ];
+
+    public bool IsInstant => false;
+
+    public void Start() {
+    }
+
+    public Task Ready() => Task.CompletedTask;
+    public Task Stop() => Task.CompletedTask;
+
+    public async IAsyncEnumerable<ResultItemViewModel> SearchAsync(
+        string query, int limit, [EnumeratorCancellation] CancellationToken ct = default) {
+        var count = Math.Min(5, limit);
+        for (var i = 0; i < count; i++) {
+            await Task.Delay(200 + i * 50, ct).ConfigureAwait(false);
+            var score = Math.Round(0.5 + Rng.NextDouble() * 0.5, 2);
+            var name = Words[Rng.Next(Words.Length)];
+            yield return new ResultItemViewModel {
+                Icon = Icons[Rng.Next(Icons.Length)],
+                Title = $"{name} ({query})",
+                Subtitle = $"Random result — score {score:F2}",
+                Category = "Random",
+                Score = score,
+            };
+        }
+    }
+}
