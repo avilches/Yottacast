@@ -6,11 +6,11 @@ using Yottacast.Core.ViewModels;
 namespace Yottacast.Core.Search;
 
 /// <summary>
-/// ISearchSource that searches user files via UserDocumentSearch, scoped to the folders
+/// ISearchSource that searches user files via FileSearch, scoped to the folders
 /// configured in UserSettings (Downloads, Desktop, Documents, Movies, Pictures by default).
-/// Results are streamed incrementally as UserDocumentSearch emits them.
+/// Results are streamed incrementally as FileSearch emits them.
 /// </summary>
-public class UserDocumentSearch(UserSettings settings) : ISearchSource {
+public class UserDocumentSearch(UserSettings settings, FileSearch fileSearch) : ISearchSource {
     public void Start() { }
 
     public Task Ready() => Task.CompletedTask;
@@ -22,7 +22,7 @@ public class UserDocumentSearch(UserSettings settings) : ISearchSource {
 
         var channel = Channel.CreateUnbounded<ResultItemViewModel>();
 
-        var searchTask = FileSearch.SearchAsync(
+        var searchTask = fileSearch.SearchAsync(
             query,
             r => channel.Writer.TryWrite(new ResultItemViewModel {
                 Icon = "📄",

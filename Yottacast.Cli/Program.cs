@@ -1,3 +1,4 @@
+using Yottacast.Core.Platform;
 using Yottacast.Core.Process;
 using Yottacast.Core.Search;
 using Yottacast.Core.Services;
@@ -5,10 +6,16 @@ using Yottacast.Core.Services;
 namespace Yottacast.Cli;
 
 internal static class Program {
-    private static readonly UserSettings Settings = UserSettings.Load();
-    private static readonly ApplicationSearch AppSearch = new(Settings);
-    private static readonly BrowserDiscovery Browsers = new(AppSearch);
-    private static readonly TerminalDiscovery Terminals = new(AppSearch);
+    private static readonly PlatformProvider Platform =
+        OperatingSystem.IsMacOS()   ? new MacOsPlatformProvider()
+        : OperatingSystem.IsWindows() ? new WindowsPlatformProvider()
+        :                               new LinuxPlatformProvider();
+
+    private static readonly UserSettings Settings = UserSettings.Load(Platform);
+    private static readonly ApplicationSearch AppSearch = new(Settings, Platform);
+    private static readonly BrowserDiscovery Browsers = new(AppSearch, Platform);
+    private static readonly TerminalDiscovery Terminals = new(AppSearch, Platform);
+    private static readonly FileSearch FileSearch = new(Platform);
 
     private static async Task Main(string[] args) {
         AppSearch.AppAdded += app => Ok($"[new app] {app.Name,-40} {app.Path}");

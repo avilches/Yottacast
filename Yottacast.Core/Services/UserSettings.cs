@@ -1,16 +1,21 @@
-using System.Collections.Generic;
-using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Yottacast.Core.Platform;
 
 namespace Yottacast.Core.Services;
 
 public class UserSettings {
+    private readonly PlatformProvider _platform;
+
+    private UserSettings(PlatformProvider platform) {
+        _platform = platform;
+    }
+
     public string Browser  { get; set; } = "";
     public string Terminal { get; set; } = "";
     public string Theme    { get; set; } = "dark-default";
-    public List<string> SearchFolders { get; set; } = DefaultSearchFolders();
-    public List<string> AppDirectories { get; set; } = DefaultAppDirectories();
+    public List<string> SearchFolders  { get; set; } = [];
+    public List<string> AppDirectories { get; set; } = [];
 
     /// <summary>
     /// Checks that the stored Browser and Terminal still exist on disk.
@@ -28,7 +33,7 @@ public class UserSettings {
     /// </summary>
     public BrowserInfo? ActiveBrowser {
         get {
-            var resolved = BrowserDiscovery.Resolve(Browser);
+            var resolved = BrowserDiscovery.Resolve(Browser, _platform);
             if (!string.IsNullOrEmpty(Browser) && resolved is not null && resolved.Name != Browser) {
                 Console.WriteLine($"[Settings] Browser '{Browser}' not found, switching to '{resolved.Name}'");
                 Browser = resolved.Name;
@@ -44,7 +49,7 @@ public class UserSettings {
     /// </summary>
     public TerminalInfo? ActiveTerminal {
         get {
-            var resolved = TerminalDiscovery.Resolve(Terminal);
+            var resolved = TerminalDiscovery.Resolve(Terminal, _platform);
             if (!string.IsNullOrEmpty(Terminal) && resolved is not null && resolved.Name != Terminal) {
                 Console.WriteLine($"[Settings] Terminal '{Terminal}' not found, switching to '{resolved.Name}'");
                 Terminal = resolved.Name;
@@ -58,64 +63,23 @@ public class UserSettings {
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "Yottacast", "settings.json");
 
-    public static List<string> DefaultAppDirectories() {
-        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        if (OperatingSystem.IsMacOS()) {
-            return [
-                "/Applications",
-                Path.Combine(home, "Applications"),
-            ];
-        }
-        if (OperatingSystem.IsWindows()) {
-            return [
-                @"C:\Program Files",
-                @"C:\Program Files (x86)",
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs"),
-            ];
-        }
-        // Linux
-        return [
-            "/usr/share/applications",
-            "/usr/local/share/applications",
-            Path.Combine(home, ".local", "share", "applications"),
-        ];
-    }
-
-    public static List<string> DefaultSearchFolders() {
-        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        if (OperatingSystem.IsMacOS()) {
-            return [
-                Path.Combine(home, "Downloads"),
-                Path.Combine(home, "Desktop"),
-                Path.Combine(home, "Documents"),
-                Path.Combine(home, "Movies"),
-                Path.Combine(home, "Pictures"),
-            ];
-        }
-        if (OperatingSystem.IsWindows()) {
-            return [
-                Path.Combine(home, "Downloads"),
-                Path.Combine(home, "Desktop"),
-                Path.Combine(home, "Documents"),
-                Path.Combine(home, "Videos"),
-                Path.Combine(home, "Pictures"),
-            ];
-        }
-        // Linux
-        return [
-            Path.Combine(home, "Downloads"),
-            Path.Combine(home, "Desktop"),
-            Path.Combine(home, "Documents"),
-            Path.Combine(home, "Videos"),
-            Path.Combine(home, "Pictures"),
-        ];
-    }
-
-    public static UserSettings Load() {
+    public static UserSettings Load(PlatformProvider platform) {
         try {
-            if (!File.Exists(SettingsPath)) return new UserSettings();
+            if (!File.Exists(SettingsPath)) {
+                return new UserSettings(platform) {
+                    Theme          = platform.DefaultTheme(),
+                    SearchFolders  = platform.DefaultSearchFolders(),
+                    AppDirectories = platform.DefaultAppDirectories(),
+                };
+            }
             var json = JsonNode.Parse(File.ReadAllText(SettingsPath));
-            if (json == null) return new UserSettings();
+            if (json == null) {
+                return new UserSettings(platform) {
+                    Theme          = platform.DefaultTheme(),
+                    SearchFolders  = platform.DefaultSearchFolders(),
+                    AppDirectories = platform.DefaultAppDirectories(),
+                };
+            }
 
             var folders = json["searchFolders"]?.AsArray()
                 .Select(n => n?.GetValue<string>())
@@ -129,15 +93,25 @@ public class UserSettings {
                 .Select(s => s!)
                 .ToList();
 
-            return new UserSettings {
+            // Theme auto-detected from OS when the key is absent from JSON
+            var themeNode = json["theme"];
+            var theme = themeNode is not null
+                ? themeNode.GetValue<string>()
+                : platform.DefaultTheme();
+
+            return new UserSettings(platform) {
                 Browser        = json["browser"]?.GetValue<string>()  ?? "",
                 Terminal       = json["terminal"]?.GetValue<string>() ?? "",
-                Theme          = json["theme"]?.GetValue<string>()    ?? "dark-default",
-                SearchFolders  = folders?.Count > 0 ? folders : DefaultSearchFolders(),
-                AppDirectories = appDirs?.Count > 0 ? appDirs : DefaultAppDirectories(),
+                Theme          = theme,
+                SearchFolders  = folders?.Count > 0 ? folders : platform.DefaultSearchFolders(),
+                AppDirectories = appDirs?.Count > 0 ? appDirs : platform.DefaultAppDirectories(),
             };
         } catch {
-            return new UserSettings();
+            return new UserSettings(platform) {
+                Theme          = platform.DefaultTheme(),
+                SearchFolders  = platform.DefaultSearchFolders(),
+                AppDirectories = platform.DefaultAppDirectories(),
+            };
         }
     }
 

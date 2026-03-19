@@ -8,6 +8,7 @@ using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
 using SharpHook;
 using SharpHook.Data;
+using Yottacast.Core.Platform;
 using Yottacast.Core.Search;
 using Yottacast.Core.Services;
 using Yottacast.Services;
@@ -67,14 +68,20 @@ public partial class App : Application {
     }
 
     private static IServiceProvider BuildServices() {
+        PlatformProvider platform = OperatingSystem.IsMacOS()   ? new MacOsPlatformProvider()
+                                  : OperatingSystem.IsWindows() ? new WindowsPlatformProvider()
+                                  :                               new LinuxPlatformProvider();
+
         var services = new ServiceCollection();
 
-        services.AddSingleton(_ => UserSettings.Load());
+        services.AddSingleton(platform);
+        services.AddSingleton(_ => UserSettings.Load(platform));
         services.AddSingleton<ApplicationSearch>();
         services.AddSingleton<BrowserDiscovery>();
         services.AddSingleton<TerminalDiscovery>();
+        services.AddSingleton<FileSearch>();
 
-        // Register ApplicationSearch and FileStorage as ISearchSource implementations.
+        // Register ApplicationSearch and FileSearch as ISearchSource implementations.
         services.AddSingleton<UserDocumentSearch>();
         services.AddSingleton<ISearchSource>(sp => sp.GetRequiredService<ApplicationSearch>());
         services.AddSingleton<ISearchSource>(sp => sp.GetRequiredService<UserDocumentSearch>());

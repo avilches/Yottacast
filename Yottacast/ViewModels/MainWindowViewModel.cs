@@ -28,11 +28,14 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private readonly UserSettings _settings;
     private readonly GlobalSearch _globalSearch;
+    private readonly BrowserDiscovery _browserDiscovery;
     private CancellationTokenSource? _cts;
 
-    public MainWindowViewModel(UserSettings settings, GlobalSearch globalSearch) {
+    public MainWindowViewModel(
+        UserSettings settings, GlobalSearch globalSearch, BrowserDiscovery browserDiscovery) {
         _settings = settings;
         _globalSearch = globalSearch;
+        _browserDiscovery = browserDiscovery;
     }
 
     partial void OnSearchTextChanged(string value)
@@ -86,7 +89,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 var b = _settings.ActiveBrowser;
                 if (b is null) return;
                 var url = $"https://www.google.com/search?q={Uri.EscapeDataString(capturedQuery)}";
-                BrowserLauncher.OpenUrl(url, b);
+                _browserDiscovery.OpenUrl(url, b);
             },
         };
     }

@@ -39,6 +39,11 @@ Yottacast.sln
 ### Yottacast.Core/ (lib compartida)
 
 ```
+├── Platform/
+│   ├── PlatformProvider.cs             ← abstract base: todo el código OS-específico
+│   ├── MacOsPlatformProvider.cs        ← implementación macOS
+│   ├── WindowsPlatformProvider.cs      ← implementación Windows
+│   └── LinuxPlatformProvider.cs        ← implementación Linux
 ├── Process/
 │   ├── CommandRunner.cs                ← Punto de entrada público: CommandRunner.RunAsync(backend, ...)
 │   ├── ICommandRunner.cs               ← internal: abstracción stream de líneas
@@ -51,12 +56,10 @@ Yottacast.sln
 │   ├── AppInfo.cs + ApplicationSearch.cs  ← ISearchSource: caché en memoria de apps
 │   └── UserDocumentSearch.cs           ← ISearchSource: delega en FileSearch (streaming)
 ├── Services/
-│   ├── FileSearch.cs                   ← Búsqueda de archivos: mdfind / Windows Search / locate
+│   ├── FileSearch.cs                   ← Instancia que delega en PlatformProvider.SearchFilesAsync
 │   ├── UserSettings.cs                 ← Config persistida en JSON
-│   ├── BrowserDiscovery.cs             ← Detecta navegadores instalados (usa ApplicationSearch)
-│   ├── BrowserLauncher.cs              ← Abre URL en navegador concreto
-│   ├── TerminalDiscovery.cs            ← Detecta terminales instalados
-│   └── TerminalLauncher.cs             ← Ejecuta comando en terminal concreto
+│   ├── BrowserDiscovery.cs             ← Detecta navegadores; OpenUrl() delega en PlatformProvider
+│   └── TerminalDiscovery.cs            ← Detecta terminales; ExecuteCommand() delega en PlatformProvider
 └── ViewModels/
     ├── ResultItemViewModel.cs           ← (Icon, Title, Subtitle, Category, Score, OnActivate)
     └── ViewModelBase.cs                 ← ObservableObject (CommunityToolkit.Mvvm)
@@ -98,9 +101,10 @@ El arranque no bloquea en el paso 4. La ventana ya es interactiva y el usuario p
 
 **Qué hace `globalSearch.Start()`** — delega en cada `ISearchSource`:
 
-- **`ApplicationSearch.Start()`** — la única con trabajo real:
-  - *macOS*: lanza internamente `StartMacAsync()` como fire-and-forget. Esa tarea ejecuta `mdfind` vía `StandardCommandRunner` y espera a que termine (puede tardar varios segundos). Una vez termina, señala `Ready()` e instala `FileSystemWatcher` en cada `AppDirectory` para actualizaciones en vivo.
-  - *Windows / Linux*: escaneo síncrono de `AppDirectories` (milisegundos) + `FileSystemWatcher`. Señala `Ready()` al terminar el scan.
+- **`ApplicationSearch.Start()`** — la única con trabajo real. Llama `ScanAndWatchAsync()` como fire-and-forget, que:
+  1. `await platform.ScanAppsAsync(...)` — escaneo inicial (macOS: mdfind; Windows/Linux: scan de directorios)
+  2. Señala `Ready()` al terminar el scan
+  3. Instala `FileSystemWatcher`s vía `platform.CreateAppWatchers(...)`
 - **`UserDocumentSearch.Start()`** — no-op. `Ready()` retorna `Task.CompletedTask` inmediatamente.
 
 **`Ready()`** — `ISearchSource` expone `Task Ready()` que se completa cuando el scan inicial ha terminado y el caché está poblado. `GlobalSearch.Ready()` hace `Task.WhenAll` sobre todos los sources.
@@ -112,11 +116,12 @@ El arranque no bloquea en el paso 4. La ventana ya es interactiva y el usuario p
 No hay validación de settings en el arranque. `UserSettings` se auto-repara en el momento de uso (ver `EnsureIntegrity` abajo).
 
 Servicios registrados en DI:
-- `UserSettings` (singleton, cargado con `UserSettings.Load()`)
+- `PlatformProvider` (singleton, instancia concreta elegida en `BuildServices()` con una única comprobación de OS)
+- `UserSettings` (singleton, cargado con `UserSettings.Load(platform)`)
 - `ApplicationSearch` (singleton, ISearchSource)
 - `UserDocumentSearch` (singleton, ISearchSource)
 - `GlobalSearch` (singleton, recibe `IEnumerable<ISearchSource>`)
-- `BrowserDiscovery`, `TerminalDiscovery` (singleton)
+- `BrowserDiscovery`, `TerminalDiscovery`, `FileSearch` (singleton)
 - `MainWindowViewModel`, `SettingsWindowViewModel` (transient)
 
 ### Motor de búsqueda: GlobalSearch
@@ -165,10 +170,10 @@ Clase: `Yottacast.Core.Search.ApplicationSearch` (implementa `ISearchSource`)
 Mantiene un `ConcurrentDictionary<string, AppInfo>` en memoria con las apps instaladas.
 Inyecta `UserSettings` para leer `AppDirectories`.
 
-**Arranque por plataforma:**
-- **macOS**: `mdfind` one-shot con `StandardCommandRunner` para carga inicial síncrona, luego `FileSystemWatcher` en cada directorio de `AppDirectories` para actualizaciones en vivo (`*.app`).
-- **Windows**: escaneo de `AppDirectories` buscando `.exe`, luego `FileSystemWatcher`.
-- **Linux**: escaneo de `AppDirectories` buscando `.desktop`, luego `FileSystemWatcher`.
+**Arranque por plataforma** — toda la lógica OS-específica está en `PlatformProvider`:
+- **macOS**: `ScanAppsAsync` ejecuta `mdfind` con `StandardCommandRunner`; `CreateAppWatchers` monta watchers en `*.app`.
+- **Windows**: `ScanAppsAsync` escanea `AppDirectories` buscando `.exe`; `CreateAppWatchers` en `*.exe`.
+- **Linux**: `ScanAppsAsync` escanea `AppDirectories` buscando `.desktop`; `CreateAppWatchers` en `*.desktop`.
 
 La búsqueda es substring case-insensitive sobre el nombre de la app (ej. "saf" encuentra "Safari").
 
@@ -212,13 +217,15 @@ Persiste en JSON. Todos los campos tienen defaults multiplataforma; nunca lanza 
 
 **Detección del browser predeterminado del sistema** ⚠️ TODO: no implementado. El default es `""` y se selecciona el primero de la lista de `BrowserDiscovery`.
 
-API: `UserSettings.Load()` → instancia. `settings.Save()` guarda cambios. Se guarda automáticamente al cambiar cada campo en SettingsWindow.
+API: `UserSettings.Load(platform)` → instancia. `settings.Save()` guarda cambios. Se guarda automáticamente al cambiar cada campo en SettingsWindow.
+
+**Detección automática de tema**: si el campo `"theme"` no está en el JSON (archivo nuevo o borrado), `Load` llama `platform.DefaultTheme()` que consulta el modo oscuro del SO una vez de forma síncrona. En macOS: `defaults read -g AppleInterfaceStyle`. En Windows: registro. En Linux: `gsettings`. Si falla, usa `"dark-default"`.
 
 ### Auto-reparación de Browser y Terminal
 
 `UserSettings` se auto-repara sin depender de `ApplicationSearch`:
 
-- **`ActiveBrowser`** — llama `BrowserDiscovery.Resolve(Browser)` (comprueba disco). Si el nombre guardado ya no existe, actualiza `Browser` al primero disponible y llama `Save()`. Si `Browser` es `""`, devuelve el primero disponible sin persistir nada.
+- **`ActiveBrowser`** — llama `BrowserDiscovery.Resolve(Browser, _platform)` (comprueba disco). Si el nombre guardado ya no existe, actualiza `Browser` al primero disponible y llama `Save()`. Si `Browser` es `""`, devuelve el primero disponible sin persistir nada.
 - **`ActiveTerminal`** — ídem para terminales.
 - **`EnsureIntegrity()`** — accede a ambas propiedades. Llamar en puntos naturales (p.ej. al abrir Settings).
 
@@ -261,28 +268,37 @@ Acepta `Func<string, bool> onLine` — retorna `false` para parar antes del EOF:
 
 ---
 
+## PlatformProvider
+
+Clase abstracta en `Yottacast.Core.Platform`. Centraliza toda la lógica OS-específica. Una única comprobación de OS en `App.axaml.cs` (y `Yottacast.Cli/Program.cs`) elige la instancia concreta; el resto del código no hace `RuntimeInformation.IsOSPlatform()`.
+
+Responsabilidades:
+- `IsSystemDarkMode()` / `DefaultTheme()` — detección del tema del SO
+- `DefaultAppDirectories()` / `DefaultSearchFolders()` — valores por defecto según OS
+- `ScanAppsAsync()` / `CreateAppWatchers()` / `LaunchApp()` — gestión de apps
+- `SearchFilesAsync()` — búsqueda de archivos (mdfind / Windows Search / locate)
+- `KnownBrowserNames` / `BrowserFallbackPaths` / `GetBrowserPaths()` / `OpenUrl()` — datos y lanzador de browsers
+- `KnownTerminalNames` / `TerminalFallbackPaths` / `GetTerminalPaths()` / `ExecuteCommand()` — datos y lanzador de terminales
+- `GetAppIconPath()` — icono de app (macOS: parsea Info.plist; otros: null)
+
 ## BrowserDiscovery / TerminalDiscovery
+
+Inyectan `ApplicationSearch` y `PlatformProvider`. Los datos de browsers/terminales conocidos vienen de `platform.KnownBrowserNames` / `platform.BrowserFallbackPaths` etc.
 
 Tres métodos con comportamientos distintos:
 
-**`Discover()`** — apps realmente instaladas, para uso en runtime:
-- *macOS*: solo consulta el caché de `ApplicationSearch` (`appSearch.Find(name)`). Si la app no está en el caché (p.ej. `Start()` aún no terminó), no se devuelve aunque esté instalada. Sin fallback a disco.
-- *Windows*: caché primero; si no está, comprueba `File.Exists()` en las rutas hardcodeadas.
+**`Discover()`** — apps realmente instaladas:
+- Consulta caché de `ApplicationSearch`. Si no está en caché, usa `platform.BrowserFallbackPaths` (Windows) para comprobar disco.
 - *Linux*: devuelve lista vacía (no implementado).
 
-**`GetCandidatePaths()`** — lista completa de candidatos para el picker de Settings:
-- *macOS*: todos los browsers/terminales conocidos. Usa la ruta del caché si está disponible; si no, devuelve la ruta por defecto (`/Applications/Nombre.app`) sin verificar si existe. El picker puede mostrar apps no instaladas.
-- *Windows*: caché primero; si no, primera ruta hardcodeada que exista en disco; si ninguna, la primera hardcodeada sin verificar.
+**`GetCandidatePaths()`** — lista completa para el picker de Settings:
+- Usa caché si disponible; si no, la primera ruta de `platform.GetBrowserPaths(name)`. Puede mostrar apps no instaladas.
 
-**`Resolve(string name)`** — método **estático**, sin dependencia de `ApplicationSearch`. Comprueba disco directamente. Lo usa `UserSettings.ActiveBrowser` / `ActiveTerminal`. Funciona aunque el caché esté vacío (arranque temprano, Settings antes de que `Start()` termine).
+**`Resolve(string name, PlatformProvider)`** — método **estático**, sin dependencia de `ApplicationSearch`. Comprueba disco directamente vía `platform.GetBrowserPaths()`. Lo usa `UserSettings.ActiveBrowser` / `ActiveTerminal`. Funciona aunque el caché esté vacío.
 
-`TerminalDiscovery` también busca en `/System/Applications/Utilities` (donde vive `Terminal.app` en macOS).
+**`OpenUrl()` / `ExecuteCommand()`** — métodos de instancia que delegan en `platform.OpenUrl()` / `platform.ExecuteCommand()`.
 
-### BrowserLauncher
-macOS: `open -a "Nombre" "url"`. Windows: lanza el `.exe` con la URL como argumento.
-
-### TerminalLauncher
-macOS varía por terminal:
+macOS terminal launch per app:
 - **Terminal.app** → AppleScript `do script`
 - **iTerm** → AppleScript `create window with default profile command`
 - **Warp** → URL scheme `warp://action/new_tab?command=...`
@@ -291,13 +307,13 @@ macOS varía por terminal:
 Windows: PowerShell usa `-NoExit -Command`, CMD usa `/K`.
 
 ### FileSearch
-Búsqueda de archivos vía índice nativo del SO:
+Clase instancia (no estática). Delega en `platform.SearchFilesAsync()`.
 - **macOS** → `mdfind` con predicado `kMDItemFSName == '*query*'cd` (Spotlight, case-insensitive)
 - **Windows** → PowerShell + ADODB.Connection (`Provider=Search.CollatorDSO`)
 - **Linux** → `plocate` o `locate -b`
 
-API: `FileSearch.SearchAsync(query, onResult, maxResults, backend, searchFolders, ct)`.
-`onResult` es un callback `Action<FileResult>` — los resultados llegan conforme `mdfind` los emite.
+API: `fileSearch.SearchAsync(query, onResult, maxResults, backend, searchFolders, ct)`.
+`onResult` es un callback `Action<FileResult>` — los resultados llegan conforme el proceso los emite.
 
 ---
 

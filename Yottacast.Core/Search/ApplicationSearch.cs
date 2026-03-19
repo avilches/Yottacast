@@ -1,7 +1,5 @@
 using System.Collections.Concurrent;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
-using Yottacast.Core.Process;
+using Yottacast.Core.Platform;
 using Yottacast.Core.Services;
 using Yottacast.Core.ViewModels;
 
@@ -11,15 +9,14 @@ namespace Yottacast.Core.Search;
 /// In-memory cache of all installed applications. Implements <see cref="ISearchSource"/>
 /// so it can be registered in <see cref="GlobalSearch"/>.
 ///
-/// macOS  — one-shot mdfind via <see cref="StandardCommandRunner"/> for the initial batch,
-///          then <see cref="FileSystemWatcher"/> on each AppDirectory for live *.app updates.
-/// Windows/Linux — initial directory scan + FileSystemWatcher for live updates.
+/// Startup is platform-specific: macOS runs mdfind one-shot then FileSystemWatcher;
+/// Windows/Linux do a synchronous scan then FileSystemWatcher.
 ///
 /// Call <see cref="Start"/> to begin scanning. Call <see cref="Stop"/> to cancel it.
 /// BrowserDiscovery and TerminalDiscovery query this store instead of hitting the filesystem themselves.
 /// </summary>
-public sealed class ApplicationSearch(UserSettings settings) : ISearchSource, IDisposable {
-    private const string MacAppBundleQuery = "kMDItemContentType == 'com.apple.application-bundle'";
+public sealed class ApplicationSearch(UserSettings settings, PlatformProvider platform)
+    : ISearchSource, IDisposable {
 
     private readonly ConcurrentDictionary<string, AppInfo> _apps =
         new(StringComparer.OrdinalIgnoreCase);
@@ -37,13 +34,7 @@ public sealed class ApplicationSearch(UserSettings settings) : ISearchSource, ID
     public void Start() {
         if (_started) return;
         _started = true;
-
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            _ = StartMacAsync();
-        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            ScanWindows();
-        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            ScanLinux();
+        _ = ScanAndWatchAsync();
     }
 
     public Task Ready() => _readyTcs.Task;
@@ -70,7 +61,7 @@ public sealed class ApplicationSearch(UserSettings settings) : ISearchSource, ID
                 Subtitle = a.Path,
                 Category = "Applications",
                 Score = 1,
-                OnActivate = () => LaunchApp(a.Path),
+                OnActivate = () => platform.LaunchApp(a.Path),
             };
         }
         await Task.CompletedTask; // async iterator requires at least one await
@@ -87,78 +78,13 @@ public sealed class ApplicationSearch(UserSettings settings) : ISearchSource, ID
             .Where(a => a.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
             .ToList();
 
-    // ── macOS — initial one-shot + background live ────────────────────────────
+    // ── Scan + watch ──────────────────────────────────────────────────────────
 
-    private async Task StartMacAsync() {
-        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-
-        // 1. Initial batch: one-shot mdfind — awaits completion, populates the store.
-        await CommandRunner.RunAsync(RunnerBackend.Standard,
-            "/usr/bin/mdfind", [MacAppBundleQuery], home,
-            line => { if (!string.IsNullOrWhiteSpace(line)) AddApp(line); return true; },
-            _liveCts.Token);
-
+    private async Task ScanAndWatchAsync() {
+        await platform.ScanAppsAsync(AddApp, settings.AppDirectories, _liveCts.Token);
         _readyTcs.TrySetResult();
-
-        // 2. Live updates via FileSystemWatcher on the configured app directories.
-        foreach (var dir in settings.AppDirectories.Where(Directory.Exists)) {
-            var watcher = new FileSystemWatcher(dir) {
-                Filter = "*.app",
-                NotifyFilter = NotifyFilters.DirectoryName,
-                EnableRaisingEvents = true,
-            };
-            watcher.Created += (_, e) => AddApp(e.FullPath);
-            watcher.Deleted += (_, e) =>
-                _apps.TryRemove(System.IO.Path.GetFileNameWithoutExtension(e.Name ?? ""), out AppInfo? _);
-            _watchers.Add(watcher);
-        }
-    }
-
-    // ── Windows — scan + FileSystemWatcher ───────────────────────────────────
-
-    private void ScanWindows() {
-        foreach (var dir in settings.AppDirectories.Where(Directory.Exists)) {
-            foreach (var subDir in Directory.EnumerateDirectories(dir)) {
-                // Prefer exe that matches the folder name (most common pattern), else first exe found
-                var folderName = System.IO.Path.GetFileName(subDir);
-                var exe = Directory.EnumerateFiles(subDir, $"{folderName}.exe").FirstOrDefault()
-                       ?? Directory.EnumerateFiles(subDir, "*.exe").FirstOrDefault();
-                if (exe is not null)
-                    AddApp(exe);
-            }
-
-            var watcher = new FileSystemWatcher(dir) {
-                Filter = "*.exe",
-                IncludeSubdirectories = true,
-                NotifyFilter = NotifyFilters.FileName,
-                EnableRaisingEvents = true,
-            };
-            watcher.Created += (_, e) => AddApp(e.FullPath);
-            watcher.Deleted += (_, e) =>
-                _apps.TryRemove(System.IO.Path.GetFileNameWithoutExtension(e.Name ?? ""), out AppInfo? _);
-            _watchers.Add(watcher);
-        }
-        _readyTcs.TrySetResult();
-    }
-
-    // ── Linux — scan + FileSystemWatcher ─────────────────────────────────────
-
-    private void ScanLinux() {
-        foreach (var dir in settings.AppDirectories.Where(Directory.Exists)) {
-            foreach (var desktop in Directory.EnumerateFiles(dir, "*.desktop"))
-                AddApp(desktop);
-
-            var watcher = new FileSystemWatcher(dir) {
-                Filter = "*.desktop",
-                NotifyFilter = NotifyFilters.FileName,
-                EnableRaisingEvents = true,
-            };
-            watcher.Created += (_, e) => AddApp(e.FullPath);
-            watcher.Deleted += (_, e) =>
-                _apps.TryRemove(Path.GetFileNameWithoutExtension(e.Name ?? ""), out AppInfo? _);
-            _watchers.Add(watcher);
-        }
-        _readyTcs.TrySetResult();
+        foreach (var w in platform.CreateAppWatchers(settings.AppDirectories, AddApp, RemoveApp))
+            _watchers.Add(w);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -167,20 +93,14 @@ public sealed class ApplicationSearch(UserSettings settings) : ISearchSource, ID
         var name = Path.GetFileNameWithoutExtension(path);
         if (string.IsNullOrEmpty(name)) return;
         var isNew = !_apps.ContainsKey(name);
-        var app = new AppInfo(name, path);
+        var app = new AppInfo(name, path, platform.GetAppIconPath);
         _apps[name] = app;
         if (isNew) AppAdded?.Invoke(app);
     }
 
-    private static void LaunchApp(string path) {
-        try {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-                System.Diagnostics.Process.Start(new ProcessStartInfo("open", $"\"{path}\"") { UseShellExecute = false });
-            else
-                System.Diagnostics.Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
-        } catch {
-            // best-effort launch
-        }
+    private void RemoveApp(string path) {
+        var name = Path.GetFileNameWithoutExtension(path);
+        _apps.TryRemove(name, out _);
     }
 
     public void Dispose() => Stop().GetAwaiter().GetResult();
