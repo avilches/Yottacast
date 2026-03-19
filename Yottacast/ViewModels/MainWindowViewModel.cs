@@ -76,20 +76,19 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private ResultItemViewModel MakeGoogleItem(string query)
     {
-        var browser = _settings.ActiveBrowser;
         var capturedQuery = query;
         return new ResultItemViewModel
         {
             Icon = "🔍",
             Title = $"Search \"{capturedQuery}\" on Google",
-            Subtitle = browser is not null ? $"Open in {browser.Name}" : "Open in browser",
+            Subtitle = "Open in browser",
             Category = "Web",
             OnActivate = () =>
             {
-                var b = _settings.ActiveBrowser;
-                if (b is null) return;
+                var browser = _settings.ActiveBrowser;
+                if (browser is null) return;
                 var url = $"https://www.google.com/search?q={Uri.EscapeDataString(capturedQuery)}";
-                _browserDiscovery.OpenUrl(url, b);
+                _browserDiscovery.OpenUrl(url, browser);
             },
         };
     }
