@@ -52,8 +52,8 @@ public sealed class ApplicationSearch(UserSettings settings, PlatformProvider pl
     }
 
     public async IAsyncEnumerable<ResultItemViewModel> SearchAsync(
-        string query, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default) {
-        foreach (var a in _apps.Values.Where(a => a.Name.Contains(query, StringComparison.OrdinalIgnoreCase))) {
+        string query, int limit, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default) {
+        foreach (var a in _apps.Values.Where(a => a.Name.Contains(query, StringComparison.OrdinalIgnoreCase)).Take(limit)) {
             ct.ThrowIfCancellationRequested();
             yield return new ResultItemViewModel {
                 Icon = "📱",

@@ -17,13 +17,13 @@ public class GlobalSearch(IEnumerable<ISearchSource> sources) : ISearchSource {
     /// as each source produces them. Sources run concurrently.
     /// </summary>
     public async IAsyncEnumerable<ResultItemViewModel> SearchAsync(
-        string query, [EnumeratorCancellation] CancellationToken ct = default) {
+        string query, int limit, [EnumeratorCancellation] CancellationToken ct = default) {
 
         var channel = Channel.CreateUnbounded<ResultItemViewModel>();
 
         var tasks = sources.Select(async s => {
             try {
-                await foreach (var item in s.SearchAsync(query, ct).ConfigureAwait(false))
+                await foreach (var item in s.SearchAsync(query, limit, ct).ConfigureAwait(false))
                     await channel.Writer.WriteAsync(item, ct).ConfigureAwait(false);
             } catch (OperationCanceledException) { }
         }).ToList();

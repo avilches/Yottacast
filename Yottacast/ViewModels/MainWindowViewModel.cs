@@ -63,7 +63,7 @@ public partial class MainWindowViewModel : ViewModelBase
         try { await Task.Delay(250, ct); } catch (OperationCanceledException) { return; }
 
         try {
-            await foreach (var item in _globalSearch.SearchAsync(query, ct)) {
+            await foreach (var item in _globalSearch.SearchAsync(query, limit: 10, ct)) {
                 Results.Add(item);
             }
         } catch (OperationCanceledException) {

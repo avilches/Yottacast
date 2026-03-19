@@ -18,7 +18,7 @@ public class UserDocumentSearch(UserSettings settings, FileSearch fileSearch) : 
     public Task Stop() => Task.CompletedTask;
 
     public async IAsyncEnumerable<ResultItemViewModel> SearchAsync(
-        string query, [EnumeratorCancellation] CancellationToken ct = default) {
+        string query, int limit, [EnumeratorCancellation] CancellationToken ct = default) {
 
         var channel = Channel.CreateUnbounded<ResultItemViewModel>();
 
@@ -31,7 +31,7 @@ public class UserDocumentSearch(UserSettings settings, FileSearch fileSearch) : 
                 Category = "Files",
                 Score = 1,
             }),
-            maxResults: 15,
+            maxResults: limit,
             searchFolders: settings.SearchFolders,
             ct: ct);
 

@@ -8,5 +8,5 @@ public interface ISearchSource {
     /// <summary>Returns a Task that completes once the initial scan is done and the source is ready to serve queries.</summary>
     Task Ready();
     Task Stop();
-    IAsyncEnumerable<ResultItemViewModel> SearchAsync(string query, CancellationToken ct = default);
+    IAsyncEnumerable<ResultItemViewModel> SearchAsync(string query, int limit, CancellationToken ct = default);
 }

@@ -47,6 +47,9 @@ public partial class App : Application {
 
             base.OnFrameworkInitializationCompleted();
 
+            desktop.MainWindow.Show();
+            desktop.MainWindow.Activate();
+
             globalSearch.Start();
             return;
         }
