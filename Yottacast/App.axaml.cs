@@ -29,9 +29,6 @@ public partial class App : Application {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop) {
             _services = BuildServices();
 
-            var searchService = _services.GetRequiredService<GlobalSearch>();
-            _ = searchService.Start();
-
             var userSettings = _services.GetRequiredService<UserSettings>();
             ThemeService.Apply(userSettings.Theme);
 
@@ -43,19 +40,26 @@ public partial class App : Application {
                 DataContext = _services.GetRequiredService<MainWindowViewModel>(),
             };
 
-            desktop.Exit += async (_, _) => await searchService.Stop();
-
+            var globalSearch = _services.GetRequiredService<GlobalSearch>();
+            desktop.Exit += async (_, _) => await globalSearch.Stop();
             RegisterGlobalHotKey(desktop);
+
+            base.OnFrameworkInitializationCompleted();
+
+            globalSearch.Start();
+            return;
         }
 
         base.OnFrameworkInitializationCompleted();
     }
 
-    public void OpenSettings() {
+    public async void OpenSettings() {
         if (_settingsWindow is { IsVisible: true }) {
             _settingsWindow.Activate();
             return;
         }
+        var appSearch = _services.GetRequiredService<ApplicationSearch>();
+        await appSearch.Ready();
         _settingsWindow = new SettingsWindow {
             DataContext = _services.GetRequiredService<SettingsWindowViewModel>(),
         };

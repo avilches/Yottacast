@@ -11,7 +11,9 @@ namespace Yottacast.Core.Search;
 /// Results are streamed incrementally as UserDocumentSearch emits them.
 /// </summary>
 public class UserDocumentSearch(UserSettings settings) : ISearchSource {
-    public Task Start() => Task.CompletedTask;
+    public void Start() { }
+
+    public Task Ready() => Task.CompletedTask;
 
     public Task Stop() => Task.CompletedTask;
 

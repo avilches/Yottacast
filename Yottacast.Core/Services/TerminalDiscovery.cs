@@ -101,4 +101,54 @@ public class TerminalDiscovery {
 
     public Task<IReadOnlyList<TerminalInfo>> DiscoverAsync(CancellationToken ct = default) =>
         Task.FromResult(Discover());
+
+    /// <summary>
+    /// Returns the preferred terminal if it exists on disk, otherwise the first known terminal found on disk.
+    /// Does not require the ApplicationSearch cache to be populated.
+    /// </summary>
+    public static TerminalInfo? Resolve(string preferredName) {
+        if (!string.IsNullOrEmpty(preferredName) && ExistsOnDisk(preferredName))
+            return new TerminalInfo(preferredName, FindPath(preferredName));
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            return KnownMacTerminals
+                .Where(ExistsOnDisk)
+                .Select(n => new TerminalInfo(n, FindPath(n)))
+                .FirstOrDefault();
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            return KnownWindowsTerminals
+                .Select(c => { var p = c.Paths.FirstOrDefault(p => !p.Contains('*') && File.Exists(p)); return p is not null ? new TerminalInfo(c.Name, p) : null; })
+                .FirstOrDefault(t => t is not null);
+        return null;
+    }
+
+    private static bool ExistsOnDisk(string name) {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
+            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            return Directory.Exists(Path.Combine("/Applications", $"{name}.app")) ||
+                   Directory.Exists(Path.Combine(home, "Applications", $"{name}.app")) ||
+                   Directory.Exists(Path.Combine("/System/Applications/Utilities", $"{name}.app"));
+        }
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            var entry = KnownWindowsTerminals.FirstOrDefault(c => c.Name == name);
+            return entry.Paths is not null && entry.Paths.Any(p => !p.Contains('*') && File.Exists(p));
+        }
+        return false;
+    }
+
+    private static string FindPath(string name) {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
+            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var paths = new[] {
+                Path.Combine("/Applications", $"{name}.app"),
+                Path.Combine(home, "Applications", $"{name}.app"),
+                Path.Combine("/System/Applications/Utilities", $"{name}.app"),
+            };
+            return paths.FirstOrDefault(Directory.Exists) ?? paths[0];
+        }
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            var entry = KnownWindowsTerminals.FirstOrDefault(c => c.Name == name);
+            return entry.Paths?.FirstOrDefault(p => !p.Contains('*') && File.Exists(p)) ?? "";
+        }
+        return "";
+    }
 }

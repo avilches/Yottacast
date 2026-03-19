@@ -5,6 +5,8 @@ It's a frameless, transparent dark-themed window where the user types to search 
 
 Update the CLAUDE.md when something non-obvious is worth keeping in mind for later.
 
+**Regla de mantenimiento**: describe siempre el estado actual del código. No documentes cambios respecto a versiones anteriores ni migraciones. Si al editar escribes algo como "ahora X en vez de Y", "ya no se usa Z", o "antes se hacía así", reformúlalo para describir solo el comportamiento actual. Los gotchas y precauciones sí se documentan, pero sin referenciar versiones pasadas.
+
 ## Estructura de la solución
 
 ```
@@ -44,7 +46,7 @@ Yottacast.sln
 │   ├── PtyRunner.cs                    ← internal: Pty.Net (line-buffered, más rápido) — preferido
 │   └── ProcessResult.cs                ← (Elapsed, ExitCode, Cancelled, Error?)
 ├── Search/
-│   ├── ISearchSource.cs                ← Interfaz: Start(), Stop(), SearchAsync → IAsyncEnumerable
+│   ├── ISearchSource.cs                ← Interfaz: Start() void, Ready() Task, Stop(), SearchAsync → IAsyncEnumerable
 │   ├── GlobalSearch.cs                 ← Agrega ISearchSource[], merge streaming vía Channel
 │   ├── AppInfo.cs + ApplicationSearch.cs  ← ISearchSource: caché en memoria de apps
 │   └── UserDocumentSearch.cs           ← ISearchSource: delega en FileSearch (streaming)
@@ -85,12 +87,29 @@ cd Yottacast.Core.Tests && dotnet test
 
 ### Arranque (App.axaml.cs)
 
-`App.OnFrameworkInitializationCompleted` construye el contenedor DI (`BuildServices`) y arranca la búsqueda:
+`App.OnFrameworkInitializationCompleted` es síncrono. Orden de arranque:
 
-```csharp
-var searchService = _services.GetRequiredService<GlobalSearch>();
-_ = searchService.Start();   // arranca todas las ISearchSource en paralelo
-```
+1. `BuildServices()` — construye el contenedor DI
+2. `ThemeService.Apply(...)` + creación de `MainWindow` — la ventana aparece inmediatamente
+3. `base.OnFrameworkInitializationCompleted()` — señala a Avalonia que la inicialización terminó
+4. `_ = globalSearch.Start()` — fire-and-forget; el arranque **no espera** a que termine
+
+El arranque no bloquea en el paso 4. La ventana ya es interactiva y el usuario puede escribir mientras `Start()` trabaja en segundo plano.
+
+**Qué hace `globalSearch.Start()`** — delega en cada `ISearchSource`:
+
+- **`ApplicationSearch.Start()`** — la única con trabajo real:
+  - *macOS*: lanza internamente `StartMacAsync()` como fire-and-forget. Esa tarea ejecuta `mdfind` vía `StandardCommandRunner` y espera a que termine (puede tardar varios segundos). Una vez termina, señala `Ready()` e instala `FileSystemWatcher` en cada `AppDirectory` para actualizaciones en vivo.
+  - *Windows / Linux*: escaneo síncrono de `AppDirectories` (milisegundos) + `FileSystemWatcher`. Señala `Ready()` al terminar el scan.
+- **`UserDocumentSearch.Start()`** — no-op. `Ready()` retorna `Task.CompletedTask` inmediatamente.
+
+**`Ready()`** — `ISearchSource` expone `Task Ready()` que se completa cuando el scan inicial ha terminado y el caché está poblado. `GlobalSearch.Ready()` hace `Task.WhenAll` sobre todos los sources.
+
+**Consecuencia para búsquedas**: hasta que `Ready()` complete en macOS, `SearchAsync` de `ApplicationSearch` devuelve vacío. La UI es interactiva desde el arranque; simplemente no hay apps en los resultados hasta que mdfind acaba.
+
+**Consecuencia para Settings**: `App.OpenSettings()` es `async void` y hace `await applicationSearch.Ready()` antes de crear `SettingsWindowViewModel`. Esto garantiza que `BrowserDiscovery.Discover()` y `TerminalDiscovery.Discover()` (llamados en el constructor del ViewModel) ya tienen el caché poblado. Si el caché ya está listo (usuario abre Settings tarde), el await es instantáneo.
+
+No hay validación de settings en el arranque. `UserSettings` se auto-repara en el momento de uso (ver `EnsureIntegrity` abajo).
 
 Servicios registrados en DI:
 - `UserSettings` (singleton, cargado con `UserSettings.Load()`)
@@ -153,7 +172,7 @@ Inyecta `UserSettings` para leer `AppDirectories`.
 
 La búsqueda es substring case-insensitive sobre el nombre de la app (ej. "saf" encuentra "Safari").
 
-Evento `AppAdded` notifica cuando se detecta una app nueva (lo usan `BrowserDiscovery` / `TerminalDiscovery`).
+Evento `AppAdded` notifica cuando se detecta una app nueva (disponible para suscriptores externos; actualmente ningún componente lo consume).
 
 **Cambio de AppDirectories en settings**: `ApplicationSearch.ReloadAppDirectories()` hace `Stop()` + `Start()` limpiando el caché (`_apps.Clear()` en `Stop()`). `SettingsWindowViewModel` tiene `ApplicationSearch` inyectado — cuando se añada UI para `AppDirectories`, llamar `_applicationSearch.ReloadAppDirectories()`.
 
@@ -179,8 +198,6 @@ Persiste en JSON. Todos los campos tienen defaults multiplataforma; nunca lanza 
 - macOS: `~/Library/Application Support/Yottacast/settings.json` (usa `SpecialFolder.ApplicationData`)
 - Windows: `%APPDATA%\Yottacast\settings.json`
 
-> **Nota**: la ruta macOS es `~/Library/Application Support/`, **no** `~/.config/` (error en versiones anteriores de este doc).
-
 **Campos:**
 
 | Campo | Tipo | Default |
@@ -196,6 +213,16 @@ Persiste en JSON. Todos los campos tienen defaults multiplataforma; nunca lanza 
 **Detección del browser predeterminado del sistema** ⚠️ TODO: no implementado. El default es `""` y se selecciona el primero de la lista de `BrowserDiscovery`.
 
 API: `UserSettings.Load()` → instancia. `settings.Save()` guarda cambios. Se guarda automáticamente al cambiar cada campo en SettingsWindow.
+
+### Auto-reparación de Browser y Terminal
+
+`UserSettings` se auto-repara sin depender de `ApplicationSearch`:
+
+- **`ActiveBrowser`** — llama `BrowserDiscovery.Resolve(Browser)` (comprueba disco). Si el nombre guardado ya no existe, actualiza `Browser` al primero disponible y llama `Save()`. Si `Browser` es `""`, devuelve el primero disponible sin persistir nada.
+- **`ActiveTerminal`** — ídem para terminales.
+- **`EnsureIntegrity()`** — accede a ambas propiedades. Llamar en puntos naturales (p.ej. al abrir Settings).
+
+`SettingsWindowViewModel` llama `settings.EnsureIntegrity()` en su constructor, antes de inicializar los pickers. `MainWindowViewModel` usa `settings.ActiveBrowser` directamente al construir el resultado de Google.
 
 ---
 
@@ -236,10 +263,20 @@ Acepta `Func<string, bool> onLine` — retorna `false` para parar antes del EOF:
 
 ## BrowserDiscovery / TerminalDiscovery
 
-- Usan `ApplicationSearch` como caché primaria (buscan por nombre exacto).
-- Fallback a rutas hardcodeadas si la app no está en la caché.
-- `Discover()` → solo apps instaladas. `GetCandidatePaths()` → lista completa (para el picker de settings).
-- Linux: no implementado (devuelve lista vacía).
+Tres métodos con comportamientos distintos:
+
+**`Discover()`** — apps realmente instaladas, para uso en runtime:
+- *macOS*: solo consulta el caché de `ApplicationSearch` (`appSearch.Find(name)`). Si la app no está en el caché (p.ej. `Start()` aún no terminó), no se devuelve aunque esté instalada. Sin fallback a disco.
+- *Windows*: caché primero; si no está, comprueba `File.Exists()` en las rutas hardcodeadas.
+- *Linux*: devuelve lista vacía (no implementado).
+
+**`GetCandidatePaths()`** — lista completa de candidatos para el picker de Settings:
+- *macOS*: todos los browsers/terminales conocidos. Usa la ruta del caché si está disponible; si no, devuelve la ruta por defecto (`/Applications/Nombre.app`) sin verificar si existe. El picker puede mostrar apps no instaladas.
+- *Windows*: caché primero; si no, primera ruta hardcodeada que exista en disco; si ninguna, la primera hardcodeada sin verificar.
+
+**`Resolve(string name)`** — método **estático**, sin dependencia de `ApplicationSearch`. Comprueba disco directamente. Lo usa `UserSettings.ActiveBrowser` / `ActiveTerminal`. Funciona aunque el caché esté vacío (arranque temprano, Settings antes de que `Start()` termine).
+
+`TerminalDiscovery` también busca en `/System/Applications/Utilities` (donde vive `Terminal.app` en macOS).
 
 ### BrowserLauncher
 macOS: `open -a "Nombre" "url"`. Windows: lanza el `.exe` con la URL como argumento.
@@ -266,7 +303,7 @@ API: `FileSearch.SearchAsync(query, onResult, maxResults, backend, searchFolders
 
 ## SharpHook (global hotkey)
 
-En v7 los tipos están en `SharpHook.Data`, no en `SharpHook.Native` (v5). `ModifierMask` → `EventMask`.
+Los tipos están en `SharpHook.Data`, **no** en `SharpHook.Native`. El modificador de teclas es `EventMask`, **no** `ModifierMask`.
 
 ```csharp
 using SharpHook;       // TaskPoolGlobalHook

@@ -1,7 +1,5 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -30,13 +28,11 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private readonly UserSettings _settings;
     private readonly GlobalSearch _globalSearch;
-    private readonly IReadOnlyList<BrowserInfo> _browsers;
     private CancellationTokenSource? _cts;
 
-    public MainWindowViewModel(UserSettings settings, GlobalSearch globalSearch, BrowserDiscovery browserDiscovery) {
+    public MainWindowViewModel(UserSettings settings, GlobalSearch globalSearch) {
         _settings = settings;
         _globalSearch = globalSearch;
-        _browsers = browserDiscovery.Discover();
     }
 
     partial void OnSearchTextChanged(string value)
@@ -75,28 +71,22 @@ public partial class MainWindowViewModel : ViewModelBase
         ShowNoResults = !HasResults;
     }
 
-    private BrowserInfo? GetPreferredBrowser() {
-        if (!string.IsNullOrEmpty(_settings.Browser))
-            return _browsers.FirstOrDefault(b => b.Name == _settings.Browser)
-                   ?? _browsers.FirstOrDefault();
-        return _browsers.FirstOrDefault();
-    }
-
     private ResultItemViewModel MakeGoogleItem(string query)
     {
+        var browser = _settings.ActiveBrowser;
         var capturedQuery = query;
         return new ResultItemViewModel
         {
             Icon = "🔍",
             Title = $"Search \"{capturedQuery}\" on Google",
-            Subtitle = _browsers.Count > 0 ? $"Open in {GetPreferredBrowser()?.Name ?? "browser"}" : "Open in browser",
+            Subtitle = browser is not null ? $"Open in {browser.Name}" : "Open in browser",
             Category = "Web",
             OnActivate = () =>
             {
-                var browser = GetPreferredBrowser();
-                if (browser is null) return;
+                var b = _settings.ActiveBrowser;
+                if (b is null) return;
                 var url = $"https://www.google.com/search?q={Uri.EscapeDataString(capturedQuery)}";
-                BrowserLauncher.OpenUrl(url, browser);
+                BrowserLauncher.OpenUrl(url, b);
             },
         };
     }

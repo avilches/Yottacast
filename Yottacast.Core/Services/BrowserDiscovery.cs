@@ -97,4 +97,49 @@ public class BrowserDiscovery(ApplicationSearch appSearch) {
 
     public Task<IReadOnlyList<BrowserInfo>> DiscoverAsync(CancellationToken ct = default) =>
         Task.FromResult(Discover());
+
+    /// <summary>
+    /// Returns the preferred browser if it exists on disk, otherwise the first known browser found on disk.
+    /// Does not require the ApplicationSearch cache to be populated.
+    /// </summary>
+    public static BrowserInfo? Resolve(string preferredName) {
+        if (!string.IsNullOrEmpty(preferredName) && ExistsOnDisk(preferredName))
+            return new BrowserInfo(preferredName, FindPath(preferredName));
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            return KnownMacBrowsers
+                .Where(ExistsOnDisk)
+                .Select(n => new BrowserInfo(n, FindPath(n)))
+                .FirstOrDefault();
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            return KnownWindowsBrowsers
+                .Select(c => { var p = c.Paths.FirstOrDefault(File.Exists); return p is not null ? new BrowserInfo(c.Name, p) : null; })
+                .FirstOrDefault(b => b is not null);
+        return null;
+    }
+
+    private static bool ExistsOnDisk(string name) {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
+            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            return Directory.Exists(Path.Combine("/Applications", $"{name}.app")) ||
+                   Directory.Exists(Path.Combine(home, "Applications", $"{name}.app"));
+        }
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            var entry = KnownWindowsBrowsers.FirstOrDefault(c => c.Name == name);
+            return entry.Paths is not null && entry.Paths.Any(File.Exists);
+        }
+        return false;
+    }
+
+    private static string FindPath(string name) {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
+            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var paths = new[] { Path.Combine("/Applications", $"{name}.app"), Path.Combine(home, "Applications", $"{name}.app") };
+            return paths.FirstOrDefault(Directory.Exists) ?? paths[0];
+        }
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            var entry = KnownWindowsBrowsers.FirstOrDefault(c => c.Name == name);
+            return entry.Paths?.FirstOrDefault(File.Exists) ?? "";
+        }
+        return "";
+    }
 }

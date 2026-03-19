@@ -6,7 +6,9 @@ namespace Yottacast.Core.Search;
 
 public class GlobalSearch(IEnumerable<ISearchSource> sources) : ISearchSource {
     
-    public Task Start() => Task.WhenAll(sources.Select(s => s.Start()));
+    public void Start() { foreach (var s in sources) s.Start(); }
+
+    public Task Ready() => Task.WhenAll(sources.Select(s => s.Ready()));
 
     public Task Stop() => Task.WhenAll(sources.Select(s => s.Stop()));
 

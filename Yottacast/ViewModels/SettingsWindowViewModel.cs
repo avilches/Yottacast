@@ -32,6 +32,9 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         Terminals = terminalDiscovery.Discover().Select(t => t.Name).ToList();
         Themes    = LoadThemes();
 
+        // Self-heal stored browser/terminal before reading them for the picker.
+        settings.EnsureIntegrity();
+
         // Set initial selections without triggering the partial callbacks (fields, not properties)
         _selectedBrowser  = Browsers.Contains(settings.Browser) ? settings.Browser : Browsers.FirstOrDefault();
         _selectedTerminal = Terminals.Contains(settings.Terminal) ? settings.Terminal : Terminals.FirstOrDefault();

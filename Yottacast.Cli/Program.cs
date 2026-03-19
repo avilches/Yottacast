@@ -12,7 +12,8 @@ internal static class Program {
 
     private static async Task Main(string[] args) {
         AppSearch.AppAdded += app => Ok($"[new app] {app.Name,-40} {app.Path}");
-        await AppSearch.Start();
+        AppSearch.Start();
+        await AppSearch.Ready();
 
         if (args.Length == 0) {
             await RunInteractiveAsync();

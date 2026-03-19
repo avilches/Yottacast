@@ -16,7 +16,6 @@ namespace Yottacast.Core.Search;
 /// Windows/Linux — initial directory scan + FileSystemWatcher for live updates.
 ///
 /// Call <see cref="Start"/> to begin scanning. Call <see cref="Stop"/> to cancel it.
-/// Call <see cref="ReloadAppDirectories"/> to restart scanning after AppDirectories changes.
 /// BrowserDiscovery and TerminalDiscovery query this store instead of hitting the filesystem themselves.
 /// </summary>
 public sealed class ApplicationSearch(UserSettings settings) : ISearchSource, IDisposable {
@@ -29,26 +28,25 @@ public sealed class ApplicationSearch(UserSettings settings) : ISearchSource, ID
 
     public event Action<AppInfo>? AppAdded;
 
-    // macOS: task handle for the mdfind -live process (cancelled on Stop)
     private CancellationTokenSource _liveCts = new();
-
-    // Windows/Linux: FileSystemWatchers
     private readonly List<FileSystemWatcher> _watchers = [];
+    private TaskCompletionSource _readyTcs = new();
 
     // ── ISearchSource ─────────────────────────────────────────────────────────
 
-    public Task Start() {
-        if (_started) return Task.CompletedTask;
+    public void Start() {
+        if (_started) return;
         _started = true;
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            return StartMacAsync();
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            _ = StartMacAsync();
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             ScanWindows();
         else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             ScanLinux();
-        return Task.CompletedTask;
     }
+
+    public Task Ready() => _readyTcs.Task;
 
     public Task Stop() {
         _started = false;
@@ -58,16 +56,8 @@ public sealed class ApplicationSearch(UserSettings settings) : ISearchSource, ID
         foreach (var w in _watchers) w.Dispose();
         _watchers.Clear();
         _apps.Clear();
+        _readyTcs = new TaskCompletionSource();
         return Task.CompletedTask;
-    }
-
-    /// <summary>
-    /// Restarts scanning with the current AppDirectories from UserSettings.
-    /// Call this after the user changes AppDirectories in Settings.
-    /// </summary>
-    public async Task ReloadAppDirectories() {
-        await Stop();
-        await Start();
     }
 
     public async IAsyncEnumerable<ResultItemViewModel> SearchAsync(
@@ -102,14 +92,15 @@ public sealed class ApplicationSearch(UserSettings settings) : ISearchSource, ID
     private async Task StartMacAsync() {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
-        // 1. Initial batch: one-shot mdfind — awaitable, populates the store before returning.
+        // 1. Initial batch: one-shot mdfind — awaits completion, populates the store.
         await CommandRunner.RunAsync(RunnerBackend.Standard,
             "/usr/bin/mdfind", [MacAppBundleQuery], home,
             line => { if (!string.IsNullOrWhiteSpace(line)) AddApp(line); return true; },
             _liveCts.Token);
 
+        _readyTcs.TrySetResult();
+
         // 2. Live updates via FileSystemWatcher on the configured app directories.
-        //    mdfind -live only reports the match count, not which paths changed.
         foreach (var dir in settings.AppDirectories.Where(Directory.Exists)) {
             var watcher = new FileSystemWatcher(dir) {
                 Filter = "*.app",
@@ -147,6 +138,7 @@ public sealed class ApplicationSearch(UserSettings settings) : ISearchSource, ID
                 _apps.TryRemove(System.IO.Path.GetFileNameWithoutExtension(e.Name ?? ""), out AppInfo? _);
             _watchers.Add(watcher);
         }
+        _readyTcs.TrySetResult();
     }
 
     // ── Linux — scan + FileSystemWatcher ─────────────────────────────────────
@@ -166,6 +158,7 @@ public sealed class ApplicationSearch(UserSettings settings) : ISearchSource, ID
                 _apps.TryRemove(Path.GetFileNameWithoutExtension(e.Name ?? ""), out AppInfo? _);
             _watchers.Add(watcher);
         }
+        _readyTcs.TrySetResult();
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

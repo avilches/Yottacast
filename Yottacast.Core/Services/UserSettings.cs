@@ -12,6 +12,48 @@ public class UserSettings {
     public List<string> SearchFolders { get; set; } = DefaultSearchFolders();
     public List<string> AppDirectories { get; set; } = DefaultAppDirectories();
 
+    /// <summary>
+    /// Checks that the stored Browser and Terminal still exist on disk.
+    /// If not, self-heals by picking the first available and saving.
+    /// Call this at natural access points (e.g. when Settings opens).
+    /// </summary>
+    public void EnsureIntegrity() {
+        _ = ActiveBrowser;
+        _ = ActiveTerminal;
+    }
+
+    /// <summary>
+    /// Resolves the preferred browser from disk. If the stored name no longer exists,
+    /// falls back to the first available, updates Browser, and saves.
+    /// </summary>
+    public BrowserInfo? ActiveBrowser {
+        get {
+            var resolved = BrowserDiscovery.Resolve(Browser);
+            if (!string.IsNullOrEmpty(Browser) && resolved is not null && resolved.Name != Browser) {
+                Console.WriteLine($"[Settings] Browser '{Browser}' not found, switching to '{resolved.Name}'");
+                Browser = resolved.Name;
+                Save();
+            }
+            return resolved;
+        }
+    }
+
+    /// <summary>
+    /// Resolves the preferred terminal from disk. If the stored name no longer exists,
+    /// falls back to the first available, updates Terminal, and saves.
+    /// </summary>
+    public TerminalInfo? ActiveTerminal {
+        get {
+            var resolved = TerminalDiscovery.Resolve(Terminal);
+            if (!string.IsNullOrEmpty(Terminal) && resolved is not null && resolved.Name != Terminal) {
+                Console.WriteLine($"[Settings] Terminal '{Terminal}' not found, switching to '{resolved.Name}'");
+                Terminal = resolved.Name;
+                Save();
+            }
+            return resolved;
+        }
+    }
+
     private static readonly string SettingsPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "Yottacast", "settings.json");
