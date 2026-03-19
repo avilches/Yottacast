@@ -1,48 +1,29 @@
 using System;
-using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Media;
-using Avalonia.Threading;
+using Avalonia.Interactivity;
 using Yottacast.ViewModels;
 using Yottacast;
 
 namespace Yottacast.Views;
 
 public partial class MainWindow : Window {
-    private DispatcherTimer? _spinnerTimer;
-    private double _spinnerAngle;
-    private readonly RotateTransform _spinnerTransform = new();
+    private bool _suppressNextTextInput;
+
+    public void SuppressNextTextInput() => _suppressNextTextInput = true;
 
     public MainWindow() {
         InitializeComponent();
-        SpinnerEllipse.RenderTransform = _spinnerTransform;
         Opened += (_, _) => SearchBox.Focus();
-        DataContextChanged += OnDataContextChanged;
+        AddHandler(TextInputEvent, OnTunnelTextInput, RoutingStrategies.Tunnel);
     }
 
-    private void OnDataContextChanged(object? sender, EventArgs e) {
-        if (DataContext is MainWindowViewModel vm)
-            vm.PropertyChanged += OnVmPropertyChanged;
-    }
-
-    private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e) {
-        if (e.PropertyName != nameof(MainWindowViewModel.IsSearching)) return;
-        var active = (sender as MainWindowViewModel)?.IsSearching ?? false;
-        if (active) {
-            _spinnerTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
-            _spinnerTimer.Tick += SpinnerTick;
-            _spinnerTimer.Start();
-        } else {
-            _spinnerTimer?.Stop();
-            _spinnerTimer = null;
+    private void OnTunnelTextInput(object? sender, TextInputEventArgs e) {
+        if (_suppressNextTextInput) {
+            _suppressNextTextInput = false;
+            e.Handled = true;
         }
-    }
-
-    private void SpinnerTick(object? sender, EventArgs e) {
-        _spinnerAngle = (_spinnerAngle + 8) % 360;
-        _spinnerTransform.Angle = _spinnerAngle;
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change) {

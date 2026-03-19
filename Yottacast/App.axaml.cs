@@ -113,6 +113,7 @@ public partial class App : Application {
                     if (window.IsVisible && window.IsActive) {
                         window.Hide();
                     } else {
+                        (window as MainWindow)?.SuppressNextTextInput();
                         window.Show();
                         window.Activate();
                     }
