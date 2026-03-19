@@ -169,7 +169,7 @@ Antes del debounce, se añade inmediatamente un resultado de "Search en Google" 
 
 Ejemplos: directorio con nombre exacto → 3.5; archivo con nombre exacto → 2.5; directorio parcial → 2.0; archivo parcial → 0.5–1.0.
 
-**Límite interno vs. límite de salida**: `UserDocumentSearch` pide a `FileSearch` `max(limit * 5, 50)` candidatos (con limit=10 → 50 resultados de mdfind), los puntúa todos y devuelve solo los top `limit`. mdfind sigue acotado — no corre indefinidamente — pero con margen suficiente para que los directorios con nombre exacto asciendan aunque aparezcan tarde en la salida de mdfind.
+**Parada y selección final**: `UserDocumentSearch` recolecta candidatos hasta que se alcanza el early exit por calidad o el timeout de 400ms (ver sección UserDocumentSearch). Tras la parada, ordena el buffer por score descendente y hace yield de los top `limit`. El hard cap `maxResults: 500` en `FileSearch` garantiza que nunca se acumulen más de 500 entradas en memoria.
 
 ---
 
@@ -200,11 +200,27 @@ Clase: `Yottacast.Core.Search.UserDocumentSearch` (implementa `ISearchSource`)
 Sin caché. Cada búsqueda llama a `FileSearch.SearchAsync` con `settings.ExpandedSearchFolders`.
 Si los directorios cambian en settings, la siguiente búsqueda los usará automáticamente.
 
-Internamente bufferiza hasta `max(limit * 5, 50)` candidatos de mdfind, los puntúa (ver Scoring arriba) y hace yield de los top `limit` ordenados por score. El límite interno acota el tiempo de búsqueda; el scoring prioriza directorios y coincidencias exactas.
-
 `Start()` y `Stop()` son no-ops (no hay estado que gestionar).
 
 **Queries vacías**: `FileSearch` y los `PlatformProvider` hacen early return (`Task.CompletedTask`) para queries vacías.
+
+**Criterios de parada** — `SearchAsync` crea un `CancellationTokenSource` interno ligado al `ct` del caller, con dos condiciones de parada:
+
+1. **Early exit por calidad** (`EarlyExitThreshold = 2.0`): el callback `onResult` incrementa un contador de resultados "buenos" (score ≥ 2.0). Cuando ese contador alcanza `limit`, se cancela el CTS interno → mdfind se detiene via `cts.Token`.
+2. **Timeout** (`400ms`): `cts.CancelAfter(400)` actúa como red de seguridad para queries que nunca alcanzan el umbral (ej. "main", miles de archivos con score 0.5).
+
+El `OperationCanceledException` de cualquiera de las dos condiciones se captura — se trabaja con lo que hay en el buffer hasta ese momento.
+
+Un hard cap `maxResults: 500` en `FileSearch` evita que el proceso siga si la cancelación tarda en propagarse.
+
+**Por qué `Directory.Exists(r.Path)` en el callback**: determina si el resultado es directorio o archivo para asignar icono, categoría y bonus de score. Se llama síncronamente dentro del callback de `onResult`, por lo que es una syscall en cada resultado — no es costoso a la escala de resultados esperada (decenas, no miles).
+
+**Flujo completo**:
+```
+mdfind emite línea → onResult callback → puntúa → añade al buffer
+                                        → si goodCount ≥ limit → cts.Cancel()
+cts.Token expira (400ms) → OperationCanceledException → buffer.OrderByDescending(score).Take(limit)
+```
 
 ---
 

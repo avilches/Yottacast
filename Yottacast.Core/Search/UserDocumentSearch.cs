@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Threading.Channels;
 using Yottacast.Core.Services;
 using Yottacast.Core.ViewModels;
 
@@ -22,24 +21,42 @@ public class UserDocumentSearch(UserSettings settings, FileSearch fileSearch) : 
     public async IAsyncEnumerable<ResultItemViewModel> SearchAsync(
         string query, int limit, [EnumeratorCancellation] CancellationToken ct = default) {
 
-        var channel = Channel.CreateUnbounded<ResultItemViewModel>();
+        const double EarlyExitThreshold = 2.0;
+        const int TimeoutMs = 400;
 
-        var searchTask = fileSearch.SearchAsync(
-            query,
-            r => channel.Writer.TryWrite(new ResultItemViewModel {
-                Icon = "📄",
-                Title = r.Name,
-                Subtitle = r.Path,
-                Category = "Files",
-                Score = 0.5,
-            }),
-            maxResults: limit,
-            searchFolders: settings.SearchFolders,
-            ct: ct);
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(TimeoutMs);
 
-        _ = searchTask.ContinueWith(_ => channel.Writer.TryComplete(), TaskScheduler.Default);
+        var buffer = new List<ResultItemViewModel>();
+        var queryLower = query.ToLowerInvariant();
+        var goodCount = 0;
 
-        await foreach (var item in channel.Reader.ReadAllAsync(ct).ConfigureAwait(false))
+        try {
+            await fileSearch.SearchAsync(
+                query,
+                r => {
+                    var isDir = Directory.Exists(r.Path);
+                    var nameLower = r.Name.ToLowerInvariant();
+                    double score = 0.5;
+                    if (isDir) score += 1.0;
+                    if (nameLower == queryLower) score += 2.0;
+                    else if (nameLower.StartsWith(queryLower, StringComparison.Ordinal)) score += 0.5;
+                    buffer.Add(new ResultItemViewModel {
+                        Icon = isDir ? "📁" : "📄",
+                        Title = r.Name,
+                        Subtitle = r.Path,
+                        Category = isDir ? "Folders" : "Files",
+                        Score = score,
+                    });
+                    if (score >= EarlyExitThreshold && ++goodCount >= limit)
+                        cts.Cancel();
+                },
+                maxResults: 500,
+                searchFolders: settings.ExpandedSearchFolders,
+                ct: cts.Token);
+        } catch (OperationCanceledException) { }
+
+        foreach (var item in buffer.OrderByDescending(x => x.Score).Take(limit))
             yield return item;
     }
 }
