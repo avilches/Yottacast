@@ -21,7 +21,6 @@ public partial class App : Application {
     private IGlobalHook? _globalHook;
     private SettingsWindow? _settingsWindow;
     private IServiceProvider _services = null!;
-
     public override void Initialize() {
         AvaloniaXamlLoader.Load(this);
     }
@@ -47,6 +46,7 @@ public partial class App : Application {
 
             base.OnFrameworkInitializationCompleted();
 
+            AppHandler.Instance.OnShow();
             desktop.MainWindow.Show();
             desktop.MainWindow.Activate();
 
@@ -100,20 +100,26 @@ public partial class App : Application {
     }
 
     private void RegisterGlobalHotKey(IClassicDesktopStyleApplicationLifetime desktop) {
-        _globalHook = new TaskPoolGlobalHook();
+        // SimpleGlobalHook runs handlers synchronously on the hook thread, which is required
+        // for e.SuppressEvent = true to work. TaskPoolGlobalHook runs handlers on other threads
+        // where suppression has no effect.
+        _globalHook = new SimpleGlobalHook();
         _globalHook.KeyPressed += (_, e) => {
             var isAlt = e.RawEvent.Mask.HasFlag(EventMask.LeftAlt) ||
                         e.RawEvent.Mask.HasFlag(EventMask.RightAlt);
             if (e.Data.KeyCode == KeyCode.VcSpace && isAlt) {
-                Console.WriteLine($"[Hook] ALT+Space detected");
+                // Suppress the event at OS level so it is not delivered to any app.
+                // This prevents beeps in both Yottacast and the previously focused app.
+                // Requires Accessibility permission on macOS; silently ignored without it.
+                e.SuppressEvent = true;
                 Dispatcher.UIThread.InvokeAsync(() => {
                     var window = desktop.MainWindow;
                     if (window is null) return;
-                    Console.WriteLine($"[Hook] UI thread - window.IsVisible={window.IsVisible}");
                     if (window.IsVisible && window.IsActive) {
                         window.Hide();
+                        AppHandler.Instance.OnHide();
                     } else {
-                        (window as MainWindow)?.SuppressNextTextInput();
+                        AppHandler.Instance.OnShow();
                         window.Show();
                         window.Activate();
                     }

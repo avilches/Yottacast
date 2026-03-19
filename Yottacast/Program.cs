@@ -1,14 +1,17 @@
 ﻿using Avalonia;
 using System;
+using Yottacast.Services;
 
 namespace Yottacast;
 
 sealed class Program {
-    // Initialization code. Don't use any Avalonia, third-party APIs or any
-    // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
-    // yet and stuff might break.
     [STAThread]
-    public static void Main(string[] args) => BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+    public static void Main(string[] args) {
+        // OnStart must run before BuildAvaloniaApp() so the platform can configure itself
+        // before Avalonia initializes (e.g. hide Dock icon on macOS before NSApplication starts).
+        AppHandler.Instance.OnStart();
+        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+    }
 
     // Avalonia configuration, don't remove; also used by visual designer.
     public static AppBuilder BuildAvaloniaApp()

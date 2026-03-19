@@ -9,21 +9,9 @@ using Yottacast;
 namespace Yottacast.Views;
 
 public partial class MainWindow : Window {
-    private bool _suppressNextTextInput;
-
-    public void SuppressNextTextInput() => _suppressNextTextInput = true;
-
     public MainWindow() {
         InitializeComponent();
         Opened += (_, _) => SearchBox.Focus();
-        AddHandler(TextInputEvent, OnTunnelTextInput, RoutingStrategies.Tunnel);
-    }
-
-    private void OnTunnelTextInput(object? sender, TextInputEventArgs e) {
-        if (_suppressNextTextInput) {
-            _suppressNextTextInput = false;
-            e.Handled = true;
-        }
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change) {
@@ -49,6 +37,11 @@ public partial class MainWindow : Window {
         if (vm is null) return;
 
         switch (e.Key) {
+            // Consume ALT+Space so macOS doesn't produce a beep for the unhandled key
+            case Key.Space when e.KeyModifiers.HasFlag(KeyModifiers.Alt):
+                e.Handled = true;
+                break;
+
             case Key.Escape:
                 if (vm.IsSearching) {
                     vm.CancelDeferredSearch();

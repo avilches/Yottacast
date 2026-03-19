@@ -131,4 +131,4 @@ public partial class MainWindowViewModel(
             },
         };
     }
-}
+}                                                                     
