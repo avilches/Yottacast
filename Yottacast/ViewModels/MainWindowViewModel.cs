@@ -26,19 +26,25 @@ public partial class MainWindowViewModel(
 
     [ObservableProperty] private bool _showNoResults;
 
+    [ObservableProperty] private bool _isSearching;
+
     public ObservableCollection<ResultItemViewModel> Results { get; } = [];
 
     private CancellationTokenSource? _cts;
+    private CancellationTokenSource? _deferredCts;
 
     private IReadOnlyList<ResultItemViewModel> _instantSnapshot = [];
     private IReadOnlyList<ResultItemViewModel> _deferredSnapshot = [];
     private ResultItemViewModel? _googleItem;
+
+    public void CancelDeferredSearch() => _deferredCts?.Cancel();
 
     partial void OnSearchTextChanged(string value) {
         _cts?.Cancel();
         _cts = new CancellationTokenSource();
 
         if (string.IsNullOrWhiteSpace(value)) {
+            IsSearching = false;
             Results.Clear();
             HasResults = false;
             ShowNoResults = false;
@@ -71,16 +77,24 @@ public partial class MainWindowViewModel(
             return;
         }
 
+        var oldDeferredCts = _deferredCts;
+        _deferredCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        oldDeferredCts?.Dispose();
+
+        IsSearching = true;
+        bool completed = false;
         try {
-            await foreach (var snapshot in globalSearch.SearchDeferredAsync(query, limit: 10, ct)) {
+            await foreach (var snapshot in globalSearch.SearchDeferredAsync(query, limit: 10, _deferredCts.Token)) {
                 _deferredSnapshot = snapshot;
                 RefreshResults();
             }
-        } catch (OperationCanceledException) {
-            return;
+            completed = true;
+        } catch (OperationCanceledException) { }
+        finally {
+            IsSearching = false;
         }
 
-        ShowNoResults = Results.Count == 0;
+        if (completed) ShowNoResults = Results.Count == 0;
     }
 
     private void RefreshResults() {

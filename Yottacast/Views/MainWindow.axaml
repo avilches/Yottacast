@@ -44,6 +44,7 @@
             <Setter Property="Foreground" Value="{DynamicResource Theme.SearchPlaceholder}"/>
         </Style>
 
+
         <!-- ListBox chrome -->
         <Style Selector="ListBox">
             <Setter Property="Background" Value="Transparent"/>
@@ -107,18 +108,31 @@
                          CaretBrush="{DynamicResource Theme.SearchCaret}"
                          SelectionBrush="{DynamicResource Theme.SearchSelection}"/>
 
-                <!-- ESC badge (visible only when input is empty) -->
-                <Border Grid.Column="2"
-                        Background="{DynamicResource Theme.EscBadgeBackground}"
-                        CornerRadius="{DynamicResource Theme.CornerRadiusEsc}"
-                        Padding="8,4"
-                        VerticalAlignment="Center"
-                        IsVisible="{Binding SearchText, Converter={x:Static StringConverters.IsNullOrEmpty}}">
-                    <TextBlock Text="ESC"
-                               Foreground="{DynamicResource Theme.EscBadgeText}"
-                               FontSize="{DynamicResource Theme.FontSizeSmall}"
-                               FontWeight="Medium"/>
-                </Border>
+                <!-- Right side: spinner while searching, ESC badge when idle and empty -->
+                <Panel Grid.Column="2" VerticalAlignment="Center">
+
+                    <!-- ESC badge (visible only when text is empty and not searching) -->
+                    <Border Background="{DynamicResource Theme.EscBadgeBackground}"
+                            CornerRadius="{DynamicResource Theme.CornerRadiusEsc}"
+                            Padding="8,4"
+                            IsVisible="{Binding SearchText, Converter={x:Static StringConverters.IsNullOrEmpty}}">
+                        <TextBlock Text="ESC"
+                                   Foreground="{DynamicResource Theme.EscBadgeText}"
+                                   FontSize="{DynamicResource Theme.FontSizeSmall}"
+                                   FontWeight="Medium"/>
+                    </Border>
+
+                    <!-- Spinner (visible while deferred search is running) -->
+                    <Ellipse x:Name="SpinnerEllipse"
+                             Width="16" Height="16"
+                             Stroke="{DynamicResource Theme.Icon}"
+                             StrokeThickness="2"
+                             StrokeDashArray="3,1"
+                             Fill="Transparent"
+                             Opacity="0.6"
+                             IsVisible="{Binding IsSearching}"
+                             RenderTransformOrigin="0.5,0.5"/>
+                </Panel>
             </Grid>
 
             <!-- ── Divider ── -->

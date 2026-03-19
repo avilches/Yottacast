@@ -1,16 +1,48 @@
 using System;
+using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Media;
+using Avalonia.Threading;
 using Yottacast.ViewModels;
 using Yottacast;
 
 namespace Yottacast.Views;
 
 public partial class MainWindow : Window {
+    private DispatcherTimer? _spinnerTimer;
+    private double _spinnerAngle;
+    private readonly RotateTransform _spinnerTransform = new();
+
     public MainWindow() {
         InitializeComponent();
+        SpinnerEllipse.RenderTransform = _spinnerTransform;
         Opened += (_, _) => SearchBox.Focus();
+        DataContextChanged += OnDataContextChanged;
+    }
+
+    private void OnDataContextChanged(object? sender, EventArgs e) {
+        if (DataContext is MainWindowViewModel vm)
+            vm.PropertyChanged += OnVmPropertyChanged;
+    }
+
+    private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e) {
+        if (e.PropertyName != nameof(MainWindowViewModel.IsSearching)) return;
+        var active = (sender as MainWindowViewModel)?.IsSearching ?? false;
+        if (active) {
+            _spinnerTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
+            _spinnerTimer.Tick += SpinnerTick;
+            _spinnerTimer.Start();
+        } else {
+            _spinnerTimer?.Stop();
+            _spinnerTimer = null;
+        }
+    }
+
+    private void SpinnerTick(object? sender, EventArgs e) {
+        _spinnerAngle = (_spinnerAngle + 8) % 360;
+        _spinnerTransform.Angle = _spinnerAngle;
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change) {
@@ -20,10 +52,6 @@ public partial class MainWindow : Window {
             SearchBox.IsEnabled = isVisible;
             if (isVisible) {
                 SearchBox.Focus();
-            } else if (DataContext is MainWindowViewModel vm) {
-                var trimmed = vm.SearchText.Trim();
-                Console.WriteLine($"[Window] Hiding - SearchText='{vm.SearchText}' trimmed='{trimmed}'");
-                vm.SearchText = trimmed;
             }
         }
     }
@@ -41,10 +69,12 @@ public partial class MainWindow : Window {
 
         switch (e.Key) {
             case Key.Escape:
-                if (string.IsNullOrEmpty(vm.SearchText)) {
-                    Hide();
-                } else {
+                if (vm.IsSearching) {
+                    vm.CancelDeferredSearch();
+                } else if (!string.IsNullOrEmpty(vm.SearchText)) {
                     vm.SearchText = "";
+                } else {
+                    Hide();
                 }
                 e.Handled = true;
                 break;

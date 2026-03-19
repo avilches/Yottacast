@@ -3,6 +3,8 @@
 Yottacast is a macOS/Windows app launcher — similar to Spotlight or PowerToys Run.
 It's a frameless, transparent dark-themed window where the user types to search and uses arrow keys + Enter to launch items.
 
+**Stack**: Avalonia 11.3.12, .NET 9, CommunityToolkit.Mvvm 8.2.1, SharpHook 7.1.1.
+
 Update the CLAUDE.md when something non-obvious is worth keeping in mind for later.
 
 **Regla de mantenimiento**: describe siempre el estado actual del código. No documentes cambios respecto a versiones anteriores ni migraciones. Si al editar escribes algo como "ahora X en vez de Y", "ya no se usa Z", o "antes se hacía así", reformúlalo para describir solo el comportamiento actual. Los gotchas y precauciones sí se documentan, pero sin referenciar versiones pasadas.
@@ -373,10 +375,13 @@ ALT+Space muestra/oculta la ventana.
 
 ## Gotchas
 
+- **No animar `RenderTransform` con keyframes CSS en Avalonia 11** — Avalonia 11 no tiene registrado un animator para `ITransform` (tipo de `RenderTransform`), por lo que las animaciones de estilo con `<Setter Property="RenderTransform" Value="rotate(...)"/>` lanzan `InvalidOperationException: No animator registered for the property RenderTransform`. La solución: poner un `<RotateTransform CenterX="W/2" CenterY="H/2"/>` inline en el elemento con `x:Name`, y en code-behind usar un `DispatcherTimer` que actualice `RotateTransform.Angle` directamente. Ver `MainWindow.axaml.cs` → `SpinnerTick`. **Importante**: `RenderTransformOrigin="0.5,0.5"` solo funciona con `TransformOperations` (sintaxis string); con `RotateTransform` inline el centro hay que definirlo con `CenterX`/`CenterY` en píxeles.
+
 - **No `BoxShadow` en el root Border** — Avalonia lo renderiza como rectángulo independientemente del `CornerRadius`. macOS provee sombra redondeada nativa vía la ventana frameless transparente.
 - **Compiled bindings** habilitados globalmente (`AvaloniaUseCompiledBindingsByDefault=true`) — los bindings deben ser type-resolvable en compile time.
 - **`DataAnnotationsValidationPlugin`** deshabilitado en `App.axaml.cs` para evitar conflictos con CommunityToolkit.Mvvm.
-- **Window hide vs close** — `Hide()` en Escape (no `Close()`); `Show()` + `Activate()` restaura. El SettingsWindow evita duplicados: si ya está visible lo activa; si está oculto lo muestra; solo crea instancia nueva en el primer arranque o tras `Close()`.
+- **Window hide vs close** — `Hide()` en Escape (no `Close()`); `Show()` + `Activate()` restaura. Al ocultar la ventana (ALT+Space o ESC sin texto) el estado del ViewModel se preserva intacto: texto, resultados y búsquedas en curso continúan; al volver a mostrarla el usuario ve exactamente lo que había. El SettingsWindow evita duplicados: si ya está visible lo activa; si está oculto lo muestra; solo crea instancia nueva en el primer arranque o tras `Close()`.
+- **ALT+Space toggle con foco**: ALT+Space oculta la ventana solo si está visible **y activa** (`window.IsVisible && window.IsActive`). Si está visible pero sin foco (tapada por otra ventana), la trae al frente (`Show()` + `Activate()`) en lugar de ocultarla.
 - **Temas cargados síncronamente en SettingsWindow** — `SettingsWindowViewModel` llama `LoadThemes()` en su constructor, que lee del disco los JSON de `Themes/`. Si ninguno carga, añade `"dark-default"` como fallback.
 - **`ResultItemViewModel.Shortcut`** — propiedad definida pero sin uso: nunca se asigna desde las fuentes de búsqueda ni se muestra en la UI. Placeholder para futuros atajos de teclado por resultado.
 - **PtyRunner dimensions hardcodeadas** — `Rows = 24, Cols = 220`. Irrelevante para el uso actual (parsing de líneas), pero a tener en cuenta si algún comando formatea su salida según el ancho del terminal.
@@ -385,8 +390,20 @@ ALT+Space muestra/oculta la ventana.
 
 ## Keyboard shortcuts (MainWindow)
 
-- `ESC` con texto → limpia el texto. Sin texto → oculta la ventana.
+- `ESC` con búsqueda en curso → para la búsqueda diferida (mantiene texto y resultados parciales)
+- `ESC` sin búsqueda en curso y texto no vacío → limpia el texto
+- `ESC` sin búsqueda y sin texto → oculta la ventana
 - `↑` / `↓` → navega resultados
 - `Enter` → activa resultado seleccionado
 - `⌘,` → abre SettingsWindow (si MainWindow está visible)
 - `ALT+Space` → global hotkey para mostrar/ocultar
+
+## Indicador de búsqueda en curso (IsSearching)
+
+`MainWindowViewModel.IsSearching` es `true` mientras la fase diferida (`SearchDeferredAsync`) está activa. Se activa justo antes de iterar la fase diferida y se desactiva en el `finally` al completar, cancelar o fallar.
+
+**Spinner en la UI**: cuando `IsSearching` es `true`, la search row muestra un `Ellipse` giratorio (`Classes="spinner"`, animación CSS en `Window.Styles`) en lugar del badge "ESC". Cuando `IsSearching` baja a `false`, la animación se detiene y el badge ESC reaparece (si el texto está vacío).
+
+**`CancelDeferredSearch()`**: cancela solo la fase diferida sin tocar el texto ni la búsqueda instant. Llamado por el handler de ESC cuando `IsSearching == true`. Internamente cancela `_deferredCts`, que es un `CancellationTokenSource` enlazado al `ct` principal — si se teclea texto nuevo, el `ct` padre cancela ambas fases.
+
+**`ShowNoResults`**: solo se activa si la búsqueda diferida completó sin cancelación (`completed = true`). Si se paró con ESC o por nueva búsqueda, los resultados parciales permanecen visibles sin mostrar "No results".

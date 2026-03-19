@@ -110,7 +110,7 @@ public partial class App : Application {
                     var window = desktop.MainWindow;
                     if (window is null) return;
                     Console.WriteLine($"[Hook] UI thread - window.IsVisible={window.IsVisible}");
-                    if (window.IsVisible) {
+                    if (window.IsVisible && window.IsActive) {
                         window.Hide();
                     } else {
                         window.Show();
