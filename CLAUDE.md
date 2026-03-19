@@ -128,7 +128,7 @@ Servicios registrados en DI:
 
 Clase: `Yottacast.Core.Search.GlobalSearch`
 
-Agrega múltiples `ISearchSource` recibidas por inyección. `SearchAsync` devuelve `IAsyncEnumerable<ResultItemViewModel>` — las fuentes corren en paralelo y los resultados se entregan conforme llegan vía un `Channel<T>` interno.
+Agrega múltiples `ISearchSource` recibidas por inyección. `SearchAsync` devuelve `IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>>` — cada emisión es un snapshot completo (los mejores N resultados hasta ese momento). Cada fuente "posee" un slot; cuando emite un nuevo snapshot, el slot se actualiza y GlobalSearch emite la unión ordenada de todos los slots.
 
 ```
 ISearchSource
@@ -140,23 +140,27 @@ Para añadir una nueva fuente: implementar `ISearchSource` y registrarla en `Bui
 
 ### Debounce (MainWindowViewModel)
 
-El debounce está en el ViewModel, **no** en las fuentes de búsqueda:
-
 ```
-OnSearchTextChanged → cancela CTS anterior → espera 250ms → await foreach GlobalSearch.SearchAsync
+OnSearchTextChanged → cancela CTS anterior
+  → Phase 1 (instant): SearchInstantAsync inmediato → actualiza _instantSnapshot → RefreshResults()
+  → espera 250ms
+  → Phase 2 (deferred): SearchDeferredAsync → cada snapshot actualiza _deferredSnapshot → RefreshResults()
 ```
 
-Antes del debounce, se añade inmediatamente un resultado de "Search en Google" para que la UI siempre tenga algo mientras el usuario escribe.
+`RefreshResults()` reconstruye `Results` fusionando `[googleItem] + _instantSnapshot + _deferredSnapshot`, ordenados por score descendente. Preserva la selección actual si el item sigue en la lista.
 
-### Resultados: streaming y buffering
+### Resultados: arquitectura snapshot-por-fuente
 
-- `ApplicationSearch` → yield de resultados en memoria (rápido, primero)
-- `UserDocumentSearch` → bufferiza todos los candidatos de `FileSearch`, puntúa, ordena y hace yield de los top N
-- `GlobalSearch` → merge de fuentes via `Channel<T>`, `await foreach` en `MainWindowViewModel`
+`ISearchSource.SearchAsync` devuelve `IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>>`: cada yield es un snapshot completo (los mejores N ordenados), no un item individual. Esto permite **reemplazar** en lugar de **acumular**:
+
+- `ApplicationSearch` → emite un único snapshot con todas las apps coincidentes
+- `UserDocumentSearch` → emite snapshots progresivos cada `SnapshotEvery=10` resultados y uno final
+- `GlobalSearch` → mantiene un array `snapshots[sourceIndex]`; cada nuevo snapshot reemplaza su slot y se emite la unión ordenada
+- `MainWindowViewModel` → mantiene `_instantSnapshot` y `_deferredSnapshot`; `RefreshResults()` los fusiona en cada actualización
 
 ### Scoring
 
-`ApplicationSearch` asigna `Score = 1` a sus resultados. El resultado de Google (`MakeGoogleItem`) también asigna `Score = 1`.
+`ApplicationSearch` asigna `Score = 0.5` a sus resultados. El resultado de Google (`MakeGoogleItem`) asigna `Score = 1`.
 
 `UserDocumentSearch` puntúa cada candidato antes de ordenar. Para **queries con wildcard** (`*`) todos los resultados puntúan 0.5 (base). Para **queries sin wildcard**:
 
@@ -169,7 +173,7 @@ Antes del debounce, se añade inmediatamente un resultado de "Search en Google" 
 
 Stem = `Path.GetFileNameWithoutExtension(name)`, por lo que `"report"` puntúa 2.5 contra `"report.pdf"`. No hay bonus por ser directorio (solo afecta icono y categoría).
 
-**Parada y selección final**: `UserDocumentSearch` recolecta candidatos hasta que se alcanza el early exit por calidad o el timeout de 400ms (ver sección UserDocumentSearch). Tras la parada, ordena el buffer por score descendente y hace yield de los top `limit`. El hard cap `maxResults: 500` en `FileSearch` garantiza que nunca se acumulen más de 500 entradas en memoria.
+**Snapshots progresivos**: `UserDocumentSearch` emite un snapshot cada 10 resultados (mientras mdfind sigue corriendo) y uno final al terminar o cancelar. La UI muestra los mejores N en tiempo real, actualizándose conforme llegan más resultados.
 
 ---
 
@@ -204,22 +208,22 @@ Si los directorios cambian en settings, la siguiente búsqueda los usará autom�
 
 **Queries vacías**: `FileSearch` y los `PlatformProvider` hacen early return (`Task.CompletedTask`) para queries vacías.
 
-**Criterios de parada** — `SearchAsync` crea un `CancellationTokenSource` interno ligado al `ct` del caller, con dos condiciones de parada:
+**Criterios de parada** — `SearchAsync` crea un `CancellationTokenSource` interno ligado al `ct` del caller con dos condiciones de parada:
 
-1. **Early exit por calidad** (`EarlyExitThreshold = 2.0`): el callback `onResult` incrementa un contador de resultados "buenos" (score ≥ 2.0). Cuando ese contador alcanza `limit`, se cancela el CTS interno → mdfind se detiene via `cts.Token`.
-2. **Timeout** (`400ms`): `cts.CancelAfter(400)` actúa como red de seguridad para queries que nunca alcanzan el umbral (ej. "main", miles de archivos con score 0.5).
+1. **Timeout configurable** (por defecto `20_000ms`, parámetro `timeoutMs` del constructor): `cts.CancelAfter(timeoutMs)` detiene mdfind tras el tiempo configurado. Sin timeout, mdfind correría hasta agotar el índice completo.
 
-El `OperationCanceledException` de cualquiera de las dos condiciones se captura — se trabaja con lo que hay en el buffer hasta ese momento.
+El `OperationCanceledException` de cualquiera de las dos condiciones se captura — se emite un snapshot final con lo que hay en el buffer hasta ese momento.
 
-Un hard cap `maxResults: 500` en `FileSearch` evita que el proceso siga si la cancelación tarda en propagarse.
+No hay cap de líneas (`maxResults: int.MaxValue`): el timeout y el early exit son los únicos mecanismos de parada.
 
-**Por qué `Directory.Exists(r.Path)` en el callback**: determina si el resultado es directorio o archivo para asignar icono, categoría y bonus de score. Se llama síncronamente dentro del callback de `onResult`, por lo que es una syscall en cada resultado — no es costoso a la escala de resultados esperada (decenas, no miles).
+**Por qué `Directory.Exists(r.Path)` en el callback**: determina si el resultado es directorio o archivo para asignar icono, categoría y bonus de score. Se llama síncronamente dentro del callback de `onResult`, por lo que es una syscall en cada resultado — no es costoso a la escala de resultados esperada.
 
 **Flujo completo**:
 ```
 mdfind emite línea → onResult callback → puntúa → añade al buffer
-                                        → si goodCount ≥ limit → cts.Cancel()
-cts.Token expira (400ms) → OperationCanceledException → buffer.OrderByDescending(score).Take(limit)
+                                        → cada 10 resultados → snapshot parcial al channel
+cts.Token expira (timeoutMs) → OperationCanceledException → snapshot final → channel.Complete()
+MainWindowViewModel recibe snapshots → RefreshResults() en cada uno
 ```
 
 ---
