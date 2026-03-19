@@ -31,6 +31,8 @@ public sealed class ApplicationSearch(UserSettings settings, PlatformProvider pl
 
     // ── ISearchSource ─────────────────────────────────────────────────────────
 
+    public bool IsInstant => true;
+
     public void Start() {
         if (_started) return;
         _started = true;

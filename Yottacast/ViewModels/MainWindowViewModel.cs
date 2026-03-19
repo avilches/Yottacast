@@ -42,6 +42,14 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         _cts?.Cancel();
         _cts = new CancellationTokenSource();
+
+        if (string.IsNullOrWhiteSpace(value)) {
+            Results.Clear();
+            HasResults = false;
+            ShowNoResults = false;
+            return;
+        }
+
         _ = SearchAsync(value, _cts.Token);
     }
 
@@ -51,24 +59,24 @@ public partial class MainWindowViewModel : ViewModelBase
         HasResults = false;
         ShowNoResults = false;
 
-        if (string.IsNullOrWhiteSpace(query)) return;
-
-        // Immediately show Google search option
         var googleItem = MakeGoogleItem(query);
         Results.Add(googleItem);
         HasResults = true;
         SelectedResult = googleItem;
 
-        // Debounce before hitting the filesystem / cache
+        // Phase 1: instant sources (in-memory cache) — no delay
+        try {
+            await foreach (var item in _globalSearch.SearchInstantAsync(query, limit: 2, ct))
+                Results.Add(item);
+        } catch (OperationCanceledException) { return; }
+
+        // Phase 2: deferred sources (disk) — debounce 250ms before hitting disk
         try { await Task.Delay(250, ct); } catch (OperationCanceledException) { return; }
 
         try {
-            await foreach (var item in _globalSearch.SearchAsync(query, limit: 10, ct)) {
+            await foreach (var item in _globalSearch.SearchDeferredAsync(query, limit: 10, ct))
                 Results.Add(item);
-            }
-        } catch (OperationCanceledException) {
-            return;
-        }
+        } catch (OperationCanceledException) { return; }
 
         HasResults = Results.Count > 0;
         ShowNoResults = !HasResults;

@@ -15,7 +15,7 @@ internal sealed class PtyRunner : ICommandRunner {
 
         IPtyConnection pty;
         try {
-            pty = await PtyProvider.SpawnAsync(options, ct);
+            pty = await PtyProvider.SpawnAsync(options, ct).ConfigureAwait(false);
         } catch (OperationCanceledException) {
             return new ProcessResult(sw.Elapsed, -1, true, null);
         } catch (Exception ex) {
@@ -26,7 +26,7 @@ internal sealed class PtyRunner : ICommandRunner {
             using var reader = new StreamReader(pty.ReaderStream, Encoding.UTF8, leaveOpen: true);
             try {
                 while (true) {
-                    var line = await reader.ReadLineAsync(ct);
+                    var line = await reader.ReadLineAsync(ct).ConfigureAwait(false);
                     if (line == null) break;
                     line = line.TrimEnd('\r');
                     if (string.IsNullOrWhiteSpace(line)) continue;
