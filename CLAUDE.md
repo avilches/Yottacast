@@ -227,8 +227,12 @@ API: `UserSettings.Load(platform)` → instancia. `settings.Save()` guarda cambi
 
 `UserSettings` se auto-repara sin depender de `ApplicationSearch`:
 
-- **`ActiveBrowser`** — llama `BrowserDiscovery.Resolve(Browser, _platform)` (comprueba disco). Si el nombre guardado ya no existe, actualiza `Browser` al primero disponible y llama `Save()`. Si `Browser` es `""`, devuelve el primero disponible sin persistir nada.
-- **`ActiveTerminal`** — ídem para terminales.
+- **`ActiveBrowser`** / **`ActiveTerminal`** — llaman a `BrowserDiscovery.Resolve` / `TerminalDiscovery.Resolve` (método estático, comprueba disco):
+  1. Si `Browser` / `Terminal` no está vacío → busca ese nombre concreto en disco.
+  2. Si no existe (o el campo era `""`): itera `KnownBrowserNames` / `KnownTerminalNames` y devuelve el primero encontrado en disco.
+  3. Si ninguno existe en disco → devuelve `null`.
+  - Auto-reparación: si el nombre guardado no existe pero Resolve encuentra un alternativo (`resolved.Name != Browser`), actualiza el campo y llama `Save()`. Si `Browser = ""`, devuelve el primero disponible sin tocar el JSON.
+  - **Devuelve `null`** solo cuando ningún browser/terminal conocido está instalado en el sistema.
 - **`EnsureIntegrity()`** — accede a ambas propiedades. Llamar en puntos naturales (p.ej. al abrir Settings).
 
 `SettingsWindowViewModel` llama `settings.EnsureIntegrity()` en su constructor, antes de inicializar los pickers. `MainWindowViewModel` usa `settings.ActiveBrowser` directamente al construir el resultado de Google.

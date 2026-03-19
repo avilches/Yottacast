@@ -30,6 +30,7 @@ public class UserSettings {
     /// <summary>
     /// Resolves the preferred browser from disk. If the stored name no longer exists,
     /// falls back to the first available, updates Browser, and saves.
+    /// Returns null if there is no available browser (neither the configured one nor the default ones)
     /// </summary>
     public BrowserInfo? ActiveBrowser {
         get {
@@ -46,6 +47,7 @@ public class UserSettings {
     /// <summary>
     /// Resolves the preferred terminal from disk. If the stored name no longer exists,
     /// falls back to the first available, updates Terminal, and saves.
+    /// Returns null if there is no available terminal (neither the configured one nor the default ones)
     /// </summary>
     public TerminalInfo? ActiveTerminal {
         get {
