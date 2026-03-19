@@ -26,20 +26,22 @@ public class RandomSearch : ISearchSource {
     public Task Ready() => Task.CompletedTask;
     public Task Stop() => Task.CompletedTask;
 
-    public async IAsyncEnumerable<ResultItemViewModel> SearchAsync(
+    public async IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>> SearchAsync(
         string query, int limit, [EnumeratorCancellation] CancellationToken ct = default) {
         var count = Math.Min(5, limit);
+        var results = new List<ResultItemViewModel>();
         for (var i = 0; i < count; i++) {
             await Task.Delay(200 + i * 50, ct).ConfigureAwait(false);
             var score = Math.Round(0.5 + Rng.NextDouble() * 0.5, 2);
             var name = Words[Rng.Next(Words.Length)];
-            yield return new ResultItemViewModel {
+            results.Add(new ResultItemViewModel {
                 Icon = Icons[Rng.Next(Icons.Length)],
                 Title = $"{name} ({query})",
                 Subtitle = $"Random result — score {score:F2}",
                 Category = "Random",
                 Score = score,
-            };
+            });
+            yield return results.ToList();
         }
     }
 }

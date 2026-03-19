@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -15,7 +17,7 @@ public partial class MainWindowViewModel(
     GlobalSearch globalSearch,
     BrowserDiscovery browserDiscovery)
     : ViewModelBase {
-    
+
     [ObservableProperty] private string _searchText = "";
 
     [ObservableProperty] private ResultItemViewModel? _selectedResult;
@@ -27,6 +29,10 @@ public partial class MainWindowViewModel(
     public ObservableCollection<ResultItemViewModel> Results { get; } = [];
 
     private CancellationTokenSource? _cts;
+
+    private IReadOnlyList<ResultItemViewModel> _instantSnapshot = [];
+    private IReadOnlyList<ResultItemViewModel> _deferredSnapshot = [];
+    private ResultItemViewModel? _googleItem;
 
     partial void OnSearchTextChanged(string value) {
         _cts?.Cancel();
@@ -43,19 +49,17 @@ public partial class MainWindowViewModel(
     }
 
     private async Task SearchAsync(string query, CancellationToken ct) {
-        Results.Clear();
-        HasResults = false;
-        ShowNoResults = false;
-
-        var googleItem = MakeGoogleItem(query);
-        Results.Add(googleItem);
-        HasResults = true;
-        SelectedResult = googleItem;
+        _instantSnapshot = [];
+        _deferredSnapshot = [];
+        _googleItem = MakeGoogleItem(query);
+        RefreshResults();
 
         // Phase 1: instant sources (in-memory cache) — no delay
         try {
-            await foreach (var item in globalSearch.SearchInstantAsync(query, limit: 2, ct))
-                InsertSorted(item);
+            await foreach (var snapshot in globalSearch.SearchInstantAsync(query, limit: 2, ct)) {
+                _instantSnapshot = snapshot;
+                RefreshResults();
+            }
         } catch (OperationCanceledException) {
             return;
         }
@@ -68,20 +72,33 @@ public partial class MainWindowViewModel(
         }
 
         try {
-            await foreach (var item in globalSearch.SearchDeferredAsync(query, limit: 10, ct))
-                InsertSorted(item);
+            await foreach (var snapshot in globalSearch.SearchDeferredAsync(query, limit: 10, ct)) {
+                _deferredSnapshot = snapshot;
+                RefreshResults();
+            }
         } catch (OperationCanceledException) {
             return;
         }
 
-        HasResults = Results.Count > 0;
-        ShowNoResults = !HasResults;
+        ShowNoResults = Results.Count == 0;
     }
 
-    private void InsertSorted(ResultItemViewModel item) {
-        var i = 0;
-        while (i < Results.Count && Results[i].Score >= item.Score) i++;
-        Results.Insert(i, item);
+    private void RefreshResults() {
+        var merged = new[] { _googleItem! }
+            .Concat(_instantSnapshot)
+            .Concat(_deferredSnapshot)
+            .OrderByDescending(x => x.Score)
+            .ToList();
+
+        var previousSelected = SelectedResult;
+        Results.Clear();
+        foreach (var item in merged) Results.Add(item);
+        HasResults = Results.Count > 0;
+        ShowNoResults = false;
+
+        SelectedResult = previousSelected != null && merged.Contains(previousSelected)
+            ? previousSelected
+            : Results.FirstOrDefault();
     }
 
     private ResultItemViewModel MakeGoogleItem(string query) {

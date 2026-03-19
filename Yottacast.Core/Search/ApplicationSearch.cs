@@ -52,20 +52,23 @@ public sealed class ApplicationSearch(UserSettings settings, PlatformProvider pl
         return Task.CompletedTask;
     }
 
-    public async IAsyncEnumerable<ResultItemViewModel> SearchAsync(
+    public async IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>> SearchAsync(
         string query, int limit, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default) {
-        foreach (var a in _apps.Values.Where(a => a.Name.Contains(query, StringComparison.OrdinalIgnoreCase)).Take(limit)) {
-            ct.ThrowIfCancellationRequested();
-            yield return new ResultItemViewModel {
+        ct.ThrowIfCancellationRequested();
+        var results = _apps.Values
+            .Where(a => a.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
+            .Take(limit)
+            .Select(a => (ResultItemViewModel)new ResultItemViewModel {
                 Icon = "📱",
                 Title = a.Name,
                 Subtitle = a.Path,
                 Category = "Applications",
                 Score = 0.5,
                 OnActivate = () => platform.LaunchApp(a.Path),
-            };
-        }
-        await Task.CompletedTask; // async iterator requires at least one await
+            })
+            .ToList();
+        yield return results;
+        await Task.CompletedTask;
     }
 
     // ── Queries ───────────────────────────────────────────────────────────────

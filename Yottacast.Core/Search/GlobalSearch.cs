@@ -16,34 +16,42 @@ public class GlobalSearch(IEnumerable<ISearchSource> sources) {
 
     public Task Stop() => Task.WhenAll(_sources.Select(s => s.Stop()));
 
-    public IAsyncEnumerable<ResultItemViewModel> SearchInstantAsync(
+    public IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>> SearchInstantAsync(
         string query, int limit, CancellationToken ct = default)
-        => SearchSourcesAsync(_sources.Where(s => s.IsInstant), query, limit, ct);
+        => SearchSourcesAsync(_sources.Where(s => s.IsInstant).ToList(), query, limit, ct);
 
-    public IAsyncEnumerable<ResultItemViewModel> SearchDeferredAsync(
+    public IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>> SearchDeferredAsync(
         string query, int limit, CancellationToken ct = default)
-        => SearchSourcesAsync(_sources.Where(s => !s.IsInstant), query, limit, ct);
+        => SearchSourcesAsync(_sources.Where(s => !s.IsInstant).ToList(), query, limit, ct);
 
     /// <summary>
-    /// Merges results from the given subset of sources in real-time via a channel,
-    /// yielding items as each source produces them. Sources run concurrently.
+    /// Merges snapshots from all sources. Each source owns a slot; when it emits a new
+    /// snapshot the slot is updated and the merged+sorted union is yielded.
     /// </summary>
-    private static async IAsyncEnumerable<ResultItemViewModel> SearchSourcesAsync(
-        IEnumerable<ISearchSource> subset, string query, int limit,
+    private static async IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>> SearchSourcesAsync(
+        IReadOnlyList<ISearchSource> subset, string query, int limit,
         [EnumeratorCancellation] CancellationToken ct = default) {
 
-        var channel = Channel.CreateUnbounded<ResultItemViewModel>();
+        var snapshots = new List<ResultItemViewModel>[subset.Count];
+        for (int i = 0; i < subset.Count; i++) snapshots[i] = [];
 
-        var tasks = subset.Select(async s => {
+        var channel = Channel.CreateUnbounded<(int, IReadOnlyList<ResultItemViewModel>)>();
+
+        var tasks = subset.Select((s, i) => Task.Run(async () => {
             try {
-                await foreach (var item in s.SearchAsync(query, limit, ct).ConfigureAwait(false))
-                    await channel.Writer.WriteAsync(item, ct).ConfigureAwait(false);
+                await foreach (var snap in s.SearchAsync(query, limit, ct).ConfigureAwait(false))
+                    await channel.Writer.WriteAsync((i, snap), ct).ConfigureAwait(false);
             } catch (OperationCanceledException) { }
-        }).ToList();
+        }, CancellationToken.None)).ToList();
 
         _ = Task.WhenAll(tasks).ContinueWith(_ => channel.Writer.TryComplete(), TaskScheduler.Default);
 
-        await foreach (var item in channel.Reader.ReadAllAsync(ct).ConfigureAwait(false))
-            yield return item;
+        await foreach (var (idx, snap) in channel.Reader.ReadAllAsync(ct).ConfigureAwait(false)) {
+            snapshots[idx] = snap.ToList();
+            yield return snapshots.SelectMany(s => s)
+                .OrderByDescending(x => x.Score)
+                .Take(limit)
+                .ToList();
+        }
     }
 }
