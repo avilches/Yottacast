@@ -22,7 +22,7 @@ public class UserDocumentSearch(UserSettings settings, FileSearch fileSearch) : 
         string query, int limit, [EnumeratorCancellation] CancellationToken ct = default) {
 
         const double EarlyExitThreshold = 2.0;
-        const int TimeoutMs = 400;
+        const int TimeoutMs = 2000;
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(TimeoutMs);
@@ -31,16 +31,24 @@ public class UserDocumentSearch(UserSettings settings, FileSearch fileSearch) : 
         var queryLower = query.ToLowerInvariant();
         var goodCount = 0;
 
+        var hasWildcard = query.Contains('*');
+
         try {
             await fileSearch.SearchAsync(
                 query,
                 r => {
                     var isDir = Directory.Exists(r.Path);
                     var nameLower = r.Name.ToLowerInvariant();
+                    var stemLower = Path.GetFileNameWithoutExtension(nameLower);
                     double score = 0.5;
-                    if (isDir) score += 1.0;
-                    if (nameLower == queryLower) score += 2.0;
-                    else if (nameLower.StartsWith(queryLower, StringComparison.Ordinal)) score += 0.5;
+                    if (!hasWildcard) {
+                        if (nameLower == queryLower || stemLower == queryLower)
+                            score += 2.0;
+                        else if (nameLower.StartsWith(queryLower, StringComparison.Ordinal) || stemLower.StartsWith(queryLower, StringComparison.Ordinal))
+                            score += 1.0;
+                        else if (nameLower.EndsWith(queryLower, StringComparison.Ordinal))
+                            score += 0.3;
+                    }
                     buffer.Add(new ResultItemViewModel {
                         Icon = isDir ? "📁" : "📄",
                         Title = r.Name,

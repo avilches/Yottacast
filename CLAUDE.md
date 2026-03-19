@@ -158,16 +158,16 @@ Antes del debounce, se añade inmediatamente un resultado de "Search en Google" 
 
 `ApplicationSearch` asigna `Score = 1` a sus resultados. El resultado de Google (`MakeGoogleItem`) también asigna `Score = 1`.
 
-`UserDocumentSearch` puntúa cada candidato antes de ordenar:
+`UserDocumentSearch` puntúa cada candidato antes de ordenar. Para **queries con wildcard** (`*`) todos los resultados puntúan 0.5 (base). Para **queries sin wildcard**:
 
-| Condición | Bonus |
-|---|---|
-| Base | 0.5 |
-| Es directorio | +1.0 |
-| Nombre exacto (case-insensitive) | +2.0 |
-| Nombre empieza por query | +0.5 |
+| Condición | Bonus | Total |
+|---|---|---|
+| `name == query` o `stem == query` (case-insensitive) | +2.0 | **2.5** |
+| `name.StartsWith(query)` o `stem.StartsWith(query)` | +1.0 | **1.5** |
+| `name.EndsWith(query)` | +0.3 | **0.8** |
+| Contains (base only) | — | **0.5** |
 
-Ejemplos: directorio con nombre exacto → 3.5; archivo con nombre exacto → 2.5; directorio parcial → 2.0; archivo parcial → 0.5–1.0.
+Stem = `Path.GetFileNameWithoutExtension(name)`, por lo que `"report"` puntúa 2.5 contra `"report.pdf"`. No hay bonus por ser directorio (solo afecta icono y categoría).
 
 **Parada y selección final**: `UserDocumentSearch` recolecta candidatos hasta que se alcanza el early exit por calidad o el timeout de 400ms (ver sección UserDocumentSearch). Tras la parada, ordena el buffer por score descendente y hace yield de los top `limit`. El hard cap `maxResults: 500` en `FileSearch` garantiza que nunca se acumulen más de 500 entradas en memoria.
 
