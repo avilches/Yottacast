@@ -30,16 +30,13 @@ public sealed class WindowsPlatformProvider : PlatformProvider {
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs"),
     ];
 
-    public override List<string> DefaultSearchFolders() {
-        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        return [
-            Path.Combine(home, "Downloads"),
-            Path.Combine(home, "Desktop"),
-            Path.Combine(home, "Documents"),
-            Path.Combine(home, "Videos"),
-            Path.Combine(home, "Pictures"),
-        ];
-    }
+    public override List<string> DefaultSearchFolders() => [
+        "$HOME/Downloads",
+        "$HOME/Desktop",
+        "$HOME/Documents",
+        "$HOME/Videos",
+        "$HOME/Pictures",
+    ];
 
     // ── App scanning ──────────────────────────────────────────────────────────
 

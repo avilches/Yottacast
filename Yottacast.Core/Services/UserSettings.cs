@@ -1,5 +1,5 @@
 using System.Text.Json;
-using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using Yottacast.Core.Platform;
 
 namespace Yottacast.Core.Services;
@@ -16,6 +16,11 @@ public class UserSettings {
     public string Theme    { get; set; } = "dark-default";
     public List<string> SearchFolders  { get; set; } = [];
     public List<string> AppDirectories { get; set; } = [];
+
+    /// <summary>Raw SearchFolders with $HOME/~ expanded to absolute paths, for use in file searches.</summary>
+    public IReadOnlyList<string> ExpandedSearchFolders  => SearchFolders .Select(PlatformProvider.ExpandPath).ToList();
+    /// <summary>Raw AppDirectories with $HOME/~ expanded to absolute paths, for use in app scanning.</summary>
+    public IReadOnlyList<string> ExpandedAppDirectories => AppDirectories.Select(PlatformProvider.ExpandPath).ToList();
 
     /// <summary>
     /// Checks that the stored Browser and Terminal still exist on disk.
@@ -35,7 +40,7 @@ public class UserSettings {
     public BrowserInfo? ActiveBrowser {
         get {
             var resolved = BrowserDiscovery.Resolve(Browser, _platform);
-            if (!string.IsNullOrEmpty(Browser) && resolved is not null && resolved.Name != Browser) {
+            if (resolved is not null && resolved.Name != Browser) {
                 Console.WriteLine($"[Settings] Browser '{Browser}' not found, switching to '{resolved.Name}'");
                 Browser = resolved.Name;
                 Save();
@@ -52,7 +57,7 @@ public class UserSettings {
     public TerminalInfo? ActiveTerminal {
         get {
             var resolved = TerminalDiscovery.Resolve(Terminal, _platform);
-            if (!string.IsNullOrEmpty(Terminal) && resolved is not null && resolved.Name != Terminal) {
+            if (resolved is not null && resolved.Name != Terminal) {
                 Console.WriteLine($"[Settings] Terminal '{Terminal}' not found, switching to '{resolved.Name}'");
                 Terminal = resolved.Name;
                 Save();
@@ -65,75 +70,64 @@ public class UserSettings {
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "Yottacast", "settings.json");
 
+    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+
+    private record UserSettingsData {
+        [JsonPropertyName("browser")]        public string        Browser        { get; init; } = "";
+        [JsonPropertyName("terminal")]       public string        Terminal       { get; init; } = "";
+        [JsonPropertyName("theme")]          public string        Theme          { get; init; } = "";
+        [JsonPropertyName("searchFolders")]  public List<string>? SearchFolders  { get; init; }
+        [JsonPropertyName("appDirectories")] public List<string>? AppDirectories { get; init; }
+    }
+
     public static UserSettings Load(PlatformProvider platform) {
+        UserSettings settings;
         try {
             if (!File.Exists(SettingsPath)) {
-                return new UserSettings(platform) {
-                    Theme          = platform.DefaultTheme(),
-                    SearchFolders  = platform.DefaultSearchFolders(),
-                    AppDirectories = platform.DefaultAppDirectories(),
+                throw new FileNotFoundException($"[Settings] Settings file '{SettingsPath}' does not exist");
+            }
+            Console.WriteLine($"[Settings] Loading settings.json {SettingsPath}");
+            var data = JsonSerializer.Deserialize<UserSettingsData>(File.ReadAllText(SettingsPath), JsonOptions);
+            if (data == null) {
+                settings = CreateDefaultUserSettings(platform);
+            } else {
+                settings = new UserSettings(platform) {
+                    Browser        = data.Browser,
+                    Terminal       = data.Terminal,
+                    Theme          = string.IsNullOrEmpty(data.Theme) ? platform.DefaultTheme() : data.Theme,
+                    SearchFolders  = data.SearchFolders?.Count > 0 ? data.SearchFolders : platform.DefaultSearchFolders(),
+                    AppDirectories = data.AppDirectories?.Count > 0 ? data.AppDirectories : platform.DefaultAppDirectories(),
                 };
             }
-            var json = JsonNode.Parse(File.ReadAllText(SettingsPath));
-            if (json == null) {
-                return new UserSettings(platform) {
-                    Theme          = platform.DefaultTheme(),
-                    SearchFolders  = platform.DefaultSearchFolders(),
-                    AppDirectories = platform.DefaultAppDirectories(),
-                };
-            }
-
-            var folders = json["searchFolders"]?.AsArray()
-                .Select(n => n?.GetValue<string>())
-                .Where(s => !string.IsNullOrEmpty(s))
-                .Select(s => s!)
-                .ToList();
-
-            var appDirs = json["appDirectories"]?.AsArray()
-                .Select(n => n?.GetValue<string>())
-                .Where(s => !string.IsNullOrEmpty(s))
-                .Select(s => s!)
-                .ToList();
-
-            // Theme auto-detected from OS when the key is absent from JSON
-            var themeNode = json["theme"];
-            var theme = themeNode is not null
-                ? themeNode.GetValue<string>()
-                : platform.DefaultTheme();
-
-            return new UserSettings(platform) {
-                Browser        = json["browser"]?.GetValue<string>()  ?? "",
-                Terminal       = json["terminal"]?.GetValue<string>() ?? "",
-                Theme          = theme,
-                SearchFolders  = folders?.Count > 0 ? folders : platform.DefaultSearchFolders(),
-                AppDirectories = appDirs?.Count > 0 ? appDirs : platform.DefaultAppDirectories(),
-            };
-        } catch {
-            return new UserSettings(platform) {
-                Theme          = platform.DefaultTheme(),
-                SearchFolders  = platform.DefaultSearchFolders(),
-                AppDirectories = platform.DefaultAppDirectories(),
-            };
+        } catch (Exception ex) {
+            Console.WriteLine(ex.Message);
+            Console.WriteLine($"[Settings] Creating Default settings.json {SettingsPath}");
+            settings = CreateDefaultUserSettings(platform);
         }
+        settings.Save();
+        return settings;
+    }
+
+    private static UserSettings CreateDefaultUserSettings(PlatformProvider platform) {
+        return new UserSettings(platform) {
+            Theme          = platform.DefaultTheme(),
+            SearchFolders  = platform.DefaultSearchFolders(),
+            AppDirectories = platform.DefaultAppDirectories(),
+        };
     }
 
     public void Save() {
         try {
             var dir = Path.GetDirectoryName(SettingsPath)!;
             Directory.CreateDirectory(dir);
-            var foldersArray = new JsonArray();
-            foreach (var f in SearchFolders) foldersArray.Add(f);
-            var appDirsArray = new JsonArray();
-            foreach (var d in AppDirectories) appDirsArray.Add(d);
-            var json = new JsonObject {
-                ["browser"]        = Browser,
-                ["terminal"]       = Terminal,
-                ["theme"]          = Theme,
-                ["searchFolders"]  = foldersArray,
-                ["appDirectories"] = appDirsArray,
+            var data = new UserSettingsData {
+                Browser        = Browser,
+                Terminal       = Terminal,
+                Theme          = Theme,
+                SearchFolders  = SearchFolders,
+                AppDirectories = AppDirectories,
             };
-            File.WriteAllText(SettingsPath,
-                json.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            File.WriteAllText(SettingsPath, JsonSerializer.Serialize(data, JsonOptions));
         } catch (Exception ex) {
             Console.WriteLine($"[Settings] Save error: {ex.Message}");
         }

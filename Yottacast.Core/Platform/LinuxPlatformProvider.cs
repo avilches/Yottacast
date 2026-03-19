@@ -25,25 +25,19 @@ public sealed class LinuxPlatformProvider : PlatformProvider {
 
     // ── Defaults ──────────────────────────────────────────────────────────────
 
-    public override List<string> DefaultAppDirectories() {
-        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        return [
-            "/usr/share/applications",
-            "/usr/local/share/applications",
-            Path.Combine(home, ".local", "share", "applications"),
-        ];
-    }
+    public override List<string> DefaultAppDirectories() => [
+        "/usr/share/applications",
+        "/usr/local/share/applications",
+        "$HOME/.local/share/applications",
+    ];
 
-    public override List<string> DefaultSearchFolders() {
-        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        return [
-            Path.Combine(home, "Downloads"),
-            Path.Combine(home, "Desktop"),
-            Path.Combine(home, "Documents"),
-            Path.Combine(home, "Videos"),
-            Path.Combine(home, "Pictures"),
-        ];
-    }
+    public override List<string> DefaultSearchFolders() => [
+        "$HOME/Downloads",
+        "$HOME/Desktop",
+        "$HOME/Documents",
+        "$HOME/Videos",
+        "$HOME/Pictures",
+    ];
 
     // ── App scanning ──────────────────────────────────────────────────────────
 

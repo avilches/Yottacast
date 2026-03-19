@@ -26,19 +26,32 @@ public sealed class MacOsPlatformProvider : PlatformProvider {
 
     // ── Defaults ──────────────────────────────────────────────────────────────
 
-    public override List<string> DefaultAppDirectories() {
-        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        return ["/Applications", Path.Combine(home, "Applications")];
-    }
+    public override List<string> DefaultAppDirectories() => ["/Applications", "$HOME/Applications"];
 
     public override List<string> DefaultSearchFolders() {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         return [
-            Path.Combine(home, "Downloads"),
-            Path.Combine(home, "Desktop"),
-            Path.Combine(home, "Documents"),
-            Path.Combine(home, "Movies"),
-            Path.Combine(home, "Pictures"),
+            "$HOME/Downloads",
+            "$HOME/Desktop",
+            "$HOME/Documents",
+            "$HOME/Movies",
+            "$HOME/Pictures",
+            "$HOME/Dropbox",
+            "$HOME/Music",
+            "$HOME/Public",
+            "$HOME/Library/Mobile Documents/com~apple~CloudDocs",
+            "$HOME/Library/Application Support",
+            "$HOME/Library/Containers",
+            "$HOME/Creative Cloud Files",
+            "$HOME/Google Drive",
+            "$HOME/OneDrive",
+            "$HOME/Box Sync",
+            "$HOME/Box",
+            "$HOME/Mega",
+            "$HOME/pCloud Drive",
+            "$HOME/Nextcloud",
+            "$HOME/Adobe Creative Cloud",
+            "$HOME/Amazon Drive"            
         ];
     }
 
@@ -123,8 +136,8 @@ public sealed class MacOsPlatformProvider : PlatformProvider {
     public override string[] GetBrowserPaths(string name) {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         return [
-            Path.Combine("/Applications", $"{name}.app"),
-            Path.Combine(home, "Applications", $"{name}.app"),
+            $"/Applications/{name}.app",
+            $"$HOME/Applications/{name}.app",
         ];
     }
 
@@ -157,9 +170,9 @@ public sealed class MacOsPlatformProvider : PlatformProvider {
     public override string[] GetTerminalPaths(string name) {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         return [
-            Path.Combine("/Applications", $"{name}.app"),
-            Path.Combine(home, "Applications", $"{name}.app"),
-            Path.Combine("/System/Applications/Utilities", $"{name}.app"),
+            $"/Applications/{name}.app",
+            $"$HOME/Applications/{name}.app",
+            "/System/Applications/Utilities/{name}.app",
         ];
     }
 

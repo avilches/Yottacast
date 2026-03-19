@@ -38,4 +38,13 @@ public abstract class PlatformProvider {
     public abstract string[] GetTerminalPaths(string name);
 
     public abstract string? GetAppIconPath(string appPath);
+
+    public static string ExpandPath(string path) {
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (path.StartsWith("$HOME/", StringComparison.Ordinal))
+            return Path.Combine(home, path[6..]);
+        if (path.StartsWith("~/", StringComparison.Ordinal))
+            return Path.Combine(home, path[2..]);
+        return path;
+    }
 }

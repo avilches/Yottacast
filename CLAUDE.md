@@ -113,7 +113,7 @@ El arranque no bloquea en el paso 4. La ventana ya es interactiva y el usuario p
 
 **Consecuencia para Settings**: `App.OpenSettings()` es `async void` y hace `await applicationSearch.Ready()` antes de crear `SettingsWindowViewModel`. Esto garantiza que `BrowserDiscovery.Discover()` y `TerminalDiscovery.Discover()` (llamados en el constructor del ViewModel) ya tienen el caché poblado. Si el caché ya está listo (usuario abre Settings tarde), el await es instantáneo.
 
-No hay validación de settings en el arranque. `UserSettings` se auto-repara en el momento de uso (ver `EnsureIntegrity` abajo).
+`UserSettings.Load(platform)` carga (o crea) el JSON y siempre hace `Save()` al final. La validación de Browser/Terminal no ocurre en el arranque; `UserSettings` se auto-repara en el momento de uso, cuando se accede a `ActiveBrowser` / `ActiveTerminal` (ver `EnsureIntegrity` abajo).
 
 Servicios registrados en DI:
 - `PlatformProvider` (singleton, instancia concreta elegida en `BuildServices()` con una única comprobación de OS)
@@ -148,16 +148,28 @@ OnSearchTextChanged → cancela CTS anterior → espera 250ms → await foreach 
 
 Antes del debounce, se añade inmediatamente un resultado de "Search en Google" para que la UI siempre tenga algo mientras el usuario escribe.
 
-### Resultados: streaming
+### Resultados: streaming y buffering
 
-Los resultados llegan incrementalmente a la UI conforme cada fuente los produce:
 - `ApplicationSearch` → yield de resultados en memoria (rápido, primero)
-- `UserDocumentSearch` → streaming via `Channel<T>` desde `FileSearch.SearchAsync` callback
+- `UserDocumentSearch` → bufferiza todos los candidatos de `FileSearch`, puntúa, ordena y hace yield de los top N
 - `GlobalSearch` → merge de fuentes via `Channel<T>`, `await foreach` en `MainWindowViewModel`
 
 ### Scoring
 
-`ApplicationSearch` y `UserDocumentSearch` asignan `Score = 1` a sus resultados. El resultado de Google (creado en `MakeGoogleItem`) no asigna `Score`, por lo que vale 0. Los resultados llegan en orden de fuente (apps primero, luego archivos) ya que el streaming no permite un sort global sin buffering.
+`ApplicationSearch` asigna `Score = 1` a sus resultados. El resultado de Google (`MakeGoogleItem`) también asigna `Score = 1`.
+
+`UserDocumentSearch` puntúa cada candidato antes de ordenar:
+
+| Condición | Bonus |
+|---|---|
+| Base | 0.5 |
+| Es directorio | +1.0 |
+| Nombre exacto (case-insensitive) | +2.0 |
+| Nombre empieza por query | +0.5 |
+
+Ejemplos: directorio con nombre exacto → 3.5; archivo con nombre exacto → 2.5; directorio parcial → 2.0; archivo parcial → 0.5–1.0.
+
+**Límite interno vs. límite de salida**: `UserDocumentSearch` pide a `FileSearch` `max(limit * 5, 50)` candidatos (con limit=10 → 50 resultados de mdfind), los puntúa todos y devuelve solo los top `limit`. mdfind sigue acotado — no corre indefinidamente — pero con margen suficiente para que los directorios con nombre exacto asciendan aunque aparezcan tarde en la salida de mdfind.
 
 ---
 
@@ -185,9 +197,10 @@ Evento `AppAdded` notifica cuando se detecta una app nueva (disponible para susc
 
 Clase: `Yottacast.Core.Search.UserDocumentSearch` (implementa `ISearchSource`)
 
-Sin caché. Cada búsqueda llama a `FileSearch.SearchAsync` con los `SearchFolders` de `UserSettings`, con `maxResults: 15` hardcodeado.
+Sin caché. Cada búsqueda llama a `FileSearch.SearchAsync` con `settings.ExpandedSearchFolders`.
 Si los directorios cambian en settings, la siguiente búsqueda los usará automáticamente.
-Los resultados se entregan vía `Channel<T>` para streaming real hacia la UI.
+
+Internamente bufferiza hasta `max(limit * 5, 50)` candidatos de mdfind, los puntúa (ver Scoring arriba) y hace yield de los top `limit` ordenados por score. El límite interno acota el tiempo de búsqueda; el scoring prioriza directorios y coincidencias exactas.
 
 `Start()` y `Stop()` son no-ops (no hay estado que gestionar).
 
@@ -213,13 +226,15 @@ Persiste en JSON. Todos los campos tienen defaults multiplataforma; nunca lanza 
 | `Terminal` | string | `""` |
 | `Theme` | string | `"dark-default"` |
 | `SearchFolders` | `List<string>` | Downloads, Desktop, Documents, Movies/Videos, Pictures |
-| `AppDirectories` | `List<string>` | `/Applications`, `~/Applications` (macOS) / `Program Files` (Win) / `.desktop` dirs (Linux) |
+| `AppDirectories` | `List<string>` | `/Applications`, `$HOME/Applications` (macOS) / `Program Files` (Win) / `.desktop` dirs (Linux) |
 
 **Browser/Terminal preferido**: el usuario elige entre los detectados por `BrowserDiscovery`/`TerminalDiscovery` (solo apps instaladas). Se muestra en `SettingsWindowViewModel`.
 
 **Detección del browser predeterminado del sistema** ⚠️ TODO: no implementado. El default es `""` y se selecciona el primero de la lista de `BrowserDiscovery`.
 
-API: `UserSettings.Load(platform)` → instancia. `settings.Save()` guarda cambios. Se guarda automáticamente al cambiar cada campo en SettingsWindow.
+**API de ciclo de vida**: `UserSettings.Load(platform)` carga el JSON (o crea defaults si no existe), y siempre llama `Save()` al final — el fichero se reescribe en cada arranque. `settings.Save()` puede llamarse manualmente; también se llama automáticamente al cambiar cada campo en SettingsWindow.
+
+**Rutas en el JSON**: `SearchFolders` y `AppDirectories` se almacenan en crudo (`$HOME/Downloads`, `~/foo`, rutas absolutas…). La expansión `$HOME/` → ruta absoluta ocurre en el momento de uso, nunca al cargar ni guardar. `PlatformProvider.ExpandPath()` gestiona `$HOME/` y `~/`. Las propiedades `ExpandedSearchFolders` / `ExpandedAppDirectories` devuelven las listas expandidas; los consumidores (`UserDocumentSearch`, `ApplicationSearch`) las usan directamente.
 
 **Detección automática de tema**: si el campo `"theme"` no está en el JSON (archivo nuevo o borrado), `Load` llama `platform.DefaultTheme()` que consulta el modo oscuro del SO una vez de forma síncrona. En macOS: `defaults read -g AppleInterfaceStyle`. En Windows: registro. En Linux: `gsettings`. Si falla, usa `"dark-default"`.
 
@@ -227,13 +242,13 @@ API: `UserSettings.Load(platform)` → instancia. `settings.Save()` guarda cambi
 
 `UserSettings` se auto-repara sin depender de `ApplicationSearch`:
 
-- **`ActiveBrowser`** / **`ActiveTerminal`** — llaman a `BrowserDiscovery.Resolve` / `TerminalDiscovery.Resolve` (método estático, comprueba disco):
+- **`ActiveBrowser`** / **`ActiveTerminal`** — se evalúan en cada acceso (son propiedades, no campos). Llaman a `BrowserDiscovery.Resolve` / `TerminalDiscovery.Resolve` (método estático, comprueba disco):
   1. Si `Browser` / `Terminal` no está vacío → busca ese nombre concreto en disco.
   2. Si no existe (o el campo era `""`): itera `KnownBrowserNames` / `KnownTerminalNames` y devuelve el primero encontrado en disco.
   3. Si ninguno existe en disco → devuelve `null`.
   - Auto-reparación: si el nombre guardado no existe pero Resolve encuentra un alternativo (`resolved.Name != Browser`), actualiza el campo y llama `Save()`. Si `Browser = ""`, devuelve el primero disponible sin tocar el JSON.
   - **Devuelve `null`** solo cuando ningún browser/terminal conocido está instalado en el sistema.
-- **`EnsureIntegrity()`** — accede a ambas propiedades. Llamar en puntos naturales (p.ej. al abrir Settings).
+- **`EnsureIntegrity()`** — accede a ambas propiedades, forzando la validación y el guardado si algo cambió. Llamar en puntos naturales (p.ej. al abrir Settings).
 
 `SettingsWindowViewModel` llama `settings.EnsureIntegrity()` en su constructor, antes de inicializar los pickers. `MainWindowViewModel` usa `settings.ActiveBrowser` directamente al construir el resultado de Google.
 

@@ -82,9 +82,9 @@ public sealed class ApplicationSearch(UserSettings settings, PlatformProvider pl
     // ── Scan + watch ──────────────────────────────────────────────────────────
 
     private async Task ScanAndWatchAsync() {
-        await platform.ScanAppsAsync(AddApp, settings.AppDirectories, _liveCts.Token);
+        await platform.ScanAppsAsync(AddApp, settings.ExpandedAppDirectories, _liveCts.Token);
         _readyTcs.TrySetResult();
-        foreach (var w in platform.CreateAppWatchers(settings.AppDirectories, AddApp, RemoveApp))
+        foreach (var w in platform.CreateAppWatchers(settings.ExpandedAppDirectories, AddApp, RemoveApp))
             _watchers.Add(w);
     }
 
