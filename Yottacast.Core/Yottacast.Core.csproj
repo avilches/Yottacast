@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Scripts/math.min.js" Condition="Exists('Scripts/math.min.js')" />
+    <EmbeddedResource Include="Resources/emojis.json" />
   </ItemGroup>
 
 </Project>

@@ -16,22 +16,31 @@ public class UserSettings {
         _settingsPath = settingsPath ?? DefaultSettingsPath;
     }
 
-    public string Browser  { get; set; } = "";
+    public string Browser { get; set; } = "";
     public string Terminal { get; set; } = "";
-    public string Theme    { get; set; } = "dark-default";
-    public List<string> SearchFolders  { get; set; } = [];
+    public string Theme { get; set; } = "dark-default";
+    public List<string> SearchFolders { get; set; } = [];
     public List<string> AppDirectories { get; set; } = [];
+    public bool EnableCalculator { get; set; } = true;
+    public bool EnableClipboard { get; set; } = true;
+    public bool EnableEmoji { get; set; } = true;
 
     private string _hotkey = "Alt+Space";
     private HotkeyConfig? _parsedHotkey;
+
     public string Hotkey {
         get => _hotkey;
-        set { _hotkey = value; _parsedHotkey = null; }
+        set {
+            _hotkey = value;
+            _parsedHotkey = null;
+        }
     }
+
     public HotkeyConfig ParsedHotkey => _parsedHotkey ??= HotkeyConfig.Parse(_hotkey) ?? HotkeyConfig.Default;
 
     /// <summary>Raw SearchFolders with $HOME/~ expanded to absolute paths, for use in file searches.</summary>
-    public IReadOnlyList<string> ExpandedSearchFolders  => SearchFolders .Select(PlatformProvider.ExpandPath).ToList();
+    public IReadOnlyList<string> ExpandedSearchFolders => SearchFolders.Select(PlatformProvider.ExpandPath).ToList();
+
     /// <summary>Raw AppDirectories with $HOME/~ expanded to absolute paths, for use in app scanning.</summary>
     public IReadOnlyList<string> ExpandedAppDirectories => AppDirectories.Select(PlatformProvider.ExpandPath).ToList();
 
@@ -86,12 +95,15 @@ public class UserSettings {
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
     private record UserSettingsData {
-        [JsonPropertyName("browser")]        public string        Browser        { get; init; } = "";
-        [JsonPropertyName("terminal")]       public string        Terminal       { get; init; } = "";
-        [JsonPropertyName("theme")]          public string        Theme          { get; init; } = "";
-        [JsonPropertyName("hotkey")]         public string        Hotkey         { get; init; } = "Alt+Space";
-        [JsonPropertyName("searchFolders")]  public List<string>? SearchFolders  { get; init; }
+        [JsonPropertyName("browser")] public string Browser { get; init; } = "";
+        [JsonPropertyName("terminal")] public string Terminal { get; init; } = "";
+        [JsonPropertyName("theme")] public string Theme { get; init; } = "";
+        [JsonPropertyName("hotkey")] public string Hotkey { get; init; } = "Alt+Space";
+        [JsonPropertyName("searchFolders")] public List<string>? SearchFolders { get; init; }
         [JsonPropertyName("appDirectories")] public List<string>? AppDirectories { get; init; }
+        [JsonPropertyName("enableCalculator")] public bool EnableCalculator { get; init; } = true;
+        [JsonPropertyName("enableClipboard")] public bool EnableClipboard { get; init; } = true;
+        [JsonPropertyName("enableEmoji")] public bool EnableEmoji { get; init; } = true;
     }
 
     public static UserSettings Load(PlatformProvider platform, ILogger? logger = null, string? settingsPath = null) {
@@ -107,12 +119,15 @@ public class UserSettings {
                 settings = CreateDefaultUserSettings(platform, logger, path);
             } else {
                 settings = new UserSettings(platform, logger, path) {
-                    Browser        = data.Browser,
-                    Terminal       = data.Terminal,
-                    Theme          = string.IsNullOrEmpty(data.Theme) ? platform.DefaultTheme() : data.Theme,
-                    Hotkey         = string.IsNullOrEmpty(data.Hotkey) ? "Alt+Space" : data.Hotkey,
-                    SearchFolders  = data.SearchFolders?.Count > 0 ? data.SearchFolders : platform.DefaultSearchFolders(),
+                    Browser = data.Browser,
+                    Terminal = data.Terminal,
+                    Theme = string.IsNullOrEmpty(data.Theme) ? platform.DefaultTheme() : data.Theme,
+                    Hotkey = string.IsNullOrEmpty(data.Hotkey) ? "Alt+Space" : data.Hotkey,
+                    SearchFolders = data.SearchFolders?.Count > 0 ? data.SearchFolders : platform.DefaultSearchFolders(),
                     AppDirectories = data.AppDirectories?.Count > 0 ? data.AppDirectories : platform.DefaultAppDirectories(),
+                    EnableCalculator = data.EnableCalculator,
+                    EnableClipboard = data.EnableClipboard,
+                    EnableEmoji = data.EnableEmoji,
                 };
             }
         } catch (Exception ex) {
@@ -125,8 +140,8 @@ public class UserSettings {
 
     private static UserSettings CreateDefaultUserSettings(PlatformProvider platform, ILogger? logger, string? settingsPath = null) {
         return new UserSettings(platform, logger, settingsPath) {
-            Theme          = platform.DefaultTheme(),
-            SearchFolders  = platform.DefaultSearchFolders(),
+            Theme = platform.DefaultTheme(),
+            SearchFolders = platform.DefaultSearchFolders(),
             AppDirectories = platform.DefaultAppDirectories(),
         };
     }
@@ -136,12 +151,15 @@ public class UserSettings {
             var dir = Path.GetDirectoryName(_settingsPath)!;
             Directory.CreateDirectory(dir);
             var data = new UserSettingsData {
-                Browser        = Browser,
-                Terminal       = Terminal,
-                Theme          = Theme,
-                Hotkey         = Hotkey,
-                SearchFolders  = SearchFolders,
+                Browser = Browser,
+                Terminal = Terminal,
+                Theme = Theme,
+                Hotkey = Hotkey,
+                SearchFolders = SearchFolders,
                 AppDirectories = AppDirectories,
+                EnableCalculator = EnableCalculator,
+                EnableClipboard = EnableClipboard,
+                EnableEmoji = EnableEmoji,
             };
             File.WriteAllText(_settingsPath, JsonSerializer.Serialize(data, JsonOptions));
             _logger?.LogDebug("Settings saved to {Path}", _settingsPath);

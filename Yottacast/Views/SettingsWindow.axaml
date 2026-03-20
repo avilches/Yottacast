@@ -2,26 +2,71 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Yottacast.ViewModels"
         xmlns:svc="using:Yottacast.Services"
+        xmlns:sys="using:System"
         x:Class="Yottacast.Views.SettingsWindow"
         x:DataType="vm:SettingsWindowViewModel"
         Title="Yottacast Settings"
-        Width="440"
-        SizeToContent="Height"
+        Width="700" Height="520"
+        SizeToContent="Manual"
         CanResize="False"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource Theme.WindowBackground}">
 
     <Window.Styles>
+
+        <!-- Nav button base -->
+        <Style Selector="Button.nav-item">
+            <Setter Property="Background"                Value="Transparent"/>
+            <Setter Property="BorderThickness"           Value="0"/>
+            <Setter Property="HorizontalAlignment"       Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Padding"                   Value="12,9"/>
+            <Setter Property="CornerRadius"              Value="6"/>
+            <Setter Property="Cursor"                    Value="Hand"/>
+            <Setter Property="Foreground"                Value="{DynamicResource Theme.ItemSubtitle}"/>
+            <Setter Property="FontSize"                  Value="{DynamicResource Theme.FontSizeTitle}"/>
+        </Style>
+        <Style Selector="Button.nav-item /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.nav-item:pointerover /template/ ContentPresenter">
+            <Setter Property="Background"  Value="{DynamicResource Theme.ItemHover}"/>
+            <Setter Property="CornerRadius" Value="6"/>
+        </Style>
+        <Style Selector="Button.nav-item.nav-selected /template/ ContentPresenter">
+            <Setter Property="Background"  Value="{DynamicResource Theme.ItemSelection}"/>
+            <Setter Property="CornerRadius" Value="6"/>
+        </Style>
+        <Style Selector="Button.nav-item.nav-selected">
+            <Setter Property="Foreground" Value="{DynamicResource Theme.ItemSelectionText}"/>
+        </Style>
+        <Style Selector="Button.nav-item:pointerover">
+            <Setter Property="Foreground" Value="{DynamicResource Theme.ItemTitle}"/>
+        </Style>
+
+        <!-- Section heading -->
+        <Style Selector="TextBlock.section-heading">
+            <Setter Property="Foreground"  Value="{DynamicResource Theme.ItemTitle}"/>
+            <Setter Property="FontSize"    Value="{DynamicResource Theme.FontSizeNoResults}"/>
+            <Setter Property="FontWeight"  Value="SemiBold"/>
+            <Setter Property="Margin"      Value="0,0,0,20"/>
+        </Style>
+
+        <!-- Field label -->
         <Style Selector="TextBlock.label">
             <Setter Property="Foreground" Value="{DynamicResource Theme.ItemCategory}"/>
             <Setter Property="FontSize"   Value="{DynamicResource Theme.FontSizeSmall}"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Margin"     Value="0,0,0,6"/>
         </Style>
+
+        <!-- ComboBox stretch -->
         <Style Selector="ComboBox">
             <Setter Property="HorizontalAlignment" Value="Stretch"/>
             <Setter Property="Padding"             Value="10,8"/>
         </Style>
+
+        <!-- Hotkey field -->
         <Style Selector="Border.hotkey-field">
             <Setter Property="Padding"         Value="10,8"/>
             <Setter Property="CornerRadius"    Value="4"/>
@@ -33,67 +78,251 @@
         <Style Selector="Border.hotkey-field.capturing">
             <Setter Property="BorderBrush" Value="{DynamicResource Theme.ItemTitle}"/>
         </Style>
+
+        <!-- Remove button -->
+        <Style Selector="Button.remove-btn">
+            <Setter Property="Background"      Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding"         Value="4,2"/>
+            <Setter Property="Cursor"          Value="Hand"/>
+            <Setter Property="Foreground"      Value="{DynamicResource Theme.ItemSubtitle}"/>
+        </Style>
+        <Style Selector="Button.remove-btn:pointerover">
+            <Setter Property="Foreground" Value="{DynamicResource Theme.ItemTitle}"/>
+        </Style>
+
+        <!-- Add button -->
+        <Style Selector="Button.add-btn">
+            <Setter Property="Background"      Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush"     Value="{DynamicResource Theme.Divider}"/>
+            <Setter Property="Padding"         Value="10,6"/>
+            <Setter Property="CornerRadius"    Value="4"/>
+            <Setter Property="Cursor"          Value="Hand"/>
+            <Setter Property="Foreground"      Value="{DynamicResource Theme.ItemSubtitle}"/>
+            <Setter Property="Margin"          Value="0,10,0,0"/>
+        </Style>
+        <Style Selector="Button.add-btn:pointerover">
+            <Setter Property="Foreground" Value="{DynamicResource Theme.ItemTitle}"/>
+        </Style>
+
+        <!-- Description text -->
+        <Style Selector="TextBlock.description">
+            <Setter Property="Foreground"   Value="{DynamicResource Theme.ItemSubtitle}"/>
+            <Setter Property="FontSize"     Value="{DynamicResource Theme.FontSizeTitle}"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Margin"       Value="0,0,0,20"/>
+        </Style>
+
     </Window.Styles>
 
-    <StackPanel Margin="28,24" Spacing="20">
+    <Grid ColumnDefinitions="180,1,*">
 
-        <!-- Title -->
-        <TextBlock Text="Preferences"
-                   Foreground="{DynamicResource Theme.ItemTitle}"
-                   FontSize="{DynamicResource Theme.FontSizeNoResults}"
-                   FontWeight="SemiBold"
-                   Margin="0,0,0,4"/>
+        <!-- ── Sidebar ─────────────────────────────────────────────────────── -->
+        <Border Grid.Column="0" Background="{DynamicResource Theme.ItemIconBackground}">
+            <StackPanel Spacing="2" Margin="10,16">
 
-        <!-- Divider -->
-        <Rectangle Height="1" Fill="{DynamicResource Theme.Divider}" Margin="0,-8,0,0"/>
+                <TextBlock Text="Preferences"
+                           Foreground="{DynamicResource Theme.ItemTitle}"
+                           FontSize="{DynamicResource Theme.FontSizeSmall}"
+                           FontWeight="SemiBold"
+                           Margin="12,0,0,16"/>
 
-        <!-- Browser -->
-        <StackPanel Spacing="0">
-            <TextBlock Classes="label" Text="DEFAULT BROWSER"/>
-            <ComboBox ItemsSource="{Binding Browsers}"
-                      SelectedItem="{Binding SelectedBrowser}"
-                      PlaceholderText="No browsers found"/>
-        </StackPanel>
+                <Button Classes="nav-item"
+                        Classes.nav-selected="{Binding IsGeneralSelected}"
+                        Command="{Binding SelectGeneralCommand}"
+                        Content="General"/>
 
-        <!-- Terminal -->
-        <StackPanel Spacing="0">
-            <TextBlock Classes="label" Text="DEFAULT TERMINAL"/>
-            <ComboBox ItemsSource="{Binding Terminals}"
-                      SelectedItem="{Binding SelectedTerminal}"
-                      PlaceholderText="No terminals found"/>
-        </StackPanel>
+                <Button Classes="nav-item"
+                        Classes.nav-selected="{Binding IsAppSearchSelected}"
+                        Command="{Binding SelectAppSearchCommand}"
+                        Content="App Search"/>
 
-        <!-- Theme -->
-        <StackPanel Spacing="0">
-            <TextBlock Classes="label" Text="THEME"/>
-            <ComboBox ItemsSource="{Binding Themes}"
-                      SelectedItem="{Binding SelectedTheme}">
-                <ComboBox.ItemTemplate>
-                    <DataTemplate x:DataType="svc:ThemeOption">
-                        <TextBlock Text="{Binding DisplayName}"/>
-                    </DataTemplate>
-                </ComboBox.ItemTemplate>
-            </ComboBox>
-        </StackPanel>
+                <Button Classes="nav-item"
+                        Classes.nav-selected="{Binding IsInternetSearchSelected}"
+                        Command="{Binding SelectInternetSearchCommand}"
+                        Content="Internet Search"/>
 
-        <!-- Global Hotkey -->
-        <StackPanel Spacing="0">
-            <TextBlock Classes="label" Text="GLOBAL HOTKEY"/>
-            <Border Classes="hotkey-field"
-                    Classes.capturing="{Binding IsCapturingHotkey}"
-                    PointerPressed="OnHotkeyAreaPointerPressed">
-                <TextBlock Text="{Binding HotkeyDisplayText}"
-                           Foreground="{DynamicResource Theme.ItemTitle}"/>
-            </Border>
-        </StackPanel>
+                <Button Classes="nav-item"
+                        Classes.nav-selected="{Binding IsFileSearchSelected}"
+                        Command="{Binding SelectFileSearchCommand}"
+                        Content="File Search"/>
 
-        <!-- Bottom hint -->
-        <TextBlock Text="Settings are saved automatically."
-                   Foreground="{DynamicResource Theme.FooterText}"
-                   FontSize="{DynamicResource Theme.FontSizeSmall}"
-                   HorizontalAlignment="Center"
-                   Margin="0,4,0,0"/>
+                <Button Classes="nav-item"
+                        Classes.nav-selected="{Binding IsCalculatorSelected}"
+                        Command="{Binding SelectCalculatorCommand}"
+                        Content="Calculator"/>
 
-    </StackPanel>
+                <Button Classes="nav-item"
+                        Classes.nav-selected="{Binding IsClipboardSelected}"
+                        Command="{Binding SelectClipboardCommand}"
+                        Content="Clipboard"/>
+
+                <Button Classes="nav-item"
+                        Classes.nav-selected="{Binding IsEmojiSelected}"
+                        Command="{Binding SelectEmojiCommand}"
+                        Content="Emoji"/>
+
+            </StackPanel>
+        </Border>
+
+        <!-- ── Vertical divider ────────────────────────────────────────────── -->
+        <Rectangle Grid.Column="1" Fill="{DynamicResource Theme.Divider}"/>
+
+        <!-- ── Content panels ──────────────────────────────────────────────── -->
+        <ScrollViewer Grid.Column="2">
+            <Panel Margin="28,24">
+
+                <!-- General -->
+                <StackPanel Spacing="20" IsVisible="{Binding IsGeneralSelected}">
+                    <TextBlock Classes="section-heading" Text="General"/>
+
+                    <!-- Theme -->
+                    <StackPanel Spacing="0">
+                        <TextBlock Classes="label" Text="THEME"/>
+                        <ComboBox ItemsSource="{Binding Themes}"
+                                  SelectedItem="{Binding SelectedTheme}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="svc:ThemeOption">
+                                    <TextBlock Text="{Binding DisplayName}"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+
+                    <!-- Global Hotkey -->
+                    <StackPanel Spacing="0">
+                        <TextBlock Classes="label" Text="GLOBAL HOTKEY"/>
+                        <Border Classes="hotkey-field"
+                                Classes.capturing="{Binding IsCapturingHotkey}"
+                                PointerPressed="OnHotkeyAreaPointerPressed">
+                            <TextBlock Text="{Binding HotkeyDisplayText}"
+                                       Foreground="{DynamicResource Theme.ItemTitle}"/>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Terminal -->
+                    <StackPanel Spacing="0">
+                        <TextBlock Classes="label" Text="DEFAULT TERMINAL"/>
+                        <ComboBox ItemsSource="{Binding Terminals}"
+                                  SelectedItem="{Binding SelectedTerminal}"
+                                  PlaceholderText="No terminals found"/>
+                    </StackPanel>
+
+                    <TextBlock Text="Settings are saved automatically."
+                               Foreground="{DynamicResource Theme.FooterText}"
+                               FontSize="{DynamicResource Theme.FontSizeSmall}"
+                               HorizontalAlignment="Left"
+                               Margin="0,4,0,0"/>
+                </StackPanel>
+
+                <!-- App Search -->
+                <StackPanel Spacing="0" IsVisible="{Binding IsAppSearchSelected}">
+                    <TextBlock Classes="section-heading" Text="App Search"/>
+
+                    <TextBlock Classes="description"
+                               Text="Directories where Yottacast looks for applications."/>
+
+                    <ItemsControl ItemsSource="{Binding AppDirectories}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="sys:String">
+                                <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                                    <TextBlock Grid.Column="0"
+                                               Text="{Binding}"
+                                               Foreground="{DynamicResource Theme.ItemTitle}"
+                                               TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center"/>
+                                    <Button Grid.Column="1"
+                                            Classes="remove-btn"
+                                            Content="✕"
+                                            Tag="{Binding}"
+                                            Click="OnRemoveAppDirectoryClicked"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Button Classes="add-btn"
+                            Content="+ Add Directory"
+                            Click="OnAddAppDirectoryClicked"/>
+                </StackPanel>
+
+                <!-- Internet Search -->
+                <StackPanel Spacing="20" IsVisible="{Binding IsInternetSearchSelected}">
+                    <TextBlock Classes="section-heading" Text="Internet Search"/>
+
+                    <StackPanel Spacing="0">
+                        <TextBlock Classes="label" Text="DEFAULT BROWSER"/>
+                        <ComboBox ItemsSource="{Binding Browsers}"
+                                  SelectedItem="{Binding SelectedBrowser}"
+                                  PlaceholderText="No browsers found"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- File Search -->
+                <StackPanel Spacing="0" IsVisible="{Binding IsFileSearchSelected}">
+                    <TextBlock Classes="section-heading" Text="File Search"/>
+
+                    <TextBlock Classes="description"
+                               Text="Folders where Yottacast searches for documents and files."/>
+
+                    <ItemsControl ItemsSource="{Binding SearchFolders}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="sys:String">
+                                <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                                    <TextBlock Grid.Column="0"
+                                               Text="{Binding}"
+                                               Foreground="{DynamicResource Theme.ItemTitle}"
+                                               TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center"/>
+                                    <Button Grid.Column="1"
+                                            Classes="remove-btn"
+                                            Content="✕"
+                                            Tag="{Binding}"
+                                            Click="OnRemoveSearchFolderClicked"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Button Classes="add-btn"
+                            Content="+ Add Folder"
+                            Click="OnAddSearchFolderClicked"/>
+                </StackPanel>
+
+                <!-- Calculator -->
+                <StackPanel Spacing="16" IsVisible="{Binding IsCalculatorSelected}">
+                    <TextBlock Classes="section-heading" Text="Calculator"/>
+                    <TextBlock Classes="description"
+                               Text="Evaluate math expressions and unit conversions directly in the search bar."/>
+                    <ToggleSwitch IsChecked="{Binding EnableCalculator}"
+                                  OnContent="Enabled"
+                                  OffContent="Disabled"/>
+                </StackPanel>
+
+                <!-- Clipboard -->
+                <StackPanel Spacing="16" IsVisible="{Binding IsClipboardSelected}">
+                    <TextBlock Classes="section-heading" Text="Clipboard"/>
+                    <TextBlock Classes="description"
+                               Text="Access your clipboard history from the search bar."/>
+                    <ToggleSwitch IsChecked="{Binding EnableClipboard}"
+                                  OnContent="Enabled"
+                                  OffContent="Disabled"/>
+                </StackPanel>
+
+                <!-- Emoji -->
+                <StackPanel Spacing="16" IsVisible="{Binding IsEmojiSelected}">
+                    <TextBlock Classes="section-heading" Text="Emoji"/>
+                    <TextBlock Classes="description"
+                               Text="Search and copy emoji from the search bar."/>
+                    <ToggleSwitch IsChecked="{Binding EnableEmoji}"
+                                  OnContent="Enabled"
+                                  OffContent="Disabled"/>
+                </StackPanel>
+
+            </Panel>
+        </ScrollViewer>
+
+    </Grid>
 
 </Window>

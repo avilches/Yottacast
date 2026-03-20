@@ -86,9 +86,11 @@ public partial class App : Application {
         }
         var appSearch = _services.GetRequiredService<ApplicationSearch>();
         await appSearch.WhenReady();
-        _settingsWindow = new SettingsWindow {
-            DataContext = _services.GetRequiredService<SettingsWindowViewModel>(),
-        };
+        // SettingsWindow is never destroyed (OnClosing cancels close and hides instead),
+        // so reuse it with a fresh ViewModel each time.
+        if (_settingsWindow == null)
+            _settingsWindow = new SettingsWindow();
+        _settingsWindow.DataContext = _services.GetRequiredService<SettingsWindowViewModel>();
         _settingsWindow.Show();
     }
 
@@ -125,6 +127,7 @@ public partial class App : Application {
         services.AddSingleton<ClipboardService>();
         services.AddSingleton<MathJsEngine>();
         services.AddSingleton<CalculatorSearch>();
+        services.AddSingleton<EmojiSearch>();
 
         // Register ISearchSource implementations.
         services.AddSingleton<UserDocumentSearch>();
@@ -132,6 +135,7 @@ public partial class App : Application {
         services.AddSingleton<ISearchSource>(sp => sp.GetRequiredService<ApplicationSearch>());
         services.AddSingleton<ISearchSource>(sp => sp.GetRequiredService<UserDocumentSearch>());
         services.AddSingleton<ISearchSource>(sp => sp.GetRequiredService<CalculatorSearch>());
+        services.AddSingleton<ISearchSource>(sp => sp.GetRequiredService<EmojiSearch>());
         // services.AddSingleton<ISearchSource>(sp => sp.GetRequiredService<RandomSearch>());
 
         services.AddSingleton<GlobalSearch>();

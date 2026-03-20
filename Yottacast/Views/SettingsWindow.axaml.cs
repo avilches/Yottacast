@@ -1,5 +1,8 @@
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
+using System.Threading.Tasks;
 using Yottacast.Services;
 using Yottacast.ViewModels;
 
@@ -19,11 +22,18 @@ public partial class SettingsWindow : Window {
         }
         var (closeMods, closeKey) = AppHandler.Instance.CloseWindowShortcut;
         if (e.Key == closeKey && e.KeyModifiers == closeMods) {
-            Close();
+            Hide();
             e.Handled = true;
             return;
         }
         base.OnKeyDown(e);
+    }
+
+    // Cancel any native close (e.g. macOS performClose: from NSMenu) and hide instead.
+    // SettingsWindow is kept alive in memory so no "last window closed" event is ever fired.
+    protected override void OnClosing(WindowClosingEventArgs e) {
+        e.Cancel = true;
+        Hide();
     }
 
     // Click on the hotkey border → start capture; e.Handled stops bubbling to the window handler below
@@ -37,5 +47,34 @@ public partial class SettingsWindow : Window {
         if (DataContext is SettingsWindowViewModel { IsCapturingHotkey: true } vm)
             vm.CancelHotkeyCapture();
         base.OnPointerPressed(e);
+    }
+
+    // ── Folder picker ─────────────────────────────────────────────────────────
+    private async Task<string?> PickFolderAsync() {
+        var results = await StorageProvider.OpenFolderPickerAsync(
+            new FolderPickerOpenOptions { Title = "Select Folder", AllowMultiple = false });
+        return results.Count > 0 ? results[0].TryGetLocalPath() : null;
+    }
+
+    private async void OnAddSearchFolderClicked(object? sender, RoutedEventArgs e) {
+        var path = await PickFolderAsync();
+        if (path != null && DataContext is SettingsWindowViewModel vm)
+            vm.AddSearchFolder(path);
+    }
+
+    private async void OnAddAppDirectoryClicked(object? sender, RoutedEventArgs e) {
+        var path = await PickFolderAsync();
+        if (path != null && DataContext is SettingsWindowViewModel vm)
+            vm.AddAppDirectory(path);
+    }
+
+    private void OnRemoveSearchFolderClicked(object? sender, RoutedEventArgs e) {
+        if (sender is Button { Tag: string path } && DataContext is SettingsWindowViewModel vm)
+            vm.RemoveSearchFolder(path);
+    }
+
+    private void OnRemoveAppDirectoryClicked(object? sender, RoutedEventArgs e) {
+        if (sender is Button { Tag: string path } && DataContext is SettingsWindowViewModel vm)
+            vm.RemoveAppDirectory(path);
     }
 }

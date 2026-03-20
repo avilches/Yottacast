@@ -72,11 +72,14 @@ public partial class MainWindow : Window {
                 break;
 
             case Key.Return:
-                if (vm.SelectedResult?.OnActivate is { } action)
-                {
+                if (vm.SelectedResult is { OnActivate: { } action } result) {
                     action();
                     vm.SearchText = "";
                     Hide();
+                    if (result.PasteAfterActivate) {
+                        AppHandler.Instance.OnHide();
+                        _ = AppHandler.Instance.SimulatePasteAsync();
+                    }
                 }
                 e.Handled = true;
                 break;

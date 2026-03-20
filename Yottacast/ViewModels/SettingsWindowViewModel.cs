@@ -1,14 +1,49 @@
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.Linq;
 using Avalonia.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Yottacast.Core.Platform;
 using Yottacast.Core.Services;
 using Yottacast.Services;
 
 namespace Yottacast.ViewModels;
 
+public enum SettingsSection {
+    General, AppSearch, InternetSearch, FileSearch, Calculator, Clipboard, Emoji
+}
+
 public partial class SettingsWindowViewModel : ViewModelBase {
+    // ── Section navigation ───────────────────────────────────────────────────
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsGeneralSelected))]
+    [NotifyPropertyChangedFor(nameof(IsAppSearchSelected))]
+    [NotifyPropertyChangedFor(nameof(IsInternetSearchSelected))]
+    [NotifyPropertyChangedFor(nameof(IsFileSearchSelected))]
+    [NotifyPropertyChangedFor(nameof(IsCalculatorSelected))]
+    [NotifyPropertyChangedFor(nameof(IsClipboardSelected))]
+    [NotifyPropertyChangedFor(nameof(IsEmojiSelected))]
+    private SettingsSection _selectedSection = SettingsSection.General;
+
+    public bool IsGeneralSelected        => SelectedSection == SettingsSection.General;
+    public bool IsAppSearchSelected      => SelectedSection == SettingsSection.AppSearch;
+    public bool IsInternetSearchSelected => SelectedSection == SettingsSection.InternetSearch;
+    public bool IsFileSearchSelected     => SelectedSection == SettingsSection.FileSearch;
+    public bool IsCalculatorSelected     => SelectedSection == SettingsSection.Calculator;
+    public bool IsClipboardSelected      => SelectedSection == SettingsSection.Clipboard;
+    public bool IsEmojiSelected          => SelectedSection == SettingsSection.Emoji;
+
+    [RelayCommand] private void SelectGeneral()        => SelectedSection = SettingsSection.General;
+    [RelayCommand] private void SelectAppSearch()      => SelectedSection = SettingsSection.AppSearch;
+    [RelayCommand] private void SelectInternetSearch() => SelectedSection = SettingsSection.InternetSearch;
+    [RelayCommand] private void SelectFileSearch()     => SelectedSection = SettingsSection.FileSearch;
+    [RelayCommand] private void SelectCalculator()     => SelectedSection = SettingsSection.Calculator;
+    [RelayCommand] private void SelectClipboard()      => SelectedSection = SettingsSection.Clipboard;
+    [RelayCommand] private void SelectEmoji()          => SelectedSection = SettingsSection.Emoji;
+
+    // ── General section ──────────────────────────────────────────────────────
     [ObservableProperty] private string? _selectedBrowser;
     [ObservableProperty] private string? _selectedTerminal;
     [ObservableProperty] private ThemeOption? _selectedTheme;
@@ -19,6 +54,20 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     public IReadOnlyList<string> Terminals { get; }
     public IReadOnlyList<ThemeOption> Themes { get; }
 
+    // ── Folder lists ─────────────────────────────────────────────────────────
+    public ObservableCollection<string> SearchFolders  { get; }
+    public ObservableCollection<string> AppDirectories { get; }
+
+    // ── Feature toggles ──────────────────────────────────────────────────────
+    [ObservableProperty] private bool _enableCalculator;
+    [ObservableProperty] private bool _enableClipboard;
+    [ObservableProperty] private bool _enableEmoji;
+
+    partial void OnEnableCalculatorChanged(bool v) { _settings.EnableCalculator = v; _settings.Save(); }
+    partial void OnEnableClipboardChanged(bool v)  { _settings.EnableClipboard  = v; _settings.Save(); }
+    partial void OnEnableEmojiChanged(bool v)      { _settings.EnableEmoji      = v; _settings.Save(); }
+
+    // ── Infrastructure ───────────────────────────────────────────────────────
     private readonly UserSettings _settings;
     private readonly ThemeService _themeService;
 
@@ -27,7 +76,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         BrowserDiscovery browserDiscovery,
         TerminalDiscovery terminalDiscovery,
         ThemeService themeService) {
-        _settings = settings;
+        _settings    = settings;
         _themeService = themeService;
 
         Browsers  = browserDiscovery.Discover().Select(b => b.Name).ToList();
@@ -42,8 +91,32 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _selectedTerminal = Terminals.Contains(settings.Terminal) ? settings.Terminal : Terminals.FirstOrDefault();
         _selectedTheme    = Themes.FirstOrDefault(t => t.Id == settings.Theme) ?? Themes.FirstOrDefault();
         _hotkeyText       = settings.Hotkey;
+
+        _enableCalculator = settings.EnableCalculator;
+        _enableClipboard  = settings.EnableClipboard;
+        _enableEmoji      = settings.EnableEmoji;
+
+        SearchFolders  = new ObservableCollection<string>(settings.SearchFolders);
+        AppDirectories = new ObservableCollection<string>(settings.AppDirectories);
+
+        SearchFolders.CollectionChanged  += (_, _) => { settings.SearchFolders  = SearchFolders.ToList();  settings.Save(); };
+        AppDirectories.CollectionChanged += (_, _) => { settings.AppDirectories = AppDirectories.ToList(); settings.Save(); };
     }
 
+    // ── Folder mutators (called from code-behind) ─────────────────────────────
+    public void AddSearchFolder(string path) {
+        if (!SearchFolders.Contains(path)) SearchFolders.Add(path);
+    }
+
+    public void RemoveSearchFolder(string path) => SearchFolders.Remove(path);
+
+    public void AddAppDirectory(string path) {
+        if (!AppDirectories.Contains(path)) AppDirectories.Add(path);
+    }
+
+    public void RemoveAppDirectory(string path) => AppDirectories.Remove(path);
+
+    // ── Hotkey capture ────────────────────────────────────────────────────────
     public string HotkeyDisplayText => IsCapturingHotkey ? "Press keys\u2026" : HotkeyText;
 
     partial void OnIsCapturingHotkeyChanged(bool value) => OnPropertyChanged(nameof(HotkeyDisplayText));

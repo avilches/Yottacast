@@ -9,4 +9,9 @@ public class ResultItemViewModel
     public string Shortcut { get; init; } = "";
     public double Score { get; init; }
     public Action? OnActivate { get; init; }
+    /// <summary>
+    /// When true, the launcher hides, restores focus to the previous app, and simulates a paste (Cmd+V / Ctrl+V).
+    /// Used by EmojiSearch so the copied emoji is immediately pasted into the target app.
+    /// </summary>
+    public bool PasteAfterActivate { get; init; }
 }
