@@ -27,6 +27,8 @@ namespace Yottacast;
 public partial class App : Application {
     private IGlobalHook? _globalHook;
     private SettingsWindow? _settingsWindow;
+    // Updated on the UI thread; read on the SharpHook thread — volatile for safe cross-thread access.
+    private volatile bool _settingsWindowActive;
     private IServiceProvider _services = null!;
     public override void Initialize() {
         AvaloniaXamlLoader.Load(this);
@@ -88,9 +90,13 @@ public partial class App : Application {
         await appSearch.WhenReady();
         // SettingsWindow is never destroyed (OnClosing cancels close and hides instead),
         // so reuse it with a fresh ViewModel each time.
-        if (_settingsWindow == null)
+        if (_settingsWindow == null) {
             _settingsWindow = new SettingsWindow();
+            _settingsWindow.Activated   += (_, _) => _settingsWindowActive = true;
+            _settingsWindow.Deactivated += (_, _) => _settingsWindowActive = false;
+        }
         _settingsWindow.DataContext = _services.GetRequiredService<SettingsWindowViewModel>();
+        _settingsWindowActive = true;
         _settingsWindow.Show();
     }
 
@@ -127,7 +133,12 @@ public partial class App : Application {
         services.AddSingleton<ClipboardService>();
         services.AddSingleton<MathJsEngine>();
         services.AddSingleton<CalculatorSearch>();
-        services.AddSingleton<EmojiSearch>();
+        services.AddSingleton<EmojiDataLoader>();
+        services.AddSingleton<EmojiSearch>(sp => new EmojiSearch(
+            sp.GetRequiredService<ClipboardService>(),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Yottacast"),
+            sp.GetRequiredService<EmojiDataLoader>(),
+            sp.GetRequiredService<ILogger<EmojiSearch>>()));
 
         // Register ISearchSource implementations.
         services.AddSingleton<UserDocumentSearch>();
@@ -197,12 +208,27 @@ public partial class App : Application {
                 return;
             }
 
-            var hotkey = settings.ParsedHotkey;
             var mask   = e.RawEvent.Mask;
             var hasAlt   = mask.HasFlag(EventMask.LeftAlt)   || mask.HasFlag(EventMask.RightAlt);
             var hasCtrl  = mask.HasFlag(EventMask.LeftCtrl)  || mask.HasFlag(EventMask.RightCtrl);
             var hasShift = mask.HasFlag(EventMask.LeftShift) || mask.HasFlag(EventMask.RightShift);
             var hasMeta  = mask.HasFlag(EventMask.LeftMeta)  || mask.HasFlag(EventMask.RightMeta);
+
+            // On macOS, NSMenu intercepts Command key presses before Avalonia sees them and
+            // dispatches performClose: when Cmd+W is pressed. The OnClosing e.Cancel workaround
+            // does not propagate to the native layer in Avalonia 11.3.12, causing the app to crash.
+            // Suppress all Meta (Command) key events at the SharpHook level (before NSMenu) when
+            // SettingsWindow is active, and handle Cmd+W ourselves.
+            if (OperatingSystem.IsMacOS() && _settingsWindowActive &&
+                (e.Data.KeyCode == KeyCode.VcLeftMeta || e.Data.KeyCode == KeyCode.VcRightMeta
+                 || (e.Data.KeyCode == KeyCode.VcW && hasMeta))) {
+                e.SuppressEvent = true;
+                if (e.Data.KeyCode == KeyCode.VcW && hasMeta)
+                    Dispatcher.UIThread.InvokeAsync(() => _settingsWindow?.Hide());
+                return;
+            }
+
+            var hotkey = settings.ParsedHotkey;
 
 
             if (e.Data.KeyCode == KeyNameToKeyCode(hotkey.KeyName)

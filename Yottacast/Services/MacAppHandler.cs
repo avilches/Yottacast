@@ -8,10 +8,7 @@ namespace Yottacast.Services;
 internal sealed class MacAppHandler : AppHandler {
     private IntPtr _previousApp = IntPtr.Zero;
 
-    // NSApplicationActivationPolicyAccessory = 1: no Dock icon, no menu bar.
-    // Clearing the main menu prevents NSApplication from intercepting window shortcuts
-    // (Cmd+W, Cmd+Q, etc.) before Avalonia sees them. Without this, macOS dispatches
-    // performClose: to NSWindow directly, bypassing all Avalonia event handling.
+    // NSApplicationActivationPolicyAccessory = 1: no Dock icon, no menu bar shown.
     public override void OnFrameworkInitializationCompleted() {
         var nsApp = ObjcMsgSend(ObjcGetClass("NSApplication"), SelRegisterName("sharedApplication"));
         ObjcMsgSendPolicy(nsApp, SelRegisterName("setActivationPolicy:"), 1);

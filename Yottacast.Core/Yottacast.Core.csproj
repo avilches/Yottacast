@@ -20,9 +20,21 @@
       Condition="!Exists('$(MSBuildThisFileDirectory)Scripts/math.min.js')" />
   </Target>
 
+  <!-- Download emoji data on first build if not already present -->
+  <!-- To update to a newer version: delete Resources/emoji-data.json and rebuild -->
+  <Target Name="DownloadEmojiData" BeforeTargets="BeforeBuild">
+    <MakeDir Directories="$(MSBuildThisFileDirectory)Resources" />
+    <Exec
+      Command="curl -fsSL https://raw.githubusercontent.com/iamcal/emoji-data/refs/heads/master/emoji.json -o &quot;$(MSBuildThisFileDirectory)Resources/emoji-data.json&quot;"
+      Condition="!Exists('$(MSBuildThisFileDirectory)Resources/emoji-data.json')" />
+  </Target>
+
   <ItemGroup>
     <EmbeddedResource Include="Scripts/math.min.js" Condition="Exists('Scripts/math.min.js')" />
-    <EmbeddedResource Include="Resources/emojis.json" />
+    <EmbeddedResource Include="Resources/emoji-data.json" Condition="Exists('Resources/emoji-data.json')" />
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>Yottacast.Core.Tests</_Parameter1>
+    </AssemblyAttribute>
   </ItemGroup>
 
 </Project>

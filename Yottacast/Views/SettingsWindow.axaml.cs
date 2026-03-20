@@ -13,6 +13,12 @@ public partial class SettingsWindow : Window {
         InitializeComponent();
     }
 
+    // Drag the window when the user presses on the custom title bar
+    private void OnTitleBarPointerPressed(object? sender, PointerPressedEventArgs e) {
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            BeginMoveDrag(e);
+    }
+
     // Intercept keyboard input while capturing a new hotkey combination
     protected override void OnKeyDown(KeyEventArgs e) {
         if (DataContext is SettingsWindowViewModel { IsCapturingHotkey: true } vm) {

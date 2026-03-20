@@ -9,6 +9,8 @@ It's a frameless, transparent dark-themed window where the user types to search 
 
 **Regla de código multiplataforma (UI)**: todo código OS-específico que dependa de Avalonia o de la capa de UI debe vivir en `Yottacast/Services/AppHandler` y sus subclases (`MacAppHandler`, `WindowsAppHandler`, `LinuxAppHandler`). El código de las Views y ViewModels no debe contener `OperatingSystem.IsMacOS()` ni similares; en su lugar, delega en `AppHandler.Instance`. La lógica OS-específica que no depende de UI (búsqueda de archivos, lanzar procesos, etc.) va en `Yottacast.Core/Platform/PlatformProvider` y sus subclases, para que sea reutilizable desde el CLI y los tests.
 
+**Regla de inyección de dependencias**: no usar clases `static` para lógica de negocio o servicios. Las clases estáticas no permiten inyectar `ILogger`, `IConfiguration` ni otros servicios, lo que imposibilita el logging y el testing. En su lugar, usar clases instanciables registradas en el contenedor DI. Los métodos `static` solo son aceptables para utilidades puras sin dependencias (helpers de conversión, parsers sin estado, etc.).
+
 **Regla de documentación**: los ficheros en `docs/` explican diseño, arquitectura y relaciones entre componentes. No duplican constantes concretas, listas completas de rutas, puntuaciones numéricas, patrones regex ni otros detalles de implementación que ya son legibles en el código; en su lugar, señalan dónde viven esos detalles (p. ej. "ver `ClassName.Method`" o "definido en `File.cs`"). Esto evita que la documentación quede desactualizada cuando cambian los valores. Los docs responden "¿cómo funciona esto?" y "¿dónde lo busco?", no "¿cuáles son los valores exactos?".
 
 ## Estructura de la solución
@@ -103,6 +105,7 @@ cd Yottacast.Core.Tests && dotnet test
 | `docs/search-sources.md` | ApplicationSearch, UserDocumentSearch, scoring detallado                       |
 | `docs/user-settings.md` | Campos, rutas, auto-reparación Browser/Terminal, EnsureIntegrity               |
 | `docs/calculator.md` | CalculatorSearch, MathJsEngine, ClipboardService                               |
+| `docs/emoji.md` | EmojiSearch, EmojiDataLoader, caché en disco, descarga iamcal/emoji-data       |
 | `docs/platform.md` | PlatformProvider, StandardCommandRunner, SharpHook (hotkey global de arranque) |
 | `docs/browser-terminal.md` | BrowserDiscovery, TerminalDiscovery, FileSearch, launch per-app                |
 | `docs/ui-themes-keyboard.md` | Themes, keyboard shortcuts, IsSearching/spinner                                |

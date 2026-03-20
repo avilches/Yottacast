@@ -1,5 +1,5 @@
 using System.Runtime.CompilerServices;
-using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using Yottacast.Core.Services;
 using Yottacast.Core.ViewModels;
 
@@ -7,21 +7,25 @@ namespace Yottacast.Core.Search;
 
 /// <summary>
 /// Instant search source activated by queries starting with ':'.
-/// Typing ':' shows 6 popular default emojis; typing ':smile' filters by name/keyword.
+/// Typing ':' shows the 6 emojis with the lowest Unicode sort_order; typing ':smile' filters by name/keyword.
+/// Emoji data is loaded from the embedded resource; a compact cache is written to cacheDir for fast startups.
 /// Activating a result copies the emoji character to the clipboard.
 /// </summary>
-public class EmojiSearch(ClipboardService clipboard) : ISearchSource {
+public class EmojiSearch(ClipboardService clipboard, string cacheDir, EmojiDataLoader dataLoader, ILogger<EmojiSearch> logger) : ISearchSource {
 
-    private record EmojiEntry(string Char, string Name, string[] Keywords);
-
-    private static readonly Lazy<IReadOnlyList<EmojiEntry>> Entries = new(LoadEmojis);
-
-    // 6 emojis shown when only ":" is typed (no search term yet)
-    private static readonly string[] Defaults = ["😀", "❤️", "👍", "🎉", "🔥", "✨"];
+    private Task<IReadOnlyList<EmojiEntry>>? _loadTask;
+    private volatile IReadOnlyList<EmojiEntry> _entries = [];
 
     public bool IsInstant => true;
-    public void Start() { }
-    public Task WhenReady() => Task.CompletedTask;
+
+    public void Start() {
+        _loadTask = Task.Run(() => dataLoader.LoadAsync(cacheDir));
+        _ = _loadTask.ContinueWith(
+            t => { if (!t.IsFaulted) _entries = t.Result; },
+            TaskScheduler.Default);
+    }
+
+    public Task WhenReady() => _loadTask ?? Task.CompletedTask;
     public Task Stop() => Task.CompletedTask;
 
     public async IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>> SearchAsync(
@@ -40,14 +44,15 @@ public class EmojiSearch(ClipboardService clipboard) : ISearchSource {
     }
 
     private IReadOnlyList<ResultItemViewModel> GetDefaultResults() =>
-        Defaults
-            .Select(c => Entries.Value.FirstOrDefault(e => e.Char == c))
-            .OfType<EmojiEntry>()
+        _entries
+            .Where(e => e.SortOrder > 0)
+            .OrderBy(e => e.SortOrder)
+            .Take(6)
             .Select(e => MakeResult(e, 3.5))
             .ToList();
 
     private IReadOnlyList<ResultItemViewModel> FilterEmojis(string term, int limit) =>
-        Entries.Value
+        _entries
             .Select(e => (entry: e, score: MatchScore(e, term)))
             .Where(x => x.score > 0)
             .OrderByDescending(x => x.score)
@@ -76,17 +81,5 @@ public class EmojiSearch(ClipboardService clipboard) : ISearchSource {
         if (e.Keywords.Any(k => k.StartsWith(term, StringComparison.OrdinalIgnoreCase))) return 2;
         if (e.Keywords.Any(k => k.Contains(term, StringComparison.OrdinalIgnoreCase))) return 1;
         return 0;
-    }
-
-    private static IReadOnlyList<EmojiEntry> LoadEmojis() {
-        using var stream = typeof(EmojiSearch).Assembly
-            .GetManifestResourceStream("Yottacast.Core.Resources.emojis.json")!;
-        using var doc = JsonDocument.Parse(stream);
-        return doc.RootElement.EnumerateArray()
-            .Select(item => new EmojiEntry(
-                item[0].GetString()!,
-                item[1].GetString()!,
-                item[2].GetString()!.Split(',')))
-            .ToList();
     }
 }

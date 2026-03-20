@@ -12,15 +12,9 @@ namespace Yottacast.Services;
 
 public record ThemeOption(string Id, string DisplayName);
 
-public sealed class ThemeService {
-    private readonly ILogger<ThemeService> _logger;
-
+public sealed class ThemeService(ILogger<ThemeService> logger) {
     private static string ThemesFolder =>
         Path.Combine(AppContext.BaseDirectory, "Themes");
-
-    public ThemeService(ILogger<ThemeService> logger) {
-        _logger = logger;
-    }
 
     public IReadOnlyList<ThemeOption> AvailableThemes() {
         var themes = new List<ThemeOption>();
@@ -37,7 +31,7 @@ public sealed class ThemeService {
                 }
             }
         } catch (Exception ex) {
-            _logger.LogWarning("Could not load themes: {Message}", ex.Message);
+            logger.LogWarning("Could not load themes: {Message}", ex.Message);
         }
 
         if (themes.Count == 0)
@@ -50,7 +44,7 @@ public sealed class ThemeService {
         try {
             var themePath = Path.Combine(ThemesFolder, $"{themeName}.json");
             if (!File.Exists(themePath)) {
-                _logger.LogWarning("Theme file not found: {Path}, using built-in default", themePath);
+                logger.LogWarning("Theme file not found: {Path}, using built-in default", themePath);
                 ApplyBuiltinDefault();
                 return;
             }
@@ -113,9 +107,9 @@ public sealed class ThemeService {
                 SetDouble(app, "Theme.WindowWidth",                layout["windowWidth"]);
             }
 
-            _logger.LogInformation("Theme applied: {ThemeName}", json["name"]?.GetValue<string>() ?? themeName);
+            logger.LogInformation("Theme applied: {ThemeName}", json["name"]?.GetValue<string>() ?? themeName);
         } catch (Exception ex) {
-            _logger.LogWarning("Theme error applying '{ThemeName}': {Message}", themeName, ex.Message);
+            logger.LogWarning("Theme error applying '{ThemeName}': {Message}", themeName, ex.Message);
             ApplyBuiltinDefault();
         }
     }
@@ -123,7 +117,7 @@ public sealed class ThemeService {
     // Hardcoded fallback — mirrors dark-default.json so the app never fails to start.
     public void ApplyBuiltinDefault() {
         if (Application.Current is not { } app) return;
-        _logger.LogInformation("Theme applying built-in default");
+        logger.LogInformation("Theme applying built-in default");
 
         app.RequestedThemeVariant = ThemeVariant.Dark;
 
