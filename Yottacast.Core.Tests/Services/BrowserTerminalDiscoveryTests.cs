@@ -515,34 +515,26 @@ public class BrowserTerminalDiscoveryTests : IDisposable {
 /// KnownBrowserNames / KnownTerminalNames are derived from the keys of the provided dictionaries,
 /// preserving insertion order.
 /// </summary>
-internal sealed class BrowserTerminalFakePlatform : FakePlatformProvider {
-    private readonly Dictionary<string, string[]> _browsers;
-    private readonly Dictionary<string, string[]> _terminals;
-    private readonly Dictionary<string, string[]> _browserFallback;
-    private readonly Dictionary<string, string[]> _terminalFallback;
+internal sealed class BrowserTerminalFakePlatform(
+    Dictionary<string, string[]> browsers,
+    Dictionary<string, string[]> terminals,
+    Dictionary<string, string[]>? browserFallbackPaths = null,
+    Dictionary<string, string[]>? terminalFallbackPaths = null)
+    : FakePlatformProvider([]) {
+    private readonly Dictionary<string, string[]> _browserFallback = browserFallbackPaths  ?? new();
+    private readonly Dictionary<string, string[]> _terminalFallback = terminalFallbackPaths ?? new();
 
-    public BrowserTerminalFakePlatform(
-        Dictionary<string, string[]> browsers,
-        Dictionary<string, string[]> terminals,
-        Dictionary<string, string[]>? browserFallbackPaths  = null,
-        Dictionary<string, string[]>? terminalFallbackPaths = null) : base([]) {
-        _browsers        = browsers;
-        _terminals       = terminals;
-        _browserFallback = browserFallbackPaths  ?? new();
-        _terminalFallback = terminalFallbackPaths ?? new();
-    }
-
-    public override string[] KnownBrowserNames  => [.. _browsers.Keys];
-    public override string[] KnownTerminalNames => [.. _terminals.Keys];
+    public override string[] KnownBrowserNames  => [.. browsers.Keys];
+    public override string[] KnownTerminalNames => [.. terminals.Keys];
 
     public override IReadOnlyDictionary<string, string[]> BrowserFallbackPaths  => _browserFallback;
     public override IReadOnlyDictionary<string, string[]> TerminalFallbackPaths => _terminalFallback;
 
     public override string[] GetBrowserPaths(string name)  =>
-        _browsers.TryGetValue(name, out var p)  ? p : [];
+        browsers.TryGetValue(name, out var p)  ? p : [];
 
     public override string[] GetTerminalPaths(string name) =>
-        _terminals.TryGetValue(name, out var p) ? p : [];
+        terminals.TryGetValue(name, out var p) ? p : [];
 }
 
 /// <summary>
