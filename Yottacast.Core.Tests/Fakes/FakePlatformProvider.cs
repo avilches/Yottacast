@@ -6,8 +6,9 @@ namespace Yottacast.Core.Tests.Fakes;
 /// <summary>
 /// Minimal PlatformProvider for tests. SearchFilesAsync emits the provided FileResults
 /// regardless of query or folders — callers control exactly what "the platform found".
+/// Members that subclasses may need to override are declared virtual.
 /// </summary>
-internal sealed class FakePlatformProvider(IReadOnlyList<FileResult> files) : PlatformProvider {
+internal class FakePlatformProvider(IReadOnlyList<FileResult> files) : PlatformProvider {
     public override bool? IsSystemDarkMode() => null;
     public override List<string> DefaultAppDirectories() => [];
     public override List<string> DefaultSearchFolders() => [];

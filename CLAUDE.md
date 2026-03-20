@@ -24,17 +24,21 @@ Yottacast.sln
 ```
 ├── Views/
 │   ├── MainWindow.axaml/.cs            ← Ventana frameless; teclado: ESC, ↑↓, Enter, ⌘,
-│   ├── SettingsWindow.axaml/.cs        ← Preferencias (decorada, no frameless)
-│   └── ViewLocator.cs
+│   └── SettingsWindow.axaml/.cs        ← Preferencias (decorada, no frameless)
 ├── ViewModels/
 │   ├── MainWindowViewModel.cs          ← Búsqueda con debounce, resultado inmediato Google
 │   └── SettingsWindowViewModel.cs      ← Browser, terminal, theme pickers
 ├── Services/
-│   └── ThemeService.cs                 ← Aplica tema JSON en runtime
+│   ├── ThemeService.cs                 ← Aplica tema JSON en runtime
+│   ├── AppHandler.cs                   ← abstract base: OnStart(), OnShow(), OnHide(); Instance singleton
+│   ├── MacAppHandler.cs                ← macOS: política de activación (sin Dock), captura/restaura foco via ObjC P/Invoke
+│   ├── WindowsAppHandler.cs            ← Windows
+│   └── LinuxAppHandler.cs              ← Linux
 ├── Themes/
 │   ├── dark-default.json / dark-raycast.json / dark-macos.json
 │   ├── light-blue.json / light-gray.json
 │   └── settings.json                   ← Tema activo: { "theme": "dark-default" }
+├── ViewLocator.cs
 └── App.axaml / App.axaml.cs            ← DI, hotkey global, singleton SettingsWindow
 ```
 
@@ -45,26 +49,26 @@ Yottacast.sln
 │   ├── PlatformProvider.cs             ← abstract base: todo el código OS-específico
 │   ├── MacOsPlatformProvider.cs        ← implementación macOS
 │   ├── WindowsPlatformProvider.cs      ← implementación Windows
-│   └── LinuxPlatformProvider.cs        ← implementación Linux
+│   ├── LinuxPlatformProvider.cs        ← implementación Linux
+│   └── SpotlightInterop.cs             ← P/Invoke wrapper CoreServices MDQuery (Spotlight); síncrono, bloquea el hilo llamante
 ├── Process/
 │   ├── StandardCommandRunner.cs        ← public: Process.RedirectStandardOutput; único runner disponible
 │   └── ProcessResult.cs                ← (Elapsed, ExitCode, Cancelled, Error?)
 ├── Search/
-│   ├── ISearchSource.cs                ← Interfaz: Start() void, Ready() Task, Stop(), SearchAsync → IAsyncEnumerable
+│   ├── ISearchSource.cs                ← Interfaz: Start() void, WhenReady() Task, Stop(), SearchAsync → IAsyncEnumerable
 │   ├── GlobalSearch.cs                 ← Agrega ISearchSource[], merge streaming vía Channel
 │   ├── AppInfo.cs + ApplicationSearch.cs  ← ISearchSource: caché en memoria de apps
 │   ├── UserDocumentSearch.cs           ← ISearchSource: delega en FileSearch (streaming)
-│   ├── MathJsEngine.cs                 ← Singleton: Jint + math.js 11.x (embedded resource); init en background
-│   ├── CalculatorSearch.cs             ← ISearchSource instant: evalúa expresiones math vía MathJsEngine
-│   └── UnitConverterSearch.cs          ← ISearchSource instant: convierte unidades ("10 kg to lbs")
+│   ├── NameMatcher.cs                  ← Lógica de scoring CamelHump/prefix/substring para ApplicationSearch
+│   ├── CalculatorSearch.cs             ← ISearchSource instant: evalúa expresiones math y conversiones de unidades vía MathJsEngine
+│   └── RandomSearch.cs                 ← ISearchSource fake para tests de la pipeline streaming; emite resultados con delay
 ├── Services/
 │   ├── FileSearch.cs                   ← Instancia que delega en PlatformProvider.SearchFilesAsync
 │   ├── UserSettings.cs                 ← Config persistida en JSON
 │   ├── BrowserDiscovery.cs             ← Detecta navegadores; OpenUrl() delega en PlatformProvider
-│   └── TerminalDiscovery.cs            ← Detecta terminales; ExecuteCommand() delega en PlatformProvider
-├── Services/
-│   ├── ...
-│   └── ClipboardService.cs             ← Bridge Core→Avalonia; Initialize() wired in App.axaml.cs
+│   ├── TerminalDiscovery.cs            ← Detecta terminales; ExecuteCommand() delega en PlatformProvider
+│   ├── ClipboardService.cs             ← Bridge Core→Avalonia; Initialize() wired in App.axaml.cs
+│   └── MathJsEngine.cs                 ← Singleton: Jint + math.js 11.x (embedded resource); init en background
 └── ViewModels/
     ├── ResultItemViewModel.cs           ← (Icon, Title, Subtitle, Category, Score, OnActivate)
     └── ViewModelBase.cs                 ← ObservableObject (CommunityToolkit.Mvvm)
@@ -108,15 +112,15 @@ El arranque no bloquea en el paso 4. La ventana ya es interactiva y el usuario p
 
 - **`ApplicationSearch.Start()`** — la única con trabajo real. Llama `ScanAndWatchAsync()` como fire-and-forget, que:
   1. `await platform.ScanAppsAsync(...)` — escaneo inicial (macOS: mdfind; Windows/Linux: scan de directorios)
-  2. Señala `Ready()` al terminar el scan
+  2. Completa la task `WhenReady()` al terminar el scan
   3. Instala `FileSystemWatcher`s vía `platform.CreateAppWatchers(...)`
-- **`UserDocumentSearch.Start()`** — no-op. `Ready()` retorna `Task.CompletedTask` inmediatamente.
+- **`UserDocumentSearch.Start()`** — no-op. `WhenReady()` retorna `Task.CompletedTask` inmediatamente.
 
-**`Ready()`** — `ISearchSource` expone `Task Ready()` que se completa cuando el scan inicial ha terminado y el caché está poblado. `GlobalSearch.Ready()` hace `Task.WhenAll` sobre todos los sources.
+**`WhenReady()`** — `ISearchSource` expone `Task WhenReady()` que se completa cuando el scan inicial ha terminado y el caché está poblado. `GlobalSearch.WhenReady()` hace `Task.WhenAll` sobre todos los sources.
 
-**Consecuencia para búsquedas**: hasta que `Ready()` complete en macOS, `SearchAsync` de `ApplicationSearch` devuelve vacío. La UI es interactiva desde el arranque; simplemente no hay apps en los resultados hasta que mdfind acaba.
+**Consecuencia para búsquedas**: hasta que `WhenReady()` complete en macOS, `SearchAsync` de `ApplicationSearch` devuelve vacío. La UI es interactiva desde el arranque; simplemente no hay apps en los resultados hasta que mdfind acaba.
 
-**Consecuencia para Settings**: `App.OpenSettings()` es `async void` y hace `await applicationSearch.Ready()` antes de crear `SettingsWindowViewModel`. Esto garantiza que `BrowserDiscovery.Discover()` y `TerminalDiscovery.Discover()` (llamados en el constructor del ViewModel) ya tienen el caché poblado. Si el caché ya está listo (usuario abre Settings tarde), el await es instantáneo.
+**Consecuencia para Settings**: `App.OpenSettings()` es `async void` y hace `await applicationSearch.WhenReady()` antes de crear `SettingsWindowViewModel`. Esto garantiza que `BrowserDiscovery.Discover()` y `TerminalDiscovery.Discover()` (llamados en el constructor del ViewModel) ya tienen el caché poblado. Si el caché ya está listo (usuario abre Settings tarde), el await es instantáneo.
 
 `UserSettings.Load(platform)` carga (o crea) el JSON y siempre hace `Save()` al final. La validación de Browser/Terminal no ocurre en el arranque; `UserSettings` se auto-repara en el momento de uso, cuando se accede a `ActiveBrowser` / `ActiveTerminal` (ver `EnsureIntegrity` abajo).
 
@@ -159,7 +163,7 @@ OnSearchTextChanged → cancela CTS anterior
 `ISearchSource.SearchAsync` devuelve `IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>>`: cada yield es un snapshot completo (los mejores N ordenados), no un item individual. Esto permite **reemplazar** en lugar de **acumular**:
 
 - `ApplicationSearch` → emite un único snapshot con todas las apps coincidentes
-- `UserDocumentSearch` → emite snapshots progresivos cada `SnapshotEvery=10` resultados y uno final
+- `UserDocumentSearch` → emite snapshots progresivos con throttling por tiempo (`SnapshotIntervalMs=200ms`) y uno final
 - `GlobalSearch` → mantiene un array `snapshots[sourceIndex]`; cada nuevo snapshot reemplaza su slot y se emite la unión ordenada
 - `MainWindowViewModel` → mantiene `_instantSnapshot` y `_deferredSnapshot`; `RefreshResults()` los fusiona en cada actualización
 
@@ -170,7 +174,7 @@ OnSearchTextChanged → cancela CTS anterior
 2. **Iniciales** (Score = 1.0): las iniciales de todos los tokens empiezan por el query. "AM" → "Activity Monitor", "MON" → "Microsoft OneNote" (M=Microsoft, O=One, N=Note del CamelCase).
 3. **Substring interno** (Score = 0.25): el nombre contiene el query (solo para queries ≥ 2 letras). "ari" → "Safari".
 
-El resultado de Google (`MakeGoogleItem`) asigna `Score = 1`.
+El resultado de Google (`MakeGoogleItem`) asigna `Score = 3`.
 
 `UserDocumentSearch` puntúa cada candidato antes de ordenar. Para **queries con wildcard** (`*`) todos los resultados puntúan 0.5 (base). Para **queries sin wildcard**, distingue dos modos:
 
@@ -218,7 +222,7 @@ La búsqueda es substring case-insensitive sobre el nombre de la app (ej. "saf" 
 
 Evento `AppAdded` notifica cuando se detecta una app nueva (disponible para suscriptores externos; actualmente ningún componente lo consume).
 
-**Cambio de AppDirectories en settings**: `ApplicationSearch.ReloadAppDirectories()` hace `Stop()` + `Start()` limpiando el caché (`_apps.Clear()` en `Stop()`). `SettingsWindowViewModel` tiene `ApplicationSearch` inyectado — cuando se añada UI para `AppDirectories`, llamar `_applicationSearch.ReloadAppDirectories()`.
+**Cambio de AppDirectories en settings** ⚠️ TODO: `ReloadAppDirectories()` no está implementado. `SettingsWindowViewModel` tiene `ApplicationSearch` inyectado — cuando se añada UI para `AppDirectories`, implementar `ReloadAppDirectories()` que haga `Stop()` + `Start()` limpiando el caché.
 
 ### UserDocumentSearch (búsqueda de documentos)
 
@@ -239,12 +243,10 @@ El `OperationCanceledException` de cualquiera de las dos condiciones se captura 
 
 No hay cap de líneas (`maxResults: int.MaxValue`): el timeout y el early exit son los únicos mecanismos de parada.
 
-**Por qué `Directory.Exists(r.Path)` en el callback**: determina si el resultado es directorio o archivo para asignar icono, categoría y bonus de score. Se llama síncronamente dentro del callback de `onResult`, por lo que es una syscall en cada resultado — no es costoso a la escala de resultados esperada.
-
 **Flujo completo**:
 ```
 mdfind emite línea → onResult callback → puntúa → añade al buffer
-                                        → cada 10 resultados → snapshot parcial al channel
+                   → cada 200ms (SnapshotIntervalMs) → snapshot parcial al channel
 cts.Token expira (timeoutMs) → OperationCanceledException → snapshot final → channel.Complete()
 MainWindowViewModel recibe snapshots → RefreshResults() en cada uno
 ```
@@ -269,7 +271,7 @@ Persiste en JSON. Todos los campos tienen defaults multiplataforma; nunca lanza 
 | `Terminal` | string | `""` |
 | `Theme` | string | `"dark-default"` |
 | `SearchFolders` | `List<string>` | Downloads, Desktop, Documents, Movies/Videos, Pictures |
-| `AppDirectories` | `List<string>` | `/Applications`, `$HOME/Applications` (macOS) / `Program Files` (Win) / `.desktop` dirs (Linux) |
+| `AppDirectories` | `List<string>` | `/Applications`, `$HOME/Applications`, `/System/Applications` (macOS) / `Program Files` (Win) / `.desktop` dirs (Linux) |
 
 **Browser/Terminal preferido**: el usuario elige entre los detectados por `BrowserDiscovery`/`TerminalDiscovery` (solo apps instaladas). Se muestra en `SettingsWindowViewModel`.
 
@@ -299,9 +301,9 @@ Persiste en JSON. Todos los campos tienen defaults multiplataforma; nunca lanza 
 
 ## Calculadora y conversor de unidades
 
-Implementados como dos `ISearchSource` instant: `CalculatorSearch` y `UnitConverterSearch`.
+Implementado como un único `ISearchSource` instant: `CalculatorSearch`. Maneja tanto expresiones matemáticas como conversiones de unidades.
 
-**Motor**: `MathJsEngine` — singleton que carga [math.js 11.12.0](https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.12.0/math.min.js) embebido en la DLL (embedded resource en `Yottacast.Core/Scripts/math.min.js`) dentro de un engine Jint 3.x. La inicialización se hace en un background thread; hasta que `IsReady` sea `true`, `Evaluate()` devuelve `null`.
+**Motor**: `MathJsEngine` — singleton que carga [math.js 11.12.0](https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.12.0/math.min.js) embebido en la DLL (embedded resource en `Yottacast.Core/Scripts/math.min.js`) dentro de un engine Jint 3.x. La inicialización se hace en un background thread; hasta que `WhenReady()` se complete, `Evaluate()` devuelve `null`.
 
 **math.js descargado en build**: el `.csproj` de Core incluye un target `DownloadMathJs` que ejecuta `curl` si el fichero no existe. El fichero se excluye del repositorio (`.gitignore`). El primer `dotnet build` lo descarga automáticamente.
 
@@ -310,13 +312,15 @@ Implementados como dos `ISearchSource` instant: `CalculatorSearch` y `UnitConver
 **Detección de expresiones** (`CalculatorSearch`):
 - Digit + operador/paréntesis en cualquier lado: `2+2`, `(3+4)*2`, `2^10`
 - Referencia a función math o constante: `sqrt(144)`, `sin(pi/2)`, `pi * r`
-- Las queries `N unit to unit` las detecta `UnitConverterSearch` y `CalculatorSearch` las ignora
+- Queries `N unit to unit` se detectan por regex y se evalúan como conversión; el resto como calculadora
 
-**Conversión de unidades** (`UnitConverterSearch`):
+**Conversión de unidades** (`CalculatorSearch`):
 - Formato: `NUMBER UNIT (to|in|en) UNIT`
 - math.js las evalúa nativamente: `10 kg to lbs`, `100 fahrenheit to celsius`, `5 miles to km`
 
 **Score = 4** → aparece antes que Google (Score=3) cuando la query es reconocida.
+
+**Activación**: al activar un resultado de calculadora/conversor se copia el resultado al portapapeles (`OnActivate = () => clipboard.CopyText(result)`).
 
 **Portapapeles** (`ClipboardService`): Core no depende de Avalonia. `App.axaml.cs` llama `clipboardService.Initialize(...)` una vez al arranque, pasando un delegate que usa `TopLevel.GetTopLevel(mainWindow)?.Clipboard`.
 
@@ -386,7 +390,7 @@ macOS terminal launch per app:
 - **Warp** → URL scheme `warp://action/new_tab?command=...`
 - **Resto** → genera `.command` temporal con `chmod +x` y lo abre con `open -a`
 
-Windows: PowerShell usa `-NoExit -Command`, CMD usa `/K`.
+Windows: PowerShell usa `-NoExit -Command`, CMD usa `/K`. Windows Terminal y Git Bash usan el caso por defecto (el comando se pasa directamente sin wrapper).
 
 ### FileSearch
 Clase instancia (no estática). Delega en `platform.SearchFilesAsync()`.
@@ -404,11 +408,11 @@ API: `fileSearch.SearchAsync(query, onResult, maxResults, searchFolders, ct)`.
 Los tipos están en `SharpHook.Data`, **no** en `SharpHook.Native`. El modificador de teclas es `EventMask`, **no** `ModifierMask`.
 
 ```csharp
-using SharpHook;       // TaskPoolGlobalHook
+using SharpHook;       // SimpleGlobalHook
 using SharpHook.Data;  // KeyCode, EventMask
 ```
 
-ALT+Space muestra/oculta la ventana.
+ALT+Space muestra/oculta la ventana. Se usa `SimpleGlobalHook` (no `TaskPoolGlobalHook`) porque necesita `e.SuppressEvent = true` para evitar que el OS reciba ALT+Space — con `TaskPoolGlobalHook` el handler corre en otro thread y la supresión no tiene efecto.
 
 ---
 
@@ -428,6 +432,8 @@ ALT+Space muestra/oculta la ventana.
 
 - **Raw string literals con variables PowerShell** — usar `$$"""..."""` en lugar de `$"""..."""` cuando el contenido tiene `$var`. Con `$$`, interpolación C# pasa a `{{expr}}` y los `$` sueltos son literales.
 - **Lazy icon en AppInfo** — usa `Lazy<T>` para diferir la lectura de `Info.plist` hasta el primer acceso al icono (evita parsear cientos de plists al arranque).
+- **`SimpleGlobalHook` requerido para supresión de eventos** — ver sección SharpHook. No sustituir por `TaskPoolGlobalHook`.
+- **Permiso Accessibility en macOS requerido para suprimir ALT+Space** — sin el permiso, el hook detecta la tecla pero no la suprime (llega también a la app activa). Se ignora silenciosamente sin error — puede ser confuso al depurar.
 
 ## Keyboard shortcuts (MainWindow)
 

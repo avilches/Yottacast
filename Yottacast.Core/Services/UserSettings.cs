@@ -8,10 +8,12 @@ namespace Yottacast.Core.Services;
 public class UserSettings {
     private readonly PlatformProvider _platform;
     private readonly ILogger? _logger;
+    private readonly string _settingsPath;
 
-    private UserSettings(PlatformProvider platform, ILogger? logger = null) {
+    private UserSettings(PlatformProvider platform, ILogger? logger = null, string? settingsPath = null) {
         _platform = platform;
         _logger = logger;
+        _settingsPath = settingsPath ?? DefaultSettingsPath;
     }
 
     public string Browser  { get; set; } = "";
@@ -69,7 +71,7 @@ public class UserSettings {
         }
     }
 
-    private static readonly string SettingsPath = Path.Combine(
+    private static readonly string DefaultSettingsPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "Yottacast", "settings.json");
 
@@ -83,18 +85,19 @@ public class UserSettings {
         [JsonPropertyName("appDirectories")] public List<string>? AppDirectories { get; init; }
     }
 
-    public static UserSettings Load(PlatformProvider platform, ILogger? logger = null) {
+    public static UserSettings Load(PlatformProvider platform, ILogger? logger = null, string? settingsPath = null) {
+        var path = settingsPath ?? DefaultSettingsPath;
         UserSettings settings;
         try {
-            if (!File.Exists(SettingsPath)) {
-                throw new FileNotFoundException($"Settings file '{SettingsPath}' does not exist");
+            if (!File.Exists(path)) {
+                throw new FileNotFoundException($"Settings file '{path}' does not exist");
             }
-            logger?.LogInformation("Settings loaded from {Path}", SettingsPath);
-            var data = JsonSerializer.Deserialize<UserSettingsData>(File.ReadAllText(SettingsPath), JsonOptions);
+            logger?.LogInformation("Settings loaded from {Path}", path);
+            var data = JsonSerializer.Deserialize<UserSettingsData>(File.ReadAllText(path), JsonOptions);
             if (data == null) {
-                settings = CreateDefaultUserSettings(platform, logger);
+                settings = CreateDefaultUserSettings(platform, logger, path);
             } else {
-                settings = new UserSettings(platform, logger) {
+                settings = new UserSettings(platform, logger, path) {
                     Browser        = data.Browser,
                     Terminal       = data.Terminal,
                     Theme          = string.IsNullOrEmpty(data.Theme) ? platform.DefaultTheme() : data.Theme,
@@ -103,15 +106,15 @@ public class UserSettings {
                 };
             }
         } catch (Exception ex) {
-            logger?.LogInformation("Settings not found or invalid ({Message}), creating defaults at {Path}", ex.Message, SettingsPath);
-            settings = CreateDefaultUserSettings(platform, logger);
+            logger?.LogInformation("Settings not found or invalid ({Message}), creating defaults at {Path}", ex.Message, path);
+            settings = CreateDefaultUserSettings(platform, logger, path);
         }
         settings.Save();
         return settings;
     }
 
-    private static UserSettings CreateDefaultUserSettings(PlatformProvider platform, ILogger? logger) {
-        return new UserSettings(platform, logger) {
+    private static UserSettings CreateDefaultUserSettings(PlatformProvider platform, ILogger? logger, string? settingsPath = null) {
+        return new UserSettings(platform, logger, settingsPath) {
             Theme          = platform.DefaultTheme(),
             SearchFolders  = platform.DefaultSearchFolders(),
             AppDirectories = platform.DefaultAppDirectories(),
@@ -120,7 +123,7 @@ public class UserSettings {
 
     public void Save() {
         try {
-            var dir = Path.GetDirectoryName(SettingsPath)!;
+            var dir = Path.GetDirectoryName(_settingsPath)!;
             Directory.CreateDirectory(dir);
             var data = new UserSettingsData {
                 Browser        = Browser,
@@ -129,8 +132,8 @@ public class UserSettings {
                 SearchFolders  = SearchFolders,
                 AppDirectories = AppDirectories,
             };
-            File.WriteAllText(SettingsPath, JsonSerializer.Serialize(data, JsonOptions));
-            _logger?.LogDebug("Settings saved to {Path}", SettingsPath);
+            File.WriteAllText(_settingsPath, JsonSerializer.Serialize(data, JsonOptions));
+            _logger?.LogDebug("Settings saved to {Path}", _settingsPath);
         } catch (Exception ex) {
             _logger?.LogWarning("Settings save error: {Message}", ex.Message);
         }
