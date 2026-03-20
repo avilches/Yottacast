@@ -6,17 +6,19 @@ Clase: `Yottacast.Services.ThemeService`
 
 Lee `Themes/{name}.json`, aplica tokens en `Application.Current.Resources` en runtime.
 
-`ThemeService.Apply(themeName)` — carga el JSON indicado.
+`ThemeService.Apply(themeName)` — carga el JSON indicado. Si el fichero no existe o el parsing falla, registra un warning en el log y llama `ApplyBuiltinDefault()` como fallback.
 `ThemeService.ApplyBuiltinDefault()` — aplica dark-default hardcodeado como fallback (no puede fallar).
 
-Tokens: `Theme.*` (ej. `Theme.WindowBackground`). Colores: `#AARRGGBB` (no `#RRGGBBAA`).
+All theme tokens are listed in `ThemeService.ApplyBuiltinDefault()` which also serves as the canonical default. Colors use Avalonia's `Color.TryParse` format; see any theme JSON file for examples.
 Los JSON se copian al output vía `CopyToOutputDirectory=PreserveNewest`.
 
-Temas incluidos: `dark-default`, `dark-raycast`, `dark-macos`, `light-blue`, `light-gray`.
+Available themes are the JSON files in `Yottacast/Themes/` (excluding `settings.json`).
 
 **Metadata en JSON (author, url)**: todos los temas tienen `"author": ""` y `"url": ""`. `ThemeService` los ignora hoy; estarán disponibles cuando se implemente la descarga de temas.
 
-**Gotcha — Temas cargados síncronamente en SettingsWindow**: `SettingsWindowViewModel` llama `LoadThemes()` en su constructor, que lee del disco los JSON de `Themes/`. Si ninguno carga, añade `"dark-default"` como fallback.
+**Gotcha — Colores mal formados ignorados silenciosamente**: `SetBrush()` usa `Color.TryParse`. Si el valor del color en el JSON no es un color válido, el brush no se asigna y el token conserva su valor anterior sin ningún error o aviso.
+
+**Gotcha — Temas cargados síncronamente en SettingsWindow**: `SettingsWindowViewModel` llama `LoadThemes()` en su constructor, que enumera los JSON de `Themes/` ordenados alfabéticamente por nombre de fichero y excluye `settings.json`. Si ninguno carga, añade `"dark-default"` como fallback.
 
 ## Keyboard shortcuts (MainWindow)
 
@@ -36,10 +38,14 @@ Temas incluidos: `dark-default`, `dark-raycast`, `dark-macos`, `light-blue`, `li
 
 `MainWindowViewModel.IsSearching` es `true` mientras la fase diferida (`SearchDeferredAsync`) está activa. Se activa justo antes de iterar la fase diferida y se desactiva en el `finally` al completar, cancelar o fallar.
 
-**Spinner en la UI**: cuando `IsSearching` es `true`, la search row muestra un `Ellipse` giratorio (`Classes="spinner"`, animación CSS en `Window.Styles`) en lugar del badge "ESC". Cuando `IsSearching` baja a `false`, la animación se detiene y el badge ESC reaparece (si el texto está vacío).
+**Spinner en la UI**: cuando `IsSearching` es `true`, la search row muestra un `Ellipse` giratorio (`Classes="spinner"`, animación CSS en `Window.Styles`) en lugar del badge "ESC". La animación pulsa la opacidad (duración definida en `MainWindow.axaml`) con `PlaybackDirection="Alternate"`. Cuando `IsSearching` baja a `false`, la animación se detiene y el badge ESC reaparece (si el texto está vacío).
 
 **`CancelDeferredSearch()`**: cancela solo la fase diferida sin tocar el texto ni la búsqueda instant. Llamado por el handler de ESC cuando `IsSearching == true`. Internamente cancela `_deferredCts`, que es un `CancellationTokenSource` enlazado al `ct` principal — si se teclea texto nuevo, el `ct` padre cancela ambas fases.
 
 **`ShowNoResults`**: solo se activa si la búsqueda diferida completó sin cancelación (`completed = true`). Si se paró con ESC o por nueva búsqueda, los resultados parciales permanecen visibles sin mostrar "No results".
 
+**Auto-selección de resultado Calculator/Converter**: `RefreshResults()` busca el primer resultado cuya categoría sea `"Calculator"` o `"Converter"`. Si lo encuentra y el usuario no ha navegado manualmente (`_userNavigated == false`), ese resultado queda seleccionado automáticamente. Si el usuario ya navegó con ↑↓, la selección previa se preserva.
+
 **Gotcha — `ResultItemViewModel.Shortcut`**: propiedad definida pero sin uso: nunca se asigna desde las fuentes de búsqueda ni se muestra en la UI. Placeholder para futuros atajos de teclado por resultado.
+
+**Gotcha — `⌘K  actions` en el footer**: el footer muestra el hint `⌘K  actions`, pero no hay ningún handler de teclado implementado para este atajo. Es un placeholder visual para una futura funcionalidad de acciones contextuales.

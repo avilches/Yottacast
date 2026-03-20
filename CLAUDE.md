@@ -7,6 +7,8 @@ It's a frameless, transparent dark-themed window where the user types to search 
 
 **Regla de mantenimiento**: describe siempre el estado actual del código. No documentes cambios respecto a versiones anteriores ni migraciones. Si al editar escribes algo como "ahora X en vez de Y", "ya no se usa Z", o "antes se hacía así", reformúlalo para describir solo el comportamiento actual. Los gotchas y precauciones sí se documentan, pero sin referenciar versiones pasadas.
 
+**Regla de documentación**: los ficheros en `docs/` explican diseño, arquitectura y relaciones entre componentes. No duplican constantes concretas, listas completas de rutas, puntuaciones numéricas, patrones regex ni otros detalles de implementación que ya son legibles en el código; en su lugar, señalan dónde viven esos detalles (p. ej. "ver `ClassName.Method`" o "definido en `File.cs`"). Esto evita que la documentación quede desactualizada cuando cambian los valores. Los docs responden "¿cómo funciona esto?" y "¿dónde lo busco?", no "¿cuáles son los valores exactos?".
+
 ## Estructura de la solución
 
 ```

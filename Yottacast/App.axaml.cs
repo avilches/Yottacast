@@ -33,6 +33,7 @@ public partial class App : Application {
 
     public override void OnFrameworkInitializationCompleted() {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop) {
+            AppHandler.Instance.OnFrameworkInitializationCompleted();
             _services = BuildServices();
 
             var userSettings = _services.GetRequiredService<UserSettings>();

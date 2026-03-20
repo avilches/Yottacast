@@ -251,7 +251,6 @@
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16">
                         <TextBlock Text="↑↓  navigate"  Foreground="{DynamicResource Theme.FooterText}" FontSize="{DynamicResource Theme.FontSizeSmall}"/>
                         <TextBlock Text="↵  open"        Foreground="{DynamicResource Theme.FooterText}" FontSize="{DynamicResource Theme.FontSizeSmall}"/>
-                        <TextBlock Text="⌘K  actions"   Foreground="{DynamicResource Theme.FooterText}" FontSize="{DynamicResource Theme.FontSizeSmall}"/>
                     </StackPanel>
                 </Grid>
             </Border>

@@ -8,7 +8,7 @@ internal abstract class AppHandler {
         OperatingSystem.IsWindows() ? new WindowsAppHandler() :
                                       new LinuxAppHandler();
 
-    public abstract void OnStart();
+    public abstract void OnFrameworkInitializationCompleted();
     public abstract void OnShow();
     public abstract void OnHide();
 }

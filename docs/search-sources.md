@@ -18,6 +18,14 @@ Evento `AppAdded` notifica cuando se detecta una app nueva (disponible para susc
 
 **Gotcha: Lazy icon en AppInfo** — `AppInfo` usa `Lazy<T>` para diferir la lectura de `Info.plist` hasta el primer acceso al icono, evitando parsear cientos de plists al arranque.
 
+**Métodos de consulta directa** — usados por `BrowserDiscovery` y `TerminalDiscovery` para consultar el caché sin pasar por la pipeline de búsqueda:
+
+| Método | Comportamiento |
+|---|---|
+| `Find(string name)` | Búsqueda exacta en el caché por clave de nombre (case-insensitive); devuelve `AppInfo?` |
+| `FindAll()` | Devuelve todas las apps en caché como `IReadOnlyList<AppInfo>` |
+| `Search(string query)` | Substring case-insensitive sobre todos los nombres de app; devuelve `IReadOnlyList<AppInfo>` |
+
 ## UserDocumentSearch
 
 Clase: `Yottacast.Core.Search.UserDocumentSearch` (implementa `ISearchSource`)
@@ -27,7 +35,7 @@ Si los directorios cambian en settings, la siguiente búsqueda los usará autom�
 
 `Start()` y `Stop()` son no-ops (no hay estado que gestionar).
 
-**Queries cortas**: hace `yield break` si `query.Length < 2` — la búsqueda de ficheros requiere al menos 2 letras. `FileSearch` y los `PlatformProvider` hacen early return (`Task.CompletedTask`) para queries vacías.
+**Queries cortas**: hace `yield break` si `query.Length < 2` — la búsqueda de ficheros requiere al menos 2 caracteres. `FileSearch` y los `PlatformProvider` hacen early return (`Task.CompletedTask`) para queries vacías.
 
 **Criterios de parada**: `SearchAsync` crea un `CancellationTokenSource` interno ligado al `ct` del caller.
 - **Timeout configurable** (por defecto `20_000ms`, parámetro `timeoutMs` del constructor): `cts.CancelAfter(timeoutMs)` detiene mdfind tras el tiempo configurado.
@@ -37,7 +45,7 @@ Si los directorios cambian en settings, la siguiente búsqueda los usará autom�
 **Flujo completo**:
 ```
 mdfind emite línea → onResult callback → puntúa → añade al buffer
-                   → cada 200ms (SnapshotIntervalMs) → snapshot parcial al channel
+                   → cada SnapshotIntervalMs → snapshot parcial al channel
 cts.Token expira (timeoutMs) → OperationCanceledException → snapshot final → channel.Complete()
 MainWindowViewModel recibe snapshots → RefreshResults() en cada uno
 ```
@@ -46,38 +54,37 @@ MainWindowViewModel recibe snapshots → RefreshResults() en cada uno
 
 ### ApplicationSearch — NameMatcher
 
-`NameMatcher` implementa tres modos de matching por prioridad:
-1. **Prefix de token** (Score = 1.0): cualquier token CamelCase o palabra empieza por el query. "Saf" → "Safari", "Mon" → "Activity Monitor". "af" NO coincide con "Safari".
-2. **Iniciales** (Score = 1.0): las iniciales de todos los tokens empiezan por el query. "AM" → "Activity Monitor", "MON" → "Microsoft OneNote" (M=Microsoft, O=One, N=Note del CamelCase).
-3. **Substring interno** (Score = 0.25): el nombre contiene el query (solo para queries ≥ 2 letras). "ari" → "Safari".
+`NameMatcher.Score(name, query)` aplica dos pasos: primero llama a `ScoreWith` con el query tal como viene; si la query es todo minúsculas y el score resultante no es el máximo posible, reintenta `ScoreWith` con `query.ToUpperInvariant()` y devuelve el mayor de los dos scores. Esto hace que "am" también pruebe como "AM" y pueda coincidir con "Activity Monitor".
 
-Scores de referencia: Calculator/Converter = 4 · Google = 3 · Apps prefix/initials = 1.0 · App substring = 0.25.
+`ScoreWith` implementa tres modos de matching por prioridad descendente:
+
+1. **CamelHump prefix** — cada hump del query debe ser prefijo del token correspondiente en la secuencia:
+   - Match empezando en el hump 0 (inicio del nombre). Ej. "Saf" → "Safari", "ActMon" → "Activity Monitor".
+   - Match empezando en hump > 0 (interior del nombre). Ej. "Mon" puede coincidir con "Activity Monitor" desde el token "Monitor".
+   - "af" NO coincide con "Safari" (no es prefijo de ningún token).
+2. **Iniciales**: las iniciales concatenadas de todos los tokens empiezan por el query. "AM" → "Activity Monitor", "MON" → "Microsoft OneNote" (M=Microsoft, O=One, N=Note del CamelCase).
+3. **Substring interno**: el nombre contiene el query, solo para queries de una longitud mínima. "ari" → "Safari".
+
+Sin match: devuelve 0.
+
+Ver `NameMatcher.cs` y `NameMatcherTests.cs` para los valores exactos de scoring y casos canónicos.
+
+Los scores exactos de cada fuente se definen en cada `ISearchSource` y en `MainWindowViewModel.MakeGoogleItem()`.
 
 ### UserDocumentSearch
 
-Para **queries con wildcard** (`*`) todos los resultados puntúan 0.5 (base). Para **queries sin wildcard**, distingue dos modos:
+Para **queries con wildcard** (`*`) todos los resultados reciben un score base. Para **queries sin wildcard**, distingue dos modos:
 
-**Query de un token** (ej. `"report"`):
+**Query de un token** (ej. `"report"`): el score varía según si el nombre es exactamente el query, empieza por él, termina en él, o simplemente lo contiene.
 
-| Condición | Score |
-|---|---|
-| `name == query` o `stem == query` (case-insensitive) | **1.0** |
-| `name.StartsWith(query)` o `stem.StartsWith(query)` | **0.75** |
-| `name.EndsWith(query)` o `stem.EndsWith(query)` | **0.5** |
-| Contains (base) | **0.5** |
+Stem = `Path.GetFileNameWithoutExtension(name)`, por lo que `"report"` puntúa igual que el nombre completo contra `"report.pdf"`.
 
-Stem = `Path.GetFileNameWithoutExtension(name)`, por lo que `"report"` puntúa 1.0 contra `"report.pdf"`.
+**Query multi-token** (ej. `"xls calc mis"`): la plataforma construye un predicado AND en Spotlight/Windows Search/locate para pre-filtrar, pero el callback `onResult` aplica un segundo filtro client-side: descarta cualquier resultado donde `!queryTokens.All(t => nameLower.Contains(t))`. El scoring de los resultados que pasan ese filtro depende de si todos los tokens son prefijo de algún segmento del nombre (split por espacios/guiones/puntos) o solo aparecen como substring.
 
-**Query multi-token** (ej. `"xls calc mis"`): la plataforma construye un predicado AND en Spotlight/Windows Search/locate, de modo que solo llegan ficheros que contienen todos los tokens. El scoring es:
+Ejemplo: `"xls calc mis"` → `"mis calculos.xls"`: segmentos `["mis","calculos","xls"]`; "mis"→"mis"✓, "calc"→"calculos"✓, "xls"→"xls"✓ → score prefijo.
 
-| Condición | Score |
-|---|---|
-| Todos los tokens son prefijo de algún segmento del nombre (split por espacios/guiones/puntos) | **0.75** |
-| Todos presentes pero alguno solo como substring | **0.5** |
-| Algún token no aparece en el nombre (safety net) | descartado |
-
-Ejemplo: `"xls calc mis"` → `"mis calculos.xls"`: segmentos `["mis","calculos","xls"]`; "mis"→"mis"✓, "calc"→"calculos"✓, "xls"→"xls"✓ → score 0.75.
+Ver `UserDocumentSearch.cs` para los valores exactos de scoring.
 
 No hay bonus por ser directorio (solo afecta icono y categoría).
 
-**Snapshots progresivos**: `UserDocumentSearch` emite un snapshot máximo cada 200ms (throttling por tiempo, `SnapshotIntervalMs`) y uno final al terminar o cancelar. Esto evita que queries con muchos resultados (p.ej. "a") saturen la UI con decenas de actualizaciones por segundo.
+**Snapshots progresivos**: `UserDocumentSearch` emite un snapshot cuando ha transcurrido suficiente tiempo desde el último (el intervalo se define en `UserDocumentSearch.SnapshotIntervalMs`) — throttling puramente por tiempo, no por número de resultados — y uno final al terminar o cancelar. Esto evita que queries con muchos resultados (p.ej. "a") saturen la UI con decenas de actualizaciones por segundo.

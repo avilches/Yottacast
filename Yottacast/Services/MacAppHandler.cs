@@ -7,7 +7,7 @@ internal sealed class MacAppHandler : AppHandler {
     private IntPtr _previousApp = IntPtr.Zero;
 
     // NSApplicationActivationPolicyAccessory = 1: no Dock icon, no menu bar
-    public override void OnStart() {
+    public override void OnFrameworkInitializationCompleted() {
         var nsApp = ObjcMsgSend(ObjcGetClass("NSApplication"), SelRegisterName("sharedApplication"));
         ObjcMsgSendPolicy(nsApp, SelRegisterName("setActivationPolicy:"), 1);
     }
