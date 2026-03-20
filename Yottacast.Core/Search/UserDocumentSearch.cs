@@ -30,6 +30,8 @@ public class UserDocumentSearch(
     public async IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>> SearchAsync(
         string query, int limit, [EnumeratorCancellation] CancellationToken ct = default) {
 
+        if (query.Length < 2) yield break;
+
         const int SnapshotIntervalMs = 200;
 
         var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -49,23 +51,23 @@ public class UserDocumentSearch(
                 await fileSearch.SearchAsync(
                     query,
                     r => {
-                        var isDir = Directory.Exists(r.Path);
                         var nameLower = r.Name.ToLowerInvariant();
-                        var stemLower = Path.GetFileNameWithoutExtension(nameLower);
-                        double score = 0.5;
+                        var filename = Path.GetFileNameWithoutExtension(nameLower);
+                        var extension = Path.GetExtension(nameLower);
+                        var score = 0.5;
                         if (!hasWildcard) {
-                            if (nameLower == queryLower || stemLower == queryLower)
-                                score += 2.0;
-                            else if (nameLower.StartsWith(queryLower, StringComparison.Ordinal) || stemLower.StartsWith(queryLower, StringComparison.Ordinal))
-                                score += 1.0;
+                            if (nameLower == queryLower || filename == queryLower || extension == queryLower)
+                                score = 1;
+                            else if (nameLower.StartsWith(queryLower, StringComparison.Ordinal) || filename.StartsWith(queryLower, StringComparison.Ordinal))
+                                score = 0.75;
                             else if (nameLower.EndsWith(queryLower, StringComparison.Ordinal))
-                                score += 0.3;
+                                score = 0.5;
                         }
                         buffer.Add(new ResultItemViewModel {
-                            Icon = isDir ? "📁" : "📄",
+                            Icon = "📁",
                             Title = r.Name,
                             Subtitle = r.Path,
-                            Category = isDir ? "Folders" : "Files",
+                            Category = "Files",
                             Score = score,
                         });
 

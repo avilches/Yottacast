@@ -38,6 +38,11 @@ public partial class MainWindowViewModel(
     private ResultItemViewModel? _googleItem;
 
     public void CancelDeferredSearch() => _deferredCts?.Cancel();
+    
+    /// <summary>
+    /// The amount of search per service
+    /// </summary>
+    private const int SearchSourceLimit = 10;
 
     partial void OnSearchTextChanged(string value) {
         _cts?.Cancel();
@@ -62,7 +67,7 @@ public partial class MainWindowViewModel(
 
         // Phase 1: instant sources (in-memory cache) — no delay
         try {
-            await foreach (var snapshot in globalSearch.SearchInstantAsync(query, limit: 2, ct)) {
+            await foreach (var snapshot in globalSearch.SearchInstantAsync(query, limit: SearchSourceLimit, ct)) {
                 _instantSnapshot = snapshot;
                 RefreshResults();
             }
@@ -84,7 +89,7 @@ public partial class MainWindowViewModel(
         IsSearching = true;
         bool completed = false;
         try {
-            await foreach (var snapshot in globalSearch.SearchDeferredAsync(query, limit: 10, _deferredCts.Token)) {
+            await foreach (var snapshot in globalSearch.SearchDeferredAsync(query, limit: SearchSourceLimit, _deferredCts.Token)) {
                 _deferredSnapshot = snapshot;
                 RefreshResults();
             }

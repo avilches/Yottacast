@@ -26,7 +26,7 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
 
     // ── Defaults ──────────────────────────────────────────────────────────────
 
-    public override List<string> DefaultAppDirectories() => ["/Applications", "$HOME/Applications"];
+    public override List<string> DefaultAppDirectories() => ["/Applications", "$HOME/Applications", "/System/Applications"];
 
     public override List<string> DefaultSearchFolders() {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
@@ -61,7 +61,7 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
         Action<string> addApp, IReadOnlyList<string> dirs, CancellationToken ct) {
         const string predicate = "kMDItemContentType == 'com.apple.application-bundle'";
         return Task.Run(() => SpotlightInterop.Query(
-            predicate, null,
+            predicate, dirs,
             line => { if (!string.IsNullOrWhiteSpace(line)) addApp(line); return true; },
             ct), ct);
     }

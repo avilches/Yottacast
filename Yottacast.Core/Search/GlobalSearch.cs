@@ -33,7 +33,7 @@ public class GlobalSearch(IEnumerable<ISearchSource> sources) {
         [EnumeratorCancellation] CancellationToken ct = default) {
 
         var snapshots = new List<ResultItemViewModel>[subset.Count];
-        for (int i = 0; i < subset.Count; i++) snapshots[i] = [];
+        for (var i = 0; i < subset.Count; i++) snapshots[i] = [];
 
         var channel = Channel.CreateUnbounded<(int, IReadOnlyList<ResultItemViewModel>)>();
 

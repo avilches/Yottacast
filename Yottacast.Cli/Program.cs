@@ -32,7 +32,6 @@ internal static class Program {
     private static readonly FileSearch FileSearch = new(Platform);
 
     private static async Task Main(string[] args) {
-        AppSearch.AppAdded += app => Ok($"[new app] {app.Name,-40} {app.Path}");
         AppSearch.Start();
         await AppSearch.Ready();
 
@@ -168,7 +167,7 @@ internal static class Program {
 
     static void CmdApps() {
         Header("Applications in AppStorage");
-        var apps = AppSearch.FindAll().OrderBy(a => a.Name).ToList();
+        var apps = AppSearch.FindAll().OrderBy(a => a.Path).ToList();
         if (apps.Count == 0) {
             Warn("No applications found.");
             return;

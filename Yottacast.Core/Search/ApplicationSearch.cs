@@ -57,21 +57,75 @@ public sealed class ApplicationSearch(UserSettings settings, PlatformProvider pl
         string query, int limit, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default) {
         ct.ThrowIfCancellationRequested();
         var results = _apps.Values
-            .Where(a => a.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
+            .Select(a => (app: a, score: ScoreApp(a.Name, query)))
+            .Where(x => x.score > 0)
+            .OrderByDescending(x => x.score)
             .Take(limit)
-            .Select(a => (ResultItemViewModel)new ResultItemViewModel {
+            .Select(x => (ResultItemViewModel)new ResultItemViewModel {
                 Icon = "📱",
-                Title = a.Name,
-                Subtitle = a.Path,
+                Title = x.app.Name,
+                Subtitle = x.app.Path,
                 Category = "Applications",
-                Score = 0.5,
-                OnActivate = () => platform.LaunchApp(a.Path),
+                Score = x.score,
+                OnActivate = () => platform.LaunchApp(x.app.Path),
             })
             .ToList();
         logger.LogDebug("AppSearch query=\"{Query}\" cache={CacheCount} results={ResultCount} ready={Ready}",
             query, _apps.Count, results.Count, _readyTcs.Task.IsCompleted);
         yield return results;
         await Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Scores an app name against a query using three modes:
+    /// - Prefix of any CamelCase token (e.g. "Mon" → "Activity Monitor", "Saf" → "Safari"): 1.0
+    /// - Initials of all tokens (e.g. "AM" → "Activity Monitor", "MON" → "Microsoft OneNote"): 1.0
+    /// - Internal substring (e.g. "ari" → "Safari"), only for 2+ char queries: 0.25
+    /// "af" does NOT match "Safari" (not a prefix of any token, not initials).
+    /// </summary>
+    private static double ScoreApp(string name, string query) {
+        var tokens = SplitTokens(name);
+
+        // Prefix of any token
+        foreach (var token in tokens) {
+            if (token.StartsWith(query, StringComparison.OrdinalIgnoreCase))
+                return 1.0;
+        }
+
+        // Initials match: first letter of each token, query must be a prefix
+        if (tokens.Count > 0) {
+            var initials = string.Concat(tokens.Select(t => t[0]));
+            if (initials.StartsWith(query, StringComparison.OrdinalIgnoreCase))
+                return 1.0;
+        }
+
+        // Internal substring (2+ letters only)
+        if (query.Length >= 2 && name.Contains(query, StringComparison.OrdinalIgnoreCase))
+            return 0.25;
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Splits a name into tokens by spaces/dashes/underscores, then further splits each
+    /// word at lowercase→uppercase transitions (CamelCase). Examples:
+    /// "Activity Monitor" → ["Activity", "Monitor"]
+    /// "Microsoft OneNote" → ["Microsoft", "One", "Note"]
+    /// "Safari" → ["Safari"]
+    /// </summary>
+    private static IReadOnlyList<string> SplitTokens(string name) {
+        var tokens = new List<string>();
+        foreach (var word in name.Split([' ', '-', '_'], StringSplitOptions.RemoveEmptyEntries)) {
+            var start = 0;
+            for (var i = 1; i < word.Length; i++) {
+                if (char.IsLower(word[i - 1]) && char.IsUpper(word[i])) {
+                    tokens.Add(word[start..i]);
+                    start = i;
+                }
+            }
+            tokens.Add(word[start..]);
+        }
+        return tokens;
     }
 
     // ── Queries ───────────────────────────────────────────────────────────────

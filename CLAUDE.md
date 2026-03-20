@@ -159,7 +159,12 @@ OnSearchTextChanged → cancela CTS anterior
 
 ### Scoring
 
-`ApplicationSearch` asigna `Score = 0.5` a sus resultados. El resultado de Google (`MakeGoogleItem`) asigna `Score = 1`.
+`ApplicationSearch` usa tres modos de matching por prioridad:
+1. **Prefix de token** (Score = 1.0): cualquier token CamelCase o palabra empieza por el query. "Saf" → "Safari", "Mon" → "Activity Monitor". "af" NO coincide con "Safari".
+2. **Iniciales** (Score = 1.0): las iniciales de todos los tokens empiezan por el query. "AM" → "Activity Monitor", "MON" → "Microsoft OneNote" (M=Microsoft, O=One, N=Note del CamelCase).
+3. **Substring interno** (Score = 0.25): el nombre contiene el query (solo para queries ≥ 2 letras). "ari" → "Safari".
+
+El resultado de Google (`MakeGoogleItem`) asigna `Score = 1`.
 
 `UserDocumentSearch` puntúa cada candidato antes de ordenar. Para **queries con wildcard** (`*`) todos los resultados puntúan 0.5 (base). Para **queries sin wildcard**:
 
@@ -205,7 +210,7 @@ Si los directorios cambian en settings, la siguiente búsqueda los usará autom�
 
 `Start()` y `Stop()` son no-ops (no hay estado que gestionar).
 
-**Queries vacías**: `FileSearch` y los `PlatformProvider` hacen early return (`Task.CompletedTask`) para queries vacías.
+**Queries cortas**: `UserDocumentSearch.SearchAsync` hace `yield break` si `query.Length < 2` — la búsqueda de ficheros requiere al menos 2 letras. `FileSearch` y los `PlatformProvider` hacen early return (`Task.CompletedTask`) para queries vacías.
 
 **Criterios de parada** — `SearchAsync` crea un `CancellationTokenSource` interno ligado al `ct` del caller con dos condiciones de parada:
 

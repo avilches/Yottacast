@@ -214,6 +214,11 @@
                                            Foreground="{DynamicResource Theme.ItemCategory}"
                                            FontSize="{DynamicResource Theme.FontSizeSmall}"
                                            VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding Score, StringFormat={}{0:F2}}"
+                                           Foreground="{DynamicResource Theme.ItemCategory}"
+                                           FontSize="{DynamicResource Theme.FontSizeSmall}"
+                                           Opacity="0.6"
+                                           VerticalAlignment="Center"/>
                                 <Border Background="{DynamicResource Theme.ItemShortcutBackground}"
                                         CornerRadius="{DynamicResource Theme.CornerRadiusShortcut}"
                                         Padding="7,3"
