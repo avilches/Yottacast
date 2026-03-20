@@ -31,7 +31,7 @@ public static class NameMatcher
         }
 
         // Internal substring (2+ chars only)
-        if (query.Length >= 2 && name.Contains(query, StringComparison.OrdinalIgnoreCase))
+        if (query.Length >= 3 && name.Contains(query, StringComparison.OrdinalIgnoreCase))
             return 0.2;
 
         return 0;
@@ -42,6 +42,14 @@ public static class NameMatcher
         var tokens = new List<string>();
         foreach (var word in name.Split([' ', '-', '_'], StringSplitOptions.RemoveEmptyEntries))
         {
+            // All-uppercase word → each char is its own hump ("AM" → ["A","M"])
+            if (word.All(char.IsUpper))
+            {
+                foreach (var c in word)
+                    tokens.Add(c.ToString());
+                continue;
+            }
+
             var start = 0;
             for (var i = 1; i < word.Length; i++)
             {
