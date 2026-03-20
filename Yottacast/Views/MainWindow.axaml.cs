@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Yottacast.Services;
 using Yottacast.ViewModels;
 using Yottacast;
 
@@ -30,6 +31,14 @@ public partial class MainWindow : Window {
     }
 
     protected override void OnKeyDown(KeyEventArgs e) {
+        // On macOS, Cmd+W is the platform "close window" shortcut — hide the launcher instead.
+        var (closeMods, closeKey) = AppHandler.Instance.CloseWindowShortcut;
+        if (e.Key == closeKey && e.KeyModifiers == closeMods) {
+            Hide();
+            e.Handled = true;
+            return;
+        }
+
         base.OnKeyDown(e);
 
         var vm = DataContext as MainWindowViewModel;
@@ -77,6 +86,14 @@ public partial class MainWindow : Window {
                 e.Handled = true;
                 break;
         }
+    }
+
+    // The launcher is a persistent background process — it should never truly close, only hide.
+    // This cancels any native close attempt (e.g. macOS performClose: routed here after
+    // SettingsWindow closes) and hides the window instead.
+    protected override void OnClosing(WindowClosingEventArgs e) {
+        e.Cancel = true;
+        Hide();
     }
 
     private static void SelectNext(MainWindowViewModel vm, int delta) {

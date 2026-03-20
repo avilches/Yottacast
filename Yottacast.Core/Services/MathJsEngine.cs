@@ -8,7 +8,7 @@ namespace Yottacast.Core.Services;
 /// Thread-safe: a lock guards the engine during evaluation.
 /// </summary>
 public sealed class MathJsEngine : IDisposable {
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private Engine? _engine;
     private readonly Task _initTask;
 
@@ -38,7 +38,7 @@ public sealed class MathJsEngine : IDisposable {
     /// </summary>
     public string? Evaluate(string expression) {
         if (_engine == null) return null;
-        lock (_lock) {
+        lock (_lock) {                                           
             if (_engine == null) return null;
             try {
                 var escaped = expression.Replace("\\", "\\\\").Replace("'", "\\'");

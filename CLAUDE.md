@@ -7,6 +7,8 @@ It's a frameless, transparent dark-themed window where the user types to search 
 
 **Regla de mantenimiento**: describe siempre el estado actual del código. No documentes cambios respecto a versiones anteriores ni migraciones. Si al editar escribes algo como "ahora X en vez de Y", "ya no se usa Z", o "antes se hacía así", reformúlalo para describir solo el comportamiento actual. Los gotchas y precauciones sí se documentan, pero sin referenciar versiones pasadas.
 
+**Regla de código multiplataforma (UI)**: todo código OS-específico que dependa de Avalonia o de la capa de UI debe vivir en `Yottacast/Services/AppHandler` y sus subclases (`MacAppHandler`, `WindowsAppHandler`, `LinuxAppHandler`). El código de las Views y ViewModels no debe contener `OperatingSystem.IsMacOS()` ni similares; en su lugar, delega en `AppHandler.Instance`. La lógica OS-específica que no depende de UI (búsqueda de archivos, lanzar procesos, etc.) va en `Yottacast.Core/Platform/PlatformProvider` y sus subclases, para que sea reutilizable desde el CLI y los tests.
+
 **Regla de documentación**: los ficheros en `docs/` explican diseño, arquitectura y relaciones entre componentes. No duplican constantes concretas, listas completas de rutas, puntuaciones numéricas, patrones regex ni otros detalles de implementación que ya son legibles en el código; en su lugar, señalan dónde viven esos detalles (p. ej. "ver `ClassName.Method`" o "definido en `File.cs`"). Esto evita que la documentación quede desactualizada cuando cambian los valores. Los docs responden "¿cómo funciona esto?" y "¿dónde lo busco?", no "¿cuáles son los valores exactos?".
 
 ## Estructura de la solución
@@ -26,7 +28,7 @@ Yottacast.sln
 │   ├── MainWindow.axaml/.cs            ← Ventana frameless; teclado: ESC, ↑↓, Enter, ⌘,
 │   └── SettingsWindow.axaml/.cs        ← Preferencias (decorada, no frameless)
 ├── ViewModels/
-│   ├── MainWindowViewModel.cs          ← Búsqueda con debounce, resultado inmediato Google y calculadora
+│   ├── MainWindowViewModel.cs          ← Búsqueda con debounce, resultado inmediato Google y calculawdora
 │   └── SettingsWindowViewModel.cs      ← Browser, terminal, theme pickers, carpetas donde mirar documentos
 ├── Services/
 │   ├── ThemeService.cs                 ← Aplica tema JSON en runtime
@@ -95,15 +97,15 @@ cd Yottacast.Core.Tests && dotnet test
 
 ## Documentación detallada
 
-| Fichero | Contenido |
-|---|---|
-| `docs/search-design.md` | Arranque, DI, GlobalSearch, debounce, arquitectura snapshot |
-| `docs/search-sources.md` | ApplicationSearch, UserDocumentSearch, scoring detallado |
-| `docs/user-settings.md` | Campos, rutas, auto-reparación Browser/Terminal, EnsureIntegrity |
-| `docs/calculator.md` | CalculatorSearch, MathJsEngine, ClipboardService |
-| `docs/platform.md` | PlatformProvider, StandardCommandRunner, SharpHook |
-| `docs/browser-terminal.md` | BrowserDiscovery, TerminalDiscovery, FileSearch, launch per-app |
-| `docs/ui-themes-keyboard.md` | Themes, keyboard shortcuts, IsSearching/spinner |
+| Fichero | Contenido                                                                      |
+|---|--------------------------------------------------------------------------------|
+| `docs/search-design.md` | Arranque, DI, GlobalSearch, debounce, arquitectura snapshot                    |
+| `docs/search-sources.md` | ApplicationSearch, UserDocumentSearch, scoring detallado                       |
+| `docs/user-settings.md` | Campos, rutas, auto-reparación Browser/Terminal, EnsureIntegrity               |
+| `docs/calculator.md` | CalculatorSearch, MathJsEngine, ClipboardService                               |
+| `docs/platform.md` | PlatformProvider, StandardCommandRunner, SharpHook (hotkey global de arranque) |
+| `docs/browser-terminal.md` | BrowserDiscovery, TerminalDiscovery, FileSearch, launch per-app                |
+| `docs/ui-themes-keyboard.md` | Themes, keyboard shortcuts, IsSearching/spinner                                |
 
 ## Gotchas (Avalonia / transversales)
 

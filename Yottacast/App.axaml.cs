@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Avalonia;
@@ -33,6 +34,9 @@ public partial class App : Application {
 
     public override void OnFrameworkInitializationCompleted() {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop) {
+            // Yottacast is a persistent background launcher — never shut down due to window close events.
+            // The process is terminated only via an explicit Shutdown() call (e.g. a future Quit action).
+            desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             AppHandler.Instance.OnFrameworkInitializationCompleted();
             _services = BuildServices();
 
@@ -146,15 +150,60 @@ public partial class App : Application {
         return Path.Combine(dir, "yottacast-.log");
     }
 
+    private static readonly Dictionary<string, KeyCode> KeyNameMap = BuildKeyNameMap();
+
+    private static Dictionary<string, KeyCode> BuildKeyNameMap() {
+        var map = new Dictionary<string, KeyCode>(StringComparer.OrdinalIgnoreCase) {
+            ["Space"] = KeyCode.VcSpace,
+            ["Enter"] = KeyCode.VcEnter,
+            ["Tab"]   = KeyCode.VcTab,
+            ["Backspace"] = KeyCode.VcBackspace,
+            ["Delete"] = KeyCode.VcDelete,
+            ["Escape"] = KeyCode.VcEscape,
+        };
+        // A–Z
+        var aCode = (int)KeyCode.VcA;
+        for (int i = 0; i < 26; i++)
+            map[((char)('A' + i)).ToString()] = (KeyCode)(aCode + i);
+        // 0–9
+        var zeroCode = (int)KeyCode.Vc0;
+        for (int i = 0; i < 10; i++)
+            map[i.ToString()] = (KeyCode)(zeroCode + i);
+        // F1–F12
+        var f1Code = (int)KeyCode.VcF1;
+        for (int i = 0; i < 12; i++)
+            map[$"F{i + 1}"] = (KeyCode)(f1Code + i);
+        return map;
+    }
+
+    private static KeyCode KeyNameToKeyCode(string name) =>
+        KeyNameMap.TryGetValue(name, out var code) ? code : KeyCode.VcUndefined;
+
     private void RegisterGlobalHotKey(IClassicDesktopStyleApplicationLifetime desktop) {
         // SimpleGlobalHook runs handlers synchronously on the hook thread, which is required
         // for e.SuppressEvent = true to work. TaskPoolGlobalHook runs handlers on other threads
         // where suppression has no effect.
+        var settings = _services.GetRequiredService<UserSettings>();
         _globalHook = new SimpleGlobalHook();
         _globalHook.KeyPressed += (_, e) => {
-            var isAlt = e.RawEvent.Mask.HasFlag(EventMask.LeftAlt) ||
-                        e.RawEvent.Mask.HasFlag(EventMask.RightAlt);
-            if (e.Data.KeyCode == KeyCode.VcSpace && isAlt) {
+
+            if (_settingsWindow?.DataContext is SettingsWindowViewModel { IsCapturingHotkey: true }) {
+                // If SettingsWindow is actively capturing a new hotkey, ignore the event and
+                // let the key flow through to Avalonia unmodified so ProcessKeyCapture() can record it.
+                return;
+            }
+
+            var hotkey = settings.ParsedHotkey;
+            var mask   = e.RawEvent.Mask;
+            var hasAlt   = mask.HasFlag(EventMask.LeftAlt)   || mask.HasFlag(EventMask.RightAlt);
+            var hasCtrl  = mask.HasFlag(EventMask.LeftCtrl)  || mask.HasFlag(EventMask.RightCtrl);
+            var hasShift = mask.HasFlag(EventMask.LeftShift) || mask.HasFlag(EventMask.RightShift);
+            var hasMeta  = mask.HasFlag(EventMask.LeftMeta)  || mask.HasFlag(EventMask.RightMeta);
+
+
+            if (e.Data.KeyCode == KeyNameToKeyCode(hotkey.KeyName)
+                && hasAlt == hotkey.Alt && hasCtrl == hotkey.Ctrl
+                && hasShift == hotkey.Shift && hasMeta == hotkey.Meta) {
                 // Suppress the event at OS level so it is not delivered to any app.
                 // This prevents beeps in both Yottacast and the previously focused app.
                 // Requires Accessibility permission on macOS; silently ignored without it.
@@ -162,7 +211,7 @@ public partial class App : Application {
                 Dispatcher.UIThread.InvokeAsync(() => {
                     var window = desktop.MainWindow;
                     if (window is null) return;
-                    if (window.IsVisible && window.IsActive) {
+                    if (window is { IsVisible: true, IsActive: true }) {
                         window.Hide();
                         AppHandler.Instance.OnHide();
                     } else {
@@ -176,7 +225,7 @@ public partial class App : Application {
         _ = _globalHook.RunAsync();
     }
 
-    private void DisableAvaloniaDataAnnotationValidation() {
+    private static void DisableAvaloniaDataAnnotationValidation() {
         // Get an array of plugins to remove
         var dataValidationPluginsToRemove =
             BindingPlugins.DataValidators.OfType<DataAnnotationsValidationPlugin>().ToArray();

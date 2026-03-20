@@ -16,10 +16,13 @@ Persiste en JSON. Todos los campos tienen defaults multiplataforma; nunca lanza 
 | `Browser` | string | `""` (auto-selecciona el primero disponible) |
 | `Terminal` | string | `""` |
 | `Theme` | string | ver §Detección automática de tema |
+| `Hotkey` | string | `"Alt+Space"` |
 | `SearchFolders` | `List<string>` | `PlatformProvider.DefaultSearchFolders()` de cada plataforma |
 | `AppDirectories` | `List<string>` | `PlatformProvider.DefaultAppDirectories()` de cada plataforma |
 
 **Browser/Terminal preferido**: el usuario elige entre los detectados por `BrowserDiscovery`/`TerminalDiscovery` (solo apps instaladas). Se muestra en `SettingsWindowViewModel`.
+
+**Hotkey**: combinación de teclas para mostrar/ocultar el launcher. Formato: modificadores separados por `+` seguidos de la tecla, p. ej. `"Alt+Space"`, `"Ctrl+Shift+A"`. Modificadores reconocidos: `Alt`, `Ctrl`, `Shift`, `Meta`. El campo se edita desde SettingsWindow: el usuario hace clic en el campo GLOBAL HOTKEY, pulsa la combinación deseada y se guarda automáticamente. ESC o clic fuera del campo cancela sin guardar. El cambio tiene efecto inmediato, sin reiniciar.
 
 **Detección del browser predeterminado del sistema** ⚠️ TODO: no implementado. El default es `""` y se selecciona el primero de la lista de `BrowserDiscovery`.
 

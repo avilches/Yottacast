@@ -22,6 +22,14 @@ public class UserSettings {
     public List<string> SearchFolders  { get; set; } = [];
     public List<string> AppDirectories { get; set; } = [];
 
+    private string _hotkey = "Alt+Space";
+    private HotkeyConfig? _parsedHotkey;
+    public string Hotkey {
+        get => _hotkey;
+        set { _hotkey = value; _parsedHotkey = null; }
+    }
+    public HotkeyConfig ParsedHotkey => _parsedHotkey ??= HotkeyConfig.Parse(_hotkey) ?? HotkeyConfig.Default;
+
     /// <summary>Raw SearchFolders with $HOME/~ expanded to absolute paths, for use in file searches.</summary>
     public IReadOnlyList<string> ExpandedSearchFolders  => SearchFolders .Select(PlatformProvider.ExpandPath).ToList();
     /// <summary>Raw AppDirectories with $HOME/~ expanded to absolute paths, for use in app scanning.</summary>
@@ -81,6 +89,7 @@ public class UserSettings {
         [JsonPropertyName("browser")]        public string        Browser        { get; init; } = "";
         [JsonPropertyName("terminal")]       public string        Terminal       { get; init; } = "";
         [JsonPropertyName("theme")]          public string        Theme          { get; init; } = "";
+        [JsonPropertyName("hotkey")]         public string        Hotkey         { get; init; } = "Alt+Space";
         [JsonPropertyName("searchFolders")]  public List<string>? SearchFolders  { get; init; }
         [JsonPropertyName("appDirectories")] public List<string>? AppDirectories { get; init; }
     }
@@ -101,6 +110,7 @@ public class UserSettings {
                     Browser        = data.Browser,
                     Terminal       = data.Terminal,
                     Theme          = string.IsNullOrEmpty(data.Theme) ? platform.DefaultTheme() : data.Theme,
+                    Hotkey         = string.IsNullOrEmpty(data.Hotkey) ? "Alt+Space" : data.Hotkey,
                     SearchFolders  = data.SearchFolders?.Count > 0 ? data.SearchFolders : platform.DefaultSearchFolders(),
                     AppDirectories = data.AppDirectories?.Count > 0 ? data.AppDirectories : platform.DefaultAppDirectories(),
                 };
@@ -129,6 +139,7 @@ public class UserSettings {
                 Browser        = Browser,
                 Terminal       = Terminal,
                 Theme          = Theme,
+                Hotkey         = Hotkey,
                 SearchFolders  = SearchFolders,
                 AppDirectories = AppDirectories,
             };

@@ -35,7 +35,7 @@ Registrado en DI como singleton. Los `PlatformProvider`s lo reciben por inyecci�
 Clase abstracta en `Yottacast/Services/AppHandler.cs`. Define el ciclo de vida de la app en tres métodos abstractos: `OnStart()`, `OnShow()`, `OnHide()`. Expone un singleton estático `Instance` que elige la implementación concreta en función del OS (`MacAppHandler`, `WindowsAppHandler`, `LinuxAppHandler`).
 
 - `OnStart()` se llama desde `Program.cs` antes de arrancar Avalonia.
-- `OnShow()` y `OnHide()` se llaman desde `App.axaml.cs` al mostrar/ocultar la ventana (hotkey ALT+Space).
+- `OnShow()` y `OnHide()` se llaman desde `App.axaml.cs` al mostrar/ocultar la ventana con el hotkey global.
 
 ### MacAppHandler
 
@@ -45,8 +45,10 @@ MacAppHandler usa P/Invoke a las APIs del runtime Objective-C de macOS para gest
 
 Los tipos de SharpHook están en los namespaces `SharpHook` y `SharpHook.Data`; ver `App.axaml.cs` para los checks exactos de tecla y modificador.
 
-ALT+Space muestra/oculta la ventana.
+El hotkey muestra/oculta la ventana. La combinación se carga de `UserSettings.Hotkey` y se parsea en tiempo de arranque a través de `HotkeyConfig.Parse` (definido en `Yottacast.Core/Platform/HotkeyConfig.cs`). El valor por defecto es `"Alt+Space"`. Los cambios en Settings se reflejan inmediatamente, sin reiniciar.
 
-**Gotcha — `SimpleGlobalHook` requerido**: se usa `SimpleGlobalHook` (no `TaskPoolGlobalHook`) porque necesita `e.SuppressEvent = true` para evitar que el OS reciba ALT+Space. Con `TaskPoolGlobalHook` el handler corre en otro thread y la supresión no tiene efecto.
+**Matching exacto de modificadores**: los cuatro grupos de modificadores (Alt, Ctrl, Shift, Meta) deben coincidir exactamente. Si el usuario tiene configurado `Alt+Space` y pulsa `Alt+Cmd+Space`, el hotkey no se activa. Ver la lógica en `RegisterGlobalHotKey` en `App.axaml.cs`.
+
+**Gotcha — `SimpleGlobalHook` requerido**: se usa `SimpleGlobalHook` (no `TaskPoolGlobalHook`) porque necesita `e.SuppressEvent = true` para evitar que el OS reciba la tecla. Con `TaskPoolGlobalHook` el handler corre en otro thread y la supresión no tiene efecto.
 
 **Gotcha — Permiso Accessibility en macOS**: sin el permiso, el hook detecta la tecla pero no la suprime (llega también a la app activa). Se ignora silenciosamente sin error — puede ser confuso al depurar.

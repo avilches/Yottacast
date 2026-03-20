@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
+using Avalonia.Input;
 
 namespace Yottacast.Services;
 
@@ -28,6 +29,8 @@ internal sealed class MacAppHandler : AppHandler {
         ObjcRelease(_previousApp);
         _previousApp = IntPtr.Zero;
     }
+
+    public override (KeyModifiers Modifiers, Key Key) CloseWindowShortcut => (KeyModifiers.Meta, Key.W);
 
     private static IntPtr GetFrontmostApp() {
         var workspace = ObjcMsgSend(ObjcGetClass("NSWorkspace"), SelRegisterName("sharedWorkspace"));

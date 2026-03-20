@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json.Nodes;
 using Avalonia;
 using Avalonia.Media;
@@ -7,6 +9,8 @@ using Avalonia.Styling;
 using Microsoft.Extensions.Logging;
 
 namespace Yottacast.Services;
+
+public record ThemeOption(string Id, string DisplayName);
 
 public sealed class ThemeService {
     private readonly ILogger<ThemeService> _logger;
@@ -16,6 +20,30 @@ public sealed class ThemeService {
 
     public ThemeService(ILogger<ThemeService> logger) {
         _logger = logger;
+    }
+
+    public IReadOnlyList<ThemeOption> AvailableThemes() {
+        var themes = new List<ThemeOption>();
+        try {
+            foreach (var file in Directory.GetFiles(ThemesFolder, "*.json").OrderBy(f => f)) {
+                var id = Path.GetFileNameWithoutExtension(file);
+                if (id == "settings") continue;
+                try {
+                    var json = JsonNode.Parse(File.ReadAllText(file));
+                    var displayName = json?["name"]?.GetValue<string>() ?? id;
+                    themes.Add(new ThemeOption(id, displayName));
+                } catch {
+                    themes.Add(new ThemeOption(id, id));
+                }
+            }
+        } catch (Exception ex) {
+            _logger.LogWarning("Could not load themes: {Message}", ex.Message);
+        }
+
+        if (themes.Count == 0)
+            themes.Add(new ThemeOption("dark-default", "Dark Default"));
+
+        return themes;
     }
 
     public void Apply(string themeName) {

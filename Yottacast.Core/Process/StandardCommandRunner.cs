@@ -4,7 +4,6 @@ using Microsoft.Extensions.Logging;
 namespace Yottacast.Core.Process;
 
 public sealed class StandardCommandRunner(ILogger<StandardCommandRunner> logger) {
-    private readonly ILogger<StandardCommandRunner> _logger = logger;
 
     public async Task<ProcessResult> RunAsync(
         string binary, string[] args, string? cwd,
