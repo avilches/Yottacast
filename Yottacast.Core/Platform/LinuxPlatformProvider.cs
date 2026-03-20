@@ -89,12 +89,20 @@ public sealed class LinuxPlatformProvider(StandardCommandRunner runner, ILogger<
         var safeQuery = query.Replace("\"", "");
         var cwd = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
-        Func<string, bool> filteredOnLine = string.IsNullOrEmpty(folders?.FirstOrDefault())
-            ? onLine
-            : line => folders!.Any(f => line.StartsWith(f, StringComparison.Ordinal)) && onLine(line);
+        var tokens = safeQuery.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var primaryToken = tokens[0];
+        var extraTokens = tokens.Skip(1).ToArray();
+
+        Func<string, bool> filteredOnLine = line => {
+            if (folders?.Count > 0 && !folders.Any(f => line.StartsWith(f, StringComparison.Ordinal)))
+                return true;
+            if (extraTokens.Length > 0 && extraTokens.Any(t => !Path.GetFileName(line).Contains(t, StringComparison.OrdinalIgnoreCase)))
+                return true;
+            return onLine(line);
+        };
 
         return runner.RunAsync(binary,
-            ["-b", "-l", maxResults.ToString(), $"*{safeQuery}*"],
+            ["-b", "-l", maxResults.ToString(), $"*{primaryToken}*"],
             cwd, filteredOnLine, ct);
     }
 

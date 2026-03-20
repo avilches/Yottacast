@@ -12,7 +12,7 @@ public class GlobalSearch(IEnumerable<ISearchSource> sources) {
 
     public void Start() { foreach (var s in _sources) s.Start(); }
 
-    public Task Ready() => Task.WhenAll(_sources.Select(s => s.Ready()));
+    public Task WhenReady() => Task.WhenAll(_sources.Select(s => s.WhenReady()));
 
     public Task Stop() => Task.WhenAll(_sources.Select(s => s.Stop()));
 
@@ -39,6 +39,7 @@ public class GlobalSearch(IEnumerable<ISearchSource> sources) {
 
         var tasks = subset.Select((s, i) => Task.Run(async () => {
             try {
+                await s.WhenReady().ConfigureAwait(false);
                 await foreach (var snap in s.SearchAsync(query, limit, ct).ConfigureAwait(false))
                     await channel.Writer.WriteAsync((i, snap), ct).ConfigureAwait(false);
             } catch (OperationCanceledException) { }

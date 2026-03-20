@@ -33,3 +33,6 @@ desktop.ini
 
 # Avalonia designer cache
 **/.avalonia/
+
+# Downloaded at build time
+Yottacast.Core/Scripts/math.min.js

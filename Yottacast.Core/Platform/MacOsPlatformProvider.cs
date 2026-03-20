@@ -104,8 +104,13 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
             logger.LogWarning("Spotlight skipping non-existent folders: [{Folders}]", string.Join(", ", invalidFolders));
         var scope = (validFolders?.Count > 0 ? validFolders : null) ?? [home];
 
-        var pattern = safeQuery.Contains('*') ? safeQuery : $"*{safeQuery}*";
-        var predicate = $"kMDItemFSName == '{pattern}'cd";
+        string predicate;
+        if (safeQuery.Contains('*')) {
+            predicate = $"kMDItemFSName == '{safeQuery}'cd";
+        } else {
+            var tokens = safeQuery.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            predicate = string.Join(" && ", tokens.Select(t => $"kMDItemFSName == '*{t}*'cd"));
+        }
         logger.LogDebug("Spotlight query: {Predicate} scope=[{Scope}]", predicate, string.Join(", ", scope));
 
         var count = 0;

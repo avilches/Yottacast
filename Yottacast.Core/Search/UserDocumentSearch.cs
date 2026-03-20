@@ -23,7 +23,7 @@ public class UserDocumentSearch(
 
     public void Start() { }
 
-    public Task Ready() => Task.CompletedTask;
+    public Task WhenReady() => Task.CompletedTask;
 
     public Task Stop() => Task.CompletedTask;
 
@@ -42,6 +42,8 @@ public class UserDocumentSearch(
             var buffer = new List<ResultItemViewModel>();
             var queryLower = query.ToLowerInvariant();
             var hasWildcard = query.Contains('*');
+            var queryTokens = hasWildcard ? [] : queryLower.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var isMultiToken = queryTokens.Length > 1;
             var lastSnapshot = Environment.TickCount64 - SnapshotIntervalMs;
             var folders = settings.ExpandedSearchFolders;
             logger.LogDebug("DocSearch start query=\"{Query}\" timeout={TimeoutMs}ms folders=[{Folders}]",
@@ -56,12 +58,19 @@ public class UserDocumentSearch(
                         var extension = Path.GetExtension(nameLower);
                         var score = 0.5;
                         if (!hasWildcard) {
-                            if (nameLower == queryLower || filename == queryLower || extension == queryLower)
-                                score = 1;
-                            else if (nameLower.StartsWith(queryLower, StringComparison.Ordinal) || filename.StartsWith(queryLower, StringComparison.Ordinal))
-                                score = 0.75;
-                            else if (nameLower.EndsWith(queryLower, StringComparison.Ordinal))
-                                score = 0.5;
+                            if (isMultiToken) {
+                                if (!queryTokens.All(t => nameLower.Contains(t))) return;
+                                var nameSegments = nameLower.Split([' ', '-', '_', '.'], StringSplitOptions.RemoveEmptyEntries);
+                                if (queryTokens.All(t => nameSegments.Any(s => s.StartsWith(t))))
+                                    score = 0.75;
+                            } else {
+                                if (nameLower == queryLower || filename == queryLower || extension == queryLower)
+                                    score = 1;
+                                else if (nameLower.StartsWith(queryLower, StringComparison.Ordinal) || filename.StartsWith(queryLower, StringComparison.Ordinal))
+                                    score = 0.75;
+                                else if (nameLower.EndsWith(queryLower, StringComparison.Ordinal))
+                                    score = 0.5;
+                            }
                         }
                         buffer.Add(new ResultItemViewModel {
                             Icon = "📁",

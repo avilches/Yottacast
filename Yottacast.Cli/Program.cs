@@ -33,7 +33,7 @@ internal static class Program {
 
     private static async Task Main(string[] args) {
         AppSearch.Start();
-        await AppSearch.Ready();
+        await AppSearch.WhenReady();
 
         if (args.Length == 0) {
             await RunInteractiveAsync();

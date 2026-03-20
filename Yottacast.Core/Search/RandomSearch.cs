@@ -23,7 +23,7 @@ public class RandomSearch : ISearchSource {
     public void Start() {
     }
 
-    public Task Ready() => Task.CompletedTask;
+    public Task WhenReady() => Task.CompletedTask;
     public Task Stop() => Task.CompletedTask;
 
     public async IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>> SearchAsync(

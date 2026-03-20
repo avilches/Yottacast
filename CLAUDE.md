@@ -3,7 +3,7 @@
 Yottacast is a macOS/Windows app launcher — similar to Spotlight or PowerToys Run.
 It's a frameless, transparent dark-themed window where the user types to search and uses arrow keys + Enter to launch items.
 
-**Stack**: Avalonia 11.3.12, .NET 9, CommunityToolkit.Mvvm 8.2.1, SharpHook 7.1.1.
+**Stack**: Avalonia 11.3.12, .NET 9, CommunityToolkit.Mvvm 8.2.1, SharpHook 7.1.1, Jint 3.1.0 (JS engine).
 
 Update the CLAUDE.md when something non-obvious is worth keeping in mind for later.
 
@@ -53,12 +53,18 @@ Yottacast.sln
 │   ├── ISearchSource.cs                ← Interfaz: Start() void, Ready() Task, Stop(), SearchAsync → IAsyncEnumerable
 │   ├── GlobalSearch.cs                 ← Agrega ISearchSource[], merge streaming vía Channel
 │   ├── AppInfo.cs + ApplicationSearch.cs  ← ISearchSource: caché en memoria de apps
-│   └── UserDocumentSearch.cs           ← ISearchSource: delega en FileSearch (streaming)
+│   ├── UserDocumentSearch.cs           ← ISearchSource: delega en FileSearch (streaming)
+│   ├── MathJsEngine.cs                 ← Singleton: Jint + math.js 11.x (embedded resource); init en background
+│   ├── CalculatorSearch.cs             ← ISearchSource instant: evalúa expresiones math vía MathJsEngine
+│   └── UnitConverterSearch.cs          ← ISearchSource instant: convierte unidades ("10 kg to lbs")
 ├── Services/
 │   ├── FileSearch.cs                   ← Instancia que delega en PlatformProvider.SearchFilesAsync
 │   ├── UserSettings.cs                 ← Config persistida en JSON
 │   ├── BrowserDiscovery.cs             ← Detecta navegadores; OpenUrl() delega en PlatformProvider
 │   └── TerminalDiscovery.cs            ← Detecta terminales; ExecuteCommand() delega en PlatformProvider
+├── Services/
+│   ├── ...
+│   └── ClipboardService.cs             ← Bridge Core→Avalonia; Initialize() wired in App.axaml.cs
 └── ViewModels/
     ├── ResultItemViewModel.cs           ← (Icon, Title, Subtitle, Category, Score, OnActivate)
     └── ViewModelBase.cs                 ← ObservableObject (CommunityToolkit.Mvvm)
@@ -166,16 +172,29 @@ OnSearchTextChanged → cancela CTS anterior
 
 El resultado de Google (`MakeGoogleItem`) asigna `Score = 1`.
 
-`UserDocumentSearch` puntúa cada candidato antes de ordenar. Para **queries con wildcard** (`*`) todos los resultados puntúan 0.5 (base). Para **queries sin wildcard**:
+`UserDocumentSearch` puntúa cada candidato antes de ordenar. Para **queries con wildcard** (`*`) todos los resultados puntúan 0.5 (base). Para **queries sin wildcard**, distingue dos modos:
 
-| Condición | Bonus | Total |
-|---|---|---|
-| `name == query` o `stem == query` (case-insensitive) | +2.0 | **2.5** |
-| `name.StartsWith(query)` o `stem.StartsWith(query)` | +1.0 | **1.5** |
-| `name.EndsWith(query)` | +0.3 | **0.8** |
-| Contains (base only) | — | **0.5** |
+**Query de un token** (ej. `"report"`):
 
-Stem = `Path.GetFileNameWithoutExtension(name)`, por lo que `"report"` puntúa 2.5 contra `"report.pdf"`. No hay bonus por ser directorio (solo afecta icono y categoría).
+| Condición | Score |
+|---|---|
+| `name == query` o `stem == query` (case-insensitive) | **1.0** |
+| `name.StartsWith(query)` o `stem.StartsWith(query)` | **0.75** |
+| Contains (base) | **0.5** |
+
+Stem = `Path.GetFileNameWithoutExtension(name)`, por lo que `"report"` puntúa 1.0 contra `"report.pdf"`.
+
+**Query multi-token** (ej. `"xls calc mis"`): la plataforma construye un predicado AND en Spotlight/Windows Search/locate, de modo que solo llegan ficheros que contienen todos los tokens. El scoring es:
+
+| Condición | Score |
+|---|---|
+| Todos los tokens son prefijo de algún segmento del nombre (split por espacios/guiones/puntos) | **0.75** |
+| Todos presentes pero alguno solo como substring | **0.5** |
+| Algún token no aparece en el nombre (safety net) | descartado |
+
+Ejemplo: `"xls calc mis"` → `"mis calculos.xls"`: segmentos `["mis","calculos","xls"]`; "mis"→"mis"✓, "calc"→"calculos"✓, "xls"→"xls"✓ → score 0.75.
+
+No hay bonus por ser directorio (solo afecta icono y categoría).
 
 **Snapshots progresivos**: `UserDocumentSearch` emite un snapshot máximo cada 200ms (throttling por tiempo, `SnapshotIntervalMs`) y uno final al terminar o cancelar. Esto evita que queries con muchos resultados (p.ej. "a") saturen la UI con decenas de actualizaciones por segundo.
 
@@ -275,6 +294,31 @@ Persiste en JSON. Todos los campos tienen defaults multiplataforma; nunca lanza 
 - **`EnsureIntegrity()`** — accede a ambas propiedades, forzando la validación y el guardado si algo cambió. Llamar en puntos naturales (p.ej. al abrir Settings).
 
 `SettingsWindowViewModel` llama `settings.EnsureIntegrity()` en su constructor, antes de inicializar los pickers. `MainWindowViewModel` usa `settings.ActiveBrowser` directamente al construir el resultado de Google.
+
+---
+
+## Calculadora y conversor de unidades
+
+Implementados como dos `ISearchSource` instant: `CalculatorSearch` y `UnitConverterSearch`.
+
+**Motor**: `MathJsEngine` — singleton que carga [math.js 11.12.0](https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.12.0/math.min.js) embebido en la DLL (embedded resource en `Yottacast.Core/Scripts/math.min.js`) dentro de un engine Jint 3.x. La inicialización se hace en un background thread; hasta que `IsReady` sea `true`, `Evaluate()` devuelve `null`.
+
+**math.js descargado en build**: el `.csproj` de Core incluye un target `DownloadMathJs` que ejecuta `curl` si el fichero no existe. El fichero se excluye del repositorio (`.gitignore`). El primer `dotnet build` lo descarga automáticamente.
+
+**Versión de math.js**: usar 11.x (probado 11.12.0). math.js 13.x produce "Assignment to constant variable" en Jint 3.x por un patrón JS que Jint no maneja. Si se actualiza Jint a una versión con mejor soporte ES2022+, se puede probar 12.x o 13.x.
+
+**Detección de expresiones** (`CalculatorSearch`):
+- Digit + operador/paréntesis en cualquier lado: `2+2`, `(3+4)*2`, `2^10`
+- Referencia a función math o constante: `sqrt(144)`, `sin(pi/2)`, `pi * r`
+- Las queries `N unit to unit` las detecta `UnitConverterSearch` y `CalculatorSearch` las ignora
+
+**Conversión de unidades** (`UnitConverterSearch`):
+- Formato: `NUMBER UNIT (to|in|en) UNIT`
+- math.js las evalúa nativamente: `10 kg to lbs`, `100 fahrenheit to celsius`, `5 miles to km`
+
+**Score = 4** → aparece antes que Google (Score=3) cuando la query es reconocida.
+
+**Portapapeles** (`ClipboardService`): Core no depende de Avalonia. `App.axaml.cs` llama `clipboardService.Initialize(...)` una vez al arranque, pasando un delegate que usa `TopLevel.GetTopLevel(mainWindow)?.Clipboard`.
 
 ---
 
@@ -379,6 +423,8 @@ ALT+Space muestra/oculta la ventana.
 - **ALT+Space toggle con foco**: ALT+Space oculta la ventana solo si está visible **y activa** (`window.IsVisible && window.IsActive`). Si está visible pero sin foco (tapada por otra ventana), la trae al frente (`Show()` + `Activate()`) en lugar de ocultarla.
 - **Temas cargados síncronamente en SettingsWindow** — `SettingsWindowViewModel` llama `LoadThemes()` en su constructor, que lee del disco los JSON de `Themes/`. Si ninguno carga, añade `"dark-default"` como fallback.
 - **`ResultItemViewModel.Shortcut`** — propiedad definida pero sin uso: nunca se asigna desde las fuentes de búsqueda ni se muestra en la UI. Placeholder para futuros atajos de teclado por resultado.
+
+- **math.js + Jint: versión 13.x incompatible** — math.js 13.x lanza "Assignment to constant variable" dentro de Jint 3.x al ejecutar `math.evaluate`. Usar math.js 11.x (11.12.0 probado OK). Si se actualiza Jint a una versión con soporte ES2022+, se puede probar 13.x.
 
 - **Raw string literals con variables PowerShell** — usar `$$"""..."""` en lugar de `$"""..."""` cuando el contenido tiene `$var`. Con `$$`, interpolación C# pasa a `{{expr}}` y los `$` sueltos son literales.
 - **Lazy icon en AppInfo** — usa `Lazy<T>` para diferir la lectura de `Info.plist` hasta el primer acceso al icono (evita parsear cientos de plists al arranque).

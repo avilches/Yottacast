@@ -98,10 +98,13 @@ public sealed class WindowsPlatformProvider(StandardCommandRunner runner, ILogge
                 $"System.ItemPathDisplay LIKE '{f.Replace("'", "''")}%'")) + ")"
             : "";
 
+        var queryTokens = safeQuery.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var containsClause = string.Join(" AND ", queryTokens.Select(t => $"CONTAINS(System.FileName, '{t}*')"));
+
         var script = $$"""
             $c = New-Object -ComObject ADODB.Connection
             $c.Open("Provider=Search.CollatorDSO;Extended Properties='Application=Windows';")
-            $sql = "SELECT System.ItemPathDisplay FROM SystemIndex WHERE CONTAINS(System.FileName, '{{safeQuery}}*') {{scopeFilter}}"
+            $sql = "SELECT System.ItemPathDisplay FROM SystemIndex WHERE {{containsClause}} {{scopeFilter}}"
             $rs  = $c.Execute($sql)
             while (-not $rs.EOF) { $rs.Fields.Item(0).Value; [void]$rs.MoveNext() }
             $c.Close()

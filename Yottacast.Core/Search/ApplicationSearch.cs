@@ -39,7 +39,7 @@ public sealed class ApplicationSearch(UserSettings settings, PlatformProvider pl
         _ = ScanAndWatchAsync();
     }
 
-    public Task Ready() => _readyTcs.Task;
+    public Task WhenReady() => _readyTcs.Task;
 
     public Task Stop() {
         _started = false;

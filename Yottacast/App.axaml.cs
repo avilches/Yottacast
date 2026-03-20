@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core.Plugins;
 using Avalonia.Threading;
@@ -42,9 +43,18 @@ public partial class App : Application {
             // More info: https://docs.avaloniaui.net/docs/guides/development-guides/data-validation#manage-validationplugins
             DisableAvaloniaDataAnnotationValidation();
 
-            desktop.MainWindow = new MainWindow {
+            var mainWindow = new MainWindow {
                 DataContext = _services.GetRequiredService<MainWindowViewModel>(),
             };
+            desktop.MainWindow = mainWindow;
+
+            // Wire up clipboard so Core code can copy results without depending on Avalonia
+            var clipboardService = _services.GetRequiredService<ClipboardService>();
+            clipboardService.Initialize(text =>
+                Dispatcher.UIThread.InvokeAsync(() => {
+                    var clipboard = TopLevel.GetTopLevel(mainWindow)?.Clipboard;
+                    if (clipboard != null) _ = clipboard.SetTextAsync(text);
+                }));
 
             var globalSearch = _services.GetRequiredService<GlobalSearch>();
             desktop.Exit += async (_, _) => await globalSearch.Stop();
@@ -57,6 +67,7 @@ public partial class App : Application {
             desktop.MainWindow.Activate();
 
             globalSearch.Start();
+            _ = _services.GetRequiredService<MathJsEngine>(); // warm up in background
             return;
         }
 
@@ -69,7 +80,7 @@ public partial class App : Application {
             return;
         }
         var appSearch = _services.GetRequiredService<ApplicationSearch>();
-        await appSearch.Ready();
+        await appSearch.WhenReady();
         _settingsWindow = new SettingsWindow {
             DataContext = _services.GetRequiredService<SettingsWindowViewModel>(),
         };
@@ -106,12 +117,16 @@ public partial class App : Application {
         services.AddSingleton<BrowserDiscovery>();
         services.AddSingleton<TerminalDiscovery>();
         services.AddSingleton<FileSearch>();
+        services.AddSingleton<ClipboardService>();
+        services.AddSingleton<MathJsEngine>();
+        services.AddSingleton<CalculatorSearch>();
 
-        // Register ApplicationSearch and UserDocumentSearch as ISearchSource implementations.
+        // Register ISearchSource implementations.
         services.AddSingleton<UserDocumentSearch>();
         services.AddSingleton<RandomSearch>();
         services.AddSingleton<ISearchSource>(sp => sp.GetRequiredService<ApplicationSearch>());
         services.AddSingleton<ISearchSource>(sp => sp.GetRequiredService<UserDocumentSearch>());
+        services.AddSingleton<ISearchSource>(sp => sp.GetRequiredService<CalculatorSearch>());
         // services.AddSingleton<ISearchSource>(sp => sp.GetRequiredService<RandomSearch>());
 
         services.AddSingleton<GlobalSearch>();
