@@ -92,7 +92,7 @@ public partial class App : Application {
         services.AddSingleton<StandardCommandRunner>();
         services.AddSingleton<PlatformProvider>(sp =>
             OperatingSystem.IsMacOS()
-                ? new MacOsPlatformProvider(sp.GetRequiredService<StandardCommandRunner>(), sp.GetRequiredService<ILogger<MacOsPlatformProvider>>())
+                ? new MacOsPlatformProvider(sp.GetRequiredService<ILogger<MacOsPlatformProvider>>())
                 : OperatingSystem.IsWindows()
                     ? new WindowsPlatformProvider(sp.GetRequiredService<StandardCommandRunner>(), sp.GetRequiredService<ILogger<WindowsPlatformProvider>>())
                     : new LinuxPlatformProvider(sp.GetRequiredService<StandardCommandRunner>(), sp.GetRequiredService<ILogger<LinuxPlatformProvider>>()));

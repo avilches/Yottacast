@@ -20,7 +20,7 @@ internal static class Program {
 
     private static readonly PlatformProvider Platform =
         OperatingSystem.IsMacOS()
-            ? new MacOsPlatformProvider(Runner, LoggerFactory.CreateLogger<MacOsPlatformProvider>())
+            ? new MacOsPlatformProvider(LoggerFactory.CreateLogger<MacOsPlatformProvider>())
             : OperatingSystem.IsWindows()
                 ? new WindowsPlatformProvider(Runner, LoggerFactory.CreateLogger<WindowsPlatformProvider>())
                 : new LinuxPlatformProvider(Runner, LoggerFactory.CreateLogger<LinuxPlatformProvider>());

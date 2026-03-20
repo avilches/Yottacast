@@ -1,12 +1,11 @@
 using System.Diagnostics;
 using System.Text;
 using Microsoft.Extensions.Logging;
-using Yottacast.Core.Process;
 using Yottacast.Core.Services;
 
 namespace Yottacast.Core.Platform;
 
-public sealed class MacOsPlatformProvider(StandardCommandRunner runner, ILogger<MacOsPlatformProvider> logger) : PlatformProvider {
+public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger) : PlatformProvider {
     // ── Dark mode ─────────────────────────────────────────────────────────────
 
     public override bool? IsSystemDarkMode() {
@@ -58,14 +57,13 @@ public sealed class MacOsPlatformProvider(StandardCommandRunner runner, ILogger<
 
     // ── App scanning ──────────────────────────────────────────────────────────
 
-    public override async Task ScanAppsAsync(
+    public override Task ScanAppsAsync(
         Action<string> addApp, IReadOnlyList<string> dirs, CancellationToken ct) {
-        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        const string query = "kMDItemContentType == 'com.apple.application-bundle'";
-        await runner.RunAsync(
-            "/usr/bin/mdfind", [query], home,
+        const string predicate = "kMDItemContentType == 'com.apple.application-bundle'";
+        return Task.Run(() => SpotlightInterop.Query(
+            predicate, null,
             line => { if (!string.IsNullOrWhiteSpace(line)) addApp(line); return true; },
-            ct);
+            ct), ct);
     }
 
     public override IReadOnlyList<FileSystemWatcher> CreateAppWatchers(
@@ -96,30 +94,37 @@ public sealed class MacOsPlatformProvider(StandardCommandRunner runner, ILogger<
     public override async Task SearchFilesAsync(
         string query, Action<FileResult> onResult, int maxResults,
         IReadOnlyList<string>? folders, CancellationToken ct) {
-        var count = 0;
-        Func<string, bool> onLine = line => {
-            onResult(new FileResult(Path.GetFileName(line), line));
-            return ++count < maxResults;
-        };
+        var safeQuery = query.Replace("'", "\\'");
+        if (string.IsNullOrEmpty(safeQuery)) return;
 
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         var validFolders = folders?.Where(Directory.Exists).ToList();
         var invalidFolders = folders?.Where(f => !Directory.Exists(f)).ToList();
         if (invalidFolders?.Count > 0)
-            logger.LogWarning("mdfind skipping non-existent folders: [{Folders}]", string.Join(", ", invalidFolders));
-        var scope = validFolders?.Count > 0 ? validFolders : [home];
-        var onlyInArgs = scope.SelectMany(f => new[] { "-onlyin", f }).ToList();
+            logger.LogWarning("Spotlight skipping non-existent folders: [{Folders}]", string.Join(", ", invalidFolders));
+        var scope = (validFolders?.Count > 0 ? validFolders : null) ?? [home];
 
-        var safeQuery = query.Replace("'", "\\'");
-        if (string.IsNullOrEmpty(safeQuery)) return;
         var pattern = safeQuery.Contains('*') ? safeQuery : $"*{safeQuery}*";
         var predicate = $"kMDItemFSName == '{pattern}'cd";
-        var allArgs = onlyInArgs.Append(predicate).ToArray();
+        logger.LogDebug("Spotlight query: {Predicate} scope=[{Scope}]", predicate, string.Join(", ", scope));
 
-        logger.LogDebug("mdfind command: {Predicate} scope=[{Scope}]", predicate, string.Join(", ", scope));
-        var result = await runner.RunAsync("/usr/bin/mdfind", allArgs, home, onLine, ct);
-        logger.LogDebug("mdfind result: elapsed={ElapsedMs}ms exit={ExitCode} cancelled={Cancelled} results={Count} error={Error}",
-            result.Elapsed.TotalMilliseconds, result.ExitCode, result.Cancelled, count, result.Error?.Message ?? "none");
+        var count = 0;
+        var sw = Stopwatch.StartNew();
+        Exception? error = null;
+        try {
+            await Task.Run(() => SpotlightInterop.Query(
+                predicate, scope,
+                line => {
+                    onResult(new FileResult(Path.GetFileName(line), line));
+                    return ++count < maxResults;
+                },
+                ct), ct);
+        } catch (Exception ex) when (ex is not OperationCanceledException) {
+            error = ex;
+        }
+        sw.Stop();
+        logger.LogDebug("Spotlight result: elapsed={ElapsedMs}ms cancelled={Cancelled} results={Count} error={Error}",
+            sw.Elapsed.TotalMilliseconds, ct.IsCancellationRequested, count, error?.Message ?? "none");
     }
 
     // ── Browser ───────────────────────────────────────────────────────────────
