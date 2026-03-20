@@ -16,10 +16,9 @@ public record FileResult(string Name, string Path);
 public class FileSearch(PlatformProvider platform) {
     public Task SearchAsync(
         string query, Action<FileResult> onResult, int maxResults,
-        RunnerBackend backend = RunnerBackend.Pty,
         IReadOnlyList<string>? searchFolders = null,
         CancellationToken ct = default) {
         if (string.IsNullOrWhiteSpace(query)) return Task.CompletedTask;
-        return platform.SearchFilesAsync(query, onResult, maxResults, backend, searchFolders, ct);
+        return platform.SearchFilesAsync(query, onResult, maxResults, searchFolders, ct);
     }
 }

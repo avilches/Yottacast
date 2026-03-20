@@ -25,7 +25,7 @@ public abstract class PlatformProvider {
 
     public abstract Task SearchFilesAsync(
         string query, Action<FileResult> onResult, int maxResults,
-        RunnerBackend backend, IReadOnlyList<string>? folders, CancellationToken ct);
+        IReadOnlyList<string>? folders, CancellationToken ct);
 
     public abstract string[] KnownBrowserNames { get; }
     public abstract IReadOnlyDictionary<string, string[]> BrowserFallbackPaths { get; }
@@ -41,6 +41,8 @@ public abstract class PlatformProvider {
 
     public static string ExpandPath(string path) {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (path == "$HOME" || path == "~")
+            return home;
         if (path.StartsWith("$HOME/", StringComparison.Ordinal))
             return Path.Combine(home, path[6..]);
         if (path.StartsWith("~/", StringComparison.Ordinal))

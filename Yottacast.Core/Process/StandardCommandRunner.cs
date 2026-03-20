@@ -1,12 +1,13 @@
 using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 namespace Yottacast.Core.Process;
 
-internal sealed class StandardCommandRunner : ICommandRunner {
-    public static readonly ICommandRunner Instance = new StandardCommandRunner();
+public sealed class StandardCommandRunner(ILogger<StandardCommandRunner> logger) {
+    private readonly ILogger<StandardCommandRunner> _logger = logger;
 
     public async Task<ProcessResult> RunAsync(
-        string binary, string[] args, string cwd,
+        string binary, string[] args, string? cwd,
         Func<string, bool> onLine, CancellationToken ct) {
         var sw = Stopwatch.StartNew();
         var cancelled = false;
@@ -18,7 +19,7 @@ internal sealed class StandardCommandRunner : ICommandRunner {
             RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true,
-            WorkingDirectory = cwd,
+            WorkingDirectory = cwd ?? Environment.CurrentDirectory,
         };
 
         using var proc = System.Diagnostics.Process.Start(psi)

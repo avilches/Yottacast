@@ -1,10 +1,12 @@
 using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 using Yottacast.Core.Process;
 using Yottacast.Core.Services;
 
 namespace Yottacast.Core.Platform;
 
-public sealed class LinuxPlatformProvider : PlatformProvider {
+public sealed class LinuxPlatformProvider(StandardCommandRunner runner, ILogger<LinuxPlatformProvider> logger) : PlatformProvider {
+
     // ── Dark mode ─────────────────────────────────────────────────────────────
 
     public override bool? IsSystemDarkMode() {
@@ -76,7 +78,7 @@ public sealed class LinuxPlatformProvider : PlatformProvider {
 
     public override Task SearchFilesAsync(
         string query, Action<FileResult> onResult, int maxResults,
-        RunnerBackend backend, IReadOnlyList<string>? folders, CancellationToken ct) {
+        IReadOnlyList<string>? folders, CancellationToken ct) {
         var count = 0;
         Func<string, bool> onLine = line => {
             onResult(new FileResult(Path.GetFileName(line), line));
@@ -91,7 +93,7 @@ public sealed class LinuxPlatformProvider : PlatformProvider {
             ? onLine
             : line => folders!.Any(f => line.StartsWith(f, StringComparison.Ordinal)) && onLine(line);
 
-        return CommandRunner.RunAsync(backend, binary,
+        return runner.RunAsync(binary,
             ["-b", "-l", maxResults.ToString(), $"*{safeQuery}*"],
             cwd, filteredOnLine, ct);
     }

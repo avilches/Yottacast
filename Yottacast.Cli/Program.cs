@@ -1,3 +1,6 @@
+using Microsoft.Extensions.Logging;
+using Serilog;
+using Serilog.Extensions.Logging;
 using Yottacast.Core.Platform;
 using Yottacast.Core.Process;
 using Yottacast.Core.Search;
@@ -6,13 +9,24 @@ using Yottacast.Core.Services;
 namespace Yottacast.Cli;
 
 internal static class Program {
-    private static readonly PlatformProvider Platform =
-        OperatingSystem.IsMacOS()   ? new MacOsPlatformProvider()
-        : OperatingSystem.IsWindows() ? new WindowsPlatformProvider()
-        :                               new LinuxPlatformProvider();
+    private static readonly Serilog.ILogger SerilogLogger = new LoggerConfiguration()
+        .MinimumLevel.Debug()
+        .WriteTo.Console(outputTemplate: "[{Level:u5}] [{SourceContext}] {Message:lj}{NewLine}{Exception}")
+        .CreateLogger();
 
-    private static readonly UserSettings Settings = UserSettings.Load(Platform);
-    private static readonly ApplicationSearch AppSearch = new(Settings, Platform);
+    private static readonly ILoggerFactory LoggerFactory = new SerilogLoggerFactory(SerilogLogger);
+
+    private static readonly StandardCommandRunner Runner = new(LoggerFactory.CreateLogger<StandardCommandRunner>());
+
+    private static readonly PlatformProvider Platform =
+        OperatingSystem.IsMacOS()
+            ? new MacOsPlatformProvider(Runner, LoggerFactory.CreateLogger<MacOsPlatformProvider>())
+            : OperatingSystem.IsWindows()
+                ? new WindowsPlatformProvider(Runner, LoggerFactory.CreateLogger<WindowsPlatformProvider>())
+                : new LinuxPlatformProvider(Runner, LoggerFactory.CreateLogger<LinuxPlatformProvider>());
+
+    private static readonly UserSettings Settings = UserSettings.Load(Platform, LoggerFactory.CreateLogger<UserSettings>());
+    private static readonly ApplicationSearch AppSearch = new(Settings, Platform, LoggerFactory.CreateLogger<ApplicationSearch>());
     private static readonly BrowserDiscovery Browsers = new(AppSearch, Platform);
     private static readonly TerminalDiscovery Terminals = new(AppSearch, Platform);
     private static readonly FileSearch FileSearch = new(Platform);
@@ -81,8 +95,7 @@ internal static class Program {
                     break;
                 }
                 var runArgs = args.Length >= 3 ? string.Join(" ", args[2..]) : string.Empty;
-                await CmdRunAsync(RunnerBackend.Standard, args[1], runArgs);
-                await CmdRunAsync(RunnerBackend.Pty, args[1], runArgs);
+                await CmdRunAsync(args[1], runArgs);
                 break;
 
             case "a":
@@ -139,13 +152,13 @@ internal static class Program {
         Console.WriteLine($"\n  {found}/{candidates.Count} installed");
     }
 
-    static async Task CmdRunAsync(RunnerBackend backend, string binary, string runArgs) {
+    static async Task CmdRunAsync(string binary, string runArgs) {
         Header($"RunAsync {binary} {runArgs}");
 
         var argArray = string.IsNullOrEmpty(runArgs) ? [] : runArgs.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-        var result = await CommandRunner.RunAsync(
-            backend, binary, argArray, Environment.CurrentDirectory,
+        var result = await Runner.RunAsync(
+            binary, argArray, Environment.CurrentDirectory,
             line => { Console.WriteLine(line); return true; },
             cts.Token);
 

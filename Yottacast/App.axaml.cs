@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -6,9 +7,13 @@ using Avalonia.Data.Core.Plugins;
 using Avalonia.Threading;
 using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Serilog;
+using Serilog.Extensions.Logging;
 using SharpHook;
 using SharpHook.Data;
 using Yottacast.Core.Platform;
+using Yottacast.Core.Process;
 using Yottacast.Core.Search;
 using Yottacast.Core.Services;
 using Yottacast.Services;
@@ -30,7 +35,8 @@ public partial class App : Application {
             _services = BuildServices();
 
             var userSettings = _services.GetRequiredService<UserSettings>();
-            ThemeService.Apply(userSettings.Theme);
+            var themeService = _services.GetRequiredService<ThemeService>();
+            themeService.Apply(userSettings.Theme);
 
             // Avoid duplicate validations from both Avalonia and the CommunityToolkit.
             // More info: https://docs.avaloniaui.net/docs/guides/development-guides/data-validation#manage-validationplugins
@@ -71,20 +77,37 @@ public partial class App : Application {
     }
 
     private static IServiceProvider BuildServices() {
-        PlatformProvider platform = OperatingSystem.IsMacOS()   ? new MacOsPlatformProvider()
-                                  : OperatingSystem.IsWindows() ? new WindowsPlatformProvider()
-                                  :                               new LinuxPlatformProvider();
+        var serilogLogger = new LoggerConfiguration()
+            .MinimumLevel.Debug()
+            .WriteTo.File(
+                ComputeLogPath(),
+                rollingInterval: RollingInterval.Day,
+                retainedFileCountLimit: 7,
+                outputTemplate: "{Timestamp:HH:mm:ss.fff} [{Level:u5}] [{SourceContext}] {Message:lj}{NewLine}{Exception}")
+            .CreateLogger();
 
         var services = new ServiceCollection();
+        services.AddLogging(b => b.AddSerilog(serilogLogger, dispose: true));
 
-        services.AddSingleton(platform);
-        services.AddSingleton(_ => UserSettings.Load(platform));
+        services.AddSingleton<StandardCommandRunner>();
+        services.AddSingleton<PlatformProvider>(sp =>
+            OperatingSystem.IsMacOS()
+                ? new MacOsPlatformProvider(sp.GetRequiredService<StandardCommandRunner>(), sp.GetRequiredService<ILogger<MacOsPlatformProvider>>())
+                : OperatingSystem.IsWindows()
+                    ? new WindowsPlatformProvider(sp.GetRequiredService<StandardCommandRunner>(), sp.GetRequiredService<ILogger<WindowsPlatformProvider>>())
+                    : new LinuxPlatformProvider(sp.GetRequiredService<StandardCommandRunner>(), sp.GetRequiredService<ILogger<LinuxPlatformProvider>>()));
+
+        services.AddSingleton(sp => UserSettings.Load(
+            sp.GetRequiredService<PlatformProvider>(),
+            sp.GetRequiredService<ILogger<UserSettings>>()));
+
+        services.AddSingleton<ThemeService>();
         services.AddSingleton<ApplicationSearch>();
         services.AddSingleton<BrowserDiscovery>();
         services.AddSingleton<TerminalDiscovery>();
         services.AddSingleton<FileSearch>();
 
-        // Register ApplicationSearch and FileSearch as ISearchSource implementations.
+        // Register ApplicationSearch and UserDocumentSearch as ISearchSource implementations.
         services.AddSingleton<UserDocumentSearch>();
         services.AddSingleton<RandomSearch>();
         services.AddSingleton<ISearchSource>(sp => sp.GetRequiredService<ApplicationSearch>());
@@ -97,6 +120,14 @@ public partial class App : Application {
         services.AddTransient<SettingsWindowViewModel>();
 
         return services.BuildServiceProvider();
+    }
+
+    private static string ComputeLogPath() {
+        var dir = OperatingSystem.IsMacOS()
+            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Logs", "Yottacast")
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Yottacast", "Logs");
+        Directory.CreateDirectory(dir);
+        return Path.Combine(dir, "yottacast-.log");
     }
 
     private void RegisterGlobalHotKey(IClassicDesktopStyleApplicationLifetime desktop) {

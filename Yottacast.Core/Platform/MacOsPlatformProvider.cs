@@ -1,11 +1,12 @@
 using System.Diagnostics;
 using System.Text;
+using Microsoft.Extensions.Logging;
 using Yottacast.Core.Process;
 using Yottacast.Core.Services;
 
 namespace Yottacast.Core.Platform;
 
-public sealed class MacOsPlatformProvider : PlatformProvider {
+public sealed class MacOsPlatformProvider(StandardCommandRunner runner, ILogger<MacOsPlatformProvider> logger) : PlatformProvider {
     // ── Dark mode ─────────────────────────────────────────────────────────────
 
     public override bool? IsSystemDarkMode() {
@@ -51,7 +52,7 @@ public sealed class MacOsPlatformProvider : PlatformProvider {
             "$HOME/pCloud Drive",
             "$HOME/Nextcloud",
             "$HOME/Adobe Creative Cloud",
-            "$HOME/Amazon Drive"            
+            "$HOME/Amazon Drive"
         ];
     }
 
@@ -61,7 +62,7 @@ public sealed class MacOsPlatformProvider : PlatformProvider {
         Action<string> addApp, IReadOnlyList<string> dirs, CancellationToken ct) {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         const string query = "kMDItemContentType == 'com.apple.application-bundle'";
-        await CommandRunner.RunAsync(RunnerBackend.Standard,
+        await runner.RunAsync(
             "/usr/bin/mdfind", [query], home,
             line => { if (!string.IsNullOrWhiteSpace(line)) addApp(line); return true; },
             ct);
@@ -92,9 +93,9 @@ public sealed class MacOsPlatformProvider : PlatformProvider {
 
     // ── File search ───────────────────────────────────────────────────────────
 
-    public override Task SearchFilesAsync(
+    public override async Task SearchFilesAsync(
         string query, Action<FileResult> onResult, int maxResults,
-        RunnerBackend backend, IReadOnlyList<string>? folders, CancellationToken ct) {
+        IReadOnlyList<string>? folders, CancellationToken ct) {
         var count = 0;
         Func<string, bool> onLine = line => {
             onResult(new FileResult(Path.GetFileName(line), line));
@@ -103,14 +104,22 @@ public sealed class MacOsPlatformProvider : PlatformProvider {
 
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         var validFolders = folders?.Where(Directory.Exists).ToList();
+        var invalidFolders = folders?.Where(f => !Directory.Exists(f)).ToList();
+        if (invalidFolders?.Count > 0)
+            logger.LogWarning("mdfind skipping non-existent folders: [{Folders}]", string.Join(", ", invalidFolders));
         var scope = validFolders?.Count > 0 ? validFolders : [home];
         var onlyInArgs = scope.SelectMany(f => new[] { "-onlyin", f }).ToList();
 
         var safeQuery = query.Replace("'", "\\'");
-        if (string.IsNullOrEmpty(safeQuery)) return Task.CompletedTask;
+        if (string.IsNullOrEmpty(safeQuery)) return;
         var pattern = safeQuery.Contains('*') ? safeQuery : $"*{safeQuery}*";
         var predicate = $"kMDItemFSName == '{pattern}'cd";
-        return CommandRunner.RunAsync(backend, "/usr/bin/mdfind", [.. onlyInArgs, predicate], home, onLine, ct);
+        var allArgs = onlyInArgs.Append(predicate).ToArray();
+
+        logger.LogDebug("mdfind command: {Predicate} scope=[{Scope}]", predicate, string.Join(", ", scope));
+        var result = await runner.RunAsync("/usr/bin/mdfind", allArgs, home, onLine, ct);
+        logger.LogDebug("mdfind result: elapsed={ElapsedMs}ms exit={ExitCode} cancelled={Cancelled} results={Count} error={Error}",
+            result.Elapsed.TotalMilliseconds, result.ExitCode, result.Cancelled, count, result.Error?.Message ?? "none");
     }
 
     // ── Browser ───────────────────────────────────────────────────────────────

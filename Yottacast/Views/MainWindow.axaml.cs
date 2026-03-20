@@ -26,7 +26,6 @@ public partial class MainWindow : Window {
     }
 
     protected override void OnTextInput(TextInputEventArgs e) {
-        Console.WriteLine($"[Window] OnTextInput text='{e.Text}'");
         base.OnTextInput(e);
     }
 

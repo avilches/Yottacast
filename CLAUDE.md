@@ -47,10 +47,7 @@ Yottacast.sln
 │   ├── WindowsPlatformProvider.cs      ← implementación Windows
 │   └── LinuxPlatformProvider.cs        ← implementación Linux
 ├── Process/
-│   ├── CommandRunner.cs                ← Punto de entrada público: CommandRunner.RunAsync(backend, ...)
-│   ├── ICommandRunner.cs               ← internal: abstracción stream de líneas
-│   ├── StandardCommandRunner.cs        ← internal: Process.RedirectStandardOutput (block-buffered)
-│   ├── PtyRunner.cs                    ← internal: Pty.Net (line-buffered, más rápido) — preferido
+│   ├── StandardCommandRunner.cs        ← public: Process.RedirectStandardOutput; único runner disponible
 │   └── ProcessResult.cs                ← (Elapsed, ExitCode, Cancelled, Error?)
 ├── Search/
 │   ├── ISearchSource.cs                ← Interfaz: Start() void, Ready() Task, Stop(), SearchAsync → IAsyncEnumerable
@@ -294,20 +291,13 @@ Temas incluidos: `dark-default`, `dark-raycast`, `dark-macos`, `light-blue`, `li
 
 ---
 
-## Process runners (CommandRunner)
+## Process runners (StandardCommandRunner)
 
-Punto de entrada público: `CommandRunner.RunAsync(backend, binary, args, cwd, onLine, ct)`.
-`ICommandRunner`, `StandardCommandRunner` y `PtyRunner` son **internal** — no usar directamente.
+Único runner: `StandardCommandRunner.RunAsync(binary, args, cwd, onLine, ct)`.
 
-Acepta `Func<string, bool> onLine` — retorna `false` para parar antes del EOF:
+Acepta `Func<string, bool> onLine` — retorna `false` para parar antes del EOF. Redirige stdout al pipe del proceso (block-buffered). Al cancelar o recibir `false` de `onLine`, mata el proceso con `Kill(entireProcessTree: true)`.
 
-- **`RunnerBackend.Standard`** (`StandardCommandRunner`) — redirige stdout al pipe del proceso. El SO hace buffer del pipe hasta llenarlo o que el proceso acabe (block-buffered). Útil para comandos que terminan solos y donde no importa la latencia.
-- **`RunnerBackend.Pty`** (`PtyRunner`) — abre un pseudo-terminal (Pty.Net). La terminal fuerza flush línea a línea. Resultados llegan en tiempo real: se puede consumir, hacer timeout y cortar el proceso antes de que termine. Preferido para `mdfind`, `locate`, etc.
-
-`FileSearch` usa `RunnerBackend.Pty` por defecto (configurable via `RunnerBackend` enum).
-`ApplicationSearch` usa `RunnerBackend.Standard` para la carga inicial de macOS.
-
-**Gotcha tests PTY**: `PtyRunnerTests` deshabilita paralelización (`[assembly: CollectionBehavior(DisableTestParallelization = true)]`) por race conditions de kqueue en Pty.Net.
+Registrado en DI como singleton. Los `PlatformProvider`s lo reciben por inyección de constructor.
 
 ---
 
@@ -355,7 +345,7 @@ Clase instancia (no estática). Delega en `platform.SearchFilesAsync()`.
 - **Windows** → PowerShell + ADODB.Connection (`Provider=Search.CollatorDSO`)
 - **Linux** → `plocate` o `locate -b`
 
-API: `fileSearch.SearchAsync(query, onResult, maxResults, backend, searchFolders, ct)`.
+API: `fileSearch.SearchAsync(query, onResult, maxResults, searchFolders, ct)`.
 `onResult` es un callback `Action<FileResult>` — los resultados llegan conforme el proceso los emite.
 
 ---
@@ -384,7 +374,7 @@ ALT+Space muestra/oculta la ventana.
 - **ALT+Space toggle con foco**: ALT+Space oculta la ventana solo si está visible **y activa** (`window.IsVisible && window.IsActive`). Si está visible pero sin foco (tapada por otra ventana), la trae al frente (`Show()` + `Activate()`) en lugar de ocultarla.
 - **Temas cargados síncronamente en SettingsWindow** — `SettingsWindowViewModel` llama `LoadThemes()` en su constructor, que lee del disco los JSON de `Themes/`. Si ninguno carga, añade `"dark-default"` como fallback.
 - **`ResultItemViewModel.Shortcut`** — propiedad definida pero sin uso: nunca se asigna desde las fuentes de búsqueda ni se muestra en la UI. Placeholder para futuros atajos de teclado por resultado.
-- **PtyRunner dimensions hardcodeadas** — `Rows = 24, Cols = 220`. Irrelevante para el uso actual (parsing de líneas), pero a tener en cuenta si algún comando formatea su salida según el ancho del terminal.
+
 - **Raw string literals con variables PowerShell** — usar `$$"""..."""` en lugar de `$"""..."""` cuando el contenido tiene `$var`. Con `$$`, interpolación C# pasa a `{{expr}}` y los `$` sueltos son literales.
 - **Lazy icon en AppInfo** — usa `Lazy<T>` para diferir la lectura de `Info.plist` hasta el primer acceso al icono (evita parsear cientos de plists al arranque).
 

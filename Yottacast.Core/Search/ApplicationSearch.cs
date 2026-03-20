@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Logging;
 using Yottacast.Core.Platform;
 using Yottacast.Core.Services;
 using Yottacast.Core.ViewModels;
@@ -15,7 +16,7 @@ namespace Yottacast.Core.Search;
 /// Call <see cref="Start"/> to begin scanning. Call <see cref="Stop"/> to cancel it.
 /// BrowserDiscovery and TerminalDiscovery query this store instead of hitting the filesystem themselves.
 /// </summary>
-public sealed class ApplicationSearch(UserSettings settings, PlatformProvider platform)
+public sealed class ApplicationSearch(UserSettings settings, PlatformProvider platform, ILogger<ApplicationSearch> logger)
     : ISearchSource, IDisposable {
     private readonly ConcurrentDictionary<string, AppInfo> _apps =
         new(StringComparer.OrdinalIgnoreCase);
@@ -67,6 +68,8 @@ public sealed class ApplicationSearch(UserSettings settings, PlatformProvider pl
                 OnActivate = () => platform.LaunchApp(a.Path),
             })
             .ToList();
+        logger.LogDebug("AppSearch query=\"{Query}\" cache={CacheCount} results={ResultCount} ready={Ready}",
+            query, _apps.Count, results.Count, _readyTcs.Task.IsCompleted);
         yield return results;
         await Task.CompletedTask;
     }
@@ -85,7 +88,9 @@ public sealed class ApplicationSearch(UserSettings settings, PlatformProvider pl
     // ── Scan + watch ──────────────────────────────────────────────────────────
 
     private async Task ScanAndWatchAsync() {
+        logger.LogInformation("AppSearch scan start dirs=[{Dirs}]", string.Join(", ", settings.ExpandedAppDirectories));
         await platform.ScanAppsAsync(AddApp, settings.ExpandedAppDirectories, _liveCts.Token);
+        logger.LogInformation("AppSearch scan done apps={Count}", _apps.Count);
         _readyTcs.TrySetResult();
         foreach (var w in platform.CreateAppWatchers(settings.ExpandedAppDirectories, AddApp, RemoveApp))
             _watchers.Add(w);

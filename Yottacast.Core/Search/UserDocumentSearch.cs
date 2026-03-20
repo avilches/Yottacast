@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
+using Microsoft.Extensions.Logging;
 using Yottacast.Core.Services;
 using Yottacast.Core.ViewModels;
 
@@ -15,6 +16,7 @@ namespace Yottacast.Core.Search;
 public class UserDocumentSearch(
     UserSettings settings,
     FileSearch fileSearch,
+    ILogger<UserDocumentSearch> logger,
     int timeoutMs = 20_000) : ISearchSource {
 
     public bool IsInstant => false;
@@ -39,6 +41,9 @@ public class UserDocumentSearch(
             var queryLower = query.ToLowerInvariant();
             var hasWildcard = query.Contains('*');
             var lastSnapshot = Environment.TickCount64 - SnapshotIntervalMs;
+            var folders = settings.ExpandedSearchFolders;
+            logger.LogDebug("DocSearch start query=\"{Query}\" timeout={TimeoutMs}ms folders=[{Folders}]",
+                query, timeoutMs, string.Join(", ", folders));
 
             try {
                 await fileSearch.SearchAsync(
@@ -63,7 +68,6 @@ public class UserDocumentSearch(
                             Category = isDir ? "Folders" : "Files",
                             Score = score,
                         });
-                        Console.WriteLine(r.Path+ " "+score);
 
                         var now = Environment.TickCount64;
                         if (now - lastSnapshot >= SnapshotIntervalMs) {
@@ -73,9 +77,13 @@ public class UserDocumentSearch(
                         }
                     },
                     maxResults: int.MaxValue,
-                    searchFolders: settings.ExpandedSearchFolders,
+                    searchFolders: folders,
                     ct: cts.Token);
-            } catch (OperationCanceledException) { }
+                logger.LogInformation("DocSearch done query=\"{Query}\" total={Count}", query, buffer.Count);
+            } catch (OperationCanceledException) {
+                logger.LogInformation("DocSearch cancelled query=\"{Query}\" results={Count} callerCancelled={CallerCancelled} timeout={Timeout}",
+                    query, buffer.Count, ct.IsCancellationRequested, cts.IsCancellationRequested && !ct.IsCancellationRequested);
+            }
 
             cts.Dispose();
             channel.Writer.TryWrite(buffer.OrderByDescending(x => x.Score).Take(limit).ToList());

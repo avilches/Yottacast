@@ -1,14 +1,17 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Logging;
 using Yottacast.Core.Platform;
 
 namespace Yottacast.Core.Services;
 
 public class UserSettings {
     private readonly PlatformProvider _platform;
+    private readonly ILogger? _logger;
 
-    private UserSettings(PlatformProvider platform) {
+    private UserSettings(PlatformProvider platform, ILogger? logger = null) {
         _platform = platform;
+        _logger = logger;
     }
 
     public string Browser  { get; set; } = "";
@@ -41,7 +44,7 @@ public class UserSettings {
         get {
             var resolved = BrowserDiscovery.Resolve(Browser, _platform);
             if (resolved is not null && resolved.Name != Browser) {
-                Console.WriteLine($"[Settings] Browser '{Browser}' not found, switching to '{resolved.Name}'");
+                _logger?.LogInformation("Settings: browser '{OldBrowser}' not found, switching to '{NewBrowser}'", Browser, resolved.Name);
                 Browser = resolved.Name;
                 Save();
             }
@@ -58,7 +61,7 @@ public class UserSettings {
         get {
             var resolved = TerminalDiscovery.Resolve(Terminal, _platform);
             if (resolved is not null && resolved.Name != Terminal) {
-                Console.WriteLine($"[Settings] Terminal '{Terminal}' not found, switching to '{resolved.Name}'");
+                _logger?.LogInformation("Settings: terminal '{OldTerminal}' not found, switching to '{NewTerminal}'", Terminal, resolved.Name);
                 Terminal = resolved.Name;
                 Save();
             }
@@ -80,18 +83,18 @@ public class UserSettings {
         [JsonPropertyName("appDirectories")] public List<string>? AppDirectories { get; init; }
     }
 
-    public static UserSettings Load(PlatformProvider platform) {
+    public static UserSettings Load(PlatformProvider platform, ILogger? logger = null) {
         UserSettings settings;
         try {
             if (!File.Exists(SettingsPath)) {
-                throw new FileNotFoundException($"[Settings] Settings file '{SettingsPath}' does not exist");
+                throw new FileNotFoundException($"Settings file '{SettingsPath}' does not exist");
             }
-            Console.WriteLine($"[Settings] Loading settings.json {SettingsPath}");
+            logger?.LogInformation("Settings loaded from {Path}", SettingsPath);
             var data = JsonSerializer.Deserialize<UserSettingsData>(File.ReadAllText(SettingsPath), JsonOptions);
             if (data == null) {
-                settings = CreateDefaultUserSettings(platform);
+                settings = CreateDefaultUserSettings(platform, logger);
             } else {
-                settings = new UserSettings(platform) {
+                settings = new UserSettings(platform, logger) {
                     Browser        = data.Browser,
                     Terminal       = data.Terminal,
                     Theme          = string.IsNullOrEmpty(data.Theme) ? platform.DefaultTheme() : data.Theme,
@@ -100,16 +103,15 @@ public class UserSettings {
                 };
             }
         } catch (Exception ex) {
-            Console.WriteLine(ex.Message);
-            Console.WriteLine($"[Settings] Creating Default settings.json {SettingsPath}");
-            settings = CreateDefaultUserSettings(platform);
+            logger?.LogInformation("Settings not found or invalid ({Message}), creating defaults at {Path}", ex.Message, SettingsPath);
+            settings = CreateDefaultUserSettings(platform, logger);
         }
         settings.Save();
         return settings;
     }
 
-    private static UserSettings CreateDefaultUserSettings(PlatformProvider platform) {
-        return new UserSettings(platform) {
+    private static UserSettings CreateDefaultUserSettings(PlatformProvider platform, ILogger? logger) {
+        return new UserSettings(platform, logger) {
             Theme          = platform.DefaultTheme(),
             SearchFolders  = platform.DefaultSearchFolders(),
             AppDirectories = platform.DefaultAppDirectories(),
@@ -128,8 +130,9 @@ public class UserSettings {
                 AppDirectories = AppDirectories,
             };
             File.WriteAllText(SettingsPath, JsonSerializer.Serialize(data, JsonOptions));
+            _logger?.LogDebug("Settings saved to {Path}", SettingsPath);
         } catch (Exception ex) {
-            Console.WriteLine($"[Settings] Save error: {ex.Message}");
+            _logger?.LogWarning("Settings save error: {Message}", ex.Message);
         }
     }
 }

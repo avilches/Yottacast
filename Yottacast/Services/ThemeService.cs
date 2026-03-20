@@ -4,18 +4,25 @@ using System.Text.Json.Nodes;
 using Avalonia;
 using Avalonia.Media;
 using Avalonia.Styling;
+using Microsoft.Extensions.Logging;
 
 namespace Yottacast.Services;
 
-public static class ThemeService {
+public sealed class ThemeService {
+    private readonly ILogger<ThemeService> _logger;
+
     private static string ThemesFolder =>
         Path.Combine(AppContext.BaseDirectory, "Themes");
 
-    public static void Apply(string themeName) {
+    public ThemeService(ILogger<ThemeService> logger) {
+        _logger = logger;
+    }
+
+    public void Apply(string themeName) {
         try {
             var themePath = Path.Combine(ThemesFolder, $"{themeName}.json");
             if (!File.Exists(themePath)) {
-                Console.WriteLine($"[Theme] File not found: {themePath}, using built-in default");
+                _logger.LogWarning("Theme file not found: {Path}, using built-in default", themePath);
                 ApplyBuiltinDefault();
                 return;
             }
@@ -78,17 +85,17 @@ public static class ThemeService {
                 SetDouble(app, "Theme.WindowWidth",                layout["windowWidth"]);
             }
 
-            Console.WriteLine($"[Theme] Applied: {json["name"]?.GetValue<string>() ?? themeName}");
+            _logger.LogInformation("Theme applied: {ThemeName}", json["name"]?.GetValue<string>() ?? themeName);
         } catch (Exception ex) {
-            Console.WriteLine($"[Theme] Error applying '{themeName}': {ex.Message}");
+            _logger.LogWarning("Theme error applying '{ThemeName}': {Message}", themeName, ex.Message);
             ApplyBuiltinDefault();
         }
     }
 
     // Hardcoded fallback — mirrors dark-default.json so the app never fails to start.
-    public static void ApplyBuiltinDefault() {
+    public void ApplyBuiltinDefault() {
         if (Application.Current is not { } app) return;
-        Console.WriteLine("[Theme] Applying built-in default theme");
+        _logger.LogInformation("Theme applying built-in default");
 
         app.RequestedThemeVariant = ThemeVariant.Dark;
 

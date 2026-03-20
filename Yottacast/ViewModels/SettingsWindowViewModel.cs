@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json.Nodes;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.Extensions.Logging;
 using Yottacast.Core.Search;
 using Yottacast.Core.Services;
 using Yottacast.Services;
@@ -23,10 +24,20 @@ public partial class SettingsWindowViewModel : ViewModelBase {
 
     private readonly UserSettings _settings;
     private readonly ApplicationSearch _applicationSearch;
+    private readonly ThemeService _themeService;
+    private readonly ILogger<SettingsWindowViewModel> _logger;
 
-    public SettingsWindowViewModel(UserSettings settings, BrowserDiscovery browserDiscovery, TerminalDiscovery terminalDiscovery, ApplicationSearch applicationSearch) {
+    public SettingsWindowViewModel(
+        UserSettings settings,
+        BrowserDiscovery browserDiscovery,
+        TerminalDiscovery terminalDiscovery,
+        ApplicationSearch applicationSearch,
+        ThemeService themeService,
+        ILogger<SettingsWindowViewModel> logger) {
         _applicationSearch = applicationSearch;
         _settings = settings;
+        _themeService = themeService;
+        _logger = logger;
 
         Browsers  = browserDiscovery.Discover().Select(b => b.Name).ToList();
         Terminals = terminalDiscovery.Discover().Select(t => t.Name).ToList();
@@ -55,10 +66,10 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         if (value is null) return;
         _settings.Theme = value.Id;
         _settings.Save();
-        ThemeService.Apply(value.Id);
+        _themeService.Apply(value.Id);
     }
 
-    private static IReadOnlyList<ThemeOption> LoadThemes() {
+    private IReadOnlyList<ThemeOption> LoadThemes() {
         var folder = Path.Combine(AppContext.BaseDirectory, "Themes");
         var themes = new List<ThemeOption>();
 
@@ -75,7 +86,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
                 }
             }
         } catch (Exception ex) {
-            Console.WriteLine($"[Settings] Could not load themes: {ex.Message}");
+            _logger.LogWarning("Could not load themes: {Message}", ex.Message);
         }
 
         // Always include the built-in default as fallback

@@ -1,11 +1,13 @@
 using System.Diagnostics;
 using System.Text;
+using Microsoft.Extensions.Logging;
 using Yottacast.Core.Process;
 using Yottacast.Core.Services;
 
 namespace Yottacast.Core.Platform;
 
-public sealed class WindowsPlatformProvider : PlatformProvider {
+public sealed class WindowsPlatformProvider(StandardCommandRunner runner, ILogger<WindowsPlatformProvider> logger) : PlatformProvider {
+
     // ── Dark mode ─────────────────────────────────────────────────────────────
 
     public override bool? IsSystemDarkMode() {
@@ -81,7 +83,7 @@ public sealed class WindowsPlatformProvider : PlatformProvider {
 
     public override Task SearchFilesAsync(
         string query, Action<FileResult> onResult, int maxResults,
-        RunnerBackend backend, IReadOnlyList<string>? folders, CancellationToken ct) {
+        IReadOnlyList<string>? folders, CancellationToken ct) {
         var count = 0;
         Func<string, bool> onLine = line => {
             onResult(new FileResult(Path.GetFileName(line), line));
@@ -107,7 +109,7 @@ public sealed class WindowsPlatformProvider : PlatformProvider {
 
         var encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
         var cwd = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        return CommandRunner.RunAsync(backend, "powershell",
+        return runner.RunAsync("powershell",
             ["-NoProfile", "-NonInteractive", "-EncodedCommand", encoded],
             cwd, onLine, ct);
     }
