@@ -82,6 +82,7 @@ public partial class MainWindow : Window {
     private static void SelectNext(MainWindowViewModel vm, int delta) {
         if (vm.Results.Count == 0) return;
 
+        vm.NotifyUserNavigated();
         var current = vm.SelectedResult is null ? -1 : vm.Results.IndexOf(vm.SelectedResult);
         var next = (current + delta + vm.Results.Count) % vm.Results.Count;
         vm.SelectedResult = vm.Results[next];

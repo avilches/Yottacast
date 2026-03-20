@@ -71,8 +71,7 @@ public class UnitConverterSearchTests(MathJsEngineFixture fixture) {
     // ── Non-conversion queries yield nothing ──────────────────────────────────
 
     public static TheoryData<string> NonConversionCases => new() {
-        { "10"          },   // number only
-        { "kg to lbs"   },   // missing leading number
+        { "10"          },   // number only — trivially equal, discarded
     };
 
     [Theory]

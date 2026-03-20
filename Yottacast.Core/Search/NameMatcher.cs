@@ -4,6 +4,15 @@ public static class NameMatcher
 {
     public static double Score(string name, string query)
     {
+        var result = ScoreWith(name, query);
+        // All-lowercase query: also try as initials (same as if typed in uppercase)
+        if (result < 1.0 && query.All(char.IsLower))
+            result = Math.Max(result, ScoreWith(name, query.ToUpperInvariant()));
+        return result;
+    }
+
+    private static double ScoreWith(string name, string query)
+    {
         var tokens = SplitTokens(name);
         var queryHumps = SplitTokens(query);
 

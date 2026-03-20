@@ -36,8 +36,10 @@ public partial class MainWindowViewModel(
     private IReadOnlyList<ResultItemViewModel> _instantSnapshot = [];
     private IReadOnlyList<ResultItemViewModel> _deferredSnapshot = [];
     private ResultItemViewModel? _googleItem;
+    private bool _userNavigated;
 
     public void CancelDeferredSearch() => _deferredCts?.Cancel();
+    public void NotifyUserNavigated() => _userNavigated = true;
     
     /// <summary>
     /// The amount of search per service
@@ -47,6 +49,7 @@ public partial class MainWindowViewModel(
     partial void OnSearchTextChanged(string value) {
         _cts?.Cancel();
         _cts = new CancellationTokenSource();
+        _userNavigated = false;
 
         if (string.IsNullOrWhiteSpace(value)) {
             IsSearching = false;
@@ -115,9 +118,14 @@ public partial class MainWindowViewModel(
         HasResults = Results.Count > 0;
         ShowNoResults = false;
 
-        SelectedResult = previousSelected != null && merged.Contains(previousSelected)
-            ? previousSelected
-            : Results.FirstOrDefault();
+        var calcResult = merged.FirstOrDefault(x => x.Category is "Calculator" or "Converter");
+        if (calcResult != null && !_userNavigated) {
+            SelectedResult = calcResult;
+        } else {
+            SelectedResult = previousSelected != null && merged.Contains(previousSelected)
+                ? previousSelected
+                : Results.FirstOrDefault();
+        }
     }
 
     private ResultItemViewModel MakeGoogleItem(string query) {

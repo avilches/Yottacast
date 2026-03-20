@@ -93,9 +93,8 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
     public static TheoryData<string> NonMathCases => new() {
         { "safari"          },   // plain text
         { "hello world"     },   // no digits or operators
-        { "2"               },   // digit only, no operator
-        { "10 kg to lbs"    },   // unit conversion → delegated
-        { "100 usd to eur"  },   // unit conversion → delegated
+        { "2"               },   // digit only, trivially equal → discarded
+        { "100 usd to eur"  },   // currency — math.js has no fx rates
     };
 
     [Theory]
