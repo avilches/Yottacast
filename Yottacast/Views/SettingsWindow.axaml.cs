@@ -3,7 +3,6 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using System.Threading.Tasks;
-using Yottacast.Services;
 using Yottacast.ViewModels;
 
 namespace Yottacast.Views;
@@ -13,12 +12,6 @@ public partial class SettingsWindow : Window {
         InitializeComponent();
     }
 
-    // Drag the window when the user presses on the custom title bar
-    private void OnTitleBarPointerPressed(object? sender, PointerPressedEventArgs e) {
-        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
-            BeginMoveDrag(e);
-    }
-
     // Intercept keyboard input while capturing a new hotkey combination
     protected override void OnKeyDown(KeyEventArgs e) {
         if (DataContext is SettingsWindowViewModel { IsCapturingHotkey: true } vm) {
@@ -26,8 +19,7 @@ public partial class SettingsWindow : Window {
             e.Handled = true;
             return;
         }
-        var (closeMods, closeKey) = AppHandler.Instance.CloseWindowShortcut;
-        if (e.Key == closeKey && e.KeyModifiers == closeMods) {
+        if (e.Key == Key.Escape) {
             Hide();
             e.Handled = true;
             return;

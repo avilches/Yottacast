@@ -6,10 +6,9 @@
         x:Class="Yottacast.Views.SettingsWindow"
         x:DataType="vm:SettingsWindowViewModel"
         Title="Yottacast Settings"
-        Width="700" Height="548"
+        Width="700" Height="520"
         SizeToContent="Manual"
         CanResize="False"
-        SystemDecorations="None"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource Theme.WindowBackground}">
 
@@ -117,25 +116,10 @@
 
     </Window.Styles>
 
-    <Grid RowDefinitions="28,*" ColumnDefinitions="180,1,*">
-
-        <!-- ── Title bar (draggable, replaces native title bar) ────────────── -->
-        <Border Grid.Row="0" Grid.ColumnSpan="3"
-                Background="{DynamicResource Theme.ItemIconBackground}"
-                PointerPressed="OnTitleBarPointerPressed">
-            <Border.Styles>
-                <Style Selector="Border > TextBlock">
-                    <Setter Property="Foreground" Value="{DynamicResource Theme.ItemSubtitle}"/>
-                    <Setter Property="FontSize"   Value="12"/>
-                    <Setter Property="VerticalAlignment" Value="Center"/>
-                    <Setter Property="HorizontalAlignment" Value="Center"/>
-                </Style>
-            </Border.Styles>
-            <TextBlock Text="Yottacast Settings"/>
-        </Border>
+    <Grid ColumnDefinitions="180,1,*">
 
         <!-- ── Sidebar ─────────────────────────────────────────────────────── -->
-        <Border Grid.Row="1" Grid.Column="0" Background="{DynamicResource Theme.ItemIconBackground}">
+        <Border Grid.Column="0" Background="{DynamicResource Theme.ItemIconBackground}">
             <StackPanel Spacing="2" Margin="10,16">
 
                 <TextBlock Text="Preferences"
@@ -183,10 +167,10 @@
         </Border>
 
         <!-- ── Vertical divider ────────────────────────────────────────────── -->
-        <Rectangle Grid.Row="1" Grid.Column="1" Fill="{DynamicResource Theme.Divider}"/>
+        <Rectangle Grid.Column="1" Fill="{DynamicResource Theme.Divider}"/>
 
         <!-- ── Content panels ──────────────────────────────────────────────── -->
-        <ScrollViewer Grid.Row="1" Grid.Column="2">
+        <ScrollViewer Grid.Column="2">
             <Panel Margin="28,24">
 
                 <!-- General -->

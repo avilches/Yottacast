@@ -83,6 +83,10 @@
         <Style Selector="ListBoxItem:selected Border.icon-box">
             <Setter Property="Background" Value="{DynamicResource Theme.ItemSelectionIconBackground}"/>
         </Style>
+        <!-- Emoji cell selection highlight -->
+        <Style Selector="Border.emoji-selected">
+            <Setter Property="Background" Value="{DynamicResource Theme.ItemSelectionIconBackground}"/>
+        </Style>
     </Window.Styles>
 
     <Border Margin="28"
@@ -171,7 +175,34 @@
                      IsVisible="{Binding HasResults}"
                      ScrollViewer.VerticalScrollBarVisibility="Auto"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                <ListBox.ItemTemplate>
+                <ListBox.DataTemplates>
+                    <!-- Template for emoji grid (more specific type first) -->
+                    <DataTemplate x:DataType="viewModels:EmojiGridResultViewModel">
+                        <StackPanel Orientation="Vertical" Margin="4,8,4,8">
+                            <ItemsControl ItemsSource="{Binding Cells}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel Orientation="Horizontal"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="viewModels:EmojiCellViewModel">
+                                        <Border Width="40" Height="40" CornerRadius="8" Margin="2"
+                                                Classes.emoji-selected="{Binding IsSelected}">
+                                            <TextBlock Text="{Binding Char}" FontSize="22"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="{Binding SelectedEmoji.Name}"
+                                       Foreground="{DynamicResource Theme.ItemSubtitle}"
+                                       FontSize="{DynamicResource Theme.FontSizeSmall}"
+                                       HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                        </StackPanel>
+                    </DataTemplate>
+
+                    <!-- Standard template (apps, files, etc.) -->
                     <DataTemplate x:DataType="viewModels:ResultItemViewModel">
                         <Grid ColumnDefinitions="Auto,*,Auto" MinHeight="44">
 
@@ -231,7 +262,7 @@
 
                         </Grid>
                     </DataTemplate>
-                </ListBox.ItemTemplate>
+                </ListBox.DataTemplates>
             </ListBox>
 
             <!-- ── Footer ── -->

@@ -13,6 +13,9 @@ public partial class MainWindow : Window {
     public MainWindow() {
         InitializeComponent();
         Opened += (_, _) => SearchBox.Focus();
+        // Intercept LEFT/RIGHT in the tunnel phase so items with OnLeft/OnRight
+        // can capture them before the TextBox moves its cursor.
+        AddHandler(KeyDownEvent, OnTunnelKeyDown, RoutingStrategies.Tunnel);
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change) {
@@ -26,8 +29,21 @@ public partial class MainWindow : Window {
         }
     }
 
-    protected override void OnTextInput(TextInputEventArgs e) {
-        base.OnTextInput(e);
+    private void OnTunnelKeyDown(object? sender, KeyEventArgs e) {
+        var vm = DataContext as MainWindowViewModel;
+        if (vm is null) return;
+
+        switch (e.Key) {
+            case Key.Left when vm.SelectedResult?.OnLeft is { } onLeft:
+                onLeft();
+                e.Handled = true;
+                break;
+
+            case Key.Right when vm.SelectedResult?.OnRight is { } onRight:
+                onRight();
+                e.Handled = true;
+                break;
+        }
     }
 
     protected override void OnKeyDown(KeyEventArgs e) {

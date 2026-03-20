@@ -34,43 +34,48 @@ public class EmojiSearch(ClipboardService clipboard, string cacheDir, EmojiDataL
         if (!query.StartsWith(':')) yield break;
 
         var term = query[1..].Trim().ToLowerInvariant();
-        var results = string.IsNullOrEmpty(term)
-            ? GetDefaultResults()
+        var emojis = string.IsNullOrEmpty(term)
+            ? GetDefaultEmojis()
             : FilterEmojis(term, limit);
 
-        if (results.Count > 0) yield return results;
+        if (emojis.Count > 0) yield return [MakeGrid(emojis)];
 
         await Task.CompletedTask;
     }
 
-    private IReadOnlyList<ResultItemViewModel> GetDefaultResults() =>
+    private IReadOnlyList<EmojiEntry> GetDefaultEmojis() =>
         _entries
             .Where(e => e.SortOrder > 0)
             .OrderBy(e => e.SortOrder)
             .Take(6)
-            .Select(e => MakeResult(e, 3.5))
             .ToList();
 
-    private IReadOnlyList<ResultItemViewModel> FilterEmojis(string term, int limit) =>
+    private IReadOnlyList<EmojiEntry> FilterEmojis(string term, int limit) =>
         _entries
             .Select(e => (entry: e, score: MatchScore(e, term)))
             .Where(x => x.score > 0)
             .OrderByDescending(x => x.score)
             .Take(limit)
-            .Select(x => MakeResult(x.entry, 3.5))
+            .Select(x => x.entry)
             .ToList();
 
-    private ResultItemViewModel MakeResult(EmojiEntry e, double score) {
-        var c = e.Char;
-        return new ResultItemViewModel {
-            Icon = e.Char,
-            Title = e.Name,
-            Subtitle = "Press Enter to copy and paste",
-            Category = "Emoji",
-            Score = score,
-            OnActivate = () => clipboard.CopyText(c),
+    private EmojiGridResultViewModel MakeGrid(IReadOnlyList<EmojiEntry> emojis) {
+        var cells = emojis.Select((e, i) => new EmojiCellViewModel {
+            Char = e.Char,
+            Name = e.Name,
+            IsSelected = i == 0,
+        }).ToList();
+
+        EmojiGridResultViewModel grid = null!;
+        grid = new EmojiGridResultViewModel {
+            Cells = cells,
+            Score = 3.5,
             PasteAfterActivate = true,
+            OnActivate = () => clipboard.CopyText(grid.Cells[grid.SelectedEmojiIndex].Char),
+            OnLeft  = () => grid.SelectPrevious(),
+            OnRight = () => grid.SelectNext(),
         };
+        return grid;
     }
 
     private static double MatchScore(EmojiEntry e, string term) {
