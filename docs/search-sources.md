@@ -2,7 +2,7 @@
 
 ## ApplicationSearch
 
-Clase: `Yottacast.Core.Search.ApplicationSearch` (implementa `ISearchSource`)
+Clase: `Yottacast.Core.Search.Application.ApplicationSearch` (implementa `ISearchSource`)
 
 Mantiene un `ConcurrentDictionary<string, AppInfo>` en memoria con las apps instaladas.
 Inyecta `UserSettings` para leer `AppDirectories`.
@@ -28,7 +28,7 @@ Evento `AppAdded` notifica cuando se detecta una app nueva (disponible para susc
 
 ## UserDocumentSearch
 
-Clase: `Yottacast.Core.Search.UserDocumentSearch` (implementa `ISearchSource`)
+Clase: `Yottacast.Core.Search.UserDocuments.UserDocumentSearch` (implementa `ISearchSource`)
 
 Sin caché. Cada búsqueda llama a `FileSearch.SearchAsync` con `settings.ExpandedSearchFolders`.
 Si los directorios cambian en settings, la siguiente búsqueda los usará automáticamente.
@@ -67,7 +67,7 @@ MainWindowViewModel recibe snapshots → RefreshResults() en cada uno
 
 Sin match: devuelve 0.
 
-Ver `NameMatcher.cs` y `NameMatcherTests.cs` para los valores exactos de scoring y casos canónicos.
+Ver `Search/Application/NameMatcher.cs` y `NameMatcherTests.cs` para los valores exactos de scoring y casos canónicos.
 
 Los scores exactos de cada fuente se definen en cada `ISearchSource` y en `MainWindowViewModel.MakeGoogleItem()`.
 
@@ -83,7 +83,7 @@ Stem = `Path.GetFileNameWithoutExtension(name)`, por lo que `"report"` puntúa i
 
 Ejemplo: `"xls calc mis"` → `"mis calculos.xls"`: segmentos `["mis","calculos","xls"]`; "mis"→"mis"✓, "calc"→"calculos"✓, "xls"→"xls"✓ → score prefijo.
 
-Ver `UserDocumentSearch.cs` para los valores exactos de scoring.
+Ver `Search/UserDocuments/UserDocumentSearch.cs` para los valores exactos de scoring.
 
 No hay bonus por ser directorio (solo afecta icono y categoría).
 

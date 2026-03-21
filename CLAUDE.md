@@ -62,18 +62,25 @@ Yottacast.sln
 ├── Search/
 │   ├── ISearchSource.cs                ← Interfaz: Start() void, WhenReady() Task, Stop(), SearchAsync → IAsyncEnumerable
 │   ├── GlobalSearch.cs                 ← Agrega ISearchSource[], merge streaming vía Channel
-│   ├── AppInfo.cs + ApplicationSearch.cs  ← ISearchSource: caché en memoria de apps
-│   ├── UserDocumentSearch.cs           ← ISearchSource: delega en FileSearch (streaming)
-│   ├── NameMatcher.cs                  ← Lógica de scoring CamelHump/prefix/substring para ApplicationSearch
-│   ├── CalculatorSearch.cs             ← ISearchSource instant: evalúa expresiones math y conversiones de unidades vía MathJsEngine
-│   └── RandomSearch.cs                 ← ISearchSource fake para tests de la pipeline streaming; emite resultados con delay
+│   ├── RandomSearch.cs                 ← ISearchSource fake para tests de la pipeline streaming; emite resultados con delay
+│   ├── Application/
+│   │   ├── AppInfo.cs                  ← Modelo de app instalada; icono cargado con Lazy<T>
+│   │   ├── ApplicationSearch.cs        ← ISearchSource: caché en memoria de apps
+│   │   └── NameMatcher.cs              ← Lógica de scoring CamelHump/prefix/substring para ApplicationSearch
+│   ├── Calculator/
+│   │   ├── CalculatorSearch.cs         ← ISearchSource instant: evalúa expresiones math y conversiones de unidades vía MathJsEngine
+│   │   └── MathJsEngine.cs             ← Singleton: Jint + math.js 11.x (embedded resource); init en background
+│   ├── Emoji/
+│   │   ├── EmojiDataLoader.cs          ← Parseo de emoji-data.json y caché en disco
+│   │   └── EmojiSearch.cs              ← ISearchSource instant: grid navegable, activa copia+paste del emoji
+│   └── UserDocuments/
+│       ├── FileSearch.cs               ← Instancia que delega en PlatformProvider.SearchFilesAsync
+│       └── UserDocumentSearch.cs       ← ISearchSource: delega en FileSearch (streaming)
 ├── Services/
-│   ├── FileSearch.cs                   ← Instancia que delega en PlatformProvider.SearchFilesAsync
 │   ├── UserSettings.cs                 ← Config persistida en JSON
 │   ├── BrowserDiscovery.cs             ← Detecta navegadores; OpenUrl() delega en PlatformProvider
 │   ├── TerminalDiscovery.cs            ← Detecta terminales; ExecuteCommand() delega en PlatformProvider
-│   ├── ClipboardService.cs             ← Bridge Core→Avalonia; Initialize() wired in App.axaml.cs
-│   └── MathJsEngine.cs                 ← Singleton: Jint + math.js 11.x (embedded resource); init en background
+│   └── ClipboardService.cs             ← Bridge Core→Avalonia; Initialize() wired in App.axaml.cs
 └── ViewModels/
     ├── ResultItemViewModel.cs           ← (Icon, Title, Subtitle, Category, Score, OnActivate, OnLeft, OnRight)
     ├── EmojiCellViewModel.cs            ← celda individual del grid emoji (Char, Name, IsSelected)

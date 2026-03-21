@@ -1,4 +1,5 @@
 using Yottacast.Core.Process;
+using Yottacast.Core.Search.UserDocuments;
 using Yottacast.Core.Services;
 
 namespace Yottacast.Core.Platform;

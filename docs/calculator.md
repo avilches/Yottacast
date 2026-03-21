@@ -4,7 +4,7 @@ Implementado como un único `ISearchSource` instant: `CalculatorSearch`. Maneja 
 
 ## Motor: MathJsEngine
 
-`MathJsEngine` — singleton que carga math.js embebido en la DLL (embedded resource en `Yottacast.Core/Scripts/math.min.js`) dentro de un engine Jint 3.x. La inicialización se hace en un background thread; hasta que `WhenReady()` se complete, `Evaluate()` devuelve `null`.
+`MathJsEngine` (`Search/Calculator/MathJsEngine.cs`) — singleton que carga math.js embebido en la DLL (embedded resource en `Yottacast.Core/Scripts/math.min.js`) dentro de un engine Jint 3.x. La inicialización se hace en un background thread; hasta que `WhenReady()` se complete, `Evaluate()` devuelve `null`.
 
 **Configuración del engine**: se crea con un límite de recursión (ver `MathJsEngine`).
 

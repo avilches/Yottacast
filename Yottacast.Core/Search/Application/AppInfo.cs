@@ -1,4 +1,4 @@
-namespace Yottacast.Core.Search;
+namespace Yottacast.Core.Search.Application;
 
 /// <summary>
 /// Represents an installed application with a lazily-resolved icon path.

@@ -1,5 +1,6 @@
 using Yottacast.Core.Platform;
 using Yottacast.Core.Search;
+using Yottacast.Core.Search.Application;
 
 namespace Yottacast.Core.Services;
 

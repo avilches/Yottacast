@@ -1,5 +1,6 @@
 using Xunit;
 using Yottacast.Core.Search;
+using Yottacast.Core.Search.Application;
 
 namespace Yottacast.Core.Tests.Search;
 

@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 using Yottacast.Core.Services;
 using Yottacast.Core.ViewModels;
 
-namespace Yottacast.Core.Search;
+namespace Yottacast.Core.Search.UserDocuments;
 
 /// <summary>
 /// ISearchSource that searches user files via FileSearch, scoped to the folders

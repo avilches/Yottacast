@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 using Yottacast.Core.Services;
 using Yottacast.Core.ViewModels;
 
-namespace Yottacast.Core.Search;
+namespace Yottacast.Core.Search.Emoji;
 
 /// <summary>
 /// Instant search source activated by queries starting with ':'.

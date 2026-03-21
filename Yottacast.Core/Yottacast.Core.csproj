@@ -14,10 +14,10 @@
 
   <!-- Download math.js on first build if not already present -->
   <Target Name="DownloadMathJs" BeforeTargets="BeforeBuild">
-    <MakeDir Directories="$(MSBuildThisFileDirectory)Scripts" />
+    <MakeDir Directories="$(MSBuildThisFileDirectory)Search/Calculator" />
     <Exec
-      Command="curl -fsSL https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.12.0/math.min.js -o &quot;$(MSBuildThisFileDirectory)Scripts/math.min.js&quot;"
-      Condition="!Exists('$(MSBuildThisFileDirectory)Scripts/math.min.js')" />
+      Command="curl -fsSL https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.12.0/math.min.js -o &quot;$(MSBuildThisFileDirectory)Search/Calculator/math.min.js&quot;"
+      Condition="!Exists('$(MSBuildThisFileDirectory)Search/Calculator/math.min.js')" />
   </Target>
 
   <!-- Download emoji data on first build if not already present -->
@@ -30,7 +30,7 @@
   </Target>
 
   <ItemGroup>
-    <EmbeddedResource Include="Scripts/math.min.js" Condition="Exists('Scripts/math.min.js')" />
+    <EmbeddedResource Include="Search/Calculator/math.min.js" />
     <EmbeddedResource Include="Resources/emoji-data.json" Condition="Exists('Resources/emoji-data.json')" />
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
       <_Parameter1>Yottacast.Core.Tests</_Parameter1>

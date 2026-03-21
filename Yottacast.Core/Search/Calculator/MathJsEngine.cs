@@ -1,6 +1,6 @@
 using Jint;
 
-namespace Yottacast.Core.Services;
+namespace Yottacast.Core.Search.Calculator;
 
 /// <summary>
 /// Wraps a Jint engine loaded with math.js (embedded resource).
@@ -19,9 +19,9 @@ public sealed class MathJsEngine : IDisposable {
     private void Initialize() {
         var engine = new Engine(opts => opts.LimitRecursion(64));
         var asm = typeof(MathJsEngine).Assembly;
-        const string resourceName = "Yottacast.Core.Scripts.math.min.js";
+        const string resourceName = "Yottacast.Core.Search.Calculator.math.min.js";
         using var stream = asm.GetManifestResourceStream(resourceName)
-            ?? throw new InvalidOperationException($"Embedded resource not found: {resourceName}. Run 'dotnet build' to download math.js first.");
+                           ?? throw new InvalidOperationException($"Embedded resource not found: {resourceName}.");
         using var reader = new StreamReader(stream);
         engine.Execute(reader.ReadToEnd());
         engine.Evaluate("math.evaluate('1+1')"); // warmup: trigger JIT so first real call is instant
@@ -38,7 +38,7 @@ public sealed class MathJsEngine : IDisposable {
     /// </summary>
     public string? Evaluate(string expression) {
         if (_engine == null) return null;
-        lock (_lock) {                                           
+        lock (_lock) {
             if (_engine == null) return null;
             try {
                 var escaped = expression.Replace("\\", "\\\\").Replace("'", "\\'");
@@ -53,7 +53,10 @@ public sealed class MathJsEngine : IDisposable {
     }
 
     public void Dispose() {
-        try { _initTask.Wait(); } catch { /* init failed, _engine must be null */ }
+        try {
+            _initTask.Wait();
+        } catch { /* init failed, _engine must be null */
+        }
         lock (_lock) {
             _engine?.Dispose();
             _engine = null;

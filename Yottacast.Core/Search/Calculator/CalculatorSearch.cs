@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 using Yottacast.Core.Services;
 using Yottacast.Core.ViewModels;
 
-namespace Yottacast.Core.Search;
+namespace Yottacast.Core.Search.Calculator;
 
 /// <summary>
 /// Instant search source that evaluates math expressions and unit conversions via math.js (Jint).

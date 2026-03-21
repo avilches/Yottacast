@@ -17,6 +17,10 @@ using SharpHook.Data;
 using Yottacast.Core.Platform;
 using Yottacast.Core.Process;
 using Yottacast.Core.Search;
+using Yottacast.Core.Search.Application;
+using Yottacast.Core.Search.Calculator;
+using Yottacast.Core.Search.Emoji;
+using Yottacast.Core.Search.UserDocuments;
 using Yottacast.Core.Services;
 using Yottacast.Services;
 using Yottacast.ViewModels;
@@ -34,9 +38,6 @@ public partial class App : Application {
 
     public override void OnFrameworkInitializationCompleted() {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop) {
-            // Yottacast is a persistent background launcher — never shut down due to window close events.
-            // The process is terminated only via an explicit Shutdown() call (e.g. a future Quit action).
-            desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             AppHandler.Instance.OnFrameworkInitializationCompleted();
             _services = BuildServices();
 
@@ -86,12 +87,9 @@ public partial class App : Application {
         }
         var appSearch = _services.GetRequiredService<ApplicationSearch>();
         await appSearch.WhenReady();
-        // SettingsWindow is never destroyed (OnClosing cancels close and hides instead),
-        // so reuse it with a fresh ViewModel each time.
-        if (_settingsWindow == null) {
-            _settingsWindow = new SettingsWindow();
-        }
-        _settingsWindow.DataContext = _services.GetRequiredService<SettingsWindowViewModel>();
+        _settingsWindow = new SettingsWindow {
+            DataContext = _services.GetRequiredService<SettingsWindowViewModel>(),
+        };
         _settingsWindow.Show();
     }
 
@@ -196,12 +194,6 @@ public partial class App : Application {
         var settings = _services.GetRequiredService<UserSettings>();
         _globalHook = new SimpleGlobalHook();
         _globalHook.KeyPressed += (_, e) => {
-
-            if (_settingsWindow?.DataContext is SettingsWindowViewModel { IsCapturingHotkey: true }) {
-                // If SettingsWindow is actively capturing a new hotkey, ignore the event and
-                // let the key flow through to Avalonia unmodified so ProcessKeyCapture() can record it.
-                return;
-            }
 
             var mask   = e.RawEvent.Mask;
             var hasAlt   = mask.HasFlag(EventMask.LeftAlt)   || mask.HasFlag(EventMask.RightAlt);

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 using Yottacast.Core.Search;
+using Yottacast.Core.Search.Emoji;
 using Yottacast.Core.Services;
 
 namespace Yottacast.Core.Tests.Search;

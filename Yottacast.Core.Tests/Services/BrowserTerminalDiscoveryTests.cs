@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 using Yottacast.Core.Platform;
 using Yottacast.Core.Search;
+using Yottacast.Core.Search.Application;
 using Yottacast.Core.Services;
 using Yottacast.Core.Tests.Fakes;
 

@@ -27,7 +27,7 @@ Each Windows terminal receives the command with terminal-specific argument wrapp
 
 ## FileSearch
 
-Clase instancia (no estática). Delega en `platform.SearchFilesAsync()`.
+Clase instancia (no estática) en `Search/UserDocuments/FileSearch.cs`. Delega en `platform.SearchFilesAsync()`.
 - **macOS** → Spotlight vía `SpotlightInterop.Query`. macOS builds a Spotlight predicate for the query (see `MacOsPlatformProvider.SearchFilesAsync`); the `cd` suffix makes matching case- and diacritic-insensitive.
 - **Windows** → delegates to PowerShell for file search (see `WindowsPlatformProvider.SearchFilesAsync`).
 - **Linux** → `plocate` o `locate -b`

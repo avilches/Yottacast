@@ -12,28 +12,6 @@ public partial class SettingsWindow : Window {
         InitializeComponent();
     }
 
-    // Intercept keyboard input while capturing a new hotkey combination
-    protected override void OnKeyDown(KeyEventArgs e) {
-        if (DataContext is SettingsWindowViewModel { IsCapturingHotkey: true } vm) {
-            vm.ProcessKeyCapture(e.Key, e.KeyModifiers);
-            e.Handled = true;
-            return;
-        }
-        if (e.Key == Key.Escape) {
-            Hide();
-            e.Handled = true;
-            return;
-        }
-        base.OnKeyDown(e);
-    }
-
-    // Cancel any native close (e.g. macOS performClose: from NSMenu) and hide instead.
-    // SettingsWindow is kept alive in memory so no "last window closed" event is ever fired.
-    protected override void OnClosing(WindowClosingEventArgs e) {
-        e.Cancel = true;
-        Hide();
-    }
-
     // Click on the hotkey border → start capture; e.Handled stops bubbling to the window handler below
     private void OnHotkeyAreaPointerPressed(object? sender, PointerPressedEventArgs e) {
         (DataContext as SettingsWindowViewModel)?.StartHotkeyCapture();

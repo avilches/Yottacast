@@ -4,6 +4,8 @@ using Serilog.Extensions.Logging;
 using Yottacast.Core.Platform;
 using Yottacast.Core.Process;
 using Yottacast.Core.Search;
+using Yottacast.Core.Search.Application;
+using Yottacast.Core.Search.UserDocuments;
 using Yottacast.Core.Services;
 
 namespace Yottacast.Cli;

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Xunit;
 using Yottacast.Core.Platform;
+using Yottacast.Core.Search.UserDocuments;
 using Yottacast.Core.Services;
 
 namespace Yottacast.Core.Tests.Services;

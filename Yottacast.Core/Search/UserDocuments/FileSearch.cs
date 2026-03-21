@@ -1,7 +1,6 @@
 using Yottacast.Core.Platform;
-using Yottacast.Core.Process;
 
-namespace Yottacast.Core.Services;
+namespace Yottacast.Core.Search.UserDocuments;
 
 public record FileResult(string Name, string Path);
 

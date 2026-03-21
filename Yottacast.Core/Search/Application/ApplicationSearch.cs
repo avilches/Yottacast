@@ -4,7 +4,7 @@ using Yottacast.Core.Platform;
 using Yottacast.Core.Services;
 using Yottacast.Core.ViewModels;
 
-namespace Yottacast.Core.Search;
+namespace Yottacast.Core.Search.Application;
 
 /// <summary>
 /// In-memory cache of all installed applications. Implements <see cref="ISearchSource"/>

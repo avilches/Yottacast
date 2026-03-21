@@ -2,7 +2,7 @@ using System.Text.Json;
 using System.Text;
 using Microsoft.Extensions.Logging;
 
-namespace Yottacast.Core.Search;
+namespace Yottacast.Core.Search.Emoji;
 
 internal record EmojiEntry(string Char, string Name, string[] Keywords, string Category, int SortOrder);
 
