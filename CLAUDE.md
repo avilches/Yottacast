@@ -32,7 +32,7 @@ Yottacast busca en varias fuentes simultáneamente. Cada source tiene un propós
 - **Calculadora**: evalúa expresiones matemáticas y conversiones de unidades usando math.js (ejecutado en Jint). Responde en línea mientras el usuario escribe.
 - **Emoji**: se activa con el prefijo `:`. Muestra los resultados en un grid navegable con cursores. Tras seleccionar un emoji, lo copia y lo pega automáticamente en la app anterior.
 - **Búsqueda de documentos**: busca archivos en las carpetas configuradas del usuario usando indexación nativa del sistema operativo. Los resultados llegan progresivamente (deferred source).
-- **Google suggestion**: ítem fijo que permite abrir una búsqueda web en el navegador configurado.
+- **Google suggestion**: permite abrir una búsqueda web en el navegador configurado. En modo normal, siempre está presente usando la query completa. En modo emoji (query empieza por `:`), usa el texto tras `:` como término de búsqueda; si la query es solo `:`, el ítem no se muestra.
 
 ## Acciones
 
@@ -46,7 +46,7 @@ Cada tipo de resultado tiene una acción por defecto al activarlo (Enter):
 
 ## Settings
 
-La configuración del usuario incluye: hotkey global, navegador preferido, terminal, tema visual, carpetas de búsqueda, directorios de apps, y toggles para activar/desactivar features individuales (calculadora, clipboard, emoji).
+La configuración del usuario incluye: hotkey global, navegador preferido, terminal, tema visual, carpetas de búsqueda, directorios de apps, y toggles para features individuales (calculadora, clipboard, emoji) — los toggles se persisten en `UserSettings` y se muestran en Settings, pero aún no tienen efecto funcional sobre los resultados de búsqueda (pendiente de implementación).
 
 La ventana de settings es una ventana modal separada, accesible con Cmd+, (macOS) o Ctrl+, (Windows).
 
@@ -59,7 +59,7 @@ Yottacast detecta automáticamente el modo dark/light del sistema operativo y se
 
 ## Startup no bloqueante
 
-La ventana es interactiva inmediatamente al arrancar. Las search sources se inicializan en background mediante su ciclo de vida `Start/WhenReady`: la UI no espera a que estén listas.
+La ventana es interactiva inmediatamente al arrancar. Las search sources se inicializan en background mediante su ciclo de vida `Start/WhenReady`: la primera búsqueda espera a que las instant sources estén listas (`GlobalSearch.WhenInstantReady`), mientras que las deferred no tienen estado de inicialización y siempre responden al momento de la búsqueda.
 math.js se carga en un thread de background con warm-up para que la primera evaluación sea rápida.
 
 ## Recursos embebidos

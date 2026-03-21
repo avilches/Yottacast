@@ -14,6 +14,8 @@ public class GlobalSearch(IEnumerable<IInstantSearchSource> instantSources, IEnu
         foreach (var s in _deferredSources) s.Start();
     }
 
+    public Task WhenInstantReady() => Task.WhenAll(_instantSources.Select(s => s.WhenReady()));
+
     public Task WhenReady() => Task.WhenAll(
         _instantSources.Select(s => s.WhenReady())
         .Concat(_deferredSources.Select(s => s.WhenReady())));
