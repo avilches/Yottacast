@@ -1,5 +1,5 @@
-using System.Text.Json;
 using System.Text;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 
 namespace Yottacast.Core.Search.Emoji;
@@ -7,9 +7,9 @@ namespace Yottacast.Core.Search.Emoji;
 internal record EmojiEntry(string Char, string Name, string[] Keywords, string Category, int SortOrder);
 
 /// <summary>
-/// Loads emoji data from the embedded resource (Resources/emoji-data.json, bundled at build time).
+/// Loads emoji data from the embedded resource (Search/Emoji/emoji-data.json, bundled at build time).
 /// On first use, parses the raw JSON and writes a compact cache to disk for fast subsequent startups.
-/// No network access at runtime. To update emoji data, delete Resources/emoji-data.json and rebuild.
+/// No network access at runtime. To update emoji data, delete Search/Emoji/emoji-data.json and rebuild.
 /// On any failure with no cache available, returns an empty list.
 /// </summary>
 public class EmojiDataLoader(ILogger<EmojiDataLoader> logger) {
@@ -54,8 +54,8 @@ public class EmojiDataLoader(ILogger<EmojiDataLoader> logger) {
 
     private static string ReadEmbeddedResource() {
         var assembly = typeof(EmojiDataLoader).Assembly;
-        using var stream = assembly.GetManifestResourceStream("Yottacast.Core.Resources.emoji-data.json")
-            ?? throw new InvalidOperationException("Embedded emoji-data.json not found");
+        using var stream = assembly.GetManifestResourceStream("Yottacast.Core.Search.Emoji.emoji-data.json")
+                           ?? throw new InvalidOperationException("Embedded emoji-data.json not found");
         using var reader = new StreamReader(stream, Encoding.UTF8);
         return reader.ReadToEnd();
     }

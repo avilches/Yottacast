@@ -21,17 +21,16 @@
   </Target>
 
   <!-- Download emoji data on first build if not already present -->
-  <!-- To update to a newer version: delete Resources/emoji-data.json and rebuild -->
+  <!-- To update to a newer version: delete Search/Emoji/emoji-data.json and rebuild -->
   <Target Name="DownloadEmojiData" BeforeTargets="BeforeBuild">
-    <MakeDir Directories="$(MSBuildThisFileDirectory)Resources" />
+    <MakeDir Directories="$(MSBuildThisFileDirectory)Search/Emoji" />
     <Exec
-      Command="curl -fsSL https://raw.githubusercontent.com/iamcal/emoji-data/refs/heads/master/emoji.json -o &quot;$(MSBuildThisFileDirectory)Resources/emoji-data.json&quot;"
-      Condition="!Exists('$(MSBuildThisFileDirectory)Resources/emoji-data.json')" />
+      Command="curl -fsSL https://raw.githubusercontent.com/iamcal/emoji-data/refs/heads/master/emoji.json -o &quot;$(MSBuildThisFileDirectory)Search/Emoji/emoji-data.json&quot;"
+      Condition="!Exists('$(MSBuildThisFileDirectory)Search/Emoji/emoji-data.json')" />
   </Target>
 
   <ItemGroup>
-    <EmbeddedResource Include="Search/Calculator/math.min.js" />
-    <EmbeddedResource Include="Resources/emoji-data.json" Condition="Exists('Resources/emoji-data.json')" />
+    <EmbeddedResource Include="Search/Emoji/emoji-data.json" Condition="Exists('Search/Emoji/emoji-data.json')" />
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
       <_Parameter1>Yottacast.Core.Tests</_Parameter1>
     </AssemblyAttribute>
