@@ -26,17 +26,6 @@ public class EmojiDataLoader(ILogger<EmojiDataLoader> logger) {
         var cachePath = Path.Combine(cacheDir, CacheFileName);
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
-        var embeddedCache = TryReadEmbeddedString("Yottacast.Core.Search.Emoji.emoji-cache.json");
-        if (embeddedCache != null) {
-            try {
-                var entries = ParseCompactCache(embeddedCache);
-                logger.LogInformation("Emoji embedded cache loaded in {Ms}ms ({Count} entries)", sw.ElapsedMilliseconds, entries.Count);
-                return entries;
-            } catch (Exception ex) {
-                logger.LogWarning("Failed to parse embedded emoji cache: {Message}", ex.Message);
-            }
-        }
-
         if (File.Exists(cachePath)) {
             try {
                 var cached = await File.ReadAllTextAsync(cachePath, ct);
@@ -46,6 +35,17 @@ public class EmojiDataLoader(ILogger<EmojiDataLoader> logger) {
             } catch (Exception ex) {
                 logger.LogWarning("Failed to read emoji cache: {Message}", ex.Message);
                 sw.Restart();
+            }
+        }
+
+        var embeddedCache = TryReadEmbeddedString("Yottacast.Core.Search.Emoji.emoji-cache.json");
+        if (embeddedCache != null) {
+            try {
+                var entries = ParseCompactCache(embeddedCache);
+                logger.LogInformation("Emoji embedded cache loaded in {Ms}ms ({Count} entries)", sw.ElapsedMilliseconds, entries.Count);
+                return entries;
+            } catch (Exception ex) {
+                logger.LogWarning("Failed to parse embedded emoji cache: {Message}", ex.Message);
             }
         }
 
