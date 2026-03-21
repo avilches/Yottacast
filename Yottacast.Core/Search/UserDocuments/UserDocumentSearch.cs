@@ -93,7 +93,8 @@ public class UserDocumentSearch(
             }
 
             cts.Dispose();
-            channel.Writer.TryWrite(buffer.OrderByDescending(x => x.Score).Take(limit).ToList());
+            if (buffer.Count > 0)
+                channel.Writer.TryWrite(buffer.OrderByDescending(x => x.Score).Take(limit).ToList());
             channel.Writer.TryComplete();
         }, CancellationToken.None);
 
