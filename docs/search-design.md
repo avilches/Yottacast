@@ -39,6 +39,15 @@ El arranque no bloquea. La ventana ya es interactiva desde el paso 12 mientras `
 
 `UserSettings.Load(platform)` carga (o crea) el JSON y siempre hace `Save()` al final. La validación de Browser/Terminal no ocurre en el arranque; `UserSettings` se auto-repara en el momento de uso, cuando se accede a `ActiveBrowser` / `ActiveTerminal`.
 
+## Logging
+
+Configurado con Serilog en `BuildServices()`. Los logs se escriben en fichero rotatorio diario (retención de 7 días):
+
+- macOS: `~/Library/Logs/Yottacast/yottacast-<fecha>.log`
+- Windows/Linux: `%LOCALAPPDATA%\Yottacast\Logs\yottacast-<fecha>.log`
+
+El nivel mínimo es `Debug`. Todos los servicios reciben `ILogger<T>` por inyección.
+
 ## Servicios registrados en DI
 
 - `PlatformProvider` (singleton, instancia concreta elegida en `BuildServices()` con una única comprobación de OS)
@@ -87,7 +96,7 @@ OnSearchTextChanged → cancela CTS anterior, resetea _userNavigated
 
 Nota sobre modo emoji (query empieza por `:`): el ítem de Google se incluye si `query.Length > 1` (usando `query[1..].Trim()` como término), o es `null` si la query es solo `:`. La fase deferred se omite completamente.
 
-Cada fase limita los resultados a un máximo configurable (ver `MainWindowViewModel.SearchSourceLimit`).
+Ambas fases usan `SearchSourceLimit` como límite (ver `MainWindowViewModel.SearchSourceLimit`): cada fuente recibe ese valor como límite sugerido, y el resultado combinado también se trunca a ese límite.
 
 El `_deferredCts` es un `CancellationTokenSource` enlazado al CT principal, creado justo antes de la fase deferred. Permite cancelar selectivamente solo la fase deferred (p.ej. al pulsar ESC con `CancelDeferredSearch()`) sin cancelar el flujo principal.
 
@@ -100,6 +109,6 @@ El `_deferredCts` es un `CancellationTokenSource` enlazado al CT principal, crea
 `IDeferredSearchSource.SearchAsync` devuelve `IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>>`: cada yield es un snapshot completo (los mejores N ordenados), no un item individual. `IInstantSearchSource.Search` devuelve directamente `IReadOnlyList` de forma síncrona. Ambos permiten **reemplazar** en lugar de **acumular**:
 
 - `ApplicationSearch` → emite un único snapshot con todas las apps coincidentes
-- `UserDocumentSearch` → emite snapshots progresivos con throttling por tiempo (ver `SnapshotIntervalMs`) y uno final; las queries cortas se omiten (ver `UserDocumentSearch.SearchAsync`); tiene un timeout configurable (ver parámetro `timeoutMs` del constructor) — si el file search tarda más, se cancela y se emite igualmente el snapshot final con los resultados acumulados hasta ese momento
+- `UserDocumentSearch` → emite snapshots progresivos con throttling por tiempo (intervalo definido como constante local en `SearchAsync`) y uno final; las queries cortas se omiten (ver `UserDocumentSearch.SearchAsync`); tiene un timeout configurable (ver parámetro `timeoutMs` del constructor) — si el file search tarda más, se cancela y se emite igualmente el snapshot final con los resultados acumulados hasta ese momento
 - `GlobalSearch` → mantiene un array `snapshots[sourceIndex]`; cada nuevo snapshot reemplaza su slot y se emite la unión ordenada
 - `MainWindowViewModel` → mantiene `_instantSnapshot` y `_deferredSnapshot`; `RefreshResults()` los fusiona en cada actualización

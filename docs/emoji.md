@@ -1,6 +1,6 @@
 # Búsqueda de emojis
 
-`EmojiSearch` es un `IInstantSearchSource` que se activa cuando la query empieza por `:`. Devuelve un único `EmojiGridResultViewModel` que agrupa todos los emojis candidatos en una fila horizontal navegable con ←/→. Al activarlo copia el emoji seleccionado al portapapeles y lo pega automáticamente en la app de destino.
+`EmojiSearch` es un `IInstantSearchSource` que se activa cuando la query empieza por `:`. Devuelve un único `EmojiGridResultViewModel` que agrupa todos los emojis candidatos en un grid navegable con ←/→/↑/↓ (ver `EmojiGridResultViewModel.Columns` para el número de columnas). Al activarlo copia el emoji seleccionado al portapapeles y lo pega automáticamente en la app de destino.
 
 ## Datos de origen
 
@@ -32,7 +32,7 @@ El `emoji-cache.json` embebido se genera en desarrollo y se incluye en el repo; 
 
 ### EmojiEntry y pre-tokenización
 
-`EmojiEntry` almacena los cinco campos del JSON (`Char`, `Name`, `Keywords`, `Category`, `SortOrder`) más una propiedad `NameTokens` inicializada en construcción con un simple space-split del `Name`. Esto equivale al resultado de `NameMatcher.SplitTokens` para nombres de emoji (siempre minúsculas separadas por espacios), evitando re-tokenizar en cada búsqueda.
+`EmojiEntry` almacena los cinco campos del JSON (`Char`, `Name`, `Keywords`, `Category`, `SortOrder`) más una propiedad `NameTokens` inicializada en construcción con un simple space-split del `Name`. Los nombres de emoji son siempre minúsculas separadas por espacios, por lo que space-split es suficiente para obtener los mismos tokens que `NameMatcher.SplitTokens`. Esto evita re-tokenizar en cada búsqueda.
 
 ### Parseo del JSON raw
 
@@ -67,7 +67,7 @@ Implementa `IInstantSearchSource` — sus resultados van por la pipeline instant
 
 `Search` devuelve siempre una lista de un único elemento: un `EmojiGridResultViewModel` construido por `MakeGrid`.
 
-- Al escribir solo `:` (sin término): grid con los 20 emojis de menor `sort_order` según el orden Unicode CLDR.
+- Al escribir solo `:` (sin término): grid con los 20 emojis de menor `sort_order` positivo (se excluyen los que tienen `sort_order == 0`) según el orden Unicode CLDR.
 - Al escribir `:smile` (o cualquier término): grid con todos los emojis que coincidan, ordenados por score descendente, hasta el límite de la query. `EmojiSearch.MatchScore` prioriza nombre exacto > nombre con `NameMatcher.Score` (usando `NameTokens` pre-computados) > keyword con `NameMatcher.Score`. El rango de scores garantiza que cualquier match por nombre supera a cualquier match por keyword.
 
 Si la caché no está lista o la carga falló, se devuelve lista vacía (sin error visible al usuario).
@@ -78,10 +78,11 @@ Si la caché no está lista o la carga falló, se devuelve lista vacía (sin err
 
 - `OnActivate` copia `grid.Cells[grid.SelectedEmojiIndex].Char` al portapapeles vía `ClipboardService`.
 - `OnLeft` llama a `grid.SelectPrevious()`; `OnRight` llama a `grid.SelectNext()`.
+- `OnUp` llama a `grid.SelectUp()`; `OnDown` llama a `grid.SelectDown()`. Ambos devuelven `bool`: `true` si se movió dentro del grid (consumiendo la tecla), `false` si no hay fila superior/inferior disponible (delegando la navegación de lista a la ventana).
 
 `PasteAfterActivate = true` indica a la UI que pegue automáticamente tras ocultar la ventana. Ver `docs/calculator.md` para el funcionamiento de `ClipboardService`.
 
-`OnLeft`/`OnRight` son propiedades de `ResultItemViewModel`. La ventana principal intercepta ←/→ en la fase túnel (`AddHandler(KeyDownEvent, ..., RoutingStrategies.Tunnel)`) y, si el item seleccionado tiene esas acciones, las invoca y marca el evento como handled antes de que el `TextBox` pueda mover el cursor de texto. Ver `MainWindow.axaml.cs`.
+`OnLeft`/`OnRight`/`OnUp`/`OnDown` son propiedades de `ResultItemViewModel`. La ventana principal intercepta ←/→/↑/↓ en la fase túnel (`AddHandler(KeyDownEvent, ..., RoutingStrategies.Tunnel)`) y, si el item seleccionado tiene esas acciones, las invoca. Para ←/→ siempre marca el evento como handled; para ↑/↓, el evento queda handled solo si el callback devuelve `true`. Ver `MainWindow.axaml.cs`.
 
 ## Tests
 

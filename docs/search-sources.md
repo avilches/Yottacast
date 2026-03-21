@@ -89,6 +89,6 @@ Ejemplo: `"xls calc mis"` → `"mis calculos.xls"`: segmentos `["mis","calculos"
 
 Ver `Search/UserDocuments/UserDocumentSearch.cs` para los valores exactos de scoring.
 
-No hay bonus por ser directorio (solo afecta icono y categoría).
+`FileResult` solo contiene `Name` y `Path` — no hay distinción entre fichero y directorio en los resultados.
 
-**Snapshots progresivos**: `UserDocumentSearch` emite un snapshot cuando ha transcurrido suficiente tiempo desde el último (el intervalo se define en `UserDocumentSearch.SnapshotIntervalMs`) — throttling puramente por tiempo, no por número de resultados — y uno final al terminar o cancelar. Esto evita que queries con muchos resultados (p.ej. "a") saturen la UI con decenas de actualizaciones por segundo.
+**Snapshots progresivos**: `UserDocumentSearch` emite un snapshot cuando ha transcurrido suficiente tiempo desde el último (el intervalo está definido como constante local dentro de `SearchAsync`) — throttling puramente por tiempo, no por número de resultados — y uno final al terminar o cancelar. Esto evita que queries con muchos resultados (p.ej. "a") saturen la UI con decenas de actualizaciones por segundo.

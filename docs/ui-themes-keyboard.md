@@ -31,7 +31,7 @@ Available themes are the JSON files in `Yottacast/Themes/` (excluding `settings.
 - `ALT+Space` → global hotkey para mostrar/ocultar
 - `⌘W` (macOS) / `Ctrl+F4` (Windows) / `Ctrl+W` (Linux) → oculta la ventana en lugar de cerrarla (`CloseWindowShortcut`)
 
-**Gotcha — Window hide vs close**: `Hide()` en Escape (no `Close()`); `Show()` + `Activate()` restaura. Al ocultar la ventana el estado del ViewModel se preserva intacto: texto, resultados y búsquedas en curso continúan; al volver a mostrarla el usuario ve exactamente lo que había. El SettingsWindow evita duplicados: si ya está visible lo activa; si está oculto lo muestra; solo crea instancia nueva en el primer arranque o tras `Close()`.
+**Gotcha — Window hide vs close**: `Hide()` en Escape (no `Close()`); `Show()` + `Activate()` restaura. Al ocultar la ventana el estado del ViewModel se preserva intacto: texto, resultados y búsquedas en curso continúan; al volver a mostrarla el usuario ve exactamente lo que había. El SettingsWindow evita duplicados: si ya está visible (`IsVisible: true`) lo activa sin crear nada; si no está visible, crea siempre una nueva instancia de `SettingsWindow` con un `SettingsWindowViewModel` (transient) nuevo.
 
 **Gotcha — ALT+Space toggle con foco**: ALT+Space oculta la ventana solo si está visible **y activa** (`window.IsVisible && window.IsActive`). Si está visible pero sin foco (tapada por otra ventana), la trae al frente (`Show()` + `Activate()`) en lugar de ocultarla.
 

@@ -26,7 +26,7 @@ Responsabilidades:
 
 `RunAsync` devuelve `ProcessResult(Elapsed, ExitCode, Cancelled, Error?)`. La propiedad calculada `IsSuccess` es `true` cuando `Error is null && !Cancelled && ExitCode == 0`.
 
-Acepta `Func<string, bool> onLine` — retorna `false` para parar antes del EOF. Redirige stdout al pipe del proceso (block-buffered). Al cancelar o recibir `false` de `onLine`, mata el proceso con `Kill(entireProcessTree: true)`.
+Acepta `Func<string, bool> onLine` — retorna `false` para parar antes del EOF. Redirige stdout al pipe del proceso. Siempre llama `Kill(entireProcessTree: true)` en el bloque `finally` (garantiza limpieza tanto en cancelación como en early exit por `false`; si el proceso ya terminó es un no-op).
 
 Registrado en DI como singleton. Los `PlatformProvider`s lo reciben por inyección de constructor.
 
@@ -34,9 +34,12 @@ Registrado en DI como singleton. Los `PlatformProvider`s lo reciben por inyecci�
 
 ## AppHandler
 
-Clase abstracta en `Yottacast/Services/AppHandler.cs`. Define el ciclo de vida de la app en dos métodos abstractos: `OnShow()` y `OnHide()`. Expone un singleton estático `Instance` que elige la implementación concreta en función del OS (`MacAppHandler`, `WindowsAppHandler`, `LinuxAppHandler`).
+Clase abstracta en `Yottacast/Services/AppHandler.cs`. Define los métodos abstractos `OnFrameworkInitializationCompleted()`, `OnShow()` y `OnHide()`, la propiedad abstracta `CloseWindowShortcut`, y el método virtual `SimulatePasteAsync()` (default no-op). Expone un singleton estático `Instance` que elige la implementación concreta en función del OS (`MacAppHandler`, `WindowsAppHandler`, `LinuxAppHandler`).
 
-`OnShow()` y `OnHide()` se llaman desde `App.axaml.cs` al mostrar/ocultar la ventana. `OnHide()` también orquesta el flujo de paste automático (`SimulatePasteAsync`): espera un breve delay para garantizar que la app de destino ha recuperado el foco antes de simular el atajo de teclado de pegar. Ver `MacAppHandler.cs` / `WindowsAppHandler.cs` para la implementación concreta.
+- `OnFrameworkInitializationCompleted()` — invocado antes de crear la ventana; en macOS establece `NSApplicationActivationPolicyAccessory`.
+- `OnShow()` / `OnHide()` — se llaman desde `App.axaml.cs` al mostrar/ocultar la ventana.
+- `CloseWindowShortcut` — atajo de teclado para ocultar la ventana (Cmd+W en macOS, Ctrl+F4 en Windows, Ctrl+W en Linux).
+- `SimulatePasteAsync()` — lo llama `MainWindow` tras activar un resultado con `PasteAfterActivate = true` (`OnHide()` se llama separadamente antes). Espera a que la app destino recupere el foco y luego simula el atajo de pegar. Ver `MacAppHandler.cs` / `WindowsAppHandler.cs` para la implementación concreta.
 
 ### MacAppHandler
 

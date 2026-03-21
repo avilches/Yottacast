@@ -24,7 +24,7 @@ Persiste en JSON. Todos los campos tienen defaults multiplataforma; nunca lanza 
 | `EnableEmoji` | bool | `true` |
 | `LastLaunchedVersion` | string | `""` |
 
-Los tres toggles `EnableCalculator`, `EnableClipboard` y `EnableEmoji` desactivan subsistemas completos: cuando son `false`, la fuente correspondiente no se registra en DI y no aparece en resultados. `LastLaunchedVersion` se usa para detectar actualizaciones y ejecutar migraciones; ver el paso `RunMigrations` en `docs/search-design.md`.
+Los tres toggles `EnableCalculator`, `EnableClipboard` y `EnableEmoji` están expuestos en el SettingsWindow y se persisten en el JSON. `LastLaunchedVersion` se usa para detectar actualizaciones y ejecutar migraciones; ver el paso `RunMigrations` en `docs/search-design.md`.
 
 **Browser/Terminal preferido**: el usuario elige entre los detectados por `BrowserDiscovery`/`TerminalDiscovery` (solo apps instaladas). Se muestra en `SettingsWindowViewModel`.
 
@@ -73,6 +73,10 @@ Los defaults de plataforma se aplican de forma selectiva, no globalmente:
 - **`EnsureIntegrity()`** — accede a ambas propiedades, forzando la validación y el guardado si algo cambió. Llamar en puntos naturales (p.ej. al abrir Settings).
 
 `SettingsWindowViewModel` llama `settings.EnsureIntegrity()` en su constructor, antes de inicializar los pickers. `MainWindowViewModel` usa `settings.ActiveBrowser` directamente al construir el resultado de Google.
+
+## SettingsWindowViewModel — navegación por secciones
+
+`SettingsWindowViewModel` usa un enum `SettingsSection` para dividir el panel en secciones: `General`, `AppSearch`, `InternetSearch`, `FileSearch`, `Calculator`, `Clipboard`, `Emoji`. La sección activa se controla con `SelectedSection` y los comandos `SelectX()` generados por `[RelayCommand]`.
 
 ## SettingsWindowViewModel — fallback adicional en la UI
 
