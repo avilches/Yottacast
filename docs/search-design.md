@@ -39,15 +39,6 @@ El arranque no bloquea. La ventana ya es interactiva desde el paso 12 mientras `
 
 `UserSettings.Load(platform)` carga (o crea) el JSON y siempre hace `Save()` al final. La validación de Browser/Terminal no ocurre en el arranque; `UserSettings` se auto-repara en el momento de uso, cuando se accede a `ActiveBrowser` / `ActiveTerminal`.
 
-## Logging
-
-Configurado con Serilog en `BuildServices()`. Los logs se escriben en fichero rotatorio diario (retención de 7 días):
-
-- macOS: `~/Library/Logs/Yottacast/yottacast-<fecha>.log`
-- Windows/Linux: `%LOCALAPPDATA%\Yottacast\Logs\yottacast-<fecha>.log`
-
-El nivel mínimo es `Debug`. Todos los servicios reciben `ILogger<T>` por inyección.
-
 ## Servicios registrados en DI
 
 - `PlatformProvider` (singleton, instancia concreta elegida en `BuildServices()` con una única comprobación de OS)

@@ -10,6 +10,7 @@ public class GlobalSearch(IEnumerable<IInstantSearchSource> instantSources, IEnu
     private readonly IReadOnlyList<IDeferredSearchSource> _deferredSources = deferredSources.ToList();
 
     public void Start() {
+        // Fire and forget. Every search source could do itw own stuff in the Start. To know if they are finished, use WhenReady()
         foreach (var s in _instantSources) s.Start();
         foreach (var s in _deferredSources) s.Start();
     }

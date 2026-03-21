@@ -24,7 +24,7 @@ Persiste en JSON. Todos los campos tienen defaults multiplataforma; nunca lanza 
 | `EnableEmoji` | bool | `true` |
 | `LastLaunchedVersion` | string | `""` |
 
-Los tres toggles `EnableCalculator`, `EnableClipboard` y `EnableEmoji` están expuestos en el SettingsWindow y se persisten en el JSON. `LastLaunchedVersion` se usa para detectar actualizaciones y ejecutar migraciones; ver el paso `RunMigrations` en `docs/search-design.md`.
+Los tres toggles `EnableCalculator`, `EnableClipboard` y `EnableEmoji` están expuestos en el SettingsWindow y se persisten en el JSON, pero actualmente no tienen efecto funcional sobre los resultados de búsqueda — las fuentes correspondientes se registran siempre en DI con independencia de su valor. `LastLaunchedVersion` se usa para detectar actualizaciones y ejecutar migraciones; ver el paso `RunMigrations` en `docs/search-design.md`.
 
 **Browser/Terminal preferido**: el usuario elige entre los detectados por `BrowserDiscovery`/`TerminalDiscovery` (solo apps instaladas). Se muestra en `SettingsWindowViewModel`.
 

@@ -59,8 +59,10 @@ Yottacast detecta automáticamente el modo dark/light del sistema operativo y se
 
 ## Startup no bloqueante
 
-La ventana es interactiva inmediatamente al arrancar. Las search sources se inicializan en background mediante su ciclo de vida `Start/WhenReady`: la primera búsqueda espera a que las instant sources estén listas (`GlobalSearch.WhenInstantReady`), mientras que las deferred no tienen estado de inicialización y siempre responden al momento de la búsqueda.
-math.js se carga en un thread de background con warm-up para que la primera evaluación sea rápida.
+La ventana es interactiva inmediatamente al arrancar.
+Las search sources se inicializan en background mediante su ciclo de vida `Start/WhenReady`.
+La UI no se arranca hasta que las instant sources están todas Ready.
+Se abre la UI y se acepta input del usuario, la búsqueda nunca espera: las instant sources ya estarán listas, mientras que las deferred siempre responden al momento de la búsqueda, solo que quizá tarden más en devolver resultados.
 
 ## Recursos embebidos
 
@@ -136,6 +138,7 @@ Las docs están en `docs/`. Léelas antes de trabajar en cualquier área:
 - `docs/platform.md`
 - `docs/browser-terminal.md`
 - `docs/ui-themes-keyboard.md`
+- `docs/logging.md`
 
 ## Gotchas (Avalonia / transversales)
 
