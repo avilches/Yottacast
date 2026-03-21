@@ -20,8 +20,8 @@ El nombre del fichero está definido como constante en `EmojiDataLoader`. No hay
 
 ```
 LoadAsync(cacheDir)
-  ├─ ¿embedded emoji-cache.json?  →  ParseCompactCache  →  return entries
   ├─ ¿existe emoji-cache.json en disco (cacheDir)?  →  ParseCompactCache  →  return entries
+  ├─ ¿embedded emoji-cache.json?  →  ParseCompactCache  →  return entries
   └─ else
        ├─ lee EmbeddedResource (emoji-data.json compilado en el ensamblado)
        ├─ ParseRawJson  →  WriteCompactCache(disco)  →  return entries
@@ -65,7 +65,7 @@ Implementa `IInstantSearchSource` — sus resultados van por la pipeline instant
 
 ### Resultados
 
-`SearchAsync` devuelve siempre una lista de un único elemento: un `EmojiGridResultViewModel` construido por `MakeGrid`.
+`Search` devuelve siempre una lista de un único elemento: un `EmojiGridResultViewModel` construido por `MakeGrid`.
 
 - Al escribir solo `:` (sin término): grid con los 20 emojis de menor `sort_order` según el orden Unicode CLDR.
 - Al escribir `:smile` (o cualquier término): grid con todos los emojis que coincidan, ordenados por score descendente, hasta el límite de la query. `EmojiSearch.MatchScore` prioriza nombre exacto > nombre con `NameMatcher.Score` (usando `NameTokens` pre-computados) > keyword con `NameMatcher.Score`. El rango de scores garantiza que cualquier match por nombre supera a cualquier match por keyword.

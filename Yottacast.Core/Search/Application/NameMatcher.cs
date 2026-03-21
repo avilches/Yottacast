@@ -39,7 +39,7 @@ public static class NameMatcher {
         // Generalises single-char initials to multi-char prefixes per token.
         if (tokens.Count > 1 && MatchesWordAbbreviation(tokens, query)) return 0.4;
 
-        // Internal substring (2+ chars only)
+        // Internal substring (3+ chars only)
         if (query.Length >= 3 && name.Contains(query, StringComparison.OrdinalIgnoreCase))
             return 0.2;
 

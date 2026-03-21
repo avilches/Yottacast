@@ -19,6 +19,12 @@ Persiste en JSON. Todos los campos tienen defaults multiplataforma; nunca lanza 
 | `Hotkey` | string | `"Alt+Space"` |
 | `SearchFolders` | `List<string>` | `PlatformProvider.DefaultSearchFolders()` de cada plataforma |
 | `AppDirectories` | `List<string>` | `PlatformProvider.DefaultAppDirectories()` de cada plataforma |
+| `EnableCalculator` | bool | `true` |
+| `EnableClipboard` | bool | `true` |
+| `EnableEmoji` | bool | `true` |
+| `LastLaunchedVersion` | string | `""` |
+
+Los tres toggles `EnableCalculator`, `EnableClipboard` y `EnableEmoji` desactivan subsistemas completos: cuando son `false`, la fuente correspondiente no se registra en DI y no aparece en resultados. `LastLaunchedVersion` se usa para detectar actualizaciones y ejecutar migraciones; ver el paso `RunMigrations` en `docs/search-design.md`.
 
 **Browser/Terminal preferido**: el usuario elige entre los detectados por `BrowserDiscovery`/`TerminalDiscovery` (solo apps instaladas). Se muestra en `SettingsWindowViewModel`.
 
@@ -51,6 +57,8 @@ Los defaults de plataforma se aplican de forma selectiva, no globalmente:
 ## Detección automática de tema
 
 `platform.DefaultTheme()` elige un tema oscuro o claro según el modo del sistema. `Load()` lo llama solo si el campo `theme` en el JSON está ausente o vacío. Los temas concretos y la lógica de detección por plataforma están en `PlatformProvider.DefaultTheme()` de cada implementación.
+
+**Doble default para Theme**: `UserSettingsData` (el DTO de serialización) usa `""` como default para `Theme`, mientras que `UserSettings` (la clase de dominio) aplica `platform.DefaultTheme()` si el valor cargado es vacío. Esta distinción permite que el JSON omita el campo en la primera ejecución y que la lógica de plataforma elija el tema correcto sin que el DTO tenga dependencia de `PlatformProvider`.
 
 ## Auto-reparación de Browser y Terminal
 

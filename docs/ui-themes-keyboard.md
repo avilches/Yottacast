@@ -18,7 +18,7 @@ Available themes are the JSON files in `Yottacast/Themes/` (excluding `settings.
 
 **Gotcha — Colores mal formados ignorados silenciosamente**: `SetBrush()` usa `Color.TryParse`. Si el valor del color en el JSON no es un color válido, el brush no se asigna y el token conserva su valor anterior sin ningún error o aviso.
 
-**Gotcha — Temas cargados síncronamente en SettingsWindow**: `SettingsWindowViewModel` llama `LoadThemes()` en su constructor, que enumera los JSON de `Themes/` ordenados alfabéticamente por nombre de fichero y excluye `settings.json`. Si ninguno carga, añade `"dark-default"` como fallback.
+**Gotcha — Temas cargados síncronamente en SettingsWindow**: `SettingsWindowViewModel` llama `AvailableThemes()` en su constructor, que enumera los JSON de `Themes/` ordenados alfabéticamente por nombre de fichero y excluye `settings.json`. Si ninguno carga, añade `"dark-default"` como fallback.
 
 ## Keyboard shortcuts (MainWindow)
 
@@ -29,6 +29,7 @@ Available themes are the JSON files in `Yottacast/Themes/` (excluding `settings.
 - `Enter` → activa resultado seleccionado
 - `⌘,` → abre SettingsWindow (si MainWindow está visible)
 - `ALT+Space` → global hotkey para mostrar/ocultar
+- `⌘W` (macOS) / `Ctrl+F4` (Windows) / `Ctrl+W` (Linux) → oculta la ventana en lugar de cerrarla (`CloseWindowShortcut`)
 
 **Gotcha — Window hide vs close**: `Hide()` en Escape (no `Close()`); `Show()` + `Activate()` restaura. Al ocultar la ventana el estado del ViewModel se preserva intacto: texto, resultados y búsquedas en curso continúan; al volver a mostrarla el usuario ve exactamente lo que había. El SettingsWindow evita duplicados: si ya está visible lo activa; si está oculto lo muestra; solo crea instancia nueva en el primer arranque o tras `Close()`.
 
@@ -48,4 +49,6 @@ Available themes are the JSON files in `Yottacast/Themes/` (excluding `settings.
 
 **Gotcha — `ResultItemViewModel.Shortcut`**: propiedad definida pero sin uso: nunca se asigna desde las fuentes de búsqueda ni se muestra en la UI. Placeholder para futuros atajos de teclado por resultado.
 
-**Gotcha — `⌘K  actions` en el footer**: el footer muestra el hint `⌘K  actions`, pero no hay ningún handler de teclado implementado para este atajo. Es un placeholder visual para una futura funcionalidad de acciones contextuales.
+**Gotcha — `ALT+Space` consumido por MainWindow**: MainWindow intercepta `ALT+Space` explícitamente para evitar el beep nativo de macOS cuando la app está en background pero la ventana recibe el evento.
+
+**Gotcha — `ResultItemViewModel.OnUp()`/`OnDown()`**: devuelven `bool`. `true` significa que el ítem ha consumido la tecla (p.ej. navegación interna del grid emoji); `false` delega la navegación de lista a la ventana. Ver `MainWindow.axaml.cs` para el handler.

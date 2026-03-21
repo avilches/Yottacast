@@ -2,23 +2,26 @@
 
 ## Arranque (App.axaml.cs)
 
-`App.OnFrameworkInitializationCompleted` es síncrono. `Program.Main` llama `AppHandler.Instance.OnStart()` antes de que Avalonia arranque, para configurar la plataforma (p.ej. ocultar el icono del Dock en macOS) antes de que `NSApplication` se inicialice.
+`App.OnFrameworkInitializationCompleted` es síncrono. Toda la inicialización de la aplicación ocurre dentro de este método, que Avalonia invoca desde `App.axaml.cs` tras arrancar el framework.
 
 Orden de arranque en `OnFrameworkInitializationCompleted`:
 
-1. `BuildServices()` — construye el contenedor DI
-2. `ThemeService.Apply(userSettings.Theme)` — aplica el tema visual antes de que la ventana exista
-3. `RunMigrations(userSettings, updateChecker, logger)` — compara `LastLaunchedVersion` con `UpdateChecker.CurrentVersion`; si difieren, ejecuta migraciones, actualiza el campo y persiste. No bloquea.
-4. `mainWindowViewModel.Initialize()` — dispara `CheckForUpdateAsync()` como fire-and-forget; comprueba en background si hay versión nueva y, si la hay, actualiza `UpdateAvailable`/`UpdateBannerText` en el UI thread cuando llega la respuesta
-5. Creación de `MainWindow` con el ViewModel como `DataContext`
-6. `ClipboardService.Initialize(...)` — registra el callback de UI-thread para que Core pueda copiar al portapapeles sin depender de Avalonia
-7. `base.OnFrameworkInitializationCompleted()` — señala a Avalonia que la inicialización terminó
-8. `AppHandler.Instance.OnShow()` — configura el comportamiento de plataforma **antes** de mostrar la ventana
-9. `desktop.MainWindow.Show()` / `Activate()` — la ventana aparece
-10. `globalSearch.Start()` — fire-and-forget; el arranque **no espera** a que termine
-11. `_ = services.GetRequiredService<MathJsEngine>()` — resuelve el singleton desde DI para disparar el warm-up de Jint en background
+1. `AppHandler.Instance.OnFrameworkInitializationCompleted()` — configuración OS-específica antes de nada (macOS: establece `NSApplicationActivationPolicyAccessory`)
+2. `BuildServices()` — construye el contenedor DI
+3. `ThemeService.Apply(userSettings.Theme)` — aplica el tema visual antes de que la ventana exista
+4. `RunMigrations(userSettings, updateChecker, logger)` — compara `LastLaunchedVersion` con `UpdateChecker.CurrentVersion`; si difieren, ejecuta migraciones, actualiza el campo y persiste. No bloquea.
+5. `DisableAvaloniaDataAnnotationValidation()` — elimina el plugin de validación de Avalonia para evitar conflictos con CommunityToolkit.Mvvm
+6. `mainWindowViewModel.Initialize()` — dispara `CheckForUpdateAsync()` como fire-and-forget; comprueba en background si hay versión nueva y, si la hay, actualiza `UpdateAvailable`/`UpdateBannerText` en el UI thread cuando llega la respuesta. La MainWindow muestra un banner de actualización (ver `MainWindow.axaml`) cuando `UpdateAvailable` es `true`; el comando `UpdateBannerClickCommand` es un placeholder para la futura acción de actualización
+7. Creación de `MainWindow` con el ViewModel como `DataContext`
+8. `ClipboardService.Initialize(...)` — registra el callback de UI-thread para que Core pueda copiar al portapapeles sin depender de Avalonia
+9. `desktop.Exit +=` — registra el handler de cierre de la app que llama `globalSearch.Stop()`; `RegisterGlobalHotKey(desktop)` — registra el hook global de SharpHook
+10. `base.OnFrameworkInitializationCompleted()` — señala a Avalonia que la inicialización terminó
+11. `AppHandler.Instance.OnShow()` — configura el comportamiento de plataforma antes de mostrar la ventana
+12. `desktop.MainWindow.Show()` / `Activate()` — la ventana aparece
+13. `globalSearch.Start()` — fire-and-forget; el arranque **no espera** a que termine
+14. `_ = services.GetRequiredService<MathJsEngine>()` — resuelve el singleton desde DI para disparar el warm-up de Jint en background
 
-El arranque no bloquea. La ventana ya es interactiva desde el paso 9 mientras `globalSearch.Start()` y `CheckForUpdateAsync()` trabajan en segundo plano.
+El arranque no bloquea. La ventana ya es interactiva desde el paso 12 mientras `globalSearch.Start()` y `CheckForUpdateAsync()` trabajan en segundo plano.
 
 **Qué hace `globalSearch.Start()`** — delega en cada fuente (tanto `IInstantSearchSource` como `IDeferredSearchSource`):
 
@@ -32,7 +35,7 @@ El arranque no bloquea. La ventana ya es interactiva desde el paso 9 mientras `g
 
 **Consecuencia para búsquedas**: hasta que `WhenReady()` complete en macOS, `Search` de `ApplicationSearch` devuelve vacío. La UI es interactiva desde el arranque; simplemente no hay apps en los resultados hasta que mdfind acaba.
 
-**Consecuencia para Settings**: `App.OpenSettings()` es `async void` y hace `await applicationSearch.WhenReady()` antes de crear `SettingsWindowViewModel`. Esto garantiza que `BrowserDiscovery.Discover()` y `TerminalDiscovery.Discover()` (llamados en el constructor del ViewModel) ya tienen el caché poblado. Si el caché ya está listo (usuario abre Settings tarde), el await es instantáneo.
+**Consecuencia para Settings**: `App.OpenSettings()` es `async void` y hace `await applicationSearch.WhenReady()` antes de crear la `SettingsWindow`. Esto garantiza que `BrowserDiscovery.Discover()` y `TerminalDiscovery.Discover()` (llamados en el constructor del ViewModel) ya tienen el caché poblado. Si el caché ya está listo (usuario abre Settings tarde), el await es instantáneo. Si la ventana ya está visible (`IsVisible: true`), se activa sin crear nada nuevo. Si no está visible, crea siempre una nueva `SettingsWindow` con un nuevo `SettingsWindowViewModel` (transient).
 
 `UserSettings.Load(platform)` carga (o crea) el JSON y siempre hace `Save()` al final. La validación de Browser/Terminal no ocurre en el arranque; `UserSettings` se auto-repara en el momento de uso, cuando se accede a `ActiveBrowser` / `ActiveTerminal`.
 
@@ -44,9 +47,10 @@ El arranque no bloquea. La ventana ya es interactiva desde el paso 9 mientras `g
 - `CalculatorSearch` (singleton, `IInstantSearchSource`)
 - `EmojiSearch` (singleton, `IInstantSearchSource`)
 - `UserDocumentSearch` (singleton, `IDeferredSearchSource`)
+- `RandomSearch` (singleton, registrado en DI pero comentado como `IDeferredSearchSource` — solo para tests de la pipeline de streaming)
 - `GlobalSearch` (singleton, recibe `IEnumerable<IInstantSearchSource>` + `IEnumerable<IDeferredSearchSource>`)
 - `UpdateChecker` (singleton)
-- `BrowserDiscovery`, `TerminalDiscovery`, `FileSearch`, `ClipboardService`, `MathJsEngine`, `EmojiDataLoader` (singleton)
+- `BrowserDiscovery`, `TerminalDiscovery`, `FileSearch`, `ClipboardService`, `MathJsEngine`, `EmojiDataLoader`, `ThemeService` (singleton)
 - `MainWindowViewModel`, `SettingsWindowViewModel` (transient)
 
 ## Motor de búsqueda: GlobalSearch
@@ -74,13 +78,16 @@ Para añadir una fuente deferred: implementar `IDeferredSearchSource` y registra
 
 ```
 OnSearchTextChanged → cancela CTS anterior, resetea _userNavigated
-  → Phase 1 (instant): SearchInstant síncrono → actualiza _instantSnapshot → RefreshResults()
-  → espera un breve debounce (ver `SearchAsync` en `MainWindowViewModel`)
+  → Phase 1 (instant, sin delay): construye _googleItem → SearchInstant síncrono → actualiza _instantSnapshot → RefreshResults()
+  → si la query empieza por ':' → termina aquí (solo fuentes instant; no hay búsqueda deferred ni Google)
+  → espera debounce de 250ms
   → crea _deferredCts (linked a CT principal)
   → Phase 2 (deferred): SearchDeferredAsync con _deferredCts.Token → cada snapshot actualiza _deferredSnapshot → RefreshResults()
 ```
 
-Cada fase limita los resultados por fuente a un máximo configurable (ver `MainWindowViewModel.SearchSourceLimit`).
+Nota sobre modo emoji (query empieza por `:`): el ítem de Google se incluye si `query.Length > 1` (usando `query[1..].Trim()` como término), o es `null` si la query es solo `:`. La fase deferred se omite completamente.
+
+Cada fase limita los resultados a un máximo configurable (ver `MainWindowViewModel.SearchSourceLimit`).
 
 El `_deferredCts` es un `CancellationTokenSource` enlazado al CT principal, creado justo antes de la fase deferred. Permite cancelar selectivamente solo la fase deferred (p.ej. al pulsar ESC con `CancelDeferredSearch()`) sin cancelar el flujo principal.
 

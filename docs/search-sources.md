@@ -59,14 +59,15 @@ MainWindowViewModel recibe snapshots → RefreshResults() en cada uno
 
 Ambos overloads aplican el mismo algoritmo: evalúan el query tal como viene y, si la query es todo minúsculas y el score no es el máximo, reintenta con `query.ToUpperInvariant()` (para que "am" coincida con "Activity Monitor"). `SplitTokens` es público para que los consumidores puedan pre-computar tokens cuando la cadena de entrada es estable.
 
-`ScoreWith` implementa tres modos de matching por prioridad descendente:
+`ScoreWith` implementa cuatro modos de matching por prioridad descendente:
 
 1. **CamelHump prefix** — cada hump del query debe ser prefijo del token correspondiente en la secuencia:
    - Match empezando en el hump 0 (inicio del nombre). Ej. "Saf" → "Safari", "ActMon" → "Activity Monitor".
    - Match empezando en hump > 0 (interior del nombre). Ej. "Mon" puede coincidir con "Activity Monitor" desde el token "Monitor".
    - "af" NO coincide con "Safari" (no es prefijo de ningún token).
 2. **Iniciales**: las iniciales concatenadas de todos los tokens empiezan por el query. "AM" → "Activity Monitor", "MON" → "Microsoft OneNote" (M=Microsoft, O=One, N=Note del CamelCase).
-3. **Substring interno**: el nombre contiene el query, solo para queries de una longitud mínima. "ari" → "Safari".
+3. **Abreviatura multi-palabra**: variante de abreviatura que cubre patrones de query más largos donde los humps del query se distribuyen entre múltiples tokens. Ver `NameMatcher.cs` para la lógica exacta.
+4. **Substring interno**: el nombre contiene el query, solo para queries de una longitud mínima. "ari" → "Safari".
 
 Sin match: devuelve 0.
 

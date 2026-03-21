@@ -1,68 +1,128 @@
-Lanza varios agentes en paralelo para hacer una auditoría bidireccional entre docs/ y el código fuente.
+Audita la documentación (`docs/`) contra el código fuente y la corrige.
+
+## Objetivo
+
+La documentación existe para dos cosas:
+1. Ayudar a Claude a saber dónde tocar sin leer todo el código.
+2. Servir de referencia al desarrollador sobre cómo funciona el proyecto.
+
+No debe duplicar lo que ya es obvio leyendo el código (constantes, scores, regex, rutas concretas). Esto ya está descrito en la regla de documentación de `CLAUDE.md` — aplícala también aquí.
 
 ## Instrucciones
 
-Lanza **en paralelo** los dos agentes siguientes y espera a que ambos terminen antes de sintetizar el resultado final.
+Lanza **un agente** que haga lo siguiente, en este orden:
+
+### Paso 1 — Corregir lo existente en docs
+
+Lee todos los ficheros `docs/*.md`. Para cada claim concreto (comportamiento, clase, método, flujo, campo de configuración, regla de negocio…), busca en el código fuente (`Yottacast/`, `Yottacast.Core/`, `Yottacast.Cli/`, `Yottacast.Core.Tests/`) la evidencia que lo respalda.
+
+Corrige directamente en el fichero `.md` correspondiente:
+- **Claims incorrectos**: la doc dice X pero el código hace Y → actualiza la doc.
+- **Claims obsoletos**: la doc menciona algo que ya no existe → elimínalo.
+- **Nombres desactualizados**: clases, métodos o ficheros renombrados → actualiza las referencias.
+
+No corrijas por diferencia de nomenclatura menor; usa criterio.
+
+### Paso 2 — Documentar lo que falta
+
+Explora el código fuente buscando comportamientos, módulos, clases, métodos relevantes o decisiones de diseño que **no están mencionados en ningún fichero `docs/*.md`**.
+
+Añádelos directamente en el doc que corresponda por tema. Si no encaja en ninguno existente, anótalo para el fichero de salida como propuesta estructural.
+
+Ignora lo trivial (getters simples, constructores sin lógica, cosas obvias leyendo el código). Céntrate en: flujos de control importantes, estrategias de caché, manejo de errores relevante, decisiones de arquitectura, contratos de interfaz.
+
+### Paso 3 — Comentarios inline en código
+
+Si un comentario en `.cs`/`.axaml` contradice la implementación real, corrígelo directamente.
+
+### Paso 4 — Verificar intención de CLAUDE.md contra código
+
+Lee `CLAUDE.md` (la fuente de intención del proyecto). Si describe comportamientos, flujos o decisiones de diseño que el código no implementa o contradice, anótalos para el fichero de salida. **No modifiques `CLAUDE.md`** — solo el desarrollador lo hace.
+
+### Paso 5 — Anotar bugs obvios
+
+Si durante los pasos anteriores encuentras bugs evidentes (lógica claramente incorrecta, null references obvios, condiciones invertidas, recursos no liberados), anótalos para el fichero de salida. No los corrijas — solo regístralos con contexto suficiente para que sean accionables.
+
+### Paso 6 — Revisar estructura de los docs
+
+Evalúa la organización de `docs/`:
+- ¿Hay documentos que abarcan demasiado y deberían dividirse?
+- ¿Hay secciones duplicadas entre documentos?
+- ¿Hay contenido que estaría mejor en otro fichero?
+- ¿Hay documentos que podrían fusionarse?
+
+Estas propuestas van al fichero de salida (no las apliques directamente).
 
 ---
 
-### Agente 1 — Spec → Código (¿está implementado?)
+## Fichero de salida
 
-Tarea: Lee todos los ficheros `docs/*.md` del proyecto. Para cada claim concreto que hagas (comportamiento descrito, clase mencionada, método, flujo, campo de configuración, regla de negocio…), busca en el código fuente (`Yottacast/`, `Yottacast.Core/`, `Yottacast.Cli/`, `Yottacast.Core.Tests/`) la evidencia que lo respalda.
+Tras aplicar las correcciones, obtén el timestamp ejecutando `date +%Y%m%d%H%M%S` y escribe `audit-result-<TIMESTAMP>.md` en la raíz del proyecto.
 
-Marca como **[HUÉRFANO]** cualquier claim de la spec que no tenga implementación real o que la implementación contradiga lo descrito.
+**Este fichero debe ser un plan autocontenido**: cualquier persona (o Claude en una sesión nueva) debe poder leerlo y ejecutar los cambios pendientes sin contexto adicional. Incluye ficheros afectados, qué cambiar, y por qué.
 
-Para cada huérfano incluye:
-- El fichero doc y la cita exacta del texto
-- Por qué no encuentras código que lo respalde (¿clase inexistente? ¿método diferente? ¿comportamiento distinto?)
+El fichero solo contiene lo que **no se pudo corregir automáticamente**:
 
-No marques como huérfano algo por una diferencia de nomenclatura menor; busca con criterio.
+```markdown
+# Plan de cambios pendientes — Audit <TIMESTAMP>
 
----
+Lee este fichero como un plan de trabajo. Cada sección contiene tareas accionables.
+Donde hay opciones, pregunta al usuario cuál prefiere antes de actuar.
 
-### Agente 2 — Código → Spec (¿está documentado?)
+## Gaps con CLAUDE.md
 
-Tarea: Explora el código fuente (`Yottacast/`, `Yottacast.Core/`, `Yottacast.Cli/`, `Yottacast.Core.Tests/`) buscando comportamientos, módulos, clases, métodos relevantes o decisiones de diseño que **no están mencionados en ningún fichero `docs/*.md`**.
+Intenciones descritas en `CLAUDE.md` que el código no implementa o contradice.
+No modificar `CLAUDE.md` — preguntar al usuario si debe implementarse o si la intención ha cambiado.
 
-Marca como **[NO DOCUMENTADO]** todo lo que encuentres que falte en la spec.
+### [GAP] <descripción corta>
 
-Para cada entrada incluye:
-- Archivo y función/clase (con línea si es posible)
-- Qué hace y por qué es relevante documentarlo
-
-Ignora detalles triviales (getters simples, constructores sin lógica). Céntrate en comportamientos no obvios, flujos de control importantes, estrategias de caché, manejo de errores relevantes, decisiones de arquitectura.
-
----
-
-## Output final (sintetizado por ti, no por los agentes)
-
-Cuando ambos agentes hayan terminado, obtén el timestamp actual ejecutando `date +%Y%m%d%H%M%S` y escribe el resultado en un fichero llamado `audit-result-<TIMESTAMP>.md` en la raíz del proyecto.
-
-El fichero debe tener este formato:
-
-```
-## DIRECCIÓN 1 — Huérfanos (spec sin código)
-
-[HUÉRFANO] <doc/fichero.md> — "<cita exacta>"
-→ <razón por la que no hay implementación>
+- **CLAUDE.md dice**: <cita o paráfrasis>
+- **El código hace**: <qué pasa realmente>
+- **Opciones**:
+  - A) Implementar lo que dice CLAUDE.md
+  - B) El desarrollador actualiza CLAUDE.md porque la intención cambió
 
 ...
 
-## DIRECCIÓN 2 — No documentado (código sin spec)
+## Propuestas estructurales de docs
 
-[NO DOCUMENTADO] <Archivo.cs:línea> — <Clase/Método>
-→ <qué hace y por qué importa>
+Cambios en la organización de `docs/` que requieren decisión del usuario.
+
+### [PROPUESTA] <descripción corta>
+
+- **Ficheros afectados**: `docs/X.md`, `docs/Y.md`
+- **Situación actual**: <qué pasa hoy>
+- **Opciones**:
+  - A) <opción y qué implica>
+  - B) <opción y qué implica>
+- **Recomendación**: <cuál y por qué>
 
 ...
 
-## Resumen de confianza
+## Bugs detectados
 
-- Huérfanos encontrados: N
-- No documentados encontrados: M
-- Alineación estimada: X% (0 = caos total, 100 = perfectamente alineado)
-- Veredicto: <una frase directa sobre el estado de salud de la documentación>
+Problemas encontrados de pasada durante la auditoría de docs. No son problemas de documentación sino de código.
+
+### [BUG] <descripción corta>
+
+- **Fichero**: `<Archivo.cs:línea>`
+- **Qué ocurre**: <descripción del problema>
+- **Impacto**: <qué puede fallar>
+- **Fix sugerido**: <qué cambiar>
+
+...
+
+## Resumen de lo ya aplicado
+
+(Solo informativo — estos cambios ya están hechos, no requieren acción.)
+
+- Claims corregidos en docs: N
+- Comportamientos documentados: M
+- Comentarios de código corregidos: P
 ```
 
-Una vez escrito el fichero, indica al usuario la ruta del fichero generado.
+Si una sección no tiene items, indicar "Ninguno".
 
-Sé implacable. El objetivo es encontrar gaps reales, no validar que todo está bien.
+Una vez escrito el fichero, indica al usuario la ruta.
+
+Sé riguroso. El objetivo es que la documentación refleje fielmente el código actual.

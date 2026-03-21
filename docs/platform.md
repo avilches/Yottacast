@@ -16,6 +16,8 @@ Responsabilidades:
 
 **macOS — `BrowserFallbackPaths` y `TerminalFallbackPaths`**: ambos devuelven diccionarios vacíos. El descubrimiento de browsers y terminales en macOS se apoya en `ApplicationSearch`/Spotlight, no en rutas hardcoded. En Windows sí están poblados con rutas conocidas.
 
+**Linux — soporte de browsers y terminales**: `LinuxPlatformProvider` no implementa browsers ni terminales: `KnownBrowserNames` y `KnownTerminalNames` son listas vacías, y `OpenUrl()` / `ExecuteCommand()` son no-ops. La búsqueda de archivos sí está implementada vía `plocate`/`locate`.
+
 ## StandardCommandRunner
 
 Único runner: `StandardCommandRunner.RunAsync(binary, string[] args, string? cwd, onLine, ct)`.
@@ -32,10 +34,9 @@ Registrado en DI como singleton. Los `PlatformProvider`s lo reciben por inyecci�
 
 ## AppHandler
 
-Clase abstracta en `Yottacast/Services/AppHandler.cs`. Define el ciclo de vida de la app en tres métodos abstractos: `OnStart()`, `OnShow()`, `OnHide()`. Expone un singleton estático `Instance` que elige la implementación concreta en función del OS (`MacAppHandler`, `WindowsAppHandler`, `LinuxAppHandler`).
+Clase abstracta en `Yottacast/Services/AppHandler.cs`. Define el ciclo de vida de la app en dos métodos abstractos: `OnShow()` y `OnHide()`. Expone un singleton estático `Instance` que elige la implementación concreta en función del OS (`MacAppHandler`, `WindowsAppHandler`, `LinuxAppHandler`).
 
-- `OnStart()` se llama desde `Program.cs` antes de arrancar Avalonia.
-- `OnShow()` y `OnHide()` se llaman desde `App.axaml.cs` al mostrar/ocultar la ventana con el hotkey global.
+`OnShow()` y `OnHide()` se llaman desde `App.axaml.cs` al mostrar/ocultar la ventana. `OnHide()` también orquesta el flujo de paste automático (`SimulatePasteAsync`): espera un breve delay para garantizar que la app de destino ha recuperado el foco antes de simular el atajo de teclado de pegar. Ver `MacAppHandler.cs` / `WindowsAppHandler.cs` para la implementación concreta.
 
 ### MacAppHandler
 
@@ -46,6 +47,8 @@ MacAppHandler usa P/Invoke a las APIs del runtime Objective-C de macOS para gest
 Los tipos de SharpHook están en los namespaces `SharpHook` y `SharpHook.Data`; ver `App.axaml.cs` para los checks exactos de tecla y modificador.
 
 El hotkey muestra/oculta la ventana. La combinación se carga de `UserSettings.Hotkey` y se parsea en tiempo de arranque a través de `HotkeyConfig.Parse` (definido en `Yottacast.Core/Platform/HotkeyConfig.cs`). El valor por defecto es `"Alt+Space"`. Los cambios en Settings se reflejan inmediatamente, sin reiniciar.
+
+`HotkeyConfig.Parse` acepta aliases de modificador además de los nombres canónicos: `"option"`/`"options"` → `Alt`; `"cmd"`/`"command"`/`"win"`/`"windows"` → `Meta`. Los modificadores canónicos son `Alt`, `Ctrl`, `Shift`, `Meta`.
 
 **Matching exacto de modificadores**: los cuatro grupos de modificadores (Alt, Ctrl, Shift, Meta) deben coincidir exactamente. Si el usuario tiene configurado `Alt+Space` y pulsa `Alt+Cmd+Space`, el hotkey no se activa. Ver la lógica en `RegisterGlobalHotKey` en `App.axaml.cs`.
 

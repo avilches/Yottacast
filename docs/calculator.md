@@ -36,7 +36,7 @@ Implementado como `IInstantSearchSource`: `CalculatorSearch`. Maneja tanto expre
 - Las palabras clave `to`, `in` y `en` se reconocen (case-insensitive)
 - math.js las evalúa nativamente: `10 kg to lbs`, `100 fahrenheit to celsius`, `5 miles to km`
 
-**No-result cuando el resultado coincide con la query**: si `Evaluate()` devuelve exactamente la misma cadena que la query de entrada (por ejemplo, al escribir sólo un número como `42`), `SearchAsync` no emite ningún resultado.
+**No-result cuando el resultado coincide con la query**: si `Evaluate()` devuelve exactamente la misma cadena que la query de entrada (por ejemplo, al escribir sólo un número como `42`), `Search` no devuelve ningún resultado.
 
 `CalculatorSearch` tiene un score mayor que otras fuentes (ver `CalculatorSearch.Score`) por lo que sus resultados aparecen cerca de la cima cuando la query es reconocida.
 
