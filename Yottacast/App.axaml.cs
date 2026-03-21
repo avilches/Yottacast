@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -11,7 +12,6 @@ using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog;
-using Serilog.Extensions.Logging;
 using SharpHook;
 using SharpHook.Data;
 using Yottacast.Core.Platform;
@@ -71,16 +71,22 @@ public partial class App : Application {
 
             base.OnFrameworkInitializationCompleted();
 
-            AppHandler.Instance.OnShow();
-            desktop.MainWindow.Show();
-            desktop.MainWindow.Activate();
-
             globalSearch.Start();
-            _ = _services.GetRequiredService<MathJsEngine>(); // warm up in background
+            _ = ShowWhenInstantReadyAsync(globalSearch, desktop);
             return;
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private static async Task ShowWhenInstantReadyAsync(GlobalSearch globalSearch, IClassicDesktopStyleApplicationLifetime desktop) {
+        // Block view until all instant search are ready
+        await globalSearch.WhenInstantReady();
+        await Dispatcher.UIThread.InvokeAsync(() => {
+            AppHandler.Instance.OnShow();
+            desktop.MainWindow?.Show();
+            desktop.MainWindow?.Activate();
+        });
     }
 
     public async void OpenSettings() {
