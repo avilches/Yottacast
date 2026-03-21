@@ -1,4 +1,4 @@
-# Diseño de búsqueda
+# Diseño general de la aplicación
 
 ## Arranque (App.axaml.cs)
 
@@ -9,19 +9,17 @@ Orden de arranque en `OnFrameworkInitializationCompleted`:
 1. `AppHandler.Instance.OnFrameworkInitializationCompleted()` — configuración OS-específica antes de nada (macOS: establece `NSApplicationActivationPolicyAccessory`)
 2. `BuildServices()` — construye el contenedor DI
 3. `ThemeService.Apply(userSettings.Theme)` — aplica el tema visual antes de que la ventana exista
-4. `RunMigrations(userSettings, updateChecker, logger)` — compara `LastLaunchedVersion` con `UpdateChecker.CurrentVersion`; si difieren, ejecuta migraciones, actualiza el campo y persiste. No bloquea.
+4. `RunMigrations(userSettings, updateChecker, logger)` — compara `LastLaunchedVersion` con `UpdateChecker.CurrentVersion`; si difieren, ejecuta migraciones, actualiza el campo y persiste. Es síncrono y bloquea el arranque intencionalmente: las migraciones deben completarse antes de que el resto del arranque consuma `UserSettings`.
 5. `DisableAvaloniaDataAnnotationValidation()` — elimina el plugin de validación de Avalonia para evitar conflictos con CommunityToolkit.Mvvm
 6. `mainWindowViewModel.Initialize()` — dispara `CheckForUpdateAsync()` como fire-and-forget; comprueba en background si hay versión nueva y, si la hay, actualiza `UpdateAvailable`/`UpdateBannerText` en el UI thread cuando llega la respuesta. La MainWindow muestra un banner de actualización (ver `MainWindow.axaml`) cuando `UpdateAvailable` es `true`; el comando `UpdateBannerClickCommand` es un placeholder para la futura acción de actualización
 7. Creación de `MainWindow` con el ViewModel como `DataContext`
 8. `ClipboardService.Initialize(...)` — registra el callback de UI-thread para que Core pueda copiar al portapapeles sin depender de Avalonia
 9. `desktop.Exit +=` — registra el handler de cierre de la app que llama `globalSearch.Stop()`; `RegisterGlobalHotKey(desktop)` — registra el hook global de SharpHook
 10. `base.OnFrameworkInitializationCompleted()` — señala a Avalonia que la inicialización terminó
-11. `AppHandler.Instance.OnShow()` — configura el comportamiento de plataforma antes de mostrar la ventana
-12. `desktop.MainWindow.Show()` / `Activate()` — la ventana aparece
-13. `globalSearch.Start()` — fire-and-forget; el arranque **no espera** a que termine
-14. `_ = services.GetRequiredService<MathJsEngine>()` — resuelve el singleton desde DI para disparar el warm-up de Jint en background
+11. `globalSearch.Start()` — fire-and-forget; inicia el ciclo de vida de todas las fuentes de búsqueda
+12. `ShowWhenInstantReadyAsync(globalSearch, desktop)` — fire-and-forget; bloquea internamente con `await globalSearch.WhenInstantReady()` hasta que todas las instant sources están listas, y solo entonces ejecuta `AppHandler.Instance.OnShow()`, `desktop.MainWindow.Show()` y `Activate()`
 
-El arranque no bloquea. La ventana ya es interactiva desde el paso 12 mientras `globalSearch.Start()` y `CheckForUpdateAsync()` trabajan en segundo plano.
+La ventana no aparece hasta que las instant sources están listas. `CheckForUpdateAsync()` trabaja en background mientras se espera.
 
 **Qué hace `globalSearch.Start()`** — delega en cada fuente (tanto `IInstantSearchSource` como `IDeferredSearchSource`):
 
@@ -33,13 +31,13 @@ El arranque no bloquea. La ventana ya es interactiva desde el paso 12 mientras `
 
 **`WhenReady()`** — tanto `IInstantSearchSource` como `IDeferredSearchSource` exponen `Task WhenReady()`. `GlobalSearch.WhenReady()` hace `Task.WhenAll` sobre todas las fuentes (instant y deferred). Las fuentes sin arranque asíncrono devuelven `Task.CompletedTask`.
 
-**Consecuencia para búsquedas**: hasta que `WhenReady()` complete en macOS, `Search` de `ApplicationSearch` devuelve vacío. La UI es interactiva desde el arranque; simplemente no hay apps en los resultados hasta que mdfind acaba.
+**Consecuencia para búsquedas**: la UI no se muestra hasta que `WhenInstantReady()` complete, es decir, hasta que todas las instant sources (incluyendo `ApplicationSearch`) están listas. El usuario nunca ve la ventana sin apps en los resultados.
 
 **Consecuencia para Settings**: `App.OpenSettings()` es `async void` y hace `await applicationSearch.WhenReady()` antes de crear la `SettingsWindow`. Esto garantiza que `BrowserDiscovery.Discover()` y `TerminalDiscovery.Discover()` (llamados en el constructor del ViewModel) ya tienen el caché poblado. Si el caché ya está listo (usuario abre Settings tarde), el await es instantáneo. Si la ventana ya está visible (`IsVisible: true`), se activa sin crear nada nuevo. Si no está visible, crea siempre una nueva `SettingsWindow` con un nuevo `SettingsWindowViewModel` (transient).
 
 `UserSettings.Load(platform)` carga (o crea) el JSON y siempre hace `Save()` al final. La validación de Browser/Terminal no ocurre en el arranque; `UserSettings` se auto-repara en el momento de uso, cuando se accede a `ActiveBrowser` / `ActiveTerminal`.
 
-## Servicios registrados en DI
+## Servicios registrados en DI                                               
 
 - `PlatformProvider` (singleton, instancia concreta elegida en `BuildServices()` con una única comprobación de OS)
 - `UserSettings` (singleton, cargado con `UserSettings.Load(platform)`)

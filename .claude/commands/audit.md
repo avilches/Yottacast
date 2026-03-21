@@ -10,40 +10,60 @@ No debe duplicar lo que ya es obvio leyendo el código (constantes, scores, rege
 
 ## Instrucciones
 
-Lanza **un agente** que haga lo siguiente, en este orden:
+El proceso se ejecuta en dos fases. Cada fase lanza agentes en paralelo, uno por fichero `docs/*.md`.
 
-### Paso 1 — Corregir lo existente en docs
+### Fase 1 — Verificar y corregir lo que ya dice la doc (doc → código)
 
-Lee todos los ficheros `docs/*.md`. Para cada claim concreto (comportamiento, clase, método, flujo, campo de configuración, regla de negocio…), busca en el código fuente (`Yottacast/`, `Yottacast.Core/`, `Yottacast.Cli/`, `Yottacast.Core.Tests/`) la evidencia que lo respalda.
+Lanza un agente por cada fichero `docs/*.md`, todos en paralelo. Espera a que todos terminen antes de continuar con la Fase 2.
 
-Corrige directamente en el fichero `.md` correspondiente:
-- **Claims incorrectos**: la doc dice X pero el código hace Y → actualiza la doc.
-- **Claims obsoletos**: la doc menciona algo que ya no existe → elimínalo.
-- **Nombres desactualizados**: clases, métodos o ficheros renombrados → actualiza las referencias.
+**Tarea de cada agente:**
 
-No corrijas por diferencia de nomenclatura menor; usa criterio.
+> Eres el verificador del fichero `docs/X.md`.
+>
+> Lee el fichero. Para cada claim concreto (comportamiento, clase, método, flujo, campo de configuración, regla de negocio…), busca **activamente** en el código fuente (`Yottacast/`, `Yottacast.Core/`, `Yottacast.Cli/`, `Yottacast.Core.Tests/`) la evidencia que lo respalda. No asumas que algo es correcto porque suena razonable — verifícalo en el código.
+>
+> Corrige directamente en el fichero:
+> - **Claims incorrectos**: la doc dice X pero el código hace Y → actualiza la doc.
+> - **Claims obsoletos**: la doc menciona algo que ya no existe → elimínalo.
+> - **Nombres desactualizados**: clases, métodos o ficheros renombrados → actualiza las referencias.
+>
+> **Solo toca lo que ya está escrito.** No añadas contenido nuevo. No corrijas por diferencia de nomenclatura menor; usa criterio.
+>
+> Devuelve un resumen de cuántos claims verificaste y cuántos corregiste.
 
-### Paso 2 — Documentar lo que falta
+### Fase 2 — Documentar lo que falta (código → doc)
 
-Explora el código fuente buscando comportamientos, módulos, clases, métodos relevantes o decisiones de diseño que **no están mencionados en ningún fichero `docs/*.md`**.
+Una vez terminada la Fase 1, lanza un agente por cada fichero `docs/*.md`, todos en paralelo. Espera a que todos terminen antes de continuar.
 
-Añádelos directamente en el doc que corresponda por tema. Si no encaja en ninguno existente, anótalo para el fichero de salida como propuesta estructural.
+**Tarea de cada agente:**
 
-Ignora lo trivial (getters simples, constructores sin lógica, cosas obvias leyendo el código). Céntrate en: flujos de control importantes, estrategias de caché, manejo de errores relevante, decisiones de arquitectura, contratos de interfaz.
+> Eres el explorador del fichero `docs/X.md`.
+>
+> Este doc cubre el tema `<topic>`. Lee el fichero para entender qué ya está documentado sobre ese tema.
+>
+> Explora el código fuente (`Yottacast/`, `Yottacast.Core/`, `Yottacast.Cli/`, `Yottacast.Core.Tests/`) buscando comportamientos, flujos, clases, métodos o decisiones de diseño **relacionados con el tema de este doc** que no estén mencionados en él.
+>
+> **Solo añade cosas nuevas.** No modifiques ni corrijas lo que ya existe — eso ya lo hizo la Fase 1.
+>
+> Ignora lo trivial (getters simples, constructores sin lógica, cosas obvias leyendo el código). Céntrate en: flujos de control importantes, estrategias de caché, manejo de errores relevante, decisiones de arquitectura, contratos de interfaz.
+>
+> Si encuentras algo relevante que claramente no encaja en este doc sino en otro, anótalo (fichero destino sugerido + qué añadir) pero no lo escribas — se incluirá en el fichero de salida como propuesta estructural.
+>
+> Devuelve un resumen de cuántos comportamientos añadiste y cuántas propuestas estructurales encontraste.
 
-### Paso 3 — Comentarios inline en código
+### Fase 3 — Comentarios inline en código
 
 Si un comentario en `.cs`/`.axaml` contradice la implementación real, corrígelo directamente.
 
-### Paso 4 — Verificar intención de CLAUDE.md contra código
+### Fase 4 — Verificar intención de CLAUDE.md contra código
 
 Lee `CLAUDE.md` (la fuente de intención del proyecto). Si describe comportamientos, flujos o decisiones de diseño que el código no implementa o contradice, anótalos para el fichero de salida. **No modifiques `CLAUDE.md`** — solo el desarrollador lo hace.
 
-### Paso 5 — Anotar bugs obvios
+### Fase 5 — Anotar bugs obvios
 
 Si durante los pasos anteriores encuentras bugs evidentes (lógica claramente incorrecta, null references obvios, condiciones invertidas, recursos no liberados), anótalos para el fichero de salida. No los corrijas — solo regístralos con contexto suficiente para que sean accionables.
 
-### Paso 6 — Revisar estructura de los docs
+### Fase 6 — Revisar estructura de los docs
 
 Evalúa la organización de `docs/`:
 - ¿Hay documentos que abarcan demasiado y deberían dividirse?

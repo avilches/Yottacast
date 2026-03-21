@@ -129,7 +129,7 @@ cd Yottacast.Core.Tests && dotnet test
 
 Las docs están en `docs/`. Léelas antes de trabajar en cualquier área:
 
-- `docs/search-design.md`
+- `docs/app-design.md`
 - `docs/search-sources.md`
 - `docs/user-settings.md`
 - `docs/calculator.md`
