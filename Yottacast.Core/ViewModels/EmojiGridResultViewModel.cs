@@ -23,8 +23,21 @@ public class EmojiGridResultViewModel : ResultItemViewModel, INotifyPropertyChan
     public EmojiCellViewModel? SelectedEmoji =>
         Cells.Count > 0 ? Cells[SelectedEmojiIndex] : null;
 
-    public void SelectNext()     => SelectedEmojiIndex = (SelectedEmojiIndex + 1) % Cells.Count;
+    public const int Columns = 8;
+
+    public void SelectNext()     => SelectedEmojiIndex = (SelectedEmojiIndex + 1)       % Cells.Count;
     public void SelectPrevious() => SelectedEmojiIndex = (SelectedEmojiIndex - 1 + Cells.Count) % Cells.Count;
+    public bool SelectDown() {
+        if (SelectedEmojiIndex + Columns >= Cells.Count) return false;
+        SelectedEmojiIndex += Columns;
+        return true;
+    }
+
+    public bool SelectUp() {
+        if (SelectedEmojiIndex < Columns) return false;
+        SelectedEmojiIndex -= Columns;
+        return true;
+    }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 }

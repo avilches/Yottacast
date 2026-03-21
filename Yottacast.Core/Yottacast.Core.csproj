@@ -29,7 +29,25 @@
       Condition="!Exists('$(MSBuildThisFileDirectory)Search/Emoji/emoji-data.json')" />
   </Target>
 
+  <!-- Copy the compact emoji cache from AppData into the source tree if available but not yet present. -->
+  <!-- Run the app once to generate the cache, then rebuild to embed it. -->
+  <!-- To regenerate: delete Search/Emoji/emoji-cache.json and rebuild (app will recreate it on next run). -->
+  <PropertyGroup>
+    <_EmojiCacheSrc Condition="$([MSBuild]::IsOsPlatform('OSX'))">$(HOME)/Library/Application Support/Yottacast/emoji-cache.json</_EmojiCacheSrc>
+    <_EmojiCacheSrc Condition="$([MSBuild]::IsOsPlatform('Windows'))">$(APPDATA)\Yottacast\emoji-cache.json</_EmojiCacheSrc>
+    <_EmojiCacheSrc Condition="$([MSBuild]::IsOsPlatform('Linux'))">$(HOME)/.config/Yottacast/emoji-cache.json</_EmojiCacheSrc>
+    <_EmojiCacheDst>$(MSBuildThisFileDirectory)Search/Emoji/emoji-cache.json</_EmojiCacheDst>
+  </PropertyGroup>
+  <Target Name="CopyEmojiCache" BeforeTargets="BeforeBuild">
+    <Copy
+      SourceFiles="$(_EmojiCacheSrc)"
+      DestinationFiles="$(_EmojiCacheDst)"
+      Condition="'$(_EmojiCacheSrc)' != '' And Exists('$(_EmojiCacheSrc)') And !Exists('$(_EmojiCacheDst)')"
+      ContinueOnError="true" />
+  </Target>
+
   <ItemGroup>
+    <EmbeddedResource Include="Search/Emoji/emoji-cache.json" Condition="Exists('Search/Emoji/emoji-cache.json')" />
     <EmbeddedResource Include="Search/Emoji/emoji-data.json" Condition="Exists('Search/Emoji/emoji-data.json')" />
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
       <_Parameter1>Yottacast.Core.Tests</_Parameter1>

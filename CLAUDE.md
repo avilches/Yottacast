@@ -115,6 +115,7 @@ cd Yottacast.Core.Tests && dotnet test
 | `docs/user-settings.md` | Campos, rutas, auto-reparación Browser/Terminal, EnsureIntegrity               |
 | `docs/calculator.md` | CalculatorSearch, MathJsEngine, ClipboardService                               |
 | `docs/emoji.md` | EmojiSearch, EmojiDataLoader, caché en disco, descarga iamcal/emoji-data       |
+| `docs/release-workflow.md` | Ciclo de vida de assets embebidos (math.js, emoji-data, emoji-cache)           |
 | `docs/platform.md` | PlatformProvider, StandardCommandRunner, SharpHook (hotkey global de arranque) |
 | `docs/browser-terminal.md` | BrowserDiscovery, TerminalDiscovery, FileSearch, launch per-app                |
 | `docs/ui-themes-keyboard.md` | Themes, keyboard shortcuts, IsSearching/spinner                                |

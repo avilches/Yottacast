@@ -61,7 +61,7 @@ public sealed class ApplicationSearch(UserSettings settings, PlatformProvider pl
             .Where(x => x.score > 0)
             .OrderByDescending(x => x.score)
             .Take(limit)
-            .Select(x => (ResultItemViewModel)new ResultItemViewModel {
+            .Select(x => new ResultItemViewModel {
                 Icon = "📱",
                 Title = x.app.Name,
                 Subtitle = x.app.Path,

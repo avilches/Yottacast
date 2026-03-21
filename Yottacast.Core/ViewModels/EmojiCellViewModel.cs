@@ -3,8 +3,12 @@ using System.ComponentModel;
 namespace Yottacast.Core.ViewModels;
 
 public class EmojiCellViewModel : INotifyPropertyChanged {
-    public string Char { get; init; } = "";
-    public string Name { get; init; } = "";
+    public string   Char     { get; init; } = "";
+    public string   Name     { get; init; } = "";
+    public string   Category { get; init; } = "";
+    public string[] Keywords { get; init; } = [];
+
+    public string KeywordsText => Keywords.Length > 0 ? string.Join(", ", Keywords) : "";
 
     private bool _isSelected;
     public bool IsSelected {

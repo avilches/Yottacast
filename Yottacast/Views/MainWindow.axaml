@@ -182,7 +182,7 @@
                             <ItemsControl ItemsSource="{Binding Cells}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
-                                        <WrapPanel Orientation="Horizontal"/>
+                                        <UniformGrid Columns="8"/>
                                     </ItemsPanelTemplate>
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
@@ -195,10 +195,23 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                            <TextBlock Text="{Binding SelectedEmoji.Name}"
-                                       Foreground="{DynamicResource Theme.ItemSubtitle}"
-                                       FontSize="{DynamicResource Theme.FontSizeSmall}"
-                                       HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                            <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Margin="0,6,0,0" Spacing="2">
+                                <TextBlock Text="{Binding SelectedEmoji.Name}"
+                                           Foreground="{DynamicResource Theme.ItemTitle}"
+                                           FontSize="{DynamicResource Theme.FontSizeTitle}"
+                                           FontWeight="Medium"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock Text="{Binding SelectedEmoji.Category}"
+                                           Foreground="{DynamicResource Theme.ItemCategory}"
+                                           FontSize="{DynamicResource Theme.FontSizeSmall}"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock Text="{Binding SelectedEmoji.KeywordsText}"
+                                           Foreground="{DynamicResource Theme.ItemSubtitle}"
+                                           FontSize="{DynamicResource Theme.FontSizeSmall}"
+                                           HorizontalAlignment="Center"
+                                           TextWrapping="Wrap"
+                                           MaxWidth="400"/>
+                            </StackPanel>
                         </StackPanel>
                     </DataTemplate>
 

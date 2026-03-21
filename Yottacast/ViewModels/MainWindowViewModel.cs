@@ -65,7 +65,9 @@ public partial class MainWindowViewModel(
     private async Task SearchAsync(string query, CancellationToken ct) {
         _instantSnapshot = [];
         _deferredSnapshot = [];
-        _googleItem = query.StartsWith(':') ? null : MakeGoogleItem(query);
+        _googleItem = query.StartsWith(':')
+            ? (query.Length > 1 ? MakeGoogleItem(query[1..].Trim()) : null)
+            : MakeGoogleItem(query);
         RefreshResults();
 
         // Phase 1: instant sources (in-memory cache) — no delay

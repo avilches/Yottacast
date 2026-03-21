@@ -43,6 +43,14 @@ public partial class MainWindow : Window {
                 onRight();
                 e.Handled = true;
                 break;
+
+            case Key.Up when vm.SelectedResult?.OnUp is { } onUp:
+                e.Handled = onUp();
+                break;
+
+            case Key.Down when vm.SelectedResult?.OnDown is { } onDown:
+                e.Handled = onDown();
+                break;
         }
     }
 

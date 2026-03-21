@@ -4,7 +4,10 @@ using Microsoft.Extensions.Logging;
 
 namespace Yottacast.Core.Search.Emoji;
 
-internal record EmojiEntry(string Char, string Name, string[] Keywords, string Category, int SortOrder);
+internal record EmojiEntry(string Char, string Name, string[] Keywords, string Category, int SortOrder) {
+    public IReadOnlyList<string> NameTokens { get; } =
+        Name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+}
 
 /// <summary>
 /// Loads emoji data from the embedded resource (Search/Emoji/emoji-data.json, bundled at build time).
@@ -23,11 +26,22 @@ public class EmojiDataLoader(ILogger<EmojiDataLoader> logger) {
         var cachePath = Path.Combine(cacheDir, CacheFileName);
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
+        var embeddedCache = TryReadEmbeddedString("Yottacast.Core.Search.Emoji.emoji-cache.json");
+        if (embeddedCache != null) {
+            try {
+                var entries = ParseCompactCache(embeddedCache);
+                logger.LogInformation("Emoji embedded cache loaded in {Ms}ms ({Count} entries)", sw.ElapsedMilliseconds, entries.Count);
+                return entries;
+            } catch (Exception ex) {
+                logger.LogWarning("Failed to parse embedded emoji cache: {Message}", ex.Message);
+            }
+        }
+
         if (File.Exists(cachePath)) {
             try {
                 var cached = await File.ReadAllTextAsync(cachePath, ct);
                 var entries = ParseCompactCache(cached);
-                logger.LogInformation("Emoji cache loaded in {Ms}ms ({Count} entries)", sw.ElapsedMilliseconds, entries.Count);
+                logger.LogInformation("Emoji disk cache loaded in {Ms}ms ({Count} entries)", sw.ElapsedMilliseconds, entries.Count);
                 return entries;
             } catch (Exception ex) {
                 logger.LogWarning("Failed to read emoji cache: {Message}", ex.Message);
@@ -37,7 +51,7 @@ public class EmojiDataLoader(ILogger<EmojiDataLoader> logger) {
 
         try {
             var t0 = sw.ElapsedMilliseconds;
-            var rawJson = ReadEmbeddedResource();
+            var rawJson = ReadEmbeddedString("Yottacast.Core.Search.Emoji.emoji-data.json");
             var t1 = sw.ElapsedMilliseconds;
             var entries = ParseRawJson(rawJson);
             var t2 = sw.ElapsedMilliseconds;
@@ -52,13 +66,17 @@ public class EmojiDataLoader(ILogger<EmojiDataLoader> logger) {
         }
     }
 
-    private static string ReadEmbeddedResource() {
-        var assembly = typeof(EmojiDataLoader).Assembly;
-        using var stream = assembly.GetManifestResourceStream("Yottacast.Core.Search.Emoji.emoji-data.json")
-                           ?? throw new InvalidOperationException("Embedded emoji-data.json not found");
+    private static string? TryReadEmbeddedString(string resourceName) {
+        var stream = typeof(EmojiDataLoader).Assembly.GetManifestResourceStream(resourceName);
+        if (stream == null) return null;
+        using var _ = stream;
         using var reader = new StreamReader(stream, Encoding.UTF8);
         return reader.ReadToEnd();
     }
+
+    private static string ReadEmbeddedString(string resourceName) =>
+        TryReadEmbeddedString(resourceName)
+        ?? throw new InvalidOperationException($"Embedded resource '{resourceName}' not found");
 
     /// <summary>Parses the raw iamcal/emoji-data JSON, keeping only needed fields.</summary>
     internal static IReadOnlyList<EmojiEntry> ParseRawJson(string json) {

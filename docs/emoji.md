@@ -8,7 +8,7 @@ La fuente de datos es [iamcal/emoji-data](https://github.com/iamcal/emoji-data),
 
 ## EmojiDataLoader
 
-Clase estática interna que gestiona el ciclo parseo → caché. `EmojiSearch` la llama desde `Start()`.
+Clase instanciable (registrada en DI) que gestiona el ciclo parseo → caché. `EmojiSearch` la llama desde `Start()`.
 
 ### Caché en disco
 
@@ -20,12 +20,19 @@ El nombre del fichero está definido como constante en `EmojiDataLoader`. No hay
 
 ```
 LoadAsync(cacheDir)
-  ├─ ¿existe emoji-cache.json?  →  ParseCompactCache  →  return entries
+  ├─ ¿embedded emoji-cache.json?  →  ParseCompactCache  →  return entries
+  ├─ ¿existe emoji-cache.json en disco (cacheDir)?  →  ParseCompactCache  →  return entries
   └─ else
        ├─ lee EmbeddedResource (emoji-data.json compilado en el ensamblado)
-       ├─ ParseRawJson  →  WriteCompactCache  →  return entries
+       ├─ ParseRawJson  →  WriteCompactCache(disco)  →  return entries
        └─ si falla el parseo  →  return []  (sin crash; emojis simplemente no aparecen)
 ```
+
+El `emoji-cache.json` embebido se genera en desarrollo y se incluye en el repo; ver `docs/release-workflow.md` para el ciclo completo.
+
+### EmojiEntry y pre-tokenización
+
+`EmojiEntry` almacena los cinco campos del JSON (`Char`, `Name`, `Keywords`, `Category`, `SortOrder`) más una propiedad `NameTokens` inicializada en construcción con un simple space-split del `Name`. Esto equivale al resultado de `NameMatcher.SplitTokens` para nombres de emoji (siempre minúsculas separadas por espacios), evitando re-tokenizar en cada búsqueda.
 
 ### Parseo del JSON raw
 
@@ -60,8 +67,8 @@ Implementa `ISearchSource` con `IsInstant = true` — sus resultados van por la 
 
 `SearchAsync` devuelve siempre una lista de un único elemento: un `EmojiGridResultViewModel` construido por `MakeGrid`.
 
-- Al escribir solo `:` (sin término): grid con los 6 emojis de menor `sort_order` según el orden Unicode CLDR.
-- Al escribir `:smile` (o cualquier término): grid con todos los emojis que coincidan, ordenados por score descendente, hasta el límite de la query. Ver `EmojiSearch.MatchScore` para las prioridades: nombre exacto, nombre con prefijo, nombre con substring, keyword exacta, keyword con prefijo, keyword con substring.
+- Al escribir solo `:` (sin término): grid con los 20 emojis de menor `sort_order` según el orden Unicode CLDR.
+- Al escribir `:smile` (o cualquier término): grid con todos los emojis que coincidan, ordenados por score descendente, hasta el límite de la query. `EmojiSearch.MatchScore` prioriza nombre exacto > nombre con `NameMatcher.Score` (usando `NameTokens` pre-computados) > keyword con `NameMatcher.Score`. El rango de scores garantiza que cualquier match por nombre supera a cualquier match por keyword.
 
 Si la caché no está lista o la carga falló, se devuelve lista vacía (sin error visible al usuario).
 

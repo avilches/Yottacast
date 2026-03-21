@@ -3,6 +3,7 @@ using Xunit;
 using Yottacast.Core.Search;
 using Yottacast.Core.Search.Emoji;
 using Yottacast.Core.Services;
+using Yottacast.Core.ViewModels;
 
 namespace Yottacast.Core.Tests.Search;
 
@@ -44,9 +45,11 @@ public class EmojiSearchTests {
         var search = await BuildSearchWithCache(json);
         var results = await SearchAsync(search, ":");
 
-        Assert.Equal(6, results.Count);
-        Assert.Equal("😀", results[0].Icon);
-        Assert.Equal("😃", results[1].Icon);
+        // EmojiSearch returns one grid item whose cells are the emojis ordered by sort_order
+        var grid = Assert.IsType<EmojiGridResultViewModel>(Assert.Single(results));
+        Assert.Equal(7, grid.Cells.Count);
+        Assert.Equal("😀", grid.Cells[0].Char);
+        Assert.Equal("😃", grid.Cells[1].Char);
     }
 
     [Fact]
@@ -118,8 +121,10 @@ public class EmojiSearchTests {
         var search = await BuildSearchWithCache(json);
         var results = await SearchAsync(search, ":fire");
 
-        Assert.Equal(2, results.Count);
-        Assert.Equal("🔥", results[0].Icon); // exact match wins
+        // Both match, returned as one grid; exact name "fire" must be first cell
+        var grid = Assert.IsType<EmojiGridResultViewModel>(Assert.Single(results));
+        Assert.Equal(2, grid.Cells.Count);
+        Assert.Equal("🔥", grid.Cells[0].Char); // exact match wins over prefix
     }
 
     [Fact]
@@ -149,6 +154,19 @@ public class EmojiSearchTests {
         Assert.True(item.PasteAfterActivate);
     }
 
+    // ── Result shape (Icon/Title/Category set from first cell) ────────────────
+
+    [Fact]
+    public async Task Result_IconAndTitle_ReflectFirstCell() {
+        var json = """[["😀","grinning face",["grinning"],"Smileys & Emotion",1]]""";
+        var search = await BuildSearchWithCache(json);
+        var results = await SearchAsync(search, ":");
+        var item = Assert.Single(results);
+        Assert.Equal("😀", item.Icon);
+        Assert.Equal("grinning face", item.Title);
+        Assert.Equal("Emoji", item.Category);
+    }
+
     [Fact]
     public async Task OnActivate_CopiesCharToClipboard() {
         var json = """[["😀","grinning face",["grinning"],"Smileys & Emotion",1]]""";
@@ -169,5 +187,99 @@ public class EmojiSearchTests {
         item.OnActivate();
 
         Assert.Equal("😀", copied);
+    }
+}
+
+// ── Integration tests against the real embedded emoji-data.json ───────────────
+//
+// These tests load the full emoji dataset from the embedded resource (no cache)
+// to verify that the matching logic works against production data.
+// The fixture loads the data once and shares it across all tests in the class.
+
+public class RealEmojiDataFixture : IAsyncLifetime, IDisposable {
+    private readonly string _tempDir =
+        Path.Combine(Path.GetTempPath(), $"emoji-real-{Guid.NewGuid()}");
+
+    public EmojiSearch Search { get; private set; } = null!;
+
+    public async Task InitializeAsync() {
+        Directory.CreateDirectory(_tempDir);
+        var loader = new EmojiDataLoader(NullLogger<EmojiDataLoader>.Instance);
+        // First call: loads from embedded resource and writes the cache.
+        await loader.LoadAsync(_tempDir);
+        // EmojiSearch then reads the cache on Start(), so data loads quickly.
+        Search = new EmojiSearch(
+            new ClipboardService(), _tempDir, loader,
+            NullLogger<EmojiSearch>.Instance);
+        Search.Start();
+        await Search.WhenReady();
+    }
+
+    public Task DisposeAsync() { Dispose(); return Task.CompletedTask; }
+
+    public void Dispose() {
+        if (Directory.Exists(_tempDir)) Directory.Delete(_tempDir, recursive: true);
+    }
+}
+
+public class EmojiSearchRealDataTests(RealEmojiDataFixture fixture)
+    : IClassFixture<RealEmojiDataFixture> {
+
+    private static async Task<EmojiGridResultViewModel?> SearchGrid(EmojiSearch search, string query) {
+        await foreach (var snapshot in search.SearchAsync(query, 20))
+            return snapshot.OfType<EmojiGridResultViewModel>().FirstOrDefault();
+        return null;
+    }
+
+    // ── Prefix / exact / keyword ──────────────────────────────────────────────
+
+    [Fact]
+    public async Task Prefix_GrinReturnsGrinningEmojis() {
+        var grid = await SearchGrid(fixture.Search, ":grin");
+        Assert.NotNull(grid);
+        Assert.All(grid.Cells, c => Assert.Contains("grin", c.Name));
+    }
+
+    [Fact]
+    public async Task Keyword_ThumbsupReturnsThumbsUpEmoji() {
+        // "thumbsup" is a short_name keyword for 👍
+        var grid = await SearchGrid(fixture.Search, ":thumbsup");
+        Assert.NotNull(grid);
+        Assert.Contains(grid.Cells, c => c.Name.Contains("thumbs up"));
+    }
+
+    [Fact]
+    public async Task Exact_FireReturnsFireFirst() {
+        // "fire" is the exact name of 🔥; other emojis may contain "fire" in keywords
+        var grid = await SearchGrid(fixture.Search, ":fire");
+        Assert.NotNull(grid);
+        Assert.Equal("fire", grid.Cells[0].Name); // exact match must be first
+    }
+
+    // ── Multi-word abbreviation (new tier 0.4) ────────────────────────────────
+
+    [Fact]
+    public async Task MultiWordAbbrev_SmilaFindsSmilingFace() {
+        // "smifa" = smi→"smiling" + fa→"face"
+        var grid = await SearchGrid(fixture.Search, ":smifa");
+        Assert.NotNull(grid);
+        Assert.Contains(grid.Cells, c => c.Name.StartsWith("smiling face"));
+    }
+
+    [Fact]
+    public async Task MultiWordAbbrev_GrfaFindsGrinningFace() {
+        // "grfa" = gr→"grinning" + fa→"face"
+        var grid = await SearchGrid(fixture.Search, ":grfa");
+        Assert.NotNull(grid);
+        Assert.Contains(grid.Cells, c => c.Name.StartsWith("grinning face"));
+    }
+
+    [Fact]
+    public async Task MultiWordAbbrev_NameRanksAboveKeyword() {
+        // "grinning" appears both as a name prefix and as a keyword;
+        // the emoji whose NAME starts with the query should rank first.
+        var grid = await SearchGrid(fixture.Search, ":grinning");
+        Assert.NotNull(grid);
+        Assert.Contains("grinning", grid.Cells[0].Name);
     }
 }

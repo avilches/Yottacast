@@ -54,7 +54,11 @@ MainWindowViewModel recibe snapshots → RefreshResults() en cada uno
 
 ### ApplicationSearch — NameMatcher
 
-`NameMatcher.Score(name, query)` aplica dos pasos: primero llama a `ScoreWith` con el query tal como viene; si la query es todo minúsculas y el score resultante no es el máximo posible, reintenta `ScoreWith` con `query.ToUpperInvariant()` y devuelve el mayor de los dos scores. Esto hace que "am" también pruebe como "AM" y pueda coincidir con "Activity Monitor".
+`NameMatcher` expone dos overloads públicos:
+- `Score(string name, string query)` — tokeniza el nombre internamente con `SplitTokens` y delega en el otro overload.
+- `Score(IReadOnlyList<string> tokens, string name, string query)` — acepta tokens pre-computados; usado por `EmojiSearch` que almacena `NameTokens` en `EmojiEntry` para no re-tokenizar en cada keystroke.
+
+Ambos overloads aplican el mismo algoritmo: evalúan el query tal como viene y, si la query es todo minúsculas y el score no es el máximo, reintenta con `query.ToUpperInvariant()` (para que "am" coincida con "Activity Monitor"). `SplitTokens` es público para que los consumidores puedan pre-computar tokens cuando la cadena de entrada es estable.
 
 `ScoreWith` implementa tres modos de matching por prioridad descendente:
 
