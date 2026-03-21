@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Logging;
 using Yottacast.Core.Search.Application;
 using Yottacast.Core.Services;
@@ -12,12 +11,10 @@ namespace Yottacast.Core.Search.Emoji;
 /// Emoji data is loaded from the embedded resource; a compact cache is written to cacheDir for fast startups.
 /// Activating a result copies the emoji character to the clipboard.
 /// </summary>
-public class EmojiSearch(ClipboardService clipboard, string cacheDir, EmojiDataLoader dataLoader, ILogger<EmojiSearch> logger) : ISearchSource {
+public class EmojiSearch(ClipboardService clipboard, string cacheDir, EmojiDataLoader dataLoader, ILogger<EmojiSearch> logger) : IInstantSearchSource {
 
     private Task<IReadOnlyList<EmojiEntry>>? _loadTask;
     private volatile IReadOnlyList<EmojiEntry> _entries = [];
-
-    public bool IsInstant => true;
 
     public void Start() {
         _loadTask = Task.Run(() => dataLoader.LoadAsync(cacheDir));
@@ -31,19 +28,17 @@ public class EmojiSearch(ClipboardService clipboard, string cacheDir, EmojiDataL
     public Task WhenReady() => _loadTask ?? Task.CompletedTask;
     public Task Stop() => Task.CompletedTask;
 
-    public async IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>> SearchAsync(
-        string query, int limit, [EnumeratorCancellation] CancellationToken ct = default) {
-
-        if (!query.StartsWith(':')) yield break;
+    public IReadOnlyList<ResultItemViewModel> Search(string query, int limit) {
+        if (!query.StartsWith(':')) return [];
 
         var term = query[1..].Trim().ToLowerInvariant();
         var emojis = string.IsNullOrEmpty(term)
             ? GetDefaultEmojis()
             : FilterEmojis(term, limit);
 
-        if (emojis.Count > 0) yield return [MakeGrid(emojis)];
+        if (emojis.Count > 0) return [MakeGrid(emojis)];
 
-        await Task.CompletedTask;
+        return [];
     }
 
     private IReadOnlyList<EmojiEntry> GetDefaultEmojis() =>

@@ -7,7 +7,7 @@ using Yottacast.Core.ViewModels;
 namespace Yottacast.Core.Search.UserDocuments;
 
 /// <summary>
-/// ISearchSource that searches user files via FileSearch, scoped to the folders
+/// IDeferredSearchSource that searches user files via FileSearch, scoped to the folders
 /// configured in UserSettings (Downloads, Desktop, Documents, Movies, Pictures by default).
 /// Yields progressive snapshots as FileSearch emits results — each snapshot is the current
 /// best-N sorted results seen so far. Snapshots are emitted every SnapshotEvery results
@@ -17,13 +17,7 @@ public class UserDocumentSearch(
     UserSettings settings,
     FileSearch fileSearch,
     ILogger<UserDocumentSearch> logger,
-    int timeoutMs = 20_000) : ISearchSource {
-
-    public bool IsInstant => false;
-
-    public void Start() { }
-
-    public Task WhenReady() => Task.CompletedTask;
+    int timeoutMs = 20_000) : IDeferredSearchSource {
 
     public Task Stop() => Task.CompletedTask;
 

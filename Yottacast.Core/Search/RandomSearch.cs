@@ -8,7 +8,7 @@ namespace Yottacast.Core.Search;
 /// emitting each item after a 250ms delay. Used for integration testing of the
 /// streaming + sorted-insertion pipeline.
 /// </summary>
-public class RandomSearch : ISearchSource {
+public class RandomSearch : IDeferredSearchSource {
     private static readonly Random Rng = new();
 
     private static readonly string[] Icons = ["🎲", "🌟", "🔥", "💡", "🎯", "🚀", "✨", "🌈"];
@@ -18,12 +18,6 @@ public class RandomSearch : ISearchSource {
         "Foxtrot", "Golf", "Hotel", "India", "Juliet"
     ];
 
-    public bool IsInstant => false;
-
-    public void Start() {
-    }
-
-    public Task WhenReady() => Task.CompletedTask;
     public Task Stop() => Task.CompletedTask;
 
     public async IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>> SearchAsync(

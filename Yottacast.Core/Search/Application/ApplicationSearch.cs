@@ -7,7 +7,7 @@ using Yottacast.Core.ViewModels;
 namespace Yottacast.Core.Search.Application;
 
 /// <summary>
-/// In-memory cache of all installed applications. Implements <see cref="ISearchSource"/>
+/// In-memory cache of all installed applications. Implements <see cref="IInstantSearchSource"/>
 /// so it can be registered in <see cref="GlobalSearch"/>.
 ///
 /// Startup is platform-specific: macOS runs mdfind one-shot then FileSystemWatcher;
@@ -17,7 +17,7 @@ namespace Yottacast.Core.Search.Application;
 /// BrowserDiscovery and TerminalDiscovery query this store instead of hitting the filesystem themselves.
 /// </summary>
 public sealed class ApplicationSearch(UserSettings settings, PlatformProvider platform, ILogger<ApplicationSearch> logger)
-    : ISearchSource, IDisposable {
+    : IInstantSearchSource, IDisposable {
     private readonly ConcurrentDictionary<string, AppInfo> _apps =
         new(StringComparer.OrdinalIgnoreCase);
 
@@ -29,9 +29,7 @@ public sealed class ApplicationSearch(UserSettings settings, PlatformProvider pl
     private readonly List<FileSystemWatcher> _watchers = [];
     private TaskCompletionSource _readyTcs = new();
 
-    // ── ISearchSource ─────────────────────────────────────────────────────────
-
-    public bool IsInstant => true;
+    // ── IInstantSearchSource ──────────────────────────────────────────────────
 
     public void Start() {
         if (_started) return;
@@ -53,9 +51,7 @@ public sealed class ApplicationSearch(UserSettings settings, PlatformProvider pl
         return Task.CompletedTask;
     }
 
-    public async IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>> SearchAsync(
-        string query, int limit, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default) {
-        ct.ThrowIfCancellationRequested();
+    public IReadOnlyList<ResultItemViewModel> Search(string query, int limit) {
         var results = _apps.Values
             .Select(a => (app: a, score: NameMatcher.Score(a.Name, query)))
             .Where(x => x.score > 0)
@@ -72,8 +68,7 @@ public sealed class ApplicationSearch(UserSettings settings, PlatformProvider pl
             .ToList();
         logger.LogDebug("AppSearch query=\"{Query}\" cache={CacheCount} results={ResultCount} ready={Ready}",
             query, _apps.Count, results.Count, _readyTcs.Task.IsCompleted);
-        yield return results;
-        await Task.CompletedTask;
+        return results;
     }
 
     // ── Queries ───────────────────────────────────────────────────────────────
@@ -82,7 +77,7 @@ public sealed class ApplicationSearch(UserSettings settings, PlatformProvider pl
 
     public IReadOnlyList<AppInfo> FindAll() => [.. _apps.Values];
 
-    public IReadOnlyList<AppInfo> Search(string query) =>
+    public IReadOnlyList<AppInfo> FindByName(string query) =>
         _apps.Values
             .Where(a => a.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
             .ToList();
