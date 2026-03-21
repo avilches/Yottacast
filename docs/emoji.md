@@ -1,6 +1,6 @@
-pod# Búsqueda de emojis
+# Búsqueda de emojis
 
-`EmojiSearch` es un `ISearchSource` instant que se activa cuando la query empieza por `:`. Al activar un resultado copia el carácter emoji al portapapeles y lo pega automáticamente en la app de destino.
+`EmojiSearch` es un `ISearchSource` instant que se activa cuando la query empieza por `:`. Devuelve un único `EmojiGridResultViewModel` que agrupa todos los emojis candidatos en una fila horizontal navegable con ←/→. Al activarlo copia el emoji seleccionado al portapapeles y lo pega automáticamente en la app de destino.
 
 ## Datos de origen
 
@@ -35,6 +35,16 @@ Por cada entrada del JSON:
 - El `name` (en mayúsculas en el JSON) se normaliza a minúsculas.
 - Los `short_names` (identifiers tipo `:thumbsup:`) y los `texts` (ASCII como `:D`) se combinan en un único array `Keywords`.
 
+## ViewModels del grid
+
+### EmojiCellViewModel
+
+Representa una celda individual: `Char` (el carácter emoji), `Name` y `IsSelected` (con INPC manual). El template AXAML aplica la clase CSS `emoji-selected` al `Border` cuando `IsSelected` es true.
+
+### EmojiGridResultViewModel
+
+Hereda de `ResultItemViewModel`. Contiene la lista de `EmojiCellViewModel` (propiedad `Cells`) y gestiona el índice seleccionado (`SelectedEmojiIndex`). Al cambiar el índice, actualiza `IsSelected` en las celdas afectadas y notifica `SelectedEmoji` (la celda activa), cuyo `Name` se muestra debajo del grid. Expone `SelectNext()` y `SelectPrevious()` con wrap circular.
+
 ## EmojiSearch
 
 Implementa `ISearchSource` con `IsInstant = true` — sus resultados van por la pipeline instant de `GlobalSearch`, no por la deferred.
@@ -46,17 +56,25 @@ Implementa `ISearchSource` con `IsInstant = true` — sus resultados van por la 
 - `Stop()` es no-op.
 - `_entries` se marca `volatile` — se escribe una sola vez desde el `ContinueWith` y luego solo se lee.
 
-### Resultados por defecto
+### Resultados
 
-Al escribir solo `:` (sin término de búsqueda) se devuelven los 6 emojis con menor `sort_order` según el orden Unicode CLDR. Si la caché no está lista aún o la descarga falló, se devuelve una lista vacía (sin error visible al usuario).
+`SearchAsync` devuelve siempre una lista de un único elemento: un `EmojiGridResultViewModel` construido por `MakeGrid`.
 
-### Filtrado y scoring
+- Al escribir solo `:` (sin término): grid con los 6 emojis de menor `sort_order` según el orden Unicode CLDR.
+- Al escribir `:smile` (o cualquier término): grid con todos los emojis que coincidan, ordenados por score descendente, hasta el límite de la query. Ver `EmojiSearch.MatchScore` para las prioridades: nombre exacto, nombre con prefijo, nombre con substring, keyword exacta, keyword con prefijo, keyword con substring.
 
-Al escribir `:smile` (o cualquier término tras el `:`), se busca en `Name` y en `Keywords`. Las prioridades de scoring (de mayor a menor): nombre exacto, nombre con prefijo, nombre con substring, keyword exacta, keyword con prefijo, keyword con substring. Ver `EmojiSearch.MatchScore` para los valores numéricos.
+Si la caché no está lista o la carga falló, se devuelve lista vacía (sin error visible al usuario).
 
-### Activación
+### Activación y navegación
 
-`OnActivate` copia el carácter al portapapeles vía `ClipboardService` y `PasteAfterActivate = true` indica a la UI que pegue automáticamente tras ocultar la ventana. Ver `docs/calculator.md` para el funcionamiento de `ClipboardService`.
+`MakeGrid` construye el `EmojiGridResultViewModel` con captura circular de `grid`:
+
+- `OnActivate` copia `grid.Cells[grid.SelectedEmojiIndex].Char` al portapapeles vía `ClipboardService`.
+- `OnLeft` llama a `grid.SelectPrevious()`; `OnRight` llama a `grid.SelectNext()`.
+
+`PasteAfterActivate = true` indica a la UI que pegue automáticamente tras ocultar la ventana. Ver `docs/calculator.md` para el funcionamiento de `ClipboardService`.
+
+`OnLeft`/`OnRight` son propiedades de `ResultItemViewModel`. La ventana principal intercepta ←/→ en la fase túnel (`AddHandler(KeyDownEvent, ..., RoutingStrategies.Tunnel)`) y, si el item seleccionado tiene esas acciones, las invoca y marca el evento como handled antes de que el `TextBox` pueda mover el cursor de texto. Ver `MainWindow.axaml.cs`.
 
 ## Tests
 

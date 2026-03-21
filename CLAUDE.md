@@ -27,7 +27,7 @@ Yottacast.sln
 
 ```
 ├── Views/
-│   ├── MainWindow.axaml/.cs            ← Ventana frameless; teclado: ESC, ↑↓, Enter, ⌘,
+│   ├── MainWindow.axaml/.cs            ← Ventana frameless; teclado: ESC, ↑↓, ←→, Enter, ⌘,
 │   └── SettingsWindow.axaml/.cs        ← Preferencias (decorada, no frameless)
 ├── ViewModels/
 │   ├── MainWindowViewModel.cs          ← Búsqueda con debounce, resultado inmediato Google y calculawdora
@@ -75,7 +75,9 @@ Yottacast.sln
 │   ├── ClipboardService.cs             ← Bridge Core→Avalonia; Initialize() wired in App.axaml.cs
 │   └── MathJsEngine.cs                 ← Singleton: Jint + math.js 11.x (embedded resource); init en background
 └── ViewModels/
-    ├── ResultItemViewModel.cs           ← (Icon, Title, Subtitle, Category, Score, OnActivate)
+    ├── ResultItemViewModel.cs           ← (Icon, Title, Subtitle, Category, Score, OnActivate, OnLeft, OnRight)
+    ├── EmojiCellViewModel.cs            ← celda individual del grid emoji (Char, Name, IsSelected)
+    ├── EmojiGridResultViewModel.cs      ← hereda ResultItemViewModel; gestiona SelectedEmojiIndex, SelectNext/Previous
     └── ViewModelBase.cs                 ← ObservableObject (CommunityToolkit.Mvvm)
 ```
 

@@ -65,7 +65,7 @@ public partial class MainWindowViewModel(
     private async Task SearchAsync(string query, CancellationToken ct) {
         _instantSnapshot = [];
         _deferredSnapshot = [];
-        _googleItem = MakeGoogleItem(query);
+        _googleItem = query.StartsWith(':') ? null : MakeGoogleItem(query);
         RefreshResults();
 
         // Phase 1: instant sources (in-memory cache) — no delay
@@ -77,6 +77,9 @@ public partial class MainWindowViewModel(
         } catch (OperationCanceledException) {
             return;
         }
+
+        // Emoji mode: only instant sources, skip deferred search
+        if (query.StartsWith(':')) return;
 
         // Phase 2: deferred sources (disk) — debounce 250ms before hitting disk
         try {
@@ -106,7 +109,7 @@ public partial class MainWindowViewModel(
     }
 
     private void RefreshResults() {
-        var merged = new[] { _googleItem! }
+        var merged = (_googleItem != null ? new[] { _googleItem } : Array.Empty<ResultItemViewModel>())
             .Concat(_instantSnapshot)
             .Concat(_deferredSnapshot)
             .OrderByDescending(x => x.Score)
