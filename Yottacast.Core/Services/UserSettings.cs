@@ -24,6 +24,7 @@ public class UserSettings {
     public bool EnableCalculator { get; set; } = true;
     public bool EnableClipboard { get; set; } = true;
     public bool EnableEmoji { get; set; } = true;
+    public string LastLaunchedVersion { get; set; } = "";
 
     private string _hotkey = "Alt+Space";
     private HotkeyConfig? _parsedHotkey;
@@ -104,6 +105,7 @@ public class UserSettings {
         [JsonPropertyName("enableCalculator")] public bool EnableCalculator { get; init; } = true;
         [JsonPropertyName("enableClipboard")] public bool EnableClipboard { get; init; } = true;
         [JsonPropertyName("enableEmoji")] public bool EnableEmoji { get; init; } = true;
+        [JsonPropertyName("lastLaunchedVersion")] public string LastLaunchedVersion { get; init; } = "";
     }
 
     public static UserSettings Load(PlatformProvider platform, ILogger? logger = null, string? settingsPath = null) {
@@ -128,6 +130,7 @@ public class UserSettings {
                     EnableCalculator = data.EnableCalculator,
                     EnableClipboard = data.EnableClipboard,
                     EnableEmoji = data.EnableEmoji,
+                    LastLaunchedVersion = data.LastLaunchedVersion,
                 };
             }
         } catch (Exception ex) {
@@ -160,6 +163,7 @@ public class UserSettings {
                 EnableCalculator = EnableCalculator,
                 EnableClipboard = EnableClipboard,
                 EnableEmoji = EnableEmoji,
+                LastLaunchedVersion = LastLaunchedVersion,
             };
             File.WriteAllText(_settingsPath, JsonSerializer.Serialize(data, JsonOptions));
             _logger?.LogDebug("Settings saved to {Path}", _settingsPath);

@@ -61,7 +61,7 @@ public partial class MainWindowViewModel(
     }
 
     [RelayCommand]
-    private void OnUpdateBannerClick() {
+    private void UpdateBannerClick() {
         // Placeholder: conectar a la URL de descarga en el siguiente plan
     }
 

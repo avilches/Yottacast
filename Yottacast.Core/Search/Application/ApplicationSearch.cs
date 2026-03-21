@@ -77,11 +77,6 @@ public sealed class ApplicationSearch(UserSettings settings, PlatformProvider pl
 
     public IReadOnlyList<AppInfo> FindAll() => [.. _apps.Values];
 
-    public IReadOnlyList<AppInfo> FindByName(string query) =>
-        _apps.Values
-            .Where(a => a.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-
     // ── Scan + watch ──────────────────────────────────────────────────────────
 
     private async Task ScanAndWatchAsync() {

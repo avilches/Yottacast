@@ -31,6 +31,8 @@ file sealed class StubInstantSource(IReadOnlyList<ResultItemViewModel> results) 
 file sealed class StubDeferredSource(IReadOnlyList<ResultItemViewModel> results) : IDeferredSearchSource {
     public bool WasSearched { get; private set; }
 
+    public void Start() { }
+    public Task WhenReady() => Task.CompletedTask;
     public Task Stop() => Task.CompletedTask;
 
     public async IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>> SearchAsync(
@@ -48,6 +50,8 @@ file sealed class StubDeferredSource(IReadOnlyList<ResultItemViewModel> results)
 file sealed class MultiSnapshotDeferredSource(IReadOnlyList<IReadOnlyList<ResultItemViewModel>> snapshots, int delayMs = 0)
     : IDeferredSearchSource {
 
+    public void Start() { }
+    public Task WhenReady() => Task.CompletedTask;
     public Task Stop() => Task.CompletedTask;
 
     public async IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>> SearchAsync(
@@ -66,6 +70,8 @@ file sealed class MultiSnapshotDeferredSource(IReadOnlyList<IReadOnlyList<Result
 /// Blocks indefinitely until the CancellationToken fires, then throws OperationCanceledException.
 /// </summary>
 file sealed class BlockingDeferredSource : IDeferredSearchSource {
+    public void Start() { }
+    public Task WhenReady() => Task.CompletedTask;
     public Task Stop() => Task.CompletedTask;
 
     public async IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>> SearchAsync(

@@ -278,6 +278,23 @@
                 </ListBox.DataTemplates>
             </ListBox>
 
+            <!-- ── Update banner ── -->
+            <Button DockPanel.Dock="Bottom"
+                    Command="{Binding UpdateBannerClickCommand}"
+                    IsVisible="{Binding UpdateAvailable}"
+                    Background="{DynamicResource Theme.ItemSelection}"
+                    BorderThickness="0"
+                    Padding="18,9"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center"
+                    Cursor="Hand">
+                <TextBlock Text="{Binding UpdateBannerText}"
+                           Foreground="{DynamicResource Theme.ItemText}"
+                           FontSize="{DynamicResource Theme.FontSizeSmall}"
+                           FontWeight="Medium"
+                           HorizontalAlignment="Center"/>
+            </Button>
+
             <!-- ── Footer ── -->
             <Border DockPanel.Dock="Bottom"
                     Padding="18,7"

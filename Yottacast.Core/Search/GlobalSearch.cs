@@ -9,9 +9,14 @@ public class GlobalSearch(IEnumerable<IInstantSearchSource> instantSources, IEnu
     private readonly IReadOnlyList<IInstantSearchSource> _instantSources = instantSources.ToList();
     private readonly IReadOnlyList<IDeferredSearchSource> _deferredSources = deferredSources.ToList();
 
-    public void Start() { foreach (var s in _instantSources) s.Start(); }
+    public void Start() {
+        foreach (var s in _instantSources) s.Start();
+        foreach (var s in _deferredSources) s.Start();
+    }
 
-    public Task WhenReady() => Task.WhenAll(_instantSources.Select(s => s.WhenReady()));
+    public Task WhenReady() => Task.WhenAll(
+        _instantSources.Select(s => s.WhenReady())
+        .Concat(_deferredSources.Select(s => s.WhenReady())));
 
     public Task Stop() => Task.WhenAll(
         _instantSources.Select(s => s.Stop())

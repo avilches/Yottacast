@@ -18,6 +18,8 @@ public class RandomSearch : IDeferredSearchSource {
         "Foxtrot", "Golf", "Hotel", "India", "Juliet"
     ];
 
+    public void Start() { }
+    public Task WhenReady() => Task.CompletedTask;
     public Task Stop() => Task.CompletedTask;
 
     public async IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>> SearchAsync(

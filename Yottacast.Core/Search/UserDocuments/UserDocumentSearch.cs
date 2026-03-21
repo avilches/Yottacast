@@ -19,6 +19,8 @@ public class UserDocumentSearch(
     ILogger<UserDocumentSearch> logger,
     int timeoutMs = 20_000) : IDeferredSearchSource {
 
+    public void Start() { }
+    public Task WhenReady() => Task.CompletedTask;
     public Task Stop() => Task.CompletedTask;
 
     public async IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>> SearchAsync(
