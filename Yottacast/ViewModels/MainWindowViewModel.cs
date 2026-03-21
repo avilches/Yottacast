@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Yottacast.Core.Search;
 using Yottacast.Core.Services;
 using Yottacast.Core.ViewModels;
@@ -15,7 +16,8 @@ namespace Yottacast.ViewModels;
 public partial class MainWindowViewModel(
     UserSettings settings,
     GlobalSearch globalSearch,
-    BrowserDiscovery browserDiscovery)
+    BrowserDiscovery browserDiscovery,
+    UpdateChecker updateChecker)
     : ViewModelBase {
 
     [ObservableProperty] private string _searchText = "";
@@ -27,6 +29,9 @@ public partial class MainWindowViewModel(
     [ObservableProperty] private bool _showNoResults;
 
     [ObservableProperty] private bool _isSearching;
+
+    [ObservableProperty] private bool _updateAvailable;
+    [ObservableProperty] private string _updateBannerText = "";
 
     public ObservableCollection<ResultItemViewModel> Results { get; } = [];
 
@@ -40,7 +45,26 @@ public partial class MainWindowViewModel(
 
     public void CancelDeferredSearch() => _deferredCts?.Cancel();
     public void NotifyUserNavigated() => _userNavigated = true;
-    
+
+    public void Initialize() {
+        _ = CheckForUpdateAsync();
+    }
+
+    private async Task CheckForUpdateAsync() {
+        await updateChecker.CheckAsync().ConfigureAwait(false);
+        if (updateChecker.UpdateAvailable && updateChecker.LatestVersion is { } v) {
+            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => {
+                UpdateBannerText = $"Yottacast {v} available — click to download";
+                UpdateAvailable = true;
+            });
+        }
+    }
+
+    [RelayCommand]
+    private void OnUpdateBannerClick() {
+        // Placeholder: conectar a la URL de descarga en el siguiente plan
+    }
+
     /// <summary>
     /// The amount of search per service
     /// </summary>
@@ -71,14 +95,9 @@ public partial class MainWindowViewModel(
         RefreshResults();
 
         // Phase 1: instant sources (in-memory cache) — no delay
-        try {
-            await foreach (var snapshot in globalSearch.SearchInstantAsync(query, limit: SearchSourceLimit, ct)) {
-                _instantSnapshot = snapshot;
-                RefreshResults();
-            }
-        } catch (OperationCanceledException) {
-            return;
-        }
+        if (ct.IsCancellationRequested) return;
+        _instantSnapshot = globalSearch.SearchInstant(query, limit: SearchSourceLimit);
+        RefreshResults();
 
         // Emoji mode: only instant sources, skip deferred search
         if (query.StartsWith(':')) return;

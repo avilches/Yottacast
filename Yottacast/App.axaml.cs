@@ -45,13 +45,16 @@ public partial class App : Application {
             var themeService = _services.GetRequiredService<ThemeService>();
             themeService.Apply(userSettings.Theme);
 
+            var updateChecker = _services.GetRequiredService<UpdateChecker>();
+            RunMigrations(userSettings, updateChecker, _services.GetRequiredService<ILogger<App>>());
+
             // Avoid duplicate validations from both Avalonia and the CommunityToolkit.
             // More info: https://docs.avaloniaui.net/docs/guides/development-guides/data-validation#manage-validationplugins
             DisableAvaloniaDataAnnotationValidation();
 
-            var mainWindow = new MainWindow {
-                DataContext = _services.GetRequiredService<MainWindowViewModel>(),
-            };
+            var mainWindowViewModel = _services.GetRequiredService<MainWindowViewModel>();
+            mainWindowViewModel.Initialize();
+            var mainWindow = new MainWindow { DataContext = mainWindowViewModel };
             desktop.MainWindow = mainWindow;
 
             // Wire up clipboard so Core code can copy results without depending on Avalonia
@@ -91,6 +94,20 @@ public partial class App : Application {
             DataContext = _services.GetRequiredService<SettingsWindowViewModel>(),
         };
         _settingsWindow.Show();
+    }
+
+    private static void RunMigrations(UserSettings settings, UpdateChecker updateChecker, Microsoft.Extensions.Logging.ILogger logger) {
+        var current = updateChecker.CurrentVersion;
+        if (settings.LastLaunchedVersion == current) return;
+
+        logger.LogInformation("Version changed: '{Prev}' → '{Current}' — running migrations",
+            settings.LastLaunchedVersion, current);
+
+        // Añadir migraciones específicas aquí según evolucione el app.
+        // Ejemplo: if (string.IsNullOrEmpty(settings.LastLaunchedVersion)) { /* primera vez */ }
+
+        settings.LastLaunchedVersion = current;
+        settings.Save();
     }
 
     private static IServiceProvider BuildServices() {
@@ -133,16 +150,17 @@ public partial class App : Application {
             sp.GetRequiredService<EmojiDataLoader>(),
             sp.GetRequiredService<ILogger<EmojiSearch>>()));
 
-        // Register ISearchSource implementations.
+        // Register IInstantSearchSource and IDeferredSearchSource implementations.
         services.AddSingleton<UserDocumentSearch>();
         services.AddSingleton<RandomSearch>();
-        services.AddSingleton<ISearchSource>(sp => sp.GetRequiredService<ApplicationSearch>());
-        services.AddSingleton<ISearchSource>(sp => sp.GetRequiredService<UserDocumentSearch>());
-        services.AddSingleton<ISearchSource>(sp => sp.GetRequiredService<CalculatorSearch>());
-        services.AddSingleton<ISearchSource>(sp => sp.GetRequiredService<EmojiSearch>());
-        // services.AddSingleton<ISearchSource>(sp => sp.GetRequiredService<RandomSearch>());
+        services.AddSingleton<IInstantSearchSource>(sp => sp.GetRequiredService<ApplicationSearch>());
+        services.AddSingleton<IInstantSearchSource>(sp => sp.GetRequiredService<CalculatorSearch>());
+        services.AddSingleton<IInstantSearchSource>(sp => sp.GetRequiredService<EmojiSearch>());
+        services.AddSingleton<IDeferredSearchSource>(sp => sp.GetRequiredService<UserDocumentSearch>());
+        // services.AddSingleton<IDeferredSearchSource>(sp => sp.GetRequiredService<RandomSearch>());
 
         services.AddSingleton<GlobalSearch>();
+        services.AddSingleton<UpdateChecker>();
 
         services.AddTransient<MainWindowViewModel>();
         services.AddTransient<SettingsWindowViewModel>();

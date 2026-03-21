@@ -5,19 +5,32 @@ using Yottacast.Core.ViewModels;
 
 namespace Yottacast.Core.Tests.Search;
 
-// ── Fake ISearchSource implementations ───────────────────────────────────────
+// ── Fake IInstantSearchSource implementations ─────────────────────────────────
 
 /// <summary>
-/// Returns a single fixed snapshot synchronously. Configurable IsInstant.
+/// Returns a single fixed snapshot synchronously.
 /// </summary>
-file sealed class StubSource(bool isInstant, IReadOnlyList<ResultItemViewModel> results)
-    : ISearchSource {
-
-    public bool IsInstant => isInstant;
+file sealed class StubInstantSource(IReadOnlyList<ResultItemViewModel> results) : IInstantSearchSource {
     public bool WasSearched { get; private set; }
 
     public void Start() { }
     public Task WhenReady() => Task.CompletedTask;
+    public Task Stop() => Task.CompletedTask;
+
+    public IReadOnlyList<ResultItemViewModel> Search(string query, int limit) {
+        WasSearched = true;
+        return results;
+    }
+}
+
+// ── Fake IDeferredSearchSource implementations ────────────────────────────────
+
+/// <summary>
+/// Returns a single fixed snapshot asynchronously.
+/// </summary>
+file sealed class StubDeferredSource(IReadOnlyList<ResultItemViewModel> results) : IDeferredSearchSource {
+    public bool WasSearched { get; private set; }
+
     public Task Stop() => Task.CompletedTask;
 
     public async IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>> SearchAsync(
@@ -32,13 +45,9 @@ file sealed class StubSource(bool isInstant, IReadOnlyList<ResultItemViewModel> 
 /// <summary>
 /// Emits multiple snapshots with a configurable delay between them.
 /// </summary>
-file sealed class MultiSnapshotSource(bool isInstant, IReadOnlyList<IReadOnlyList<ResultItemViewModel>> snapshots, int delayMs = 0)
-    : ISearchSource {
+file sealed class MultiSnapshotDeferredSource(IReadOnlyList<IReadOnlyList<ResultItemViewModel>> snapshots, int delayMs = 0)
+    : IDeferredSearchSource {
 
-    public bool IsInstant => isInstant;
-
-    public void Start() { }
-    public Task WhenReady() => Task.CompletedTask;
     public Task Stop() => Task.CompletedTask;
 
     public async IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>> SearchAsync(
@@ -56,11 +65,7 @@ file sealed class MultiSnapshotSource(bool isInstant, IReadOnlyList<IReadOnlyLis
 /// <summary>
 /// Blocks indefinitely until the CancellationToken fires, then throws OperationCanceledException.
 /// </summary>
-file sealed class BlockingSource(bool isInstant) : ISearchSource {
-    public bool IsInstant => isInstant;
-
-    public void Start() { }
-    public Task WhenReady() => Task.CompletedTask;
+file sealed class BlockingDeferredSource : IDeferredSearchSource {
     public Task Stop() => Task.CompletedTask;
 
     public async IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>> SearchAsync(
@@ -73,20 +78,14 @@ file sealed class BlockingSource(bool isInstant) : ISearchSource {
 /// <summary>
 /// WhenReady() completes only after the supplied TaskCompletionSource is resolved.
 /// </summary>
-file sealed class DelayedReadySource(TaskCompletionSource tcs, IReadOnlyList<ResultItemViewModel> results)
-    : ISearchSource {
-
-    public bool IsInstant => false;
+file sealed class DelayedReadyInstantSource(TaskCompletionSource tcs, IReadOnlyList<ResultItemViewModel> results)
+    : IInstantSearchSource {
 
     public void Start() { }
     public Task WhenReady() => tcs.Task;
     public Task Stop() => Task.CompletedTask;
 
-    public async IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>> SearchAsync(
-        string query, int limit, [EnumeratorCancellation] CancellationToken ct = default) {
-        await Task.Yield();
-        yield return results;
-    }
+    public IReadOnlyList<ResultItemViewModel> Search(string query, int limit) => results;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -100,30 +99,27 @@ file static class ResultItem {
 
 public class GlobalSearchTests {
 
-    // ── SearchInstantAsync / SearchDeferredAsync routing ─────────────────────
+    // ── SearchInstant / SearchDeferredAsync routing ──────────────────────────
 
     [Fact]
-    public async Task SearchInstantAsync_OnlyCallsInstantSources() {
-        var instant = new StubSource(isInstant: true, [ResultItem.Make("A", 1.0)]);
-        var deferred = new StubSource(isInstant: false, [ResultItem.Make("B", 1.0)]);
-        var global = new GlobalSearch([instant, deferred]);
+    public void SearchInstant_OnlyCallsInstantSources() {
+        var instant = new StubInstantSource([ResultItem.Make("A", 1.0)]);
+        var deferred = new StubDeferredSource([ResultItem.Make("B", 1.0)]);
+        var global = new GlobalSearch([instant], [deferred]);
 
-        var snapshots = new List<IReadOnlyList<ResultItemViewModel>>();
-        await foreach (var snap in global.SearchInstantAsync("q", 10))
-            snapshots.Add(snap);
+        var result = global.SearchInstant("q", 10);
 
         Assert.True(instant.WasSearched, "instant source should have been searched");
-        Assert.False(deferred.WasSearched, "deferred source must NOT be searched by SearchInstantAsync");
-        Assert.Single(snapshots);
-        Assert.Single(snapshots[0]);
-        Assert.Equal("A", snapshots[0][0].Title);
+        Assert.False(deferred.WasSearched, "deferred source must NOT be searched by SearchInstant");
+        Assert.Single(result);
+        Assert.Equal("A", result[0].Title);
     }
 
     [Fact]
     public async Task SearchDeferredAsync_OnlyCallsDeferredSources() {
-        var instant = new StubSource(isInstant: true, [ResultItem.Make("A", 1.0)]);
-        var deferred = new StubSource(isInstant: false, [ResultItem.Make("B", 1.0)]);
-        var global = new GlobalSearch([instant, deferred]);
+        var instant = new StubInstantSource([ResultItem.Make("A", 1.0)]);
+        var deferred = new StubDeferredSource([ResultItem.Make("B", 1.0)]);
+        var global = new GlobalSearch([instant], [deferred]);
 
         var snapshots = new List<IReadOnlyList<ResultItemViewModel>>();
         await foreach (var snap in global.SearchDeferredAsync("q", 10))
@@ -139,36 +135,34 @@ public class GlobalSearchTests {
     // ── Merging and ordering ──────────────────────────────────────────────────
 
     [Fact]
-    public async Task MultipleInstantSources_ResultsMergedAndSortedByScoreDescending() {
-        var s1 = new StubSource(isInstant: true, [
+    public void MultipleInstantSources_ResultsMergedAndSortedByScoreDescending() {
+        var s1 = new StubInstantSource([
             ResultItem.Make("Low", 0.3),
             ResultItem.Make("High", 0.9),
         ]);
-        var s2 = new StubSource(isInstant: true, [
+        var s2 = new StubInstantSource([
             ResultItem.Make("Mid", 0.6),
         ]);
-        var global = new GlobalSearch([s1, s2]);
+        var global = new GlobalSearch([s1, s2], []);
 
-        IReadOnlyList<ResultItemViewModel> last = [];
-        await foreach (var snap in global.SearchInstantAsync("q", 10))
-            last = snap;
+        var result = global.SearchInstant("q", 10);
 
-        Assert.Equal(3, last.Count);
-        Assert.Equal("High", last[0].Title);
-        Assert.Equal("Mid", last[1].Title);
-        Assert.Equal("Low", last[2].Title);
+        Assert.Equal(3, result.Count);
+        Assert.Equal("High", result[0].Title);
+        Assert.Equal("Mid", result[1].Title);
+        Assert.Equal("Low", result[2].Title);
     }
 
     [Fact]
     public async Task MultipleDeferredSources_ResultsMergedAndSortedByScoreDescending() {
-        var s1 = new StubSource(isInstant: false, [
+        var s1 = new StubDeferredSource([
             ResultItem.Make("Low", 0.2),
             ResultItem.Make("Top", 1.0),
         ]);
-        var s2 = new StubSource(isInstant: false, [
+        var s2 = new StubDeferredSource([
             ResultItem.Make("Mid", 0.5),
         ]);
-        var global = new GlobalSearch([s1, s2]);
+        var global = new GlobalSearch([], [s1, s2]);
 
         IReadOnlyList<ResultItemViewModel> last = [];
         await foreach (var snap in global.SearchDeferredAsync("q", 10))
@@ -187,8 +181,8 @@ public class GlobalSearchTests {
         // First snapshot: ["A" score 0.8], second snapshot: ["B" score 0.9] (replaces first)
         var snap1 = new List<ResultItemViewModel> { ResultItem.Make("A", 0.8) };
         var snap2 = new List<ResultItemViewModel> { ResultItem.Make("B", 0.9) };
-        var source = new MultiSnapshotSource(isInstant: false, [snap1, snap2]);
-        var global = new GlobalSearch([source]);
+        var source = new MultiSnapshotDeferredSource([snap1, snap2]);
+        var global = new GlobalSearch([], [source]);
 
         var allSnapshots = new List<IReadOnlyList<ResultItemViewModel>>();
         await foreach (var snap in global.SearchDeferredAsync("q", 10))
@@ -209,11 +203,11 @@ public class GlobalSearchTests {
     [Fact]
     public async Task TwoSources_SecondSourceSnapshotReplacesItsOwnSlot() {
         // Source 1 emits one snapshot; source 2 emits two snapshots replacing its slot.
-        var s1 = new StubSource(isInstant: false, [ResultItem.Make("S1", 0.5)]);
+        var s1 = new StubDeferredSource([ResultItem.Make("S1", 0.5)]);
         var snap2a = new List<ResultItemViewModel> { ResultItem.Make("S2v1", 0.3) };
         var snap2b = new List<ResultItemViewModel> { ResultItem.Make("S2v2", 0.7) };
-        var s2 = new MultiSnapshotSource(isInstant: false, [snap2a, snap2b]);
-        var global = new GlobalSearch([s1, s2]);
+        var s2 = new MultiSnapshotDeferredSource([snap2a, snap2b]);
+        var global = new GlobalSearch([], [s1, s2]);
 
         IReadOnlyList<ResultItemViewModel> last = [];
         await foreach (var snap in global.SearchDeferredAsync("q", 10))
@@ -231,16 +225,16 @@ public class GlobalSearchTests {
 
     [Fact]
     public async Task Limit_EnforcedOnMergedResults() {
-        var s1 = new StubSource(isInstant: false, [
+        var s1 = new StubDeferredSource([
             ResultItem.Make("A", 1.0),
             ResultItem.Make("B", 0.9),
             ResultItem.Make("C", 0.8),
         ]);
-        var s2 = new StubSource(isInstant: false, [
+        var s2 = new StubDeferredSource([
             ResultItem.Make("D", 0.7),
             ResultItem.Make("E", 0.6),
         ]);
-        var global = new GlobalSearch([s1, s2]);
+        var global = new GlobalSearch([], [s1, s2]);
 
         IReadOnlyList<ResultItemViewModel> last = [];
         await foreach (var snap in global.SearchDeferredAsync("q", limit: 3))
@@ -252,15 +246,37 @@ public class GlobalSearchTests {
         Assert.Equal("C", last[2].Title);
     }
 
+    [Fact]
+    public void Limit_EnforcedOnInstantResults() {
+        var s1 = new StubInstantSource([
+            ResultItem.Make("A", 1.0),
+            ResultItem.Make("B", 0.9),
+            ResultItem.Make("C", 0.8),
+        ]);
+        var s2 = new StubInstantSource([
+            ResultItem.Make("D", 0.7),
+            ResultItem.Make("E", 0.6),
+        ]);
+        var global = new GlobalSearch([s1, s2], []);
+
+        var result = global.SearchInstant("q", limit: 3);
+
+        Assert.Equal(3, result.Count);
+        Assert.Equal("A", result[0].Title);
+        Assert.Equal("B", result[1].Title);
+        Assert.Equal("C", result[2].Title);
+    }
+
     // ── Empty query / no sources ──────────────────────────────────────────────
 
     [Fact]
     public async Task NoSources_ReturnsNoSnapshots() {
-        var global = new GlobalSearch([]);
+        var global = new GlobalSearch([], []);
+
+        var instantResult = global.SearchInstant("q", 10);
+        Assert.Empty(instantResult);
 
         var count = 0;
-        await foreach (var _ in global.SearchInstantAsync("q", 10))
-            count++;
         await foreach (var _ in global.SearchDeferredAsync("q", 10))
             count++;
 
@@ -271,8 +287,8 @@ public class GlobalSearchTests {
     public async Task SourceReturnsEmptySnapshot_EmitsOneEmptySnapshot() {
         // A source that yields an empty list still causes one snapshot to be emitted
         // (the merged result of all slots, which is also empty).
-        var source = new StubSource(isInstant: false, []);
-        var global = new GlobalSearch([source]);
+        var source = new StubDeferredSource([]);
+        var global = new GlobalSearch([], [source]);
 
         var snapshots = new List<IReadOnlyList<ResultItemViewModel>>();
         await foreach (var snap in global.SearchDeferredAsync("q", 10))
@@ -286,8 +302,8 @@ public class GlobalSearchTests {
 
     [Fact]
     public async Task Cancellation_StopsIteration() {
-        var source = new BlockingSource(isInstant: false);
-        var global = new GlobalSearch([source]);
+        var source = new BlockingDeferredSource();
+        var global = new GlobalSearch([], [source]);
 
         using var cts = new CancellationTokenSource();
         cts.CancelAfter(100);
@@ -303,8 +319,8 @@ public class GlobalSearchTests {
 
     [Fact]
     public async Task Cancellation_AlreadyCancelled_ReturnsImmediately() {
-        var source = new StubSource(isInstant: false, [ResultItem.Make("X", 1.0)]);
-        var global = new GlobalSearch([source]);
+        var source = new StubDeferredSource([ResultItem.Make("X", 1.0)]);
+        var global = new GlobalSearch([], [source]);
 
         using var cts = new CancellationTokenSource();
         await cts.CancelAsync();
@@ -324,9 +340,9 @@ public class GlobalSearchTests {
     public async Task WhenReady_CompletesWhenAllSourcesReady() {
         var tcs1 = new TaskCompletionSource();
         var tcs2 = new TaskCompletionSource();
-        var s1 = new DelayedReadySource(tcs1, []);
-        var s2 = new DelayedReadySource(tcs2, []);
-        var global = new GlobalSearch([s1, s2]);
+        var s1 = new DelayedReadyInstantSource(tcs1, []);
+        var s2 = new DelayedReadyInstantSource(tcs2, []);
+        var global = new GlobalSearch([s1, s2], []);
 
         var readyTask = global.WhenReady();
 
@@ -345,28 +361,24 @@ public class GlobalSearchTests {
 
     [Fact]
     public async Task WhenReady_NoSources_CompletesImmediately() {
-        var global = new GlobalSearch([]);
+        var global = new GlobalSearch([], []);
         await global.WhenReady(); // must not hang
     }
 
-    // ── SearchInstantAsync / SearchDeferredAsync with no matching sources ─────
+    // ── SearchInstant / SearchDeferredAsync with no matching sources ──────────
 
     [Fact]
-    public async Task SearchInstantAsync_NoInstantSources_ReturnsNoSnapshots() {
-        var deferred = new StubSource(isInstant: false, [ResultItem.Make("D", 1.0)]);
-        var global = new GlobalSearch([deferred]);
+    public void SearchInstant_NoInstantSources_ReturnsEmpty() {
+        var global = new GlobalSearch([], [new StubDeferredSource([ResultItem.Make("D", 1.0)])]);
 
-        var count = 0;
-        await foreach (var _ in global.SearchInstantAsync("q", 10))
-            count++;
+        var result = global.SearchInstant("q", 10);
 
-        Assert.Equal(0, count);
+        Assert.Empty(result);
     }
 
     [Fact]
     public async Task SearchDeferredAsync_NoDeferredSources_ReturnsNoSnapshots() {
-        var instant = new StubSource(isInstant: true, [ResultItem.Make("I", 1.0)]);
-        var global = new GlobalSearch([instant]);
+        var global = new GlobalSearch([new StubInstantSource([ResultItem.Make("I", 1.0)])], []);
 
         var count = 0;
         await foreach (var _ in global.SearchDeferredAsync("q", 10))
@@ -379,13 +391,11 @@ public class GlobalSearchTests {
 
     [Fact]
     public async Task MixedSources_InstantAndDeferredSearchReturnCorrectSubsets() {
-        var instant = new StubSource(isInstant: true, [ResultItem.Make("Instant", 0.8)]);
-        var deferred = new StubSource(isInstant: false, [ResultItem.Make("Deferred", 0.9)]);
-        var global = new GlobalSearch([instant, deferred]);
+        var instant = new StubInstantSource([ResultItem.Make("Instant", 0.8)]);
+        var deferred = new StubDeferredSource([ResultItem.Make("Deferred", 0.9)]);
+        var global = new GlobalSearch([instant], [deferred]);
 
-        IReadOnlyList<ResultItemViewModel> instantResult = [];
-        await foreach (var snap in global.SearchInstantAsync("q", 10))
-            instantResult = snap;
+        var instantResult = global.SearchInstant("q", 10);
 
         IReadOnlyList<ResultItemViewModel> deferredResult = [];
         await foreach (var snap in global.SearchDeferredAsync("q", 10))

@@ -13,11 +13,9 @@ public class UnitConverterSearchTests(MathJsEngineFixture fixture) {
         return new CalculatorSearch(fixture.Engine, clipboard);
     }
 
-    private static async Task<IReadOnlyList<Yottacast.Core.ViewModels.ResultItemViewModel>> SearchAsync(
+    private static IReadOnlyList<Yottacast.Core.ViewModels.ResultItemViewModel> SearchResults(
         CalculatorSearch search, string query) {
-        await foreach (var snapshot in search.SearchAsync(query, 5))
-            return snapshot;
-        return [];
+        return search.Search(query, 5);
     }
 
     // ── Conversions ───────────────────────────────────────────────────────────
@@ -36,8 +34,8 @@ public class UnitConverterSearchTests(MathJsEngineFixture fixture) {
 
     [Theory]
     [MemberData(nameof(ConversionCases))]
-    public async Task Conversion_TitleMatchesExpected(string query, string expectedTitle, string unitHint) {
-        var results = await SearchAsync(BuildSearch(out _), query);
+    public void Conversion_TitleMatchesExpected(string query, string expectedTitle, string unitHint) {
+        var results = SearchResults(BuildSearch(out _), query);
         var item = Assert.Single(results);
         Assert.Equal(expectedTitle, item.Title);
         _ = unitHint; // used as documentation only
@@ -46,8 +44,8 @@ public class UnitConverterSearchTests(MathJsEngineFixture fixture) {
     // ── Result shape ──────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Result_HasCorrectIconCategoryScore() {
-        var results = await SearchAsync(BuildSearch(out _), "10 kg to lbs");
+    public void Result_HasCorrectIconCategoryScore() {
+        var results = SearchResults(BuildSearch(out _), "10 kg to lbs");
         var item = Assert.Single(results);
         Assert.Equal("📐", item.Icon);
         Assert.Equal("Converter", item.Category);
@@ -56,12 +54,12 @@ public class UnitConverterSearchTests(MathJsEngineFixture fixture) {
     }
 
     [Fact]
-    public async Task OnActivate_CopiesResultToClipboard() {
+    public void OnActivate_CopiesResultToClipboard() {
         var search = BuildSearch(out var clipboard);
         string copied = "";
         clipboard.Initialize(text => copied = text);
 
-        var results = await SearchAsync(search, "1 km to m");
+        var results = SearchResults(search, "1 km to m");
         var item = Assert.Single(results);
         Assert.NotNull(item.OnActivate);
         item.OnActivate();
@@ -77,8 +75,8 @@ public class UnitConverterSearchTests(MathJsEngineFixture fixture) {
 
     [Theory]
     [MemberData(nameof(NonConversionCases))]
-    public async Task NonConversion_ReturnsEmpty(string query) {
-        var results = await SearchAsync(BuildSearch(out _), query);
+    public void NonConversion_ReturnsEmpty(string query) {
+        var results = SearchResults(BuildSearch(out _), query);
         Assert.Empty(results);
     }
 }

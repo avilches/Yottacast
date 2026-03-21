@@ -13,11 +13,9 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
         return new CalculatorSearch(fixture.Engine, clipboard);
     }
 
-    private static async Task<IReadOnlyList<Yottacast.Core.ViewModels.ResultItemViewModel>> SearchAsync(
+    private static IReadOnlyList<Yottacast.Core.ViewModels.ResultItemViewModel> SearchResults(
         CalculatorSearch search, string query) {
-        await foreach (var snapshot in search.SearchAsync(query, 5))
-            return snapshot;
-        return [];
+        return search.Search(query, 5);
     }
 
     // ── Arithmetic detection ──────────────────────────────────────────────────
@@ -35,8 +33,8 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
 
     [Theory]
     [MemberData(nameof(ArithmeticCases))]
-    public async Task Arithmetic_ReturnsCorrectTitle(string query, string expected) {
-        var results = await SearchAsync(BuildSearch(out _), query);
+    public void Arithmetic_ReturnsCorrectTitle(string query, string expected) {
+        var results = SearchResults(BuildSearch(out _), query);
         Assert.Single(results);
         Assert.Equal(expected, results[0].Title);
     }
@@ -57,8 +55,8 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
 
     [Theory]
     [MemberData(nameof(FunctionCases))]
-    public async Task Functions_ReturnsCorrectTitle(string query, string expected) {
-        var results = await SearchAsync(BuildSearch(out _), query);
+    public void Functions_ReturnsCorrectTitle(string query, string expected) {
+        var results = SearchResults(BuildSearch(out _), query);
         Assert.Single(results);
         Assert.Equal(expected, results[0].Title);
     }
@@ -66,8 +64,8 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
     // ── Result shape ──────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Result_HasCorrectIconCategoryScore() {
-        var results = await SearchAsync(BuildSearch(out _), "2+2");
+    public void Result_HasCorrectIconCategoryScore() {
+        var results = SearchResults(BuildSearch(out _), "2+2");
         var item = Assert.Single(results);
         Assert.Equal("🧮", item.Icon);
         Assert.Equal("Calculator", item.Category);
@@ -76,12 +74,12 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
     }
 
     [Fact]
-    public async Task OnActivate_CopiesResultToClipboard() {
+    public void OnActivate_CopiesResultToClipboard() {
         var search = BuildSearch(out var clipboard);
         string copied = "";
         clipboard.Initialize(text => copied = text);
 
-        var results = await SearchAsync(search, "2+2");
+        var results = SearchResults(search, "2+2");
         var item = Assert.Single(results);
         Assert.NotNull(item.OnActivate);
         item.OnActivate();
@@ -100,8 +98,8 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
 
     [Theory]
     [MemberData(nameof(NonMathCases))]
-    public async Task NonMath_ReturnsEmpty(string query) {
-        var results = await SearchAsync(BuildSearch(out _), query);
+    public void NonMath_ReturnsEmpty(string query) {
+        var results = SearchResults(BuildSearch(out _), query);
         Assert.Empty(results);
     }
 }

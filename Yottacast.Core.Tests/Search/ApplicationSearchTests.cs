@@ -39,25 +39,18 @@ public class ApplicationSearchTests {
         await search.WhenReady();
     }
 
-    /// <summary>
-    /// Collects all snapshots and returns the last one.
-    /// ApplicationSearch is instant so there is exactly one snapshot per call.
-    /// </summary>
-    private static async Task<IReadOnlyList<Yottacast.Core.ViewModels.ResultItemViewModel>> SearchAllAsync(
+    private static IReadOnlyList<Yottacast.Core.ViewModels.ResultItemViewModel> SearchAll(
         ApplicationSearch search, string query, int limit = 50) {
-        IReadOnlyList<Yottacast.Core.ViewModels.ResultItemViewModel> last = [];
-        await foreach (var snapshot in search.SearchAsync(query, limit))
-            last = snapshot;
-        return last;
+        return search.Search(query, limit);
     }
 
     // ── Before WhenReady ──────────────────────────────────────────────────────
 
     [Fact]
-    public async Task SearchAsync_BeforeStart_ReturnsEmpty() {
+    public void SearchAsync_BeforeStart_ReturnsEmpty() {
         // Do NOT call Start() — cache is empty, WhenReady() never completes.
         var search = BuildSearch("/Applications/Safari.app");
-        var results = await SearchAllAsync(search, "safari");
+        var results = SearchAll(search, "safari");
         Assert.Empty(results);
     }
 
@@ -67,7 +60,7 @@ public class ApplicationSearchTests {
     public async Task SearchAsync_ExactName_ReturnsResult_ScoreOne() {
         var search = BuildSearch("/Applications/Safari.app");
         await StartAndWaitAsync(search);
-        var results = await SearchAllAsync(search, "Safari");
+        var results = SearchAll(search, "Safari");
         Assert.Single(results);
         Assert.Equal("Safari", results[0].Title);
         Assert.Equal(1.0, results[0].Score);
@@ -77,7 +70,7 @@ public class ApplicationSearchTests {
     public async Task SearchAsync_PrefixQuery_ReturnsResult_ScoreOne() {
         var search = BuildSearch("/Applications/Safari.app");
         await StartAndWaitAsync(search);
-        var results = await SearchAllAsync(search, "Saf");
+        var results = SearchAll(search, "Saf");
         Assert.Single(results);
         Assert.Equal(1.0, results[0].Score);
     }
@@ -86,7 +79,7 @@ public class ApplicationSearchTests {
     public async Task SearchAsync_CaseInsensitive_ExactMatch() {
         var search = BuildSearch("/Applications/Safari.app");
         await StartAndWaitAsync(search);
-        var results = await SearchAllAsync(search, "safari");
+        var results = SearchAll(search, "safari");
         Assert.Single(results);
         Assert.Equal("Safari", results[0].Title);
     }
@@ -103,7 +96,7 @@ public class ApplicationSearchTests {
         var appPath = $"/Applications/{appName}.app";
         var search = BuildSearch(appPath);
         await StartAndWaitAsync(search);
-        var results = await SearchAllAsync(search, query);
+        var results = SearchAll(search, query);
         Assert.Single(results);
         Assert.Equal(appName, results[0].Title);
         Assert.Equal(expectedScore, results[0].Score);
@@ -113,7 +106,7 @@ public class ApplicationSearchTests {
     public async Task SearchAsync_Initials_MON_MicrosoftOneNote() {
         var search = BuildSearch("/Applications/Microsoft OneNote.app");
         await StartAndWaitAsync(search);
-        var results = await SearchAllAsync(search, "MON");
+        var results = SearchAll(search, "MON");
         Assert.Single(results);
         Assert.Equal("Microsoft OneNote", results[0].Title);
         // MON as initials of Microsoft / One / Note → 0.6 via initials fallback
@@ -127,7 +120,7 @@ public class ApplicationSearchTests {
         var search = BuildSearch("/Applications/Safari.app");
         await StartAndWaitAsync(search);
         // "ari" is inside "Safari" but not a prefix of any token
-        var results = await SearchAllAsync(search, "ari");
+        var results = SearchAll(search, "ari");
         Assert.Single(results);
         Assert.Equal(0.2, results[0].Score);
     }
@@ -137,7 +130,7 @@ public class ApplicationSearchTests {
         var search = BuildSearch("/Applications/Safari.app");
         await StartAndWaitAsync(search);
         // "af" is 2 chars — substring threshold requires 3+
-        var results = await SearchAllAsync(search, "af");
+        var results = SearchAll(search, "af");
         Assert.Empty(results);
     }
 
@@ -147,7 +140,7 @@ public class ApplicationSearchTests {
     public async Task SearchAsync_NoMatch_ReturnsEmpty() {
         var search = BuildSearch("/Applications/Safari.app");
         await StartAndWaitAsync(search);
-        var results = await SearchAllAsync(search, "xyz");
+        var results = SearchAll(search, "xyz");
         Assert.Empty(results);
     }
 
@@ -162,7 +155,7 @@ public class ApplicationSearchTests {
         );
         await StartAndWaitAsync(search);
         // "Saf" matches Safari (1.0) only
-        var results = await SearchAllAsync(search, "Saf");
+        var results = SearchAll(search, "Saf");
         Assert.Single(results);
         Assert.Equal("Safari", results[0].Title);
     }
@@ -177,7 +170,7 @@ public class ApplicationSearchTests {
             "/Applications/Activity Monitor.app"
         );
         await StartAndWaitAsync(search);
-        var results = await SearchAllAsync(search, "mon");
+        var results = SearchAll(search, "mon");
         Assert.Equal(2, results.Count);
         Assert.True(results[0].Score >= results[1].Score,
             $"Expected results ordered by score desc but got {results[0].Score} then {results[1].Score}");
@@ -196,7 +189,7 @@ public class ApplicationSearchTests {
         await StartAndWaitAsync(search);
         // All four start with "S" → "s" prefix should match all
         // Limit to 2
-        var results = await SearchAllAsync(search, "S", limit: 2);
+        var results = SearchAll(search, "S", limit: 2);
         Assert.Equal(2, results.Count);
     }
 
@@ -208,12 +201,12 @@ public class ApplicationSearchTests {
         await StartAndWaitAsync(search);
 
         // Confirm app is found before Stop
-        var before = await SearchAllAsync(search, "Safari");
+        var before = SearchAll(search, "Safari");
         Assert.Single(before);
 
         await search.Stop();
 
-        var after = await SearchAllAsync(search, "Safari");
+        var after = SearchAll(search, "Safari");
         Assert.Empty(after);
     }
 
@@ -225,7 +218,7 @@ public class ApplicationSearchTests {
 
         // Restart
         await StartAndWaitAsync(search);
-        var results = await SearchAllAsync(search, "Safari");
+        var results = SearchAll(search, "Safari");
         Assert.Single(results);
         Assert.Equal("Safari", results[0].Title);
     }
@@ -236,7 +229,7 @@ public class ApplicationSearchTests {
         search.Start();
         search.Start(); // second call is a no-op
         await search.WhenReady();
-        var results = await SearchAllAsync(search, "Safari");
+        var results = SearchAll(search, "Safari");
         Assert.Single(results); // only one copy of Safari
     }
 
@@ -318,7 +311,7 @@ public class ApplicationSearchTests {
     public async Task SearchAsync_ResultHasCorrectCategoryAndSubtitle() {
         var search = BuildSearch("/Applications/Safari.app");
         await StartAndWaitAsync(search);
-        var results = await SearchAllAsync(search, "Safari");
+        var results = SearchAll(search, "Safari");
         Assert.Single(results);
         Assert.Equal("Applications", results[0].Category);
         Assert.Equal("/Applications/Safari.app", results[0].Subtitle);

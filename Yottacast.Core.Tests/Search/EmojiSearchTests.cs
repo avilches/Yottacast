@@ -19,11 +19,9 @@ public class EmojiSearchTests {
         return search;
     }
 
-    private static async Task<IReadOnlyList<Yottacast.Core.ViewModels.ResultItemViewModel>> SearchAsync(
+    private static IReadOnlyList<Yottacast.Core.ViewModels.ResultItemViewModel> SearchResults(
         EmojiSearch search, string query) {
-        await foreach (var snapshot in search.SearchAsync(query, 10))
-            return snapshot;
-        return [];
+        return search.Search(query, 10);
     }
 
     // ── Default results ───────────────────────────────────────────────────────
@@ -43,7 +41,7 @@ public class EmojiSearchTests {
         """;
 
         var search = await BuildSearchWithCache(json);
-        var results = await SearchAsync(search, ":");
+        var results = SearchResults(search, ":");
 
         // EmojiSearch returns one grid item whose cells are the emojis ordered by sort_order
         var grid = Assert.IsType<EmojiGridResultViewModel>(Assert.Single(results));
@@ -55,7 +53,7 @@ public class EmojiSearchTests {
     [Fact]
     public async Task ColonOnly_ReturnsEmpty_WhenNoEntries() {
         var search = await BuildSearchWithCache("[]");
-        var results = await SearchAsync(search, ":");
+        var results = SearchResults(search, ":");
         Assert.Empty(results);
     }
 
@@ -71,7 +69,7 @@ public class EmojiSearchTests {
         """;
 
         var search = await BuildSearchWithCache(json);
-        var results = await SearchAsync(search, ":thumbs");
+        var results = SearchResults(search, ":thumbs");
 
         Assert.Single(results);
         Assert.Equal("👍", results[0].Icon);
@@ -87,7 +85,7 @@ public class EmojiSearchTests {
         """;
 
         var search = await BuildSearchWithCache(json);
-        var results = await SearchAsync(search, ":thumbsup");
+        var results = SearchResults(search, ":thumbsup");
 
         Assert.Single(results);
         Assert.Equal("👍", results[0].Icon);
@@ -103,7 +101,7 @@ public class EmojiSearchTests {
         """;
 
         var search = await BuildSearchWithCache(json);
-        var results = await SearchAsync(search, "::D");
+        var results = SearchResults(search, "::D");
 
         Assert.Single(results);
         Assert.Equal("😀", results[0].Icon);
@@ -119,7 +117,7 @@ public class EmojiSearchTests {
         """;
 
         var search = await BuildSearchWithCache(json);
-        var results = await SearchAsync(search, ":fire");
+        var results = SearchResults(search, ":fire");
 
         // Both match, returned as one grid; exact name "fire" must be first cell
         var grid = Assert.IsType<EmojiGridResultViewModel>(Assert.Single(results));
@@ -132,7 +130,7 @@ public class EmojiSearchTests {
         var json = """[["😀","grinning face",["grinning"],"Smileys & Emotion",1]]""";
 
         var search = await BuildSearchWithCache(json);
-        var results = await SearchAsync(search, "grinning");
+        var results = SearchResults(search, "grinning");
 
         Assert.Empty(results);
     }
@@ -144,7 +142,7 @@ public class EmojiSearchTests {
         var json = """[["😀","grinning face",["grinning"],"Smileys & Emotion",1]]""";
 
         var search = await BuildSearchWithCache(json);
-        var results = await SearchAsync(search, ":");
+        var results = SearchResults(search, ":");
 
         var item = Assert.Single(results);
         Assert.Equal("😀", item.Icon);
@@ -160,7 +158,7 @@ public class EmojiSearchTests {
     public async Task Result_IconAndTitle_ReflectFirstCell() {
         var json = """[["😀","grinning face",["grinning"],"Smileys & Emotion",1]]""";
         var search = await BuildSearchWithCache(json);
-        var results = await SearchAsync(search, ":");
+        var results = SearchResults(search, ":");
         var item = Assert.Single(results);
         Assert.Equal("😀", item.Icon);
         Assert.Equal("grinning face", item.Title);
@@ -181,7 +179,7 @@ public class EmojiSearchTests {
         string copied = "";
         clipboard.Initialize(text => copied = text);
 
-        var results = await SearchAsync(search, ":");
+        var results = SearchResults(search, ":");
         var item = Assert.Single(results);
         Assert.NotNull(item.OnActivate);
         item.OnActivate();
@@ -225,33 +223,32 @@ public class RealEmojiDataFixture : IAsyncLifetime, IDisposable {
 public class EmojiSearchRealDataTests(RealEmojiDataFixture fixture)
     : IClassFixture<RealEmojiDataFixture> {
 
-    private static async Task<EmojiGridResultViewModel?> SearchGrid(EmojiSearch search, string query) {
-        await foreach (var snapshot in search.SearchAsync(query, 20))
-            return snapshot.OfType<EmojiGridResultViewModel>().FirstOrDefault();
-        return null;
+    private static EmojiGridResultViewModel? SearchGrid(EmojiSearch search, string query) {
+        var results = search.Search(query, 20);
+        return results.OfType<EmojiGridResultViewModel>().FirstOrDefault();
     }
 
     // ── Prefix / exact / keyword ──────────────────────────────────────────────
 
     [Fact]
-    public async Task Prefix_GrinReturnsGrinningEmojis() {
-        var grid = await SearchGrid(fixture.Search, ":grin");
+    public void Prefix_GrinReturnsGrinningEmojis() {
+        var grid = SearchGrid(fixture.Search, ":grin");
         Assert.NotNull(grid);
         Assert.All(grid.Cells, c => Assert.Contains("grin", c.Name));
     }
 
     [Fact]
-    public async Task Keyword_ThumbsupReturnsThumbsUpEmoji() {
+    public void Keyword_ThumbsupReturnsThumbsUpEmoji() {
         // "thumbsup" is a short_name keyword for 👍
-        var grid = await SearchGrid(fixture.Search, ":thumbsup");
+        var grid = SearchGrid(fixture.Search, ":thumbsup");
         Assert.NotNull(grid);
         Assert.Contains(grid.Cells, c => c.Name.Contains("thumbs up"));
     }
 
     [Fact]
-    public async Task Exact_FireReturnsFireFirst() {
+    public void Exact_FireReturnsFireFirst() {
         // "fire" is the exact name of 🔥; other emojis may contain "fire" in keywords
-        var grid = await SearchGrid(fixture.Search, ":fire");
+        var grid = SearchGrid(fixture.Search, ":fire");
         Assert.NotNull(grid);
         Assert.Equal("fire", grid.Cells[0].Name); // exact match must be first
     }
@@ -259,26 +256,26 @@ public class EmojiSearchRealDataTests(RealEmojiDataFixture fixture)
     // ── Multi-word abbreviation (new tier 0.4) ────────────────────────────────
 
     [Fact]
-    public async Task MultiWordAbbrev_SmilaFindsSmilingFace() {
+    public void MultiWordAbbrev_SmilaFindsSmilingFace() {
         // "smifa" = smi→"smiling" + fa→"face"
-        var grid = await SearchGrid(fixture.Search, ":smifa");
+        var grid = SearchGrid(fixture.Search, ":smifa");
         Assert.NotNull(grid);
         Assert.Contains(grid.Cells, c => c.Name.StartsWith("smiling face"));
     }
 
     [Fact]
-    public async Task MultiWordAbbrev_GrfaFindsGrinningFace() {
+    public void MultiWordAbbrev_GrfaFindsGrinningFace() {
         // "grfa" = gr→"grinning" + fa→"face"
-        var grid = await SearchGrid(fixture.Search, ":grfa");
+        var grid = SearchGrid(fixture.Search, ":grfa");
         Assert.NotNull(grid);
         Assert.Contains(grid.Cells, c => c.Name.StartsWith("grinning face"));
     }
 
     [Fact]
-    public async Task MultiWordAbbrev_NameRanksAboveKeyword() {
+    public void MultiWordAbbrev_NameRanksAboveKeyword() {
         // "grinning" appears both as a name prefix and as a keyword;
         // the emoji whose NAME starts with the query should rank first.
-        var grid = await SearchGrid(fixture.Search, ":grinning");
+        var grid = SearchGrid(fixture.Search, ":grinning");
         Assert.NotNull(grid);
         Assert.Contains("grinning", grid.Cells[0].Name);
     }
