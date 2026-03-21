@@ -1,6 +1,6 @@
 # Búsqueda de emojis
 
-`EmojiSearch` es un `ISearchSource` instant que se activa cuando la query empieza por `:`. Devuelve un único `EmojiGridResultViewModel` que agrupa todos los emojis candidatos en una fila horizontal navegable con ←/→. Al activarlo copia el emoji seleccionado al portapapeles y lo pega automáticamente en la app de destino.
+`EmojiSearch` es un `IInstantSearchSource` que se activa cuando la query empieza por `:`. Devuelve un único `EmojiGridResultViewModel` que agrupa todos los emojis candidatos en una fila horizontal navegable con ←/→. Al activarlo copia el emoji seleccionado al portapapeles y lo pega automáticamente en la app de destino.
 
 ## Datos de origen
 
@@ -54,7 +54,7 @@ Hereda de `ResultItemViewModel`. Contiene la lista de `EmojiCellViewModel` (prop
 
 ## EmojiSearch
 
-Implementa `ISearchSource` con `IsInstant = true` — sus resultados van por la pipeline instant de `GlobalSearch`, no por la deferred.
+Implementa `IInstantSearchSource` — sus resultados van por la pipeline instant de `GlobalSearch`, no por la deferred.
 
 ### Ciclo de vida
 

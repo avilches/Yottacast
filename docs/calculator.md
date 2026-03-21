@@ -1,6 +1,6 @@
 # Calculadora y conversor de unidades
 
-Implementado como un único `ISearchSource` instant: `CalculatorSearch`. Maneja tanto expresiones matemáticas como conversiones de unidades.
+Implementado como `IInstantSearchSource`: `CalculatorSearch`. Maneja tanto expresiones matemáticas como conversiones de unidades.
 
 ## Motor: MathJsEngine
 

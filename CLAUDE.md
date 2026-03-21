@@ -1,7 +1,10 @@
-# CLAUDE.md
+# Definición del proyecto
 
-Yottacast is a macOS/Windows app launcher — similar to Spotlight or PowerToys Run.
-It's a frameless, transparent dark-themed window where the user types to search and uses arrow keys + Enter to launch items.
+Yottacast es un lanzador de aplicaciones para macOS/Windows — similar a Spotlight, Alfred o Raycast.
+Es una ventana sin marco, transparente con una única entrada de texto donde el  usuario escribe para buscar en 
+múltiples fuentes, algunas sincronas (instant) y otras asincronas (deferred) donde cada una devuelve una serie de
+elementos con un score, que luego son mezclados, filtrados, ordenados y mostrados al usuario, y donde éste podrá
+usa las teclas de flecha + Enter para hacer acciones en los elementos (abrir, copiar, lanzar un comando.
 
 **Stack**: Avalonia 11.3.12, .NET 9, CommunityToolkit.Mvvm 8.2.1, SharpHook 7.1.1, Jint 3.1.0 (JS engine).
 
@@ -106,7 +109,9 @@ cd Yottacast.Cli && dotnet run
 cd Yottacast.Core.Tests && dotnet test
 ```
 
-## Documentación detallada
+## Especificacion (specs) detallada
+
+Las specs están en /docs. Léelas antes de trabajar en cualquier área:
 
 | Fichero | Contenido                                                                      |
 |---|--------------------------------------------------------------------------------|

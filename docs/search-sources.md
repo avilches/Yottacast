@@ -2,7 +2,7 @@
 
 ## ApplicationSearch
 
-Clase: `Yottacast.Core.Search.Application.ApplicationSearch` (implementa `ISearchSource`)
+Clase: `Yottacast.Core.Search.Application.ApplicationSearch` (implementa `IInstantSearchSource`)
 
 Mantiene un `ConcurrentDictionary<string, AppInfo>` en memoria con las apps instaladas.
 Inyecta `UserSettings` para leer `AppDirectories`.
@@ -24,16 +24,15 @@ Evento `AppAdded` notifica cuando se detecta una app nueva (disponible para susc
 |---|---|
 | `Find(string name)` | Búsqueda exacta en el caché por clave de nombre (case-insensitive); devuelve `AppInfo?` |
 | `FindAll()` | Devuelve todas las apps en caché como `IReadOnlyList<AppInfo>` |
-| `Search(string query)` | Substring case-insensitive sobre todos los nombres de app; devuelve `IReadOnlyList<AppInfo>` |
 
 ## UserDocumentSearch
 
-Clase: `Yottacast.Core.Search.UserDocuments.UserDocumentSearch` (implementa `ISearchSource`)
+Clase: `Yottacast.Core.Search.UserDocuments.UserDocumentSearch` (implementa `IDeferredSearchSource`)
 
 Sin caché. Cada búsqueda llama a `FileSearch.SearchAsync` con `settings.ExpandedSearchFolders`.
 Si los directorios cambian en settings, la siguiente búsqueda los usará automáticamente.
 
-`Start()` y `Stop()` son no-ops (no hay estado que gestionar).
+`Start()`, `WhenReady()` y `Stop()` son no-ops (no hay estado que gestionar).
 
 **Queries cortas**: hace `yield break` si `query.Length < 2` — la búsqueda de ficheros requiere al menos 2 caracteres. `FileSearch` y los `PlatformProvider` hacen early return (`Task.CompletedTask`) para queries vacías.
 
@@ -73,7 +72,7 @@ Sin match: devuelve 0.
 
 Ver `Search/Application/NameMatcher.cs` y `NameMatcherTests.cs` para los valores exactos de scoring y casos canónicos.
 
-Los scores exactos de cada fuente se definen en cada `ISearchSource` y en `MainWindowViewModel.MakeGoogleItem()`.
+Los scores exactos de cada fuente se definen en cada clase de búsqueda y en `MainWindowViewModel.MakeGoogleItem()`.
 
 ### UserDocumentSearch
 
