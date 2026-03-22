@@ -4,7 +4,7 @@ Implementado como `IInstantSearchSource`: `CalculatorSearch`. Maneja tanto expre
 
 ## Motor: MathJsEngine
 
-`MathJsEngine` (`Search/Calculator/MathJsEngine.cs`) — singleton que carga math.js embebido en la DLL (embedded resource en `Yottacast.Core/Scripts/math.min.js`) dentro de un engine Jint 3.x. La inicialización se hace en un background thread; hasta que `WhenReady()` se complete, `Evaluate()` devuelve `null`.
+`MathJsEngine` (`Search/Calculator/MathJsEngine.cs`) — singleton que carga math.js embebido en la DLL (embedded resource en `Yottacast.Core/Search/Calculator/math.min.js`) dentro de un engine Jint 3.x. La inicialización se hace en un background thread; hasta que `WhenReady()` se complete, `Evaluate()` devuelve `null`.
 
 **Configuración del engine**: se crea con un límite de recursión (ver `MathJsEngine`).
 
@@ -14,7 +14,11 @@ Implementado como `IInstantSearchSource`: `CalculatorSearch`. Maneja tanto expre
 
 **Escape de entrada**: antes de pasarla a math.js, la expresión tiene las barras invertidas escapadas (`\` → `\\`) y las comillas simples escapadas (`'` → `\'`).
 
-**Formateo de resultados**: los resultados se formatean con precisión limitada para evitar ruido de coma flotante; ver `MathJsEngine.Evaluate`.
+**Formateo de resultados**: los resultados se formatean con `math.format(r, { precision: 10 })` — 10 dígitos significativos — para evitar ruido de coma flotante como `22.046226218487758`.
+
+**Double-checked null guard**: `Evaluate()` comprueba `_engine == null` antes de adquirir el lock y de nuevo dentro de él. Esto garantiza un fast-path sin contención una vez inicializado, y corrección ante una hipotética carrera con `Dispose()`.
+
+**`Evaluate()` devuelve `null` si el resultado es whitespace**: además de capturar excepciones, descarta resultados vacíos (`string.IsNullOrWhiteSpace`) antes de devolverlos.
 
 **Manejo de errores**: `Evaluate()` captura silenciosamente todas las excepciones (errores de sintaxis, división por cero, etc.) y devuelve `null`. Las expresiones inválidas no producen ningún resultado.
 
@@ -38,10 +42,20 @@ Implementado como `IInstantSearchSource`: `CalculatorSearch`. Maneja tanto expre
 
 **No-result cuando el resultado coincide con la query**: si `Evaluate()` devuelve exactamente la misma cadena que la query de entrada (por ejemplo, al escribir sólo un número como `42`), `Search` no devuelve ningún resultado.
 
-`CalculatorSearch` tiene un score mayor que otras fuentes (ver `CalculatorSearch.Score`) por lo que sus resultados aparecen cerca de la cima cuando la query es reconocida.
+**Display contract**: el `Title` del `ResultItemViewModel` es el resultado formateado; el `Subtitle` es la query original (tal como la escribió el usuario). El icono es "🧮" para calculadora y "📐" para conversor.
+
+`CalculatorSearch` tiene un score de 4, mayor que otras fuentes, por lo que sus resultados aparecen cerca de la cima cuando la query es reconocida.
+
+**`Start()` es no-op**: a diferencia de otras instant sources, `CalculatorSearch.Start()` no inicia ningún proceso. `WhenReady()` delega directamente en `engine.WhenReady()` — el gating lo determina la inicialización del engine.
 
 **Activación**: al activar un resultado de calculadora/conversor se copia el resultado al portapapeles (`OnActivate = () => clipboard.CopyText(result)`).
+
+**Limitación de monedas**: las conversiones de divisa (`100 usd to eur`) no están soportadas — math.js no incluye tasas de cambio FX. La query es descartada porque `Evaluate()` devuelve la query original o un error.
 
 ## ClipboardService
 
 Core no depende de Avalonia. `App.axaml.cs` llama `clipboardService.Initialize(...)` una vez al arranque, pasando un delegate que envuelve la operación en `Dispatcher.UIThread.InvokeAsync()` para garantizar que el acceso al portapapeles ocurra en el hilo UI, y luego llama `TopLevel.GetTopLevel(mainWindow)?.Clipboard?.SetTextAsync(text)`.
+
+**No-op antes de inicializar**: `CopyText()` invoca `_copy?.Invoke(text)` — si se llama antes de que `App.axaml.cs` haya ejecutado `Initialize()`, el texto se descarta silenciosamente. En la práctica esto nunca ocurre porque la UI no es interactiva hasta que las instant sources están `Ready`.
+
+**Testabilidad**: en tests, `ClipboardService` se instancia directamente y se inicializa con un delegate de captura (`clipboard.Initialize(text => copied = text)`), sin necesidad de Avalonia. Esto permite verificar que `OnActivate` copia el valor correcto sin levantar la UI.

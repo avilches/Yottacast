@@ -63,6 +63,16 @@ Lee `CLAUDE.md` (la fuente de intención del proyecto). Si describe comportamien
 
 Si durante los pasos anteriores encuentras bugs evidentes (lógica claramente incorrecta, null references obvios, condiciones invertidas, recursos no liberados), anótalos para el fichero de salida. No los corrijas — solo regístralos con contexto suficiente para que sean accionables.
 
+### Fase 5b — Anotar trabajo incompleto
+
+Busca en el código fuente señales de trabajo intencionalmente incompleto:
+- Comentarios `TODO`, `FIXME`, `HACK`, `XXX`
+- Métodos que lanzan `NotImplementedException` o `throw new Exception("not implemented")`
+- Stubs vacíos o con `// placeholder` / `// TODO: implement`
+- Funcionalidad parcialmente cableada: UI que expone una opción pero el backend no la conecta, interfaces registradas en DI sin implementación real, eventos que se disparan pero nadie escucha
+
+Anótalos para el fichero de salida. No los corrijas — solo regístralos con suficiente contexto para que sean accionables.
+
 ### Fase 6 — Revisar estructura de los docs
 
 Evalúa la organización de `docs/`:
@@ -129,6 +139,19 @@ Problemas encontrados de pasada durante la auditoría de docs. No son problemas 
 - **Qué ocurre**: <descripción del problema>
 - **Impacto**: <qué puede fallar>
 - **Fix sugerido**: <qué cambiar>
+
+...
+
+## Trabajo incompleto
+
+Implementaciones parciales, TODOs y funcionalidad a medias encontrada en el código. No son bugs — son tareas pendientes de terminar.
+
+### [WIP] <descripción corta>
+
+- **Fichero**: `<Archivo.cs:línea>`
+- **Qué hay**: <qué está implementado actualmente>
+- **Qué falta**: <qué parece incompleto y por qué>
+- **Señal**: <TODO / NotImplementedException / stub / no conectado en DI / etc.>
 
 ...
 

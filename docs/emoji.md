@@ -46,11 +46,17 @@ Por cada entrada del JSON:
 
 ### EmojiCellViewModel
 
-Representa una celda individual: `Char` (el carácter emoji), `Name` y `IsSelected` (con INPC manual). El template AXAML aplica la clase CSS `emoji-selected` al `Border` cuando `IsSelected` es true.
+Representa una celda individual: `Char` (el carácter emoji), `Name`, `Category`, `Keywords` e `IsSelected` (con INPC manual). Expone además `KeywordsText`, una propiedad calculada que une `Keywords` con `", "` para su uso directo en bindings. El template AXAML aplica la clase CSS `emoji-selected` al `Border` cuando `IsSelected` es true.
 
 ### EmojiGridResultViewModel
 
-Hereda de `ResultItemViewModel`. Contiene la lista de `EmojiCellViewModel` (propiedad `Cells`) y gestiona el índice seleccionado (`SelectedEmojiIndex`). Al cambiar el índice, actualiza `IsSelected` en las celdas afectadas y notifica `SelectedEmoji` (la celda activa), cuyo `Name` se muestra debajo del grid. Expone `SelectNext()` y `SelectPrevious()` con wrap circular.
+Hereda de `ResultItemViewModel`. Contiene la lista de `EmojiCellViewModel` (propiedad `Cells`) y gestiona el índice seleccionado (`SelectedEmojiIndex`). Al cambiar el índice, actualiza `IsSelected` en las celdas afectadas y notifica `SelectedEmoji` (la celda activa). Expone `SelectNext()` y `SelectPrevious()` con wrap circular.
+
+El `Icon` y el `Title` del `EmojiGridResultViewModel` se inicializan con el `Char` y el `Name` de la primera celda del grid; `Category` se fija siempre a `"Emoji"` y `Score` a `3.5`.
+
+### Template AXAML del grid
+
+El grid usa un `UniformGrid` con 8 columnas (valor constante `EmojiGridResultViewModel.Columns = 8`). Cada celda es un `Border` de 40×40 px con `CornerRadius=8`. Debajo del grid, un `StackPanel` centrado muestra tres líneas: `SelectedEmoji.Name` (en `Theme.ItemTitle`), `SelectedEmoji.Category` (en `Theme.ItemCategory`) y `SelectedEmoji.KeywordsText` (en `Theme.ItemSubtitle`, con `TextWrapping="Wrap"` y `MaxWidth=400`).
 
 ## EmojiSearch
 
@@ -58,8 +64,8 @@ Implementa `IInstantSearchSource` — sus resultados van por la pipeline instant
 
 ### Ciclo de vida
 
-- `Start()` lanza `EmojiDataLoader.LoadAsync` en un `Task.Run` y encadena un `ContinueWith` que puebla `_entries` cuando termina.
-- `WhenReady()` expone esa Task. `GlobalSearch` la espera antes de hacer queries.
+- `Start()` lanza `EmojiDataLoader.LoadAsync` en un `Task.Run` y encadena un `ContinueWith` que puebla `_entries` cuando termina. Si la Task falla, `_entries` permanece vacío (sin propagación de excepciones).
+- `WhenReady()` expone esa Task. Si `Start()` no se llamó, devuelve `Task.CompletedTask`. `GlobalSearch` la espera antes de hacer queries.
 - `Stop()` es no-op.
 - `_entries` se marca `volatile` — se escribe una sola vez desde el `ContinueWith` y luego solo se lee.
 
@@ -68,7 +74,7 @@ Implementa `IInstantSearchSource` — sus resultados van por la pipeline instant
 `Search` devuelve siempre una lista de un único elemento: un `EmojiGridResultViewModel` construido por `MakeGrid`.
 
 - Al escribir solo `:` (sin término): grid con los 20 emojis de menor `sort_order` positivo (se excluyen los que tienen `sort_order == 0`) según el orden Unicode CLDR.
-- Al escribir `:smile` (o cualquier término): grid con todos los emojis que coincidan, ordenados por score descendente, hasta el límite de la query. `EmojiSearch.MatchScore` prioriza nombre exacto > nombre con `NameMatcher.Score` (usando `NameTokens` pre-computados) > keyword con `NameMatcher.Score`. El rango de scores garantiza que cualquier match por nombre supera a cualquier match por keyword.
+- Al escribir `:smile` (o cualquier término): grid con todos los emojis que coincidan, ordenados por score descendente, hasta el límite de la query. El término se extrae con `query[1..].Trim().ToLowerInvariant()`, por lo que espacios tras los dos puntos (`: smile`) se ignoran. `EmojiSearch.MatchScore` prioriza nombre exacto > nombre con `NameMatcher.Score` (usando `NameTokens` pre-computados) > keyword con `NameMatcher.Score`. El rango de scores garantiza que cualquier match por nombre supera a cualquier match por keyword. Para el matching de keywords se usa la sobrecarga `NameMatcher.Score(string, string)`, que aplica la misma cadena de tiers (prefix, camelHump, initials, multi-word abbreviation, internal substring ≥3 chars) que el matching de nombre.
 
 Si la caché no está lista o la carga falló, se devuelve lista vacía (sin error visible al usuario).
 
@@ -80,15 +86,15 @@ Si la caché no está lista o la carga falló, se devuelve lista vacía (sin err
 - `OnLeft` llama a `grid.SelectPrevious()`; `OnRight` llama a `grid.SelectNext()`.
 - `OnUp` llama a `grid.SelectUp()`; `OnDown` llama a `grid.SelectDown()`. Ambos devuelven `bool`: `true` si se movió dentro del grid (consumiendo la tecla), `false` si no hay fila superior/inferior disponible (delegando la navegación de lista a la ventana).
 
-`PasteAfterActivate = true` indica a la UI que pegue automáticamente tras ocultar la ventana. Ver `docs/calculator.md` para el funcionamiento de `ClipboardService`.
+`PasteAfterActivate = true` indica a la UI que pegue automáticamente tras ocultar la ventana. El flujo completo en `MainWindow.axaml.cs` al pulsar Enter sobre el grid es: invocar `OnActivate` (copia al portapapeles) → limpiar `SearchText` → `Hide()` → `AppHandler.Instance.OnHide()` (restaura foco a la app anterior) → `AppHandler.Instance.SimulatePasteAsync()` (envía Cmd+V / Ctrl+V con delay). Ver `docs/calculator.md` para el funcionamiento de `ClipboardService`.
 
 `OnLeft`/`OnRight`/`OnUp`/`OnDown` son propiedades de `ResultItemViewModel`. La ventana principal intercepta ←/→/↑/↓ en la fase túnel (`AddHandler(KeyDownEvent, ..., RoutingStrategies.Tunnel)`) y, si el item seleccionado tiene esas acciones, las invoca. Para ←/→ siempre marca el evento como handled; para ↑/↓, el evento queda handled solo si el callback devuelve `true`. Ver `MainWindow.axaml.cs`.
 
 ## Tests
 
-`EmojiDataLoader` es `internal`. La anotación `InternalsVisibleTo("Yottacast.Core.Tests")` en el `.csproj` de Core permite testarla directamente desde `EmojiDataLoaderTests`.
+`EmojiDataLoader` es `public`, pero su método `LoadAsync` es `internal`. La anotación `InternalsVisibleTo("Yottacast.Core.Tests")` en el `.csproj` de Core permite llamar a `LoadAsync` (y otros métodos internos como `ParseRawJson`, `ParseCompactCache`) directamente desde `EmojiDataLoaderTests`.
 
-Los tests de `EmojiSearchTests` prepueblan una caché compacta en un directorio temporal y llaman `Start()` + `WhenReady()` antes de hacer queries, sin necesidad de red.
+Los tests de `EmojiSearchTests` prepueblan una caché compacta en un directorio temporal y llaman `Start()` + `WhenReady()` antes de hacer queries, sin necesidad de red. Hay además una clase `EmojiSearchRealDataTests` que usa un `IClassFixture<RealEmojiDataFixture>` para cargar el dataset completo embebido una sola vez y compartirlo entre todos los tests de integración, evitando el coste de parsear el JSON raw en cada test.
 
 ## Gotchas
 

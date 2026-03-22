@@ -32,6 +32,22 @@ Algunos assets pesados se gestionan fuera del control de versiones y se incorpor
 
 El target `CopyEmojiCache` resuelve la ruta de AppData por plataforma. Ver el `.csproj` para las rutas exactas.
 
+Tanto `emoji-cache.json` como `emoji-data.json` se declaran como `EmbeddedResource` condicionales en el `.csproj`; si el fichero no existe en el source tree, el ítem se omite y el build no falla.
+
+### Cadena de carga en runtime (EmojiDataLoader)
+
+`EmojiDataLoader.LoadAsync` sigue una cadena de tres niveles de fallback, en orden de preferencia:
+
+1. **Caché en disco** (`AppData/.../Yottacast/emoji-cache.json`) — si existe y es parseable, se usa directamente y se retorna sin tocar el ensamblado.
+2. **Caché embebida** (`Yottacast.Core.Search.Emoji.emoji-cache.json`) — si el disco falló o no existe, se intenta la versión embebida en el ensamblado.
+3. **JSON raw embebido** (`Yottacast.Core.Search.Emoji.emoji-data.json`) — último recurso: parsea el JSON completo, escribe el caché en disco y retorna.
+
+Si todos los niveles fallan, `LoadAsync` retorna una lista vacía (sin excepción). Cada nivel registra tiempos de carga en los logs.
+
+La escritura del caché en disco es atómica: primero se escribe a `emoji-cache.json.tmp` y luego se mueve con `File.Move(overwrite: true)`, evitando ficheros corruptos si el proceso termina durante la escritura.
+
+Durante el parseo del JSON raw, los emojis con el campo `obsoleted_by` relleno se descartan silenciosamente (se omiten versiones obsoletas/generizadas).
+
 ### Regenerar el cache de emojis
 
 Si se actualiza `emoji-data.json` (borrándolo para que el target lo descargue de nuevo):
@@ -46,7 +62,9 @@ Si se actualiza `emoji-data.json` (borrándolo para que el target lo descargue d
 ### Qué ocurre al arrancar
 
 Al iniciar la app, `App.RunMigrations()` compara `UserSettings.LastLaunchedVersion` con
-`UpdateChecker.CurrentVersion` (leído del ensamblado en runtime). Si difieren:
+`UpdateChecker.CurrentVersion` (leído del ensamblado en runtime vía
+`Assembly.GetExecutingAssembly().GetName().Version?.ToString(3)`, que produce la forma `Major.Minor.Patch`
+sin el componente de build). Si difieren:
 
 1. Se ejecuta el bloque de migraciones en `RunMigrations()` (`App.axaml.cs`).
 2. Se actualiza `LastLaunchedVersion` al valor actual y se persiste con `UserSettings.Save()`.
@@ -54,7 +72,13 @@ Al iniciar la app, `App.RunMigrations()` compara `UserSettings.LastLaunchedVersi
 En la primera instalación `LastLaunchedVersion` es `""`, por lo que las migraciones siempre
 se ejecutan al estrenar la app.
 
-Inmediatamente después, `MainWindowViewModel.Initialize()` dispara `CheckForUpdateAsync()` como
+El orden de arranque en `OnFrameworkInitializationCompleted` es relevante:
+`RunMigrations` termina de forma síncrona → `mainWindowViewModel.Initialize()` dispara
+`CheckForUpdateAsync()` como fire-and-forget → `globalSearch.Start()` inicia las sources →
+`ShowWhenInstantReadyAsync` espera a que las instant sources estén listas antes de mostrar la ventana.
+Las migraciones siempre se completan antes de que el update check y la búsqueda arranquen.
+
+A continuación, `MainWindowViewModel.Initialize()` dispara `CheckForUpdateAsync()` como
 fire-and-forget. Llama al endpoint `UpdateChecker.UpdateApiUrl` con timeout de 10 s. Si la respuesta
 contiene una versión mayor a la actual (comparación con `System.Version`, por lo que
 `1.10.0 > 1.9.0` funciona correctamente), se muestra el banner de actualización en la ventana
@@ -85,9 +109,15 @@ no se muestra nada.
 endpoint definido en `UpdateApiUrl`. Respuesta esperada: `{ "version": "1.2.0" }`. El endpoint
 es un placeholder; reemplazarlo con la URL real cuando esté disponible.
 
+`UpdateChecker` expone tres propiedades: `CurrentVersion` (versión del ensamblado en ejecución),
+`LatestVersion` (versión del servidor, `null` hasta que `CheckAsync` complete con éxito), y
+`UpdateAvailable` (booleano derivado de la comparación). `HttpClient` se crea internamente con
+timeout de 10 s; no se reutiliza ni se inyecta desde fuera.
+
 ### Banner de actualización
 
 Cuando `UpdateChecker.UpdateAvailable` es `true`, `MainWindowViewModel` activa `UpdateAvailable`
-y rellena `UpdateBannerText`, lo que muestra una franja clicable al pie de la ventana principal.
+y rellena `UpdateBannerText` con `"Yottacast {LatestVersion} available — click to download"`,
+lo que muestra una franja clicable al pie de la ventana principal.
 El comando `UpdateBannerClickCommand` es un placeholder — conectarlo a la URL de descarga en el
 siguiente plan.

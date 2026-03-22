@@ -7,8 +7,8 @@ Yottacast es un lanzador de aplicaciones para macOS/Windows — similar a Spotli
 ## Arquitectura clave
 
 - Es una ventana sin marco, transparente, con una única entrada de texto donde el usuario escribe para buscar en múltiples fuentes.
-- El flujo principal de búsqueda: el usuario escribe → debounce → `GlobalSearch` lanza en paralelo todas las `ISearchSource` registradas → cada source emite resultados con score vía `IAsyncEnumerable` → `GlobalSearch` los mergea en streaming vía `Channel` → el ViewModel consume el stream y actualiza la UI.
-- Hay dos tipos de search sources: **instant** (responden en memoria: apps, calculadora, emoji) y **deferred** (requieren I/O: búsqueda de ficheros). Cada source implementa `ISearchSource` con ciclo de vida `Start/WhenReady/Stop/SearchAsync`.
+- El flujo principal de búsqueda: el usuario escribe → debounce → `GlobalSearch` lanza en paralelo todas las sources registradas → las instant devuelven resultados síncronamente desde memoria; las deferred emiten resultados vía `IAsyncEnumerable` en streaming → `GlobalSearch` combina y ordena los resultados → el ViewModel actualiza la UI.
+- Hay dos tipos de search sources: **instant** (responden en memoria: apps, calculadora, emoji) y **deferred** (requieren I/O: búsqueda de ficheros). Cada tipo tiene su propia interfaz con ciclo de vida `Start/WhenReady/Stop`.
 - Cada fuente una devuelve uno o más elementos, cada uno con un score, que luego son mezclados, opcionalmente filtrados, ordenados por score y mostrados
   al usuario, y donde éste podrá usar las teclas de flecha + Enter para hacer acciones en los elementos (abrir, copiar, lanzar un comando).
 - Hay algunos elementos de una sola línea y otros en forma de grid. En los de grid se podrá navegar con los cursores arriba abajo izquierda derecha dentro del elemento (por ejemplo un selector de Emojis).
@@ -135,8 +135,10 @@ Las docs están en `docs/`. Léelas antes de trabajar en cualquier área:
 - `docs/calculator.md`
 - `docs/emoji.md`
 - `docs/release-workflow.md`
-- `docs/platform.md`
-- `docs/browser-terminal.md`
+- `docs/multi-platform.md`
+- `docs/user-settings-browser.md`
+- `docs/user-settings-terminal.md`
+- `docs/search-scoring.md`
 - `docs/ui-themes-keyboard.md`
 - `docs/logging.md`
 

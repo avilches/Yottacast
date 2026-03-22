@@ -28,13 +28,34 @@ Los tres toggles `EnableCalculator`, `EnableClipboard` y `EnableEmoji` están ex
 
 **Browser/Terminal preferido**: el usuario elige entre los detectados por `BrowserDiscovery`/`TerminalDiscovery` (solo apps instaladas). Se muestra en `SettingsWindowViewModel`.
 
-**Hotkey**: combinación de teclas para mostrar/ocultar el launcher. Formato: modificadores separados por `+` seguidos de la tecla, p. ej. `"Alt+Space"`, `"Ctrl+Shift+A"`. Modificadores reconocidos: `Alt`, `Ctrl`, `Shift`, `Meta`. El campo se edita desde SettingsWindow: el usuario hace clic en el campo GLOBAL HOTKEY, pulsa la combinación deseada y se guarda automáticamente. ESC o clic fuera del campo cancela sin guardar. El cambio tiene efecto inmediato, sin reiniciar.
+**Hotkey**: combinación de teclas para mostrar/ocultar el launcher. El valor en memoria se parsea de forma lazy a un `HotkeyConfig` cacheado en `ParsedHotkey`; el cache se invalida cada vez que se asigna el setter de `Hotkey`. El campo se edita desde SettingsWindow: el usuario hace clic en el campo GLOBAL HOTKEY, pulsa la combinación deseada y se guarda automáticamente. ESC o clic fuera del campo cancela sin guardar. El cambio tiene efecto inmediato, sin reiniciar.
 
 **Detección del browser predeterminado del sistema** ⚠️ TODO: no implementado. El default es `""` y se selecciona el primero de la lista de `BrowserDiscovery`.
+
+## HotkeyConfig
+
+`HotkeyConfig` (en `Yottacast.Core/Platform/HotkeyConfig.cs`) es un record inmutable con campos `bool Alt, Ctrl, Shift, Meta` y `string KeyName`. Se usa tanto para registrar la hotkey global en SharpHook como para mostrarla en la UI.
+
+- **`Parse(string?)`** — parsea cadenas como `"Alt+Space"` o `"Ctrl+Shift+F1"`. Es case-insensitive y acepta alias: `Option`/`Options` → Alt; `Control` → Ctrl; `Cmd`/`Command`/`Win`/`Windows` → Meta. Si no hay ningún token que no sea modificador, devuelve `null`.
+- **`ToString()`** — produce la forma canónica con modificadores en orden fijo `Ctrl→Alt→Shift→Meta`, luego la tecla. Ejemplo: `"Ctrl+Alt+Space"`.
+- **`Default`** — `Alt+Space`.
+- **`UserSettings.ParsedHotkey`** — lazy-parsea `Hotkey` la primera vez que se accede y cachea el resultado; el setter de `Hotkey` invalida el caché poniendo `_parsedHotkey = null`. Si `Parse` devuelve `null` (hotkey inválida), `ParsedHotkey` devuelve `HotkeyConfig.Default`.
+
+## Flujo de captura de hotkey en SettingsWindow
+
+El code-behind (`SettingsWindow.axaml.cs`) coordina dos handlers de puntero:
+
+1. **`OnHotkeyAreaPointerPressed`** — se dispara al hacer clic sobre el área de hotkey; llama `StartHotkeyCapture()` y marca `e.Handled = true` para que el evento no burbujee al handler de ventana.
+2. **`OnPointerPressed` (override de ventana)** — cancela la captura si está activa y el clic no fue sobre el área de hotkey (porque ese caso ya consumió el evento con `Handled`).
+3. **`ProcessKeyCapture`** en el ViewModel — ignora pulsaciones de teclas modificadoras solas (Alt, Ctrl, Shift, Meta/Win); ESC cancela restaurando el valor guardado; cualquier otra tecla construye un `HotkeyConfig`, lo serializa y llama `Save()`.
+
+`HotkeyDisplayText` es la propiedad que muestra el texto en la UI: mientras `IsCapturingHotkey` es `true` muestra `"Press keys…"`, y en caso contrario muestra `HotkeyText`.
 
 ## API de ciclo de vida
 
 `UserSettings.Load(platform, logger?)` carga el JSON (o crea defaults si no existe), y siempre llama `Save()` al final — el fichero se reescribe en cada arranque. `settings.Save()` puede llamarse manualmente; también se llama automáticamente al cambiar cada campo en SettingsWindow.
+
+`Load()` acepta un parámetro opcional `settingsPath` que sobreescribe la ruta por defecto; en tests se usa para apuntar a un fichero temporal sin tocar el fichero real del usuario. Ante cualquier excepción durante la carga (fichero no encontrado, JSON malformado, deserialización nula), registra un mensaje de nivel `LogInformation` (no warning) y crea los defaults de plataforma, sin propagar la excepción.
 
 ### Condiciones de aplicación de defaults en Load()
 
@@ -56,7 +77,7 @@ Los defaults de plataforma se aplican de forma selectiva, no globalmente:
 
 ## Detección automática de tema
 
-`platform.DefaultTheme()` elige un tema oscuro o claro según el modo del sistema. `Load()` lo llama solo si el campo `theme` en el JSON está ausente o vacío. Los temas concretos y la lógica de detección por plataforma están en `PlatformProvider.DefaultTheme()` de cada implementación.
+`platform.DefaultTheme()` elige un tema oscuro o claro según el modo del sistema. `Load()` lo llama solo si el campo `theme` en el JSON está ausente o vacío. La implementación base de `DefaultTheme()` en `PlatformProvider` llama a `IsSystemDarkMode()` y devuelve `"dark-default"` si el valor es `true` o `null`, y `"light-gray"` si es `false`. Las subclases de plataforma pueden sobrescribir `DefaultTheme()` o solo `IsSystemDarkMode()`.
 
 **Doble default para Theme**: `UserSettingsData` (el DTO de serialización) usa `""` como default para `Theme`, mientras que `UserSettings` (la clase de dominio) aplica `platform.DefaultTheme()` si el valor cargado es vacío. Esta distinción permite que el JSON omita el campo en la primera ejecución y que la lógica de plataforma elija el tema correcto sin que el DTO tenga dependencia de `PlatformProvider`.
 
@@ -68,11 +89,21 @@ Los defaults de plataforma se aplican de forma selectiva, no globalmente:
   1. Si `Browser` / `Terminal` no está vacío → busca ese nombre concreto en disco.
   2. Si no existe (o el campo era `""`): itera `KnownBrowserNames` / `KnownTerminalNames` y devuelve el primero encontrado en disco.
   3. Si ninguno existe en disco → devuelve `null`.
-  - Auto-reparación: si el nombre guardado no existe pero Resolve encuentra un alternativo (`resolved.Name != Browser`), actualiza el campo y llama `Save()`. Si `Browser = ""`, devuelve el primero disponible sin tocar el JSON.
+  - Auto-reparación: si el nombre guardado no existe pero Resolve encuentra un alternativo (`resolved.Name != Browser`), actualiza el campo y llama `Save()`. Esto incluye el caso `Browser = ""`: si Resolve encuentra un browser disponible, su nombre diferirá de `""`, por lo que también actualiza `Browser` y llama `Save()`.
   - **Devuelve `null`** solo cuando ningún browser/terminal conocido está instalado en el sistema.
 - **`EnsureIntegrity()`** — accede a ambas propiedades, forzando la validación y el guardado si algo cambió. Llamar en puntos naturales (p.ej. al abrir Settings).
 
 `SettingsWindowViewModel` llama `settings.EnsureIntegrity()` en su constructor, antes de inicializar los pickers. `MainWindowViewModel` usa `settings.ActiveBrowser` directamente al construir el resultado de Google.
+
+### BrowserDiscovery y TerminalDiscovery: dos estrategias de resolución
+
+Ambas clases exponen dos métodos de resolución con propósitos distintos:
+
+- **`Discover()`** — para poblar los pickers de la UI: consulta primero el caché de `ApplicationSearch` (en memoria), y si no encuentra el nombre, cae en `BrowserFallbackPaths` / `TerminalFallbackPaths` del `PlatformProvider` buscando el primer path existente en disco. Requiere que `ApplicationSearch` esté inicializado.
+- **`Resolve(string, PlatformProvider)`** — estático, para auto-reparación: llama a `platform.GetBrowserPaths(name)` y comprueba existencia en disco con `File.Exists` / `Directory.Exists`. No depende del caché de apps, por lo que es seguro llamarlo en cualquier momento del ciclo de vida.
+- **`GetCandidatePaths()`** — variante de `Discover()` que devuelve tuplas `(name, path)` incluyendo apps que solo tienen ruta primaria del platform provider aunque no existan en el caché; usada para pickers en Settings cuando el caché podría no estar completo.
+
+La diferencia clave es que `Resolve` es el único safe para ser llamado antes de que `ApplicationSearch` haya terminado su escaneo.
 
 ## SettingsWindowViewModel — navegación por secciones
 
@@ -88,6 +119,14 @@ Tras llamar `EnsureIntegrity()`, el ViewModel inicializa los pickers con un segu
 
 Este fallback cubre casos en que la lista de pickers difiere del valor guardado (p.ej. browser instalado pero no en el picker actual).
 
+Las listas `SearchFolders` y `AppDirectories` en el ViewModel son `ObservableCollection<string>`. Sus eventos `CollectionChanged` están suscritos en el constructor y, ante cualquier cambio (añadir, eliminar, reordenar), sincronizan inmediatamente la lista a `settings.SearchFolders` / `settings.AppDirectories` y llaman `Save()`. El code-behind gestiona el picker de carpetas del SO (`StorageProvider.OpenFolderPickerAsync`) y llama a `AddSearchFolder` / `AddAppDirectory` del ViewModel, que deduplican (no añaden si la ruta ya existe).
+
+## Serialización interna
+
+`UserSettings` usa un record privado `UserSettingsData` como DTO de serialización/deserialización JSON. Este DTO nunca se expone fuera de la clase; actúa como buffer entre el JSON en disco y la clase de dominio. Los nombres de campo JSON usan `camelCase` (p. ej. `"searchFolders"`, `"enableCalculator"`) definidos mediante `[JsonPropertyName]`. El JSON se escribe con `WriteIndented = true`.
+
 ## Gotchas
 
 - **`Save()` silencia excepciones**: la escritura a disco está envuelta en try-catch. Si falla (permisos, disco lleno, etc.), registra un warning con `LogWarning` y continúa. Los cambios se mantienen en memoria pero no se persisten en disco hasta que un `Save()` posterior tenga éxito.
+- **`Save()` crea el directorio automáticamente**: antes de escribir, llama `Directory.CreateDirectory(dir)`. Si la carpeta `Yottacast/` no existe bajo `ApplicationData`, se crea sin error.
+- **`ActiveBrowser` y `ActiveTerminal` no son idempotentes en presencia de auto-reparación**: cada acceso comprueba disco y puede llamar `Save()`. En flujos críticos de rendimiento, preferir acceder una sola vez y cachear el resultado en la llamada.
