@@ -81,4 +81,30 @@ public class ProcessRunnerTests {
         var result = await Runner.RunAsync("/bin/echo", ["ok"], Cwd, _ => true, CancellationToken.None);
         Assert.True(result.Elapsed > TimeSpan.Zero);
     }
+
+    [Fact]
+    public async Task Stderr_LinesDeliveredToCallback() {
+        var errors = new List<string>();
+        await Runner.RunAsync("/bin/sh", ["-c", "echo err >&2"], Cwd, _ => true, CancellationToken.None,
+            line => { errors.Add(line); return true; });
+        Assert.Single(errors);
+        Assert.Equal("err", errors[0]);
+    }
+
+    [Fact]
+    public async Task Stderr_EarlyTermination_OnCallbackReturnsFalse() {
+        var errors = new List<string>();
+        await Runner.RunAsync("/bin/sh", ["-c", "printf 'a\\nb\\nc\\n' >&2; sleep 30"], Cwd, _ => true,
+            CancellationToken.None,
+            line => { errors.Add(line); return false; });
+        Assert.Single(errors);
+    }
+
+    [Fact]
+    public async Task Stderr_NoDeadlock_WhenNoCallback() {
+        // proceso que escribe bastante en stderr sin callback — no debe bloquearse
+        var result = await Runner.RunAsync("/bin/sh", ["-c", "for i in $(seq 1 500); do echo \"err $i\" >&2; done"],
+            Cwd, _ => true, CancellationToken.None);
+        Assert.True(result.IsSuccess);
+    }
 }
