@@ -14,6 +14,10 @@
 
 **Tunnel handler para flechas**: `MainWindow` registra `OnTunnelKeyDown` con `RoutingStrategies.Tunnel`. Las teclas ←/→ se consumen aquí si el ítem tiene handler, impidiendo que el TextBox mueva el cursor. Las teclas ↑/↓ también pasan por tunnel: si el ítem devuelve `true` en `OnUp`/`OnDown`, la ventana no navega la lista; si devuelve `false`, el bubble handler de la ventana continúa con la navegación normal.
 
+**ALT+Space consumido en bubble phase**: además de la supresión a nivel OS vía `e.SuppressEvent`, `MainWindow.OnKeyDown` también marca `e.Handled = true` al detectar `Key.Space + Alt`. Esto evita que macOS emita un beep cuando la supresión no está disponible (p.ej. sin permiso de Accesibilidad).
+
+**`NotifyUserNavigated` y selección automática**: al navegar con ↑/↓, `SelectNext` llama `vm.NotifyUserNavigated()` que activa el flag `_userNavigated`. Mientras este flag está activo, `RefreshResults` no fuerza la selección al resultado de tipo Calculator/Converter; en su lugar preserva el ítem seleccionado anteriormente o selecciona el primero de la lista. El flag se resetea a `false` con cada cambio de `SearchText`.
+
 **`OnClosing` — cancel siempre**: `MainWindow.OnClosing` cancela cualquier intento de cierre nativo (`e.Cancel = true`) y llama `Hide()`. Esto cubre tanto el atajo `CloseWindowShortcut` como los cierres originados por macOS al cerrar SettingsWindow.
 
 **SearchBox habilitado según visibilidad**: el handler de `IsVisibleProperty` en `MainWindow` desactiva `SearchBox.IsEnabled` cuando la ventana se oculta y lo reactiva con foco cuando vuelve a mostrarse.
@@ -38,17 +42,3 @@ El flujo de captura de hotkey es:
 2. `HotkeyDisplayText` (propiedad derivada) muestra `"Press keys…"` mientras `IsCapturingHotkey` es `true`.
 3. Click fuera del área → `SettingsWindow.OnPointerPressed()` detecta `IsCapturingHotkey: true` y llama `CancelHotkeyCapture()`, restaurando `HotkeyText` al valor guardado.
 4. Al pulsar una tecla durante la captura: si es solo un modificador, se ignora; si es ESC, se cancela; cualquier otra combinación crea un `HotkeyConfig`, lo serializa, lo guarda en `UserSettings` y baja `IsCapturingHotkey`.
-
-## Indicador de búsqueda en curso (IsSearching)
-
-`MainWindowViewModel.IsSearching` es `true` mientras la fase diferida (`SearchDeferredAsync`) está activa. Se activa justo antes de iterar la fase diferida y se desactiva en el `finally` al completar, cancelar o fallar.
-
-**Spinner en la UI**: cuando `IsSearching` es `true`, la search row muestra un `Ellipse` giratorio (`Classes="spinner"`, animación CSS en `Window.Styles`) en lugar del badge "ESC". La animación pulsa la opacidad (duración definida en `MainWindow.axaml`) con `PlaybackDirection="Alternate"`. Cuando `IsSearching` baja a `false`, la animación se detiene y el badge ESC reaparece (si el texto está vacío).
-
-**`CancelDeferredSearch()`**: cancela solo la fase diferida sin tocar el texto ni la búsqueda instant. Llamado por el handler de ESC cuando `IsSearching == true`. Internamente cancela `_deferredCts`, que es un `CancellationTokenSource` enlazado al `ct` principal — si se teclea texto nuevo, el `ct` padre cancela ambas fases.
-
-**`ShowNoResults`**: solo se activa si la búsqueda diferida completó sin cancelación (`completed = true`). Si se paró con ESC o por nueva búsqueda, los resultados parciales permanecen visibles sin mostrar "No results".
-
-**Gotcha — `ALT+Space` consumido por MainWindow**: MainWindow intercepta `ALT+Space` explícitamente para evitar el beep nativo de macOS cuando la app está en background pero la ventana recibe el evento.
-
-**Gotcha — `ResultItemViewModel.OnUp()`/`OnDown()`**: devuelven `bool`. `true` significa que el ítem ha consumido la tecla (p.ej. navegación interna del grid emoji); `false` delega la navegación de lista a la ventana. Ver `MainWindow.axaml.cs` para el handler.

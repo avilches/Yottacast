@@ -30,6 +30,8 @@ Responsabilidades:
 - **Windows**: recorre los subdirectorios de cada `dir` configurado, busca el `.exe` con el mismo nombre que la carpeta y, si no existe, coge el primer `.exe` encontrado. El watcher observa `*.exe` con `IncludeSubdirectories = true`.
 - **Linux**: enumera los ficheros `*.desktop` de los directorios configurados (sin subdirectorios). El watcher observa `*.desktop`.
 
+`ScanAppsAsync` es sincrónico en Windows y Linux (devuelve `Task.CompletedTask` directamente); solo en macOS se envuelve en `Task.Run` porque `SpotlightInterop.Query` bloquea el hilo.
+
 ### `LaunchApp` por plataforma
 
 - **macOS**: `open "<path>"` con `UseShellExecute = false`.
@@ -38,11 +40,11 @@ Responsabilidades:
 
 ### Búsqueda de ficheros: estrategias específicas
 
-**macOS** (`SpotlightInterop`): el predicado `kMDItemFSName` admite wildcard `*` literal en la query del usuario; en caso contrario, parte la query por espacios y genera una cláusula `&&` con `*token*cd` por cada token (case-insensitive, diacrítico-insensible). Si alguna carpeta del scope no existe, se omite con `LogWarning`. Si no quedan carpetas válidas, el scope cae al directorio home.
+**macOS** (`SpotlightInterop`): antes de construir el predicado, las comillas simples se escapan (`'` → `\'`). El predicado `kMDItemFSName` admite wildcard `*` literal en la query del usuario; en caso contrario, parte la query por espacios y genera una cláusula `&&` con `*token*cd` por cada token (case-insensitive, diacrítico-insensible). Si alguna carpeta del scope no existe, se omite con `LogWarning`. Si no quedan carpetas válidas, el scope cae al directorio home.
 
-**Windows** (`WindowsPlatformProvider`): emite un script PowerShell que abre una conexión ADODB a `Search.CollatorDSO` (Windows Search) y ejecuta SQL sobre `SystemIndex` con `CONTAINS(System.FileName, 'token*')`. El script se codifica en Base64 Unicode y se pasa a `powershell -EncodedCommand` para evitar problemas de escaping en shell. El filtro de carpetas se inyecta como cláusula `AND (System.ItemPathDisplay LIKE 'folder%' OR ...)`.
+**Windows** (`WindowsPlatformProvider`): la query se sanitiza eliminando completamente `'`, `"` y `*` antes de construir el script. Emite un script PowerShell que abre una conexión ADODB a `Search.CollatorDSO` (Windows Search) y ejecuta SQL sobre `SystemIndex` con `CONTAINS(System.FileName, 'token*')`. El script se codifica en Base64 Unicode y se pasa a `powershell -EncodedCommand` para evitar problemas de escaping en shell. El filtro de carpetas se inyecta como cláusula `AND (System.ItemPathDisplay LIKE 'folder%' OR ...)`.
 
-**Linux** (`LinuxPlatformProvider`): llama a `plocate` (si existe en `/usr/bin/plocate`) o `locate`, usando solo el primer token de la query como argumento nativo (`-b -l maxResults *token*`). El filtro de carpetas y los tokens adicionales se aplican en el callback de .NET: las líneas que no cumplan se descartan sin contar para el límite (retornando `true` para seguir leyendo).
+**Linux** (`LinuxPlatformProvider`): llama a `plocate` (si existe en `/usr/bin/plocate`) o `locate`, usando solo el primer token de la query como argumento nativo (`-b -l maxResults *token*`). El filtro de carpetas y los tokens adicionales se aplican en el callback de .NET: las líneas que no cumplan se descartan sin contar para el límite (retornando `true` para seguir leyendo). Como el post-filtrado ocurre en .NET después del límite nativo, el número de resultados entregados puede ser menor que `maxResults`.
 
 ### `ExecuteCommand` en macOS: despacho por terminal
 
@@ -52,7 +54,7 @@ Responsabilidades:
 
 ### `ExecuteCommand` en Windows: despacho por terminal
 
-Los paths de terminales que contienen `*` (p. ej. Windows Terminal en `WindowsApps`) se excluyen del match de primer path existente. Argumentos según terminal: PowerShell → `-NoExit -Command "<cmd>"`, CMD → `/K "<cmd>"`, resto → el comando verbatim.
+Los paths de terminales que contienen `*` (p. ej. Windows Terminal en `WindowsApps`) se excluyen del match de primer path existente. Argumentos según terminal: PowerShell → `-NoExit -Command "<cmd>"`, Command Prompt → `/K "<cmd>"`, resto → el comando verbatim.
 
 ### KeyNameMap (hotkey)
 

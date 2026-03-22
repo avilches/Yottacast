@@ -18,6 +18,14 @@ Evento `AppAdded` notifica cuando se detecta una app nueva (disponible para susc
 
 **Gotcha: Lazy icon en AppInfo** — `AppInfo` usa `Lazy<T>` para diferir la lectura de `Info.plist` hasta el primer acceso al icono, evitando parsear cientos de plists al arranque.
 
+**Guard de arranque idempotente** — `Start()` comprueba `_started` antes de lanzar el escaneo; llamadas repetidas son no-op. `Stop()` resetea `_started = false`, haciendo el ciclo `Stop()` + `Start()` válido para un reinicio limpio, aunque actualmente ningún código lo ejecuta. ⚠️ `_started` es un `bool` plano sin sincronización — llamadas concurrentes a `Start()` podrían crear una race condition.
+
+**`ApplicationSearch` implementa `IDisposable`** — `Dispose()` llama `Stop().GetAwaiter().GetResult()` de forma síncrona, limpiando watchers y caché.
+
+**`AppInfo.IconPath` y thread safety** — el `Lazy<string?>` interno usa `LazyThreadSafetyMode.ExecutionAndPublication`: solo un thread ejecuta el factory de icono; los demás bloquean hasta que completa.
+
+**Watchers solo en directorios existentes** — `CreateAppWatchers` filtra las dirs con `Directory.Exists()` antes de montar el watcher; los directorios configurados pero inexistentes se ignoran silenciosamente.
+
 **Métodos de consulta directa** — usados por `BrowserDiscovery` y `TerminalDiscovery` para consultar el caché sin pasar por la pipeline de búsqueda:
 
 | Método | Comportamiento |
@@ -30,6 +38,16 @@ Evento `AppAdded` notifica cuando se detecta una app nueva (disponible para susc
 Clase: `Yottacast.Core.Search.UserDocuments.UserDocumentSearch` (implementa `IDeferredSearchSource`)
 
 Ver `docs/search-files.md` para la documentación completa de esta fuente, el backend `FileSearch`, los backends por plataforma y el scoring.
+
+**Mínimo de caracteres** — `SearchAsync` hace `yield break` si `query.Length < 2`. Nunca se lanza una búsqueda de un solo carácter.
+
+**Timeout interno** — `UserDocumentSearch` crea un `CancellationTokenSource` vinculado al `ct` del caller y le aplica `CancelAfter(timeoutMs)` (defecto: 20 s). La task de background que llama a `fileSearch.SearchAsync` usa este CTS derivado. El `await foreach` del canal usa el `ct` original del caller.
+
+**Task de background con `CancellationToken.None`** — la `Task.Run` que ejecuta la búsqueda se inicia con `CancellationToken.None`, así la tarea no se cancela externamente; la cancelación se propaga a través del CTS derivado a `fileSearch.SearchAsync`.
+
+**Snapshots basados en tiempo, no en conteo** — los snapshots intermedios se emiten como máximo una vez cada 200 ms (`SnapshotIntervalMs`). Además, siempre se emite un snapshot final después de que `fileSearch.SearchAsync` termina o es cancelada (si el buffer no está vacío).
+
+**Wildcards** — si la query contiene `*`, se salta toda la lógica de tokenización y scoring multi-token; el resultado recibe score fijo 0.5 independientemente del nombre del archivo.
 
 ## Scoring
 
@@ -52,6 +70,8 @@ Orquesta todas las sources registradas por DI. Distingue dos listas: `_instantSo
 **Búsqueda deferred — merge por slots**: `SearchDeferredAsync` usa `SearchSourcesAsync`, que asigna un slot por source. Cuando cualquier source emite un nuevo snapshot, su slot se actualiza y se yields la unión ordenada de todos los slots. Así la UI refleja la mejor combinación disponible en cada instante, incluso si una source es más lenta.
 
 La coordinación interna usa un `Channel<(int sourceIndex, snapshot)>` y `Task.WhenAll` para completar el canal cuando todas las sources terminan.
+
+**Cancelación en las tasks de source** — cada task de source se inicia con `CancellationToken.None` (no con el `ct` del caller), de modo que no puede ser abortada externamente. La cancelación llega a la source vía el `ct` pasado a su `SearchAsync`. `OperationCanceledException` se captura silenciosamente dentro de cada task; la cancelación no produce errores en el canal.
 
 ## Interfaces de ciclo de vida
 
@@ -86,12 +106,9 @@ La coordinación interna usa un `Channel<(int sourceIndex, snapshot)>` y `Task.W
 
 **`RefreshResults()`** — merge y selección:
 - Combina `_googleItem` + `_instantSnapshot` + `_deferredSnapshot`, ordena por score, actualiza `Results`.
-- Si hay un resultado de categoría `"Calculator"` o `"Converter"` y el usuario no ha navegado con las flechas (`_userNavigated`), lo fuerza como `SelectedResult` (auto-selección del resultado de calculadora).
-- Si el usuario había navegado manualmente, intenta preservar el ítem seleccionado previamente; si ya no está en los resultados, selecciona el primero.
+- La lógica de selección visual (auto-selección de calculadora, preservación del ítem previo, score del Google item) está documentada en `ui-main-window.md`.
 
 **`SearchSourceLimit`**: cada source recibe un límite de 10 resultados. El merge global también aplica un límite de 10.
-
-**Google item score = 3**: el ítem de Google tiene score fijo 3, garantizando que aparezca por encima de cualquier resultado de fuentes de búsqueda (cuyos scores son ≤ 1) pero es desplazado por resultados de calculadora cuando están presentes (la calculadora también usa score > 1).
 
 ## FileSearch y PlatformProvider
 
@@ -113,4 +130,4 @@ Ver `docs/search-files.md` para la documentación de `FileSearch` y los backends
 
 ## RandomSearch
 
-`RandomSearch` es una `IDeferredSearchSource` de prueba, registrada solo en configuraciones de desarrollo. Emite hasta 5 resultados con scores aleatorios (0.5–1.0) con delays progresivos entre ellos. Cada snapshot es acumulativo (añade al array existente antes de yield). Ver `Yottacast.Core.Search.RandomSearch`.
+`RandomSearch` es una `IDeferredSearchSource` de prueba. Está registrada como singleton en el contenedor DI, pero la línea que la conecta como `IDeferredSearchSource` activa en `GlobalSearch` está comentada en `App.axaml.cs`. Emite hasta 5 resultados con scores aleatorios (0.5–1.0) con delays progresivos entre ellos. Cada snapshot es acumulativo (añade al array existente antes de yield). Ver `Yottacast.Core.Search.RandomSearch`.

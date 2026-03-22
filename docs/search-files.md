@@ -63,6 +63,48 @@ Para **queries sin wildcard**, distingue dos modos:
 
 **Query de un token** (ej. `"report"`): el score varía según si el nombre es exactamente el query, empieza por él, termina en él, o simplemente lo contiene. `Stem = Path.GetFileNameWithoutExtension(name)`, por lo que `"report"` puntúa igual contra `"report.pdf"` que contra el nombre completo `"report"`.
 
-**Query multi-token** (ej. `"xls calc mis"`): la plataforma pre-filtra con un predicado AND en Spotlight/Windows Search/locate, pero el callback `onResult` aplica un segundo filtro client-side: descarta cualquier resultado donde no todos los tokens estén contenidos en el nombre. El scoring de los resultados que pasan ese filtro depende de si todos los tokens son prefijo de algún segmento del nombre (split por espacios, guiones, puntos) o solo aparecen como substring.
+**Query multi-token** (ej. `"xls calc mis"`): la plataforma pre-filtra con un predicado AND en Spotlight/Windows Search/locate, pero el callback `onResult` aplica un segundo filtro client-side: descarta cualquier resultado donde no todos los tokens estén contenidos en el nombre. El scoring de los resultados que pasan ese filtro depende de si todos los tokens son prefijo de algún segmento del nombre (split por espacios, guiones, guiones bajos, puntos) o solo aparecen como substring.
 
 Ejemplo: `"xls calc mis"` → `"mis calculos.xls"`: segmentos `["mis","calculos","xls"]`; "mis"→"mis"✓, "calc"→"calculos"✓, "xls"→"xls"✓ → score prefijo.
+
+**Coincidencia con extensión**: en modo single-token, si la query coincide exactamente con la extensión del fichero (p.ej. query `"pdf"` vs `"report.pdf"`), la comparación `extension == queryLower` usa el valor devuelto por `Path.GetExtension(nameLower)` — que incluye el punto (`.pdf`). Por eso la query `"pdf"` sin punto no hace match; se necesitaría `".pdf"` para igualar la extensión. Sin embargo, sí se obtiene score `1.0` para query `"pdf"` si el stem o nombre completo coinciden exactamente.
+
+**ViewModel construido**: `UserDocumentSearch` construye `ResultItemViewModel` con `Icon = "📁"`, `Category = "Files"`, `Title = r.Name` y `Subtitle = r.Path`.
+
+**Logging en `UserDocumentSearch`**: al iniciar emite `LogDebug` con query, timeout y carpetas; al completar emite `LogInformation` con query y total de resultados acumulados. Al cancelar, el `LogInformation` distingue si fue el caller (`ct.IsCancellationRequested`) o el timeout interno (`cts.IsCancellationRequested && !ct.IsCancellationRequested`) quien originó la cancelación.
+
+## SpotlightInterop — detalles de inicialización y alcance
+
+**`kCFTypeArrayCallBacks`**: no es una constante — es un símbolo exportado de CoreFoundation. Se carga en el constructor estático de `SpotlightInterop` vía `NativeLibrary.GetExport`, una sola vez para toda la vida del proceso.
+
+**Scope vacío o null**: si `scopes` es `null` o vacío, `MDQuerySetSearchScope` no se llama, y Spotlight usa su ámbito global por defecto. Este comportamiento difiere del fallback de `MacOsPlatformProvider.SearchFilesAsync`, que nunca llama a `SpotlightInterop.Query` sin scope — siempre inyecta al menos `$HOME` si todas las carpetas configuradas son inválidas.
+
+**`maxResults` en macOS**: el callback `onLine` dentro de `MacOsPlatformProvider.SearchFilesAsync` devuelve `false` cuando `count >= maxResults`, lo que hace que `SpotlightInterop.Query` salga del bucle de resultados antes de procesarlos todos. Como `UserDocumentSearch` pasa `int.MaxValue`, en la práctica el límite lo impone el timeout, no este contador.
+
+**Manejo de errores en `MacOsPlatformProvider.SearchFilesAsync`**: las excepciones que no son `OperationCanceledException` se capturan, se almacenan en `error` y se registran en `LogDebug` al terminar, pero no se re-lanzan. La búsqueda termina silenciosamente con los resultados parciales emitidos hasta ese momento.
+
+## Windows Search — detalles adicionales
+
+**`CONTAINS` es prefijo, no substring**: `CONTAINS(System.FileName, 'token*')` ancla al inicio del token. A diferencia del predicado de Spotlight `'*token*'cd`, no hace búsqueda de substring arbitraria.
+
+**Sanitización y segunda comprobación de query vacía**: `WindowsPlatformProvider.SearchFilesAsync` elimina `'`, `"` y `*` de la query. Si el resultado tras la eliminación es una cadena vacía, retorna `Task.CompletedTask` sin lanzar PowerShell.
+
+**PowerShell con `-NoProfile -NonInteractive -EncodedCommand`**: el script se codifica en Base64 (UTF-16LE) para evitar problemas de escaping en la línea de comandos. El cwd del proceso se establece en `$HOME`.
+
+## Linux — detalles adicionales
+
+**Sanitización de query**: Linux solo elimina `"` de la query (no `'` ni `*`), a diferencia de Windows.
+
+**`filteredOnLine` no consume el límite de `maxResults` en líneas filtradas**: cuando una línea no cumple el filtro de carpetas o de tokens extra, `filteredOnLine` devuelve `true` (continuar) sin llamar a `onLine`. El `-l maxResults` pasado a `plocate/locate` limita la salida del proceso OS, pero el número efectivo de resultados entregados a `UserDocumentSearch` puede ser menor.
+
+## `ProcessRunner` — detalles adicionales
+
+**`WaitForExitAsync(ct)` tras el bucle de stdout**: cuando el bucle termina porque `onLine` devolvió `false` (no por cancelación), `ProcessRunner` llama `WaitForExitAsync(ct)` con el token aún activo. Independientemente del resultado, `Kill(entireProcessTree: true)` se ejecuta siempre en el bloque `finally`.
+
+**Quoting de argumentos**: los argumentos con espacios se envuelven en comillas dobles con las comillas internas escapadas (`\"`). Los argumentos sin espacios se pasan literalmente.
+
+**`ProcessResult`**: `RunAsync` devuelve `ProcessResult(Elapsed, ExitCode, Cancelled, Error)`. `IsSuccess` es `true` solo si `Error` es null, `Cancelled` es false y `ExitCode == 0`. `UserDocumentSearch` no usa este valor de retorno — los resultados llegan vía el callback `onLine`.
+
+## Tests
+
+`FakePlatformProvider` emite todos los `FileResult` que se le pasan al constructor ignorando la query y las carpetas de búsqueda. Esto permite que los tests de `UserDocumentSearch` verifiquen exclusivamente la lógica de scoring y filtrado client-side, sin depender del comportamiento del OS.

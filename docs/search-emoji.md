@@ -4,7 +4,7 @@
 
 ## Datos de origen
 
-La fuente de datos es [iamcal/emoji-data](https://github.com/iamcal/emoji-data), un JSON de ~1.25 MB con más de 1600 entradas. El fichero `Resources/emoji-data.json` se descarga en tiempo de compilación si no existe (target `DownloadEmojiData` en el `.csproj`) y se embute en el ensamblado como `EmbeddedResource`. Para actualizar a una versión más reciente, basta con eliminar `Resources/emoji-data.json` y recompilar. No hay descarga en runtime. De los muchos campos del JSON original, solo se conservan los necesarios para mostrar y buscar emojis usando la representación nativa del SO (no sprites PNG). Ver `EmojiDataLoader.ParseRawJson` para los campos exactos que se extraen.
+La fuente de datos es [iamcal/emoji-data](https://github.com/iamcal/emoji-data), un JSON de ~1.25 MB con más de 1600 entradas. El fichero `Search/Emoji/emoji-data.json` se descarga en tiempo de compilación si no existe (target `DownloadEmojiData` en el `.csproj`) y se embute en el ensamblado como `EmbeddedResource`. Para actualizar a una versión más reciente, basta con eliminar `Search/Emoji/emoji-data.json` y recompilar. No hay descarga en runtime. De los muchos campos del JSON original, solo se conservan los necesarios para mostrar y buscar emojis usando la representación nativa del SO (no sprites PNG). Ver `EmojiDataLoader.ParseRawJson` para los campos exactos que se extraen.
 
 ## EmojiDataLoader
 
@@ -38,7 +38,8 @@ El `emoji-cache.json` embebido se genera en desarrollo y se incluye en el repo; 
 
 Por cada entrada del JSON:
 - Se descarta si `obsoleted_by` no es null (emojis reemplazados por versiones gendered o más recientes).
-- El campo `unified` (hexadecimales separados por `-`) se convierte a carácter usando `char.ConvertFromUtf32` por cada segmento.
+- Se descarta si el campo `unified` está ausente o es una cadena vacía.
+- El campo `unified` (hexadecimales separados por `-`) se convierte a carácter usando `char.ConvertFromUtf32` por cada segmento. Si la conversión lanza una excepción (codepoint malformado), la entrada se descarta silenciosamente en lugar de propagar el error.
 - El `name` (en mayúsculas en el JSON) se normaliza a minúsculas.
 - Los `short_names` (identifiers tipo `:thumbsup:`) y los `texts` (ASCII como `:D`) se combinan en un único array `Keywords`.
 
@@ -46,11 +47,11 @@ Por cada entrada del JSON:
 
 ### EmojiCellViewModel
 
-Representa una celda individual: `Char` (el carácter emoji), `Name`, `Category`, `Keywords` e `IsSelected` (con INPC manual). Expone además `KeywordsText`, una propiedad calculada que une `Keywords` con `", "` para su uso directo en bindings. El template AXAML aplica la clase CSS `emoji-selected` al `Border` cuando `IsSelected` es true.
+Representa una celda individual: `Char` (el carácter emoji), `Name`, `Category`, `Keywords` e `IsSelected` (con INPC manual). Expone además `KeywordsText`, una propiedad calculada que une `Keywords` con `", "` para su uso directo en bindings; devuelve `""` si `Keywords` está vacío. El template AXAML aplica la clase CSS `emoji-selected` al `Border` cuando `IsSelected` es true. `EmojiCellViewModel` no hereda de `ObservableObject` — implementa `INotifyPropertyChanged` manualmente.
 
 ### EmojiGridResultViewModel
 
-Hereda de `ResultItemViewModel`. Contiene la lista de `EmojiCellViewModel` (propiedad `Cells`) y gestiona el índice seleccionado (`SelectedEmojiIndex`). Al cambiar el índice, actualiza `IsSelected` en las celdas afectadas y notifica `SelectedEmoji` (la celda activa). Expone `SelectNext()` y `SelectPrevious()` con wrap circular.
+Hereda de `ResultItemViewModel`. Contiene la lista de `EmojiCellViewModel` (propiedad `Cells`) y gestiona el índice seleccionado (`SelectedEmojiIndex`). Al cambiar el índice, actualiza `IsSelected` en las celdas afectadas y notifica `SelectedEmoji` (la celda activa). El setter de `SelectedEmojiIndex` incluye una guarda `Cells.Count > 0` que evita `IndexOutOfRange` si el grid está vacío. Expone `SelectNext()` y `SelectPrevious()` con wrap circular. Tampoco hereda de `ObservableObject` — implementa `INotifyPropertyChanged` manualmente, disparando cambios para `SelectedEmojiIndex` y `SelectedEmoji`.
 
 El `Icon` y el `Title` del `EmojiGridResultViewModel` se inicializan con el `Char` y el `Name` de la primera celda del grid; `Category` se fija siempre a `"Emoji"` y `Score` a `3.5`.
 
@@ -73,8 +74,8 @@ Implementa `IInstantSearchSource` — sus resultados van por la pipeline instant
 
 `Search` devuelve siempre una lista de un único elemento: un `EmojiGridResultViewModel` construido por `MakeGrid`.
 
-- Al escribir solo `:` (sin término): grid con los 20 emojis de menor `sort_order` positivo (se excluyen los que tienen `sort_order == 0`) según el orden Unicode CLDR.
-- Al escribir `:smile` (o cualquier término): grid con todos los emojis que coincidan, ordenados por score descendente, hasta el límite de la query. El término se extrae con `query[1..].Trim().ToLowerInvariant()`, por lo que espacios tras los dos puntos (`: smile`) se ignoran. `EmojiSearch.MatchScore` prioriza nombre exacto > nombre con `NameMatcher.Score` (usando `NameTokens` pre-computados) > keyword con `NameMatcher.Score`. El rango de scores garantiza que cualquier match por nombre supera a cualquier match por keyword. Para el matching de keywords se usa la sobrecarga `NameMatcher.Score(string, string)`, que aplica la misma cadena de tiers (prefix, camelHump, initials, multi-word abbreviation, internal substring ≥3 chars) que el matching de nombre.
+- Al escribir solo `:` (sin término): grid con los 20 emojis de menor `sort_order` positivo (se excluyen los que tienen `sort_order == 0`) según el orden Unicode CLDR. Este límite de 20 está hardcodeado en `GetDefaultEmojis` y no depende del parámetro `limit` que recibe `Search`.
+- Al escribir `:smile` (o cualquier término): grid con todos los emojis que coincidan, ordenados por score descendente, hasta el límite de la query (parámetro `limit` que pasa `GlobalSearch`). El término se extrae con `query[1..].Trim().ToLowerInvariant()`, por lo que espacios tras los dos puntos (`: smile`) se ignoran. `EmojiSearch.MatchScore` prioriza nombre exacto > nombre con `NameMatcher.Score` (usando `NameTokens` pre-computados) > keyword con `NameMatcher.Score`. El rango de scores garantiza que cualquier match por nombre supera a cualquier match por keyword. Para el matching de keywords se usa la sobrecarga `NameMatcher.Score(string, string)`, que aplica la misma cadena de tiers (prefix, camelHump, initials, multi-word abbreviation, internal substring ≥3 chars) que el matching de nombre.
 
 Si la caché no está lista o la carga falló, se devuelve lista vacía (sin error visible al usuario).
 

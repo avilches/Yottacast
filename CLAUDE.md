@@ -134,7 +134,7 @@ Diseño general y fuentes de busqueda:
 - `docs/search-sources.md`
 - `docs/search-calculator.md`
 - `docs/search-emoji.md`
-  `docs/search-scoring.md`
+- `docs/search-scoring.md`
 - `docs/search-files.md`
 
 Internals:
@@ -147,7 +147,8 @@ Settings
 - `docs/user-settings-browser.md`
 - `docs/user-settings-terminal.md`
 - `docs/ui-themes.md`
-- `docs/hotkeys.md`
+- `docs/ui-hotkeys.md`
+- `docs/ui-main-window.md`
 
 ## Gotchas (Avalonia / transversales)
 

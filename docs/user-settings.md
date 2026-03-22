@@ -55,7 +55,7 @@ El code-behind (`SettingsWindow.axaml.cs`) coordina dos handlers de puntero:
 
 `UserSettings.Load(platform, logger?)` carga el JSON (o crea defaults si no existe), y siempre llama `Save()` al final — el fichero se reescribe en cada arranque. `settings.Save()` puede llamarse manualmente; también se llama automáticamente al cambiar cada campo en SettingsWindow.
 
-`Load()` acepta un parámetro opcional `settingsPath` que sobreescribe la ruta por defecto; en tests se usa para apuntar a un fichero temporal sin tocar el fichero real del usuario. Ante cualquier excepción durante la carga (fichero no encontrado, JSON malformado, deserialización nula), registra un mensaje de nivel `LogInformation` (no warning) y crea los defaults de plataforma, sin propagar la excepción.
+`Load()` acepta un parámetro opcional `settingsPath` que sobreescribe la ruta por defecto; en tests se usa para apuntar a un fichero temporal sin tocar el fichero real del usuario. Ante cualquier excepción durante la carga (fichero no encontrado, JSON malformado), registra un mensaje de nivel `LogInformation` (no warning) y crea los defaults de plataforma, sin propagar la excepción. Si la deserialización devuelve `null`, también crea los defaults silenciosamente (sin log adicional, ya que la línea anterior habría logueado "Settings loaded from…").
 
 ### Condiciones de aplicación de defaults en Load()
 
@@ -93,7 +93,7 @@ Los defaults de plataforma se aplican de forma selectiva, no globalmente:
   - **Devuelve `null`** solo cuando ningún browser/terminal conocido está instalado en el sistema.
 - **`EnsureIntegrity()`** — accede a ambas propiedades, forzando la validación y el guardado si algo cambió. Llamar en puntos naturales (p.ej. al abrir Settings).
 
-`SettingsWindowViewModel` llama `settings.EnsureIntegrity()` en su constructor, antes de inicializar los pickers. `MainWindowViewModel` usa `settings.ActiveBrowser` directamente al construir el resultado de Google.
+`SettingsWindowViewModel` llama `settings.EnsureIntegrity()` en su constructor, después de construir las listas de opciones de los pickers (`Discover()`) pero antes de leer el valor seleccionado de `settings.Browser`/`settings.Terminal`. `MainWindowViewModel` usa `settings.ActiveBrowser` directamente al construir el resultado de Google.
 
 ### BrowserDiscovery y TerminalDiscovery: dos estrategias de resolución
 
@@ -101,7 +101,7 @@ Ambas clases exponen dos métodos de resolución con propósitos distintos:
 
 - **`Discover()`** — para poblar los pickers de la UI: consulta primero el caché de `ApplicationSearch` (en memoria), y si no encuentra el nombre, cae en `BrowserFallbackPaths` / `TerminalFallbackPaths` del `PlatformProvider` buscando el primer path existente en disco. Requiere que `ApplicationSearch` esté inicializado.
 - **`Resolve(string, PlatformProvider)`** — estático, para auto-reparación: llama a `platform.GetBrowserPaths(name)` y comprueba existencia en disco con `File.Exists` / `Directory.Exists`. No depende del caché de apps, por lo que es seguro llamarlo en cualquier momento del ciclo de vida.
-- **`GetCandidatePaths()`** — variante de `Discover()` que devuelve tuplas `(name, path)` incluyendo apps que solo tienen ruta primaria del platform provider aunque no existan en el caché; usada para pickers en Settings cuando el caché podría no estar completo.
+- **`GetCandidatePaths()`** — variante de `Discover()` que devuelve tuplas `(name, path)` incluyendo apps que solo tienen ruta primaria del platform provider aunque no existan en el caché; usada desde el CLI.
 
 La diferencia clave es que `Resolve` es el único safe para ser llamado antes de que `ApplicationSearch` haya terminado su escaneo.
 
@@ -124,6 +124,32 @@ Las listas `SearchFolders` y `AppDirectories` en el ViewModel son `ObservableCol
 ## Serialización interna
 
 `UserSettings` usa un record privado `UserSettingsData` como DTO de serialización/deserialización JSON. Este DTO nunca se expone fuera de la clase; actúa como buffer entre el JSON en disco y la clase de dominio. Los nombres de campo JSON usan `camelCase` (p. ej. `"searchFolders"`, `"enableCalculator"`) definidos mediante `[JsonPropertyName]`. El JSON se escribe con `WriteIndented = true`.
+
+## Ciclo de vida en DI
+
+`UserSettings` se registra como **singleton** en el contenedor DI de `App`. La carga ocurre en el momento de construcción del contenedor (`BuildServices`), antes de que se muestre cualquier ventana. Una vez cargado, la instancia vive durante toda la vida de la aplicación; no hay recarga desde disco salvo que se destruya el contenedor.
+
+`SettingsWindowViewModel`, en cambio, se registra como **transient**. Cada vez que se abre la ventana de Settings se crea una nueva instancia, lo que implica que el estado de la UI (sección activa, scroll position, etc.) se reinicia a `SettingsSection.General` en cada apertura.
+
+## Apertura de la ventana de Settings
+
+`App.OpenSettings()` espera `await appSearch.WhenReady()` antes de construir el `SettingsWindowViewModel`. Esto garantiza que `BrowserDiscovery.Discover()` / `TerminalDiscovery.Discover()` encuentren el caché de `ApplicationSearch` ya poblado cuando el usuario abre Settings. Si Settings se abre antes de que `ApplicationSearch` haya terminado su escaneo, la llamada bloquea hasta que esté listo. Si la ventana ya está visible y activa, se activa sin recrearla.
+
+## Default de Hotkey en Load()
+
+El campo `Hotkey` en `UserSettingsData` tiene default `"Alt+Space"`. Adicionalmente, `Load()` normaliza el valor: si `data.Hotkey` es null o vacío después de deserializar, sustituye por `"Alt+Space"`. Este comportamiento es paralelo al de `Theme`: ambos campos tienen un default de último recurso en `Load()` independiente del default del DTO.
+
+## Logging de Save()
+
+`Save()` registra `LogDebug` cuando el guardado tiene éxito (`"Settings saved to {Path}"`). Ante cualquier excepción registra `LogWarning`. Los mensajes de auto-reparación de browser/terminal en `ActiveBrowser`/`ActiveTerminal` se emiten a nivel `LogInformation`.
+
+## UserSettings.Load() — constructor privado
+
+El constructor de `UserSettings` es privado. La única vía de creación es `UserSettings.Load(...)`. Esto garantiza que toda instancia ha pasado por la lógica de carga y de `Save()` inicial.
+
+## TerminalDiscovery.Discover() — filtro de wildcards
+
+`TerminalDiscovery.Discover()` filtra las rutas del `TerminalFallbackPaths` que contienen `*`, ya que algunas rutas de terminal en la plataforma son patrones glob (p.ej. rutas con versiones). `BrowserDiscovery.Discover()` no tiene esta restricción.
 
 ## Gotchas
 

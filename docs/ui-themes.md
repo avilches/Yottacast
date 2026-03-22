@@ -25,3 +25,13 @@ Available themes are the JSON files in `Yottacast/Themes/` (excluding `settings.
 **Gotcha — Colores mal formados ignorados silenciosamente**: `SetBrush()` usa `Color.TryParse`. Si el valor del color en el JSON no es un color válido, el brush no se asigna y el token conserva su valor anterior sin ningún error o aviso.
 
 **Gotcha — Temas cargados síncronamente en SettingsWindow**: `SettingsWindowViewModel` llama `AvailableThemes()` en su constructor, que enumera los JSON de `Themes/` ordenados alfabéticamente por nombre de fichero y excluye `settings.json`. Si ninguno carga, añade `"dark-default"` como fallback.
+
+**Resolución de la carpeta de temas**: `ThemesFolder` se resuelve como `Path.Combine(AppContext.BaseDirectory, "Themes")`, relativo al directorio del ejecutable, no al directorio de trabajo actual.
+
+**`Apply()` con `Application.Current` nulo**: si `Application.Current` es null en el momento de aplicar un tema (p.ej. en tests o inicio muy temprano), `Apply()` llama directamente `ApplyBuiltinDefault()` sin registrar error.
+
+**Tokens numéricos ignorados silenciosamente**: `SetDouble()` y `SetCornerRadius()` aplican el mismo patrón que `SetBrush()` — si el nodo JSON es null, el token se omite sin aviso y conserva su valor anterior. Esto afecta a todos los tokens de `fonts` y `layout`.
+
+**Detección del modo oscuro del sistema**: `PlatformProvider.DefaultTheme()` llama a `IsSystemDarkMode()` (abstracto, implementado por cada plataforma) y devuelve `"dark-default"` si es dark o null, y `"light-gray"` si es light. Este valor se usa en `UserSettings.Load()` cuando el fichero de settings no existe o cuando el campo `theme` está vacío, garantizando que el primer arranque se adapta al modo del sistema.
+
+**Selección inicial del tema en el picker de Settings**: el constructor de `SettingsWindowViewModel` inicializa `_selectedTheme` buscando en `Themes` el tema cuyo `Id` coincide con `settings.Theme`; si no hay coincidencia, usa el primero de la lista. La asignación se hace directamente al campo (no a la propiedad) para no disparar `OnSelectedThemeChanged` durante la inicialización.

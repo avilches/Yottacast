@@ -10,6 +10,8 @@ Algunos assets pesados se gestionan fuera del control de versiones y se incorpor
 | `Search/Emoji/emoji-data.json` | Descarga desde iamcal/emoji-data en build | Borrar el fichero y recompilar |
 | `Search/Emoji/emoji-cache.json` | Copiado desde AppData en build (ver abajo) | Borrar el fichero y seguir el flujo de emoji |
 
+La URL de descarga de `math.min.js` tiene la versión de math.js **fijada en el target del `.csproj`**. Borrar el fichero y recompilar descargará esa misma versión fijada; para actualizar a una versión nueva de math.js hay que editar la URL del target `DownloadMathJs` antes de recompilar.
+
 ## Ciclo de vida del emoji cache
 
 `emoji-cache.json` es una representación compacta de `emoji-data.json` (~100-150 KB vs ~1.25 MB) que permite un arranque instantáneo sin parsear el JSON raw. Se genera en runtime y se promueve al ensamblado mediante el flujo siguiente:
@@ -48,6 +50,8 @@ La escritura del caché en disco es atómica: primero se escribe a `emoji-cache.
 
 Durante el parseo del JSON raw, los emojis con el campo `obsoleted_by` relleno se descartan silenciosamente (se omiten versiones obsoletas/generizadas).
 
+El formato del caché compacto es un array JSON de arrays, donde cada entrada tiene la forma `[char, name, [keywords], category, sortOrder]`. Los métodos `ParseRawJson` y `ParseCompactCache` de `EmojiDataLoader` son `internal` y están expuestos a `Yottacast.Core.Tests` mediante `InternalsVisibleTo` en el `.csproj`, lo que permite testear directamente ambos parsers.
+
 ### Regenerar el cache de emojis
 
 Si se actualiza `emoji-data.json` (borrándolo para que el target lo descargue de nuevo):
@@ -60,6 +64,8 @@ Si se actualiza `emoji-data.json` (borrándolo para que el target lo descargue d
 ## Versiones y actualizaciones
 
 ### Qué ocurre al arrancar
+
+`UserSettings.Load` siempre llama a `Save()` al final de la carga, independientemente de si el fichero existía o fue creado de cero. Esto normaliza el JSON en disco (añade campos nuevos con sus defaults si faltaban) antes de que `RunMigrations` se ejecute.
 
 Al iniciar la app, `App.RunMigrations()` compara `UserSettings.LastLaunchedVersion` con
 `UpdateChecker.CurrentVersion` (leído del ensamblado en runtime vía
@@ -106,7 +112,7 @@ no se muestra nada.
 ### Checker de actualizaciones
 
 `UpdateChecker` (ver `Yottacast.Core/Services/UpdateChecker.cs`) llama una vez al arranque al
-endpoint definido en `UpdateApiUrl`. Respuesta esperada: `{ "version": "1.2.0" }`. El endpoint
+endpoint definido en la constante privada `UpdateApiUrl`. Respuesta esperada: `{ "version": "1.2.0" }`. El endpoint
 es un placeholder; reemplazarlo con la URL real cuando esté disponible.
 
 `UpdateChecker` expone tres propiedades: `CurrentVersion` (versión del ensamblado en ejecución),
@@ -114,10 +120,6 @@ es un placeholder; reemplazarlo con la URL real cuando esté disponible.
 `UpdateAvailable` (booleano derivado de la comparación). `HttpClient` se crea internamente con
 timeout de 10 s; no se reutiliza ni se inyecta desde fuera.
 
-### Banner de actualización
-
-Cuando `UpdateChecker.UpdateAvailable` es `true`, `MainWindowViewModel` activa `UpdateAvailable`
-y rellena `UpdateBannerText` con `"Yottacast {LatestVersion} available — click to download"`,
-lo que muestra una franja clicable al pie de la ventana principal.
-El comando `UpdateBannerClickCommand` es un placeholder — conectarlo a la URL de descarga en el
-siguiente plan.
+Cuando `UpdateAvailable` es `true`, `MainWindowViewModel` muestra un banner con el texto
+`"Yottacast {v} available — click to download"` y expone el comando `UpdateBannerClick`.
+El comando es actualmente un placeholder sin acción: la conexión a la URL de descarga está pendiente.

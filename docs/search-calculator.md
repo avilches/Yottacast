@@ -16,7 +16,7 @@ Implementado como `IInstantSearchSource`: `CalculatorSearch`. Maneja tanto expre
 
 **Formateo de resultados**: los resultados se formatean con `math.format(r, { precision: 10 })` — 10 dígitos significativos — para evitar ruido de coma flotante como `22.046226218487758`.
 
-**Double-checked null guard**: `Evaluate()` comprueba `_engine == null` antes de adquirir el lock y de nuevo dentro de él. Esto garantiza un fast-path sin contención una vez inicializado, y corrección ante una hipotética carrera con `Dispose()`.
+**Double-checked null guard**: `Evaluate()` comprueba `_engine == null` antes de adquirir el lock y de nuevo dentro de él. La comprobación exterior garantiza un fast-path sin contención cuando el engine todavía no está listo; la interior garantiza corrección ante una hipotética carrera con `Dispose()`.
 
 **`Evaluate()` devuelve `null` si el resultado es whitespace**: además de capturar excepciones, descarta resultados vacíos (`string.IsNullOrWhiteSpace`) antes de devolverlos.
 
@@ -25,6 +25,12 @@ Implementado como `IInstantSearchSource`: `CalculatorSearch`. Maneja tanto expre
 **math.js descargado en build**: el `.csproj` de Core incluye un target `DownloadMathJs` que ejecuta `curl` si el fichero no existe. El fichero se excluye del repositorio (`.gitignore`). El primer `dotnet build` lo descarga automáticamente.
 
 **Gotcha — versión de math.js incompatible con Jint**: versiones recientes de math.js lanzan "Assignment to constant variable" dentro de Jint 3.x al ejecutar `math.evaluate`. La versión de math.js embebida está fijada; ver el target `DownloadMathJs` del `.csproj`. Si se actualiza Jint a una versión con soporte ES2022+, se puede probar una versión más reciente de math.js.
+
+**Gotcha — EmbeddedResource condicional**: el `<EmbeddedResource>` de `math.min.js` tiene `Condition="Exists(...)"`. Si `curl` falla en el build, la compilación termina correctamente pero el recurso no queda embebido. En ese caso la app lanza `InvalidOperationException` en runtime al intentar cargar el stream del recurso.
+
+**Dispose**: `MathJsEngine.Dispose()` llama `_initTask.Wait()` dentro de un try/catch para absorber fallos de inicialización, luego adquiere el lock, llama `_engine.Dispose()` y pone `_engine = null`. Esto garantiza que no haya evaluaciones en curso cuando se libera el engine.
+
+**La inicialización arranca en el momento de la resolución DI**: `MathJsEngine` está registrado como singleton y su constructor lanza `Task.Run(Initialize)` inmediatamente. Esto significa que el background thread de inicialización empieza cuando el contenedor construye el singleton — antes de que `GlobalSearch.Start()` lo solicite explícitamente — lo que amplía el tiempo disponible para el warmup.
 
 ## CalculatorSearch
 
@@ -51,6 +57,10 @@ Implementado como `IInstantSearchSource`: `CalculatorSearch`. Maneja tanto expre
 **Activación**: al activar un resultado de calculadora/conversor se copia el resultado al portapapeles (`OnActivate = () => clipboard.CopyText(result)`).
 
 **Limitación de monedas**: las conversiones de divisa (`100 usd to eur`) no están soportadas — math.js no incluye tasas de cambio FX. La query es descartada porque `Evaluate()` devuelve la query original o un error.
+
+**El parámetro `limit` se ignora**: `CalculatorSearch.Search()` acepta `limit` por contrato de `IInstantSearchSource` pero nunca lo usa. La fuente devuelve como máximo un elemento, por lo que el límite nunca aplica en la práctica.
+
+**Tests**: los tests están repartidos en dos clases xUnit — `CalculatorSearchTests` (aritmética y funciones) y `UnitConverterSearchTests` (conversiones de unidades). Ambas usan la fixture compartida `MathJsEngineFixture` (colección `"MathJs"`) para inicializar el engine una sola vez: cargar y ejecutar ~700 KB de JS por cada clase de test sería demasiado lento.
 
 ## ClipboardService
 
