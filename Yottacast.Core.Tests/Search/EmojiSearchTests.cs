@@ -13,7 +13,7 @@ public class EmojiSearchTests {
         var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(dir);
         await File.WriteAllTextAsync(Path.Combine(dir, "emoji-cache.json"), compactJson);
-        var search = new EmojiSearch(new ClipboardService(), dir, new EmojiDataLoader(NullLogger<EmojiDataLoader>.Instance), NullLogger<EmojiSearch>.Instance);
+        var search = new EmojiSearch(new ClipboardService(NullLogger<ClipboardService>.Instance), dir, new EmojiDataLoader(NullLogger<EmojiDataLoader>.Instance), NullLogger<EmojiSearch>.Instance);
         search.Start();
         await search.WhenReady();
         return search;
@@ -168,7 +168,7 @@ public class EmojiSearchTests {
     [Fact]
     public async Task OnActivate_CopiesCharToClipboard() {
         var json = """[["😀","grinning face",["grinning"],"Smileys & Emotion",1]]""";
-        var clipboard = new ClipboardService();
+        var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
         var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(dir);
         await File.WriteAllTextAsync(Path.Combine(dir, "emoji-cache.json"), json);
@@ -207,7 +207,7 @@ public class RealEmojiDataFixture : IAsyncLifetime, IDisposable {
         await loader.LoadAsync(_tempDir);
         // EmojiSearch then reads the cache on Start(), so data loads quickly.
         Search = new EmojiSearch(
-            new ClipboardService(), _tempDir, loader,
+            new ClipboardService(NullLogger<ClipboardService>.Instance), _tempDir, loader,
             NullLogger<EmojiSearch>.Instance);
         Search.Start();
         await Search.WhenReady();

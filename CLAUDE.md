@@ -129,19 +129,25 @@ cd Yottacast.Core.Tests && dotnet test
 
 Las docs están en `docs/`. Léelas antes de trabajar en cualquier área:
 
+Diseño general y fuentes de busqueda:
 - `docs/app-design.md`
 - `docs/search-sources.md`
-- `docs/user-settings.md`
-- `docs/calculator.md`
-- `docs/emoji.md`
+- `docs/search-calculator.md`
+- `docs/search-emoji.md`
+  `docs/search-scoring.md`
+- `docs/search-files.md`
+
+Internals:
 - `docs/release-workflow.md`
 - `docs/multi-platform.md`
+- `docs/logging.md`
+
+Settings
+- `docs/user-settings.md`
 - `docs/user-settings-browser.md`
 - `docs/user-settings-terminal.md`
-- `docs/search-scoring.md`
-- `docs/search-files.md`
-- `docs/ui-themes-keyboard.md`
-- `docs/logging.md`
+- `docs/ui-themes.md`
+- `docs/hotkeys.md`
 
 ## Gotchas (Avalonia / transversales)
 

@@ -86,7 +86,7 @@ Si la caché no está lista o la carga falló, se devuelve lista vacía (sin err
 - `OnLeft` llama a `grid.SelectPrevious()`; `OnRight` llama a `grid.SelectNext()`.
 - `OnUp` llama a `grid.SelectUp()`; `OnDown` llama a `grid.SelectDown()`. Ambos devuelven `bool`: `true` si se movió dentro del grid (consumiendo la tecla), `false` si no hay fila superior/inferior disponible (delegando la navegación de lista a la ventana).
 
-`PasteAfterActivate = true` indica a la UI que pegue automáticamente tras ocultar la ventana. El flujo completo en `MainWindow.axaml.cs` al pulsar Enter sobre el grid es: invocar `OnActivate` (copia al portapapeles) → limpiar `SearchText` → `Hide()` → `AppHandler.Instance.OnHide()` (restaura foco a la app anterior) → `AppHandler.Instance.SimulatePasteAsync()` (envía Cmd+V / Ctrl+V con delay). Ver `docs/calculator.md` para el funcionamiento de `ClipboardService`.
+`PasteAfterActivate = true` indica a la UI que pegue automáticamente tras ocultar la ventana. El flujo completo en `MainWindow.axaml.cs` al pulsar Enter sobre el grid es: invocar `OnActivate` (copia al portapapeles) → limpiar `SearchText` → `Hide()` → `AppHandler.Instance.OnHide()` (restaura foco a la app anterior) → `AppHandler.Instance.SimulatePasteAsync()` (envía Cmd+V / Ctrl+V con delay). Ver `docs/search-calculator.md` para el funcionamiento de `ClipboardService`.
 
 `OnLeft`/`OnRight`/`OnUp`/`OnDown` son propiedades de `ResultItemViewModel`. La ventana principal intercepta ←/→/↑/↓ en la fase túnel (`AddHandler(KeyDownEvent, ..., RoutingStrategies.Tunnel)`) y, si el item seleccionado tiene esas acciones, las invoca. Para ←/→ siempre marca el evento como handled; para ↑/↓, el evento queda handled solo si el callback devuelve `true`. Ver `MainWindow.axaml.cs`.
 
