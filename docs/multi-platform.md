@@ -1,4 +1,4 @@
-# PlatformProvider / StandardCommandRunner / SharpHook
+# PlatformProvider / ProcessRunner / SharpHook
 
 ## PlatformProvider
 
@@ -75,9 +75,9 @@ Flujo interno:
 
 `kCFTypeArrayCallBacks` es una variable global exportada de CoreFoundation; se resuelve una vez en el constructor estático vía `NativeLibrary.Load` + `NativeLibrary.GetExport`.
 
-## StandardCommandRunner
+## ProcessRunner
 
-Único runner: `StandardCommandRunner.RunAsync(binary, string[] args, string? cwd, onLine, ct)`.
+Único runner: `ProcessRunner.RunAsync(binary, string[] args, string? cwd, onLine, ct)`.
 
 `args` es un array `string[]`; el runner los ensambla en una sola cadena pasada al proceso. Los argumentos que contienen espacios se entrecomillan automáticamente (dobles comillas; las comillas dobles internas se escapan con `\"`). Esto lo hace el método privado `QuoteArg`. `cwd` es nullable: si es `null` se usa `Environment.CurrentDirectory`.
 

@@ -32,17 +32,7 @@ Ver `Search/Application/NameMatcher.cs` y `NameMatcherTests.cs` para los valores
 
 ## Scoring de UserDocumentSearch
 
-`UserDocumentSearch` aplica scoring client-side sobre el nombre del fichero devuelto por el OS. Ver `Search/UserDocuments/UserDocumentSearch.cs` para los valores exactos.
-
-Para **queries con wildcard** (`*`), todos los resultados reciben un score base.
-
-Para **queries sin wildcard**, distingue dos modos:
-
-**Query de un token** (ej. `"report"`): el score varía según si el nombre es exactamente el query, empieza por él, termina en él, o simplemente lo contiene. `Stem = Path.GetFileNameWithoutExtension(name)`, por lo que `"report"` puntúa igual contra `"report.pdf"` que contra el nombre completo `"report"`.
-
-**Query multi-token** (ej. `"xls calc mis"`): la plataforma pre-filtra con un predicado AND en Spotlight/Windows Search/locate, pero el callback `onResult` aplica un segundo filtro client-side: descarta cualquier resultado donde no todos los tokens estén contenidos en el nombre. El scoring de los resultados que pasan ese filtro depende de si todos los tokens son prefijo de algún segmento del nombre (split por espacios, guiones, puntos) o solo aparecen como substring.
-
-Ejemplo: `"xls calc mis"` → `"mis calculos.xls"`: segmentos `["mis","calculos","xls"]`; "mis"→"mis"✓, "calc"→"calculos"✓, "xls"→"xls"✓ → score prefijo.
+Ver `docs/search-files.md` §Scoring.
 
 ## Scores entre fuentes
 

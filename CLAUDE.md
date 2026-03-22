@@ -139,6 +139,7 @@ Las docs están en `docs/`. Léelas antes de trabajar en cualquier área:
 - `docs/user-settings-browser.md`
 - `docs/user-settings-terminal.md`
 - `docs/search-scoring.md`
+- `docs/search-files.md`
 - `docs/ui-themes-keyboard.md`
 - `docs/logging.md`
 
