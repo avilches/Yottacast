@@ -47,7 +47,9 @@ public sealed class ApplicationSearch(UserSettings settings, PlatformProvider pl
         foreach (var w in _watchers) w.Dispose();
         _watchers.Clear();
         _apps.Clear();
+        var oldTcs = _readyTcs;
         _readyTcs = new TaskCompletionSource();
+        oldTcs.TrySetCanceled();
         return Task.CompletedTask;
     }
 
