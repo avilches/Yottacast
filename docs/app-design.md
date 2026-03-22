@@ -74,53 +74,11 @@ El mapa `KeyNameToKeyCode` se construye una sola vez en tiempo de carga de clase
 
 ## Motor de búsqueda: GlobalSearch
 
-Clase: `Yottacast.Core.Search.GlobalSearch`
-
-Agrega dos grupos de fuentes recibidas por inyección: `IInstantSearchSource` (síncrono, caché en memoria) e `IDeferredSearchSource` (asíncrono, acceso a disco). Las búsquedas siguen dos fases separadas: `SearchInstant` (síncrono, devuelve `IReadOnlyList`) y `SearchDeferredAsync` (devuelve `IAsyncEnumerable<IReadOnlyList>`). Cada emisión de la fase deferred es un snapshot completo (los mejores N resultados hasta ese momento). Cada fuente "posee" un slot; cuando emite un nuevo snapshot, el slot se actualiza y GlobalSearch emite la unión ordenada de todos los slots.
-
-Internamente usa un `Channel.CreateUnbounded<(int, IReadOnlyList<...>)>()`. Cada fuente se lanza con `Task.Run(..., CancellationToken.None)` — se pasa `CancellationToken.None` (no el CT de búsqueda) para desacoplar el ciclo de vida de la tarea de la cancelación de la búsqueda. Las `OperationCanceledException` lanzadas por las fuentes individuales se capturan y se descartan. El channel se completa mediante `Task.WhenAll(tasks).ContinueWith(_ => channel.Writer.TryComplete(), ...)` una vez que todas las tareas de fuente han terminado.
-
-```
-IInstantSearchSource  (síncrono, Start()/WhenReady()/Stop()/Search())
-├── ApplicationSearch    ← apps instaladas (desde caché en memoria)
-├── CalculatorSearch     ← expresiones math y conversiones de unidades
-└── EmojiSearch          ← grid de emojis, filtrado por nombre/keyword
-
-IDeferredSearchSource  (asíncrono, Start()/WhenReady()/Stop()/SearchAsync() → IAsyncEnumerable)
-└── UserDocumentSearch   ← documentos (delega en FileSearch, streaming via Channel)
-```
-
-Para añadir una fuente instant: implementar `IInstantSearchSource` y registrar en `BuildServices` como `services.AddSingleton<IInstantSearchSource>(...)`.
-Para añadir una fuente deferred: implementar `IDeferredSearchSource` y registrar como `services.AddSingleton<IDeferredSearchSource>(...)`.
-
-**`SearchInstant` — agregación cross-source**: llama `Search(query, limit)` en cada fuente instant por separado, hace `SelectMany` de todos los resultados, los ordena por score descendente y aplica un único `Take(limit)`. El límite no se aplica por fuente en la agregación: cada fuente puede recibir hasta `limit` resultados, pero la mezcla final también queda acotada a `limit`.
+`GlobalSearch` agrega las fuentes registradas por DI en dos grupos: `IInstantSearchSource` (síncrono, caché en memoria) e `IDeferredSearchSource` (asíncrono, acceso a disco). Expone `SearchInstant` y `SearchDeferredAsync`. Ver `docs/search-sources.md` para el detalle del ciclo de vida, las interfaces y el mecanismo de merge por slots.
 
 ## Debounce (MainWindowViewModel)
 
-**Fast path — query vacía**: si `SearchText` es whitespace o vacía, `OnSearchTextChanged` limpia `Results`, pone `HasResults = false`, `ShowNoResults = false`, `IsSearching = false` y retorna inmediatamente sin invocar ninguna búsqueda.
-
-```
-OnSearchTextChanged → cancela CTS anterior, resetea _userNavigated
-  → si query vacía → limpia estado y retorna
-  → Phase 1 (instant, sin delay): construye _googleItem → RefreshResults() → SearchInstant síncrono → actualiza _instantSnapshot → RefreshResults()
-  → si la query empieza por ':' → termina aquí (solo fuentes instant; no hay búsqueda deferred)
-  → espera debounce de 250ms
-  → crea _deferredCts (linked a CT principal)
-  → IsSearching = true
-  → Phase 2 (deferred): SearchDeferredAsync con _deferredCts.Token → cada snapshot actualiza _deferredSnapshot → RefreshResults()
-  → IsSearching = false (en finally)
-  → si completó sin cancelar y Results.Count == 0 → ShowNoResults = true
-```
-
-Nota sobre modo emoji (query empieza por `:`): la fase deferred se omite completamente. El comportamiento visual del ítem de Google en modo emoji está documentado en `ui-main-window.md`.
-
-Ambas fases usan `SearchSourceLimit` como límite (ver `MainWindowViewModel.SearchSourceLimit`, constante local fija a 10): cada fuente recibe ese valor como límite sugerido. `RefreshResults()` no aplica ese límite al resultado combinado final.
-
-El `_deferredCts` es un `CancellationTokenSource` enlazado al CT principal, creado justo antes de la fase deferred. Permite cancelar selectivamente solo la fase deferred (p.ej. al pulsar ESC con `CancelDeferredSearch()`) sin cancelar el flujo principal.
-
-`RefreshResults()` reconstruye `Results` fusionando `[googleItem] + _instantSnapshot + _deferredSnapshot`, ordenados por score descendente. Lógica de selección:
-- Si hay un resultado con Category "Calculator" o "Converter" y el usuario no ha navegado manualmente (`_userNavigated == false`), ese resultado queda seleccionado automáticamente.
-- En caso contrario: si el resultado previamente seleccionado sigue en la lista, se preserva; si no, se selecciona el primero.
+`OnSearchTextChanged` cancela la búsqueda anterior, ejecuta la fase instant inmediatamente (sin delay) y lanza la fase deferred tras un debounce de 250 ms. La query vacía limpia sin buscar; las queries que empiezan por `:` (modo emoji) omiten la fase deferred. Ver `docs/search-sources.md` para el detalle del flujo completo y la lógica de `RefreshResults()`.
 
 ## ResultItemViewModel — contrato de resultados
 
@@ -177,9 +135,4 @@ Los detalles de implementación por plataforma están en `docs/multi-platform.md
 
 ## Arquitectura snapshot-por-fuente
 
-`IDeferredSearchSource.SearchAsync` devuelve `IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>>`: cada yield es un snapshot completo (los mejores N ordenados), no un item individual. `IInstantSearchSource.Search` devuelve directamente `IReadOnlyList` de forma síncrona. Ambos permiten **reemplazar** en lugar de **acumular**:
-
-- `ApplicationSearch` → emite un único snapshot con todas las apps coincidentes
-- `UserDocumentSearch` → emite snapshots progresivos con throttling por tiempo (intervalo definido como constante local en `SearchAsync`) y uno final; las queries cortas se omiten (ver `UserDocumentSearch.SearchAsync`); tiene un timeout configurable (ver parámetro `timeoutMs` del constructor) — si el file search tarda más, se cancela y se emite igualmente el snapshot final con los resultados acumulados hasta ese momento
-- `GlobalSearch` → mantiene un array `snapshots[sourceIndex]`; cada nuevo snapshot reemplaza su slot y se emite la unión ordenada
-- `MainWindowViewModel` → mantiene `_instantSnapshot` y `_deferredSnapshot`; `RefreshResults()` los fusiona en cada actualización
+Tanto las fuentes instant como las deferred producen snapshots completos (los mejores N ordenados), no items individuales. `GlobalSearch` mantiene un slot por fuente deferred y emite la unión ordenada en cada actualización. Ver `docs/search-sources.md` para el detalle de interfaces y comportamiento por fuente.
