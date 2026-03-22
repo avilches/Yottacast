@@ -192,7 +192,7 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
         return [
             $"/Applications/{name}.app",
             $"$HOME/Applications/{name}.app",
-            "/System/Applications/Utilities/{name}.app",
+            $"/System/Applications/Utilities/{name}.app",
         ];
     }
 
