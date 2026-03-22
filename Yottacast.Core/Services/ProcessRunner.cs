@@ -1,9 +1,17 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 
-namespace Yottacast.Core.Process;
+namespace Yottacast.Core.Services;
 
-public sealed class StandardCommandRunner(ILogger<StandardCommandRunner> logger) {
+public record ProcessResult(
+    TimeSpan Elapsed,
+    int ExitCode,
+    bool Cancelled,
+    Exception? Error) {
+    public bool IsSuccess => Error is null && !Cancelled && ExitCode == 0;
+}
+
+public sealed class ProcessRunner(ILogger<ProcessRunner> logger) {
 
     public async Task<ProcessResult> RunAsync(
         string binary, string[] args, string? cwd,
@@ -21,7 +29,7 @@ public sealed class StandardCommandRunner(ILogger<StandardCommandRunner> logger)
             WorkingDirectory = cwd ?? Environment.CurrentDirectory,
         };
 
-        using var proc = System.Diagnostics.Process.Start(psi)
+        using var proc = Process.Start(psi)
                          ?? throw new InvalidOperationException($"Failed to start process: {binary}");
 
         try {

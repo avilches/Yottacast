@@ -15,7 +15,6 @@ using Serilog;
 using SharpHook;
 using SharpHook.Data;
 using Yottacast.Core.Platform;
-using Yottacast.Core.Process;
 using Yottacast.Core.Search;
 using Yottacast.Core.Search.Application;
 using Yottacast.Core.Search.Calculator;
@@ -129,13 +128,13 @@ public partial class App : Application {
         var services = new ServiceCollection();
         services.AddLogging(b => b.AddSerilog(serilogLogger, dispose: true));
 
-        services.AddSingleton<StandardCommandRunner>();
+        services.AddSingleton<ProcessRunner>();
         services.AddSingleton<PlatformProvider>(sp =>
             OperatingSystem.IsMacOS()
                 ? new MacOsPlatformProvider(sp.GetRequiredService<ILogger<MacOsPlatformProvider>>())
                 : OperatingSystem.IsWindows()
-                    ? new WindowsPlatformProvider(sp.GetRequiredService<StandardCommandRunner>(), sp.GetRequiredService<ILogger<WindowsPlatformProvider>>())
-                    : new LinuxPlatformProvider(sp.GetRequiredService<StandardCommandRunner>(), sp.GetRequiredService<ILogger<LinuxPlatformProvider>>()));
+                    ? new WindowsPlatformProvider(sp.GetRequiredService<ProcessRunner>(), sp.GetRequiredService<ILogger<WindowsPlatformProvider>>())
+                    : new LinuxPlatformProvider(sp.GetRequiredService<ProcessRunner>(), sp.GetRequiredService<ILogger<LinuxPlatformProvider>>()));
 
         services.AddSingleton(sp => UserSettings.Load(
             sp.GetRequiredService<PlatformProvider>(),

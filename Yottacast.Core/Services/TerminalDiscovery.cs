@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Yottacast.Core.Platform;
 using Yottacast.Core.Search;
 using Yottacast.Core.Search.Application;
@@ -6,7 +7,7 @@ namespace Yottacast.Core.Services;
 
 public record TerminalInfo(string Name, string ExecutablePath);
 
-public class TerminalDiscovery(ApplicationSearch appSearch, PlatformProvider platform) {
+public class TerminalDiscovery(ApplicationSearch appSearch, PlatformProvider platform, ILogger<TerminalDiscovery> logger) {
     /// <summary>
     /// Returns all known terminals from the application cache (installed ones first,
     /// then falls back to the primary search-path candidate for settings pickers).

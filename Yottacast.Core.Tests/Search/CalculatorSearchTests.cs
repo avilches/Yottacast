@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 using Yottacast.Core.Search;
 using Yottacast.Core.Search.Calculator;
@@ -9,7 +10,7 @@ namespace Yottacast.Core.Tests.Search;
 public class CalculatorSearchTests(MathJsEngineFixture fixture) {
 
     private CalculatorSearch BuildSearch(out ClipboardService clipboard) {
-        clipboard = new ClipboardService();
+        clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
         return new CalculatorSearch(fixture.Engine, clipboard);
     }
 

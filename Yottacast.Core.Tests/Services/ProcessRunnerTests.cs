@@ -1,12 +1,12 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
-using Yottacast.Core.Process;
+using Yottacast.Core.Services;
 
-namespace Yottacast.Core.Tests.Process;
+namespace Yottacast.Core.Tests.Services;
 
-public class StandardCommandRunnerTests {
+public class ProcessRunnerTests {
     private static readonly string Cwd = "/tmp";
-    private static readonly StandardCommandRunner Runner = new(new NullLogger<StandardCommandRunner>());
+    private static readonly ProcessRunner Runner = new(new NullLogger<ProcessRunner>());
 
     [Fact]
     public async Task SingleLine_Echo_ReturnsLine() {

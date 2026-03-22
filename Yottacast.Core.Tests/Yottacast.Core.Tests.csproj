@@ -22,4 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Yottacast.Core\Yottacast.Core.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Process\" />
+  </ItemGroup>
 </Project>

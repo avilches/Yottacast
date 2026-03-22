@@ -283,7 +283,7 @@ public class BrowserTerminalDiscoveryTests : IDisposable {
             browsers: new() { ["Safari"] = [safariPath] },
             terminals: new()
         );
-        var discovery = new BrowserDiscovery(appSearch, platform);
+        var discovery = new BrowserDiscovery(appSearch, platform, NullLogger<BrowserDiscovery>.Instance);
 
         var result = discovery.Discover();
 
@@ -302,7 +302,7 @@ public class BrowserTerminalDiscoveryTests : IDisposable {
             terminals: new(),
             browserFallbackPaths: new() { ["Chrome"] = [chromePath] }
         );
-        var discovery = new BrowserDiscovery(appSearch, platform);
+        var discovery = new BrowserDiscovery(appSearch, platform, NullLogger<BrowserDiscovery>.Instance);
 
         var result = discovery.Discover();
 
@@ -320,7 +320,7 @@ public class BrowserTerminalDiscoveryTests : IDisposable {
             terminals: new(),
             browserFallbackPaths: new() { ["Chrome"] = [NonExistentPath("chrome")] }
         );
-        var discovery = new BrowserDiscovery(appSearch, platform);
+        var discovery = new BrowserDiscovery(appSearch, platform, NullLogger<BrowserDiscovery>.Instance);
 
         var result = discovery.Discover();
 
@@ -344,7 +344,7 @@ public class BrowserTerminalDiscoveryTests : IDisposable {
                 ["Firefox"] = [NonExistentPath("firefox")],
             }
         );
-        var discovery = new BrowserDiscovery(appSearch, platform);
+        var discovery = new BrowserDiscovery(appSearch, platform, NullLogger<BrowserDiscovery>.Instance);
 
         var result = discovery.Discover();
 
@@ -363,7 +363,7 @@ public class BrowserTerminalDiscoveryTests : IDisposable {
             browsers: new(),
             terminals: new() { ["iTerm"] = [iTermPath] }
         );
-        var discovery = new TerminalDiscovery(appSearch, platform);
+        var discovery = new TerminalDiscovery(appSearch, platform, NullLogger<TerminalDiscovery>.Instance);
 
         var result = discovery.Discover();
 
@@ -383,7 +383,7 @@ public class BrowserTerminalDiscoveryTests : IDisposable {
             terminals: new() { ["MyTerminal"] = [] },
             terminalFallbackPaths: new() { ["MyTerminal"] = [terminalBinary] }
         );
-        var discovery = new TerminalDiscovery(appSearch, platform);
+        var discovery = new TerminalDiscovery(appSearch, platform, NullLogger<TerminalDiscovery>.Instance);
 
         var result = discovery.Discover();
 
@@ -401,7 +401,7 @@ public class BrowserTerminalDiscoveryTests : IDisposable {
             terminals: new() { ["Warp"] = [] },
             terminalFallbackPaths: new() { ["Warp"] = [NonExistentPath("Warp.app")] }
         );
-        var discovery = new TerminalDiscovery(appSearch, platform);
+        var discovery = new TerminalDiscovery(appSearch, platform, NullLogger<TerminalDiscovery>.Instance);
 
         var result = discovery.Discover();
 
@@ -418,7 +418,7 @@ public class BrowserTerminalDiscoveryTests : IDisposable {
             terminals: new() { ["Warp"] = [] },
             terminalFallbackPaths: new() { ["Warp"] = ["/Applications/Warp*.app"] }
         );
-        var discovery = new TerminalDiscovery(appSearch, platform);
+        var discovery = new TerminalDiscovery(appSearch, platform, NullLogger<TerminalDiscovery>.Instance);
 
         var result = discovery.Discover();
 
@@ -442,7 +442,7 @@ public class BrowserTerminalDiscoveryTests : IDisposable {
                 ["iTerm"]    = [NonExistentPath("iTerm.app")],
             }
         );
-        var discovery = new TerminalDiscovery(appSearch, platform);
+        var discovery = new TerminalDiscovery(appSearch, platform, NullLogger<TerminalDiscovery>.Instance);
 
         var result = discovery.Discover();
 
@@ -462,7 +462,7 @@ public class BrowserTerminalDiscoveryTests : IDisposable {
             browsers: new() { ["Safari"] = [alternativePath] },
             terminals: new()
         );
-        var discovery = new BrowserDiscovery(appSearch, platform);
+        var discovery = new BrowserDiscovery(appSearch, platform, NullLogger<BrowserDiscovery>.Instance);
 
         var candidates = discovery.GetCandidatePaths();
 
@@ -480,7 +480,7 @@ public class BrowserTerminalDiscoveryTests : IDisposable {
             browsers: new() { ["Chrome"] = [chromePath] },
             terminals: new()
         );
-        var discovery = new BrowserDiscovery(appSearch, platform);
+        var discovery = new BrowserDiscovery(appSearch, platform, NullLogger<BrowserDiscovery>.Instance);
 
         var candidates = discovery.GetCandidatePaths();
 
@@ -501,7 +501,7 @@ public class BrowserTerminalDiscoveryTests : IDisposable {
             },
             terminals: new()
         );
-        var discovery = new BrowserDiscovery(appSearch, platform);
+        var discovery = new BrowserDiscovery(appSearch, platform, NullLogger<BrowserDiscovery>.Instance);
 
         var candidates = discovery.GetCandidatePaths();
 

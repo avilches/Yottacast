@@ -1,12 +1,11 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
-using Yottacast.Core.Process;
 using Yottacast.Core.Search.UserDocuments;
 using Yottacast.Core.Services;
 
 namespace Yottacast.Core.Platform;
 
-public sealed class LinuxPlatformProvider(StandardCommandRunner runner, ILogger<LinuxPlatformProvider> logger) : PlatformProvider {
+public sealed class LinuxPlatformProvider(ProcessRunner runner, ILogger<LinuxPlatformProvider> logger) : PlatformProvider {
 
     // ── Dark mode ─────────────────────────────────────────────────────────────
 

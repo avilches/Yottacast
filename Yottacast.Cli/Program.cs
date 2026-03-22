@@ -2,8 +2,6 @@ using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.Extensions.Logging;
 using Yottacast.Core.Platform;
-using Yottacast.Core.Process;
-using Yottacast.Core.Search;
 using Yottacast.Core.Search.Application;
 using Yottacast.Core.Search.UserDocuments;
 using Yottacast.Core.Services;
@@ -18,7 +16,7 @@ internal static class Program {
 
     private static readonly ILoggerFactory LoggerFactory = new SerilogLoggerFactory(SerilogLogger);
 
-    private static readonly StandardCommandRunner Runner = new(LoggerFactory.CreateLogger<StandardCommandRunner>());
+    private static readonly ProcessRunner Runner = new(LoggerFactory.CreateLogger<ProcessRunner>());
 
     private static readonly PlatformProvider Platform =
         OperatingSystem.IsMacOS()
@@ -29,8 +27,8 @@ internal static class Program {
 
     private static readonly UserSettings Settings = UserSettings.Load(Platform, LoggerFactory.CreateLogger<UserSettings>());
     private static readonly ApplicationSearch AppSearch = new(Settings, Platform, LoggerFactory.CreateLogger<ApplicationSearch>());
-    private static readonly BrowserDiscovery Browsers = new(AppSearch, Platform);
-    private static readonly TerminalDiscovery Terminals = new(AppSearch, Platform);
+    private static readonly BrowserDiscovery Browsers = new(AppSearch, Platform, LoggerFactory.CreateLogger<BrowserDiscovery>());
+    private static readonly TerminalDiscovery Terminals = new(AppSearch, Platform, LoggerFactory.CreateLogger<TerminalDiscovery>());
     private static readonly FileSearch FileSearch = new(Platform);
 
     private static async Task Main(string[] args) {

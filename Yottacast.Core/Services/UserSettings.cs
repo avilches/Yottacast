@@ -7,10 +7,10 @@ namespace Yottacast.Core.Services;
 
 public class UserSettings {
     private readonly PlatformProvider _platform;
-    private readonly ILogger? _logger;
+    private readonly ILogger<UserSettings>? _logger;
     private readonly string _settingsPath;
 
-    private UserSettings(PlatformProvider platform, ILogger? logger = null, string? settingsPath = null) {
+    private UserSettings(PlatformProvider platform, ILogger<UserSettings>? logger = null, string? settingsPath = null) {
         _platform = platform;
         _logger = logger;
         _settingsPath = settingsPath ?? DefaultSettingsPath;
@@ -108,7 +108,7 @@ public class UserSettings {
         [JsonPropertyName("lastLaunchedVersion")] public string LastLaunchedVersion { get; init; } = "";
     }
 
-    public static UserSettings Load(PlatformProvider platform, ILogger? logger = null, string? settingsPath = null) {
+    public static UserSettings Load(PlatformProvider platform, ILogger<UserSettings>? logger = null, string? settingsPath = null) {
         var path = settingsPath ?? DefaultSettingsPath;
         UserSettings settings;
         try {
@@ -141,7 +141,7 @@ public class UserSettings {
         return settings;
     }
 
-    private static UserSettings CreateDefaultUserSettings(PlatformProvider platform, ILogger? logger, string? settingsPath = null) {
+    private static UserSettings CreateDefaultUserSettings(PlatformProvider platform, ILogger<UserSettings>? logger, string? settingsPath = null) {
         return new UserSettings(platform, logger, settingsPath) {
             Theme = platform.DefaultTheme(),
             SearchFolders = platform.DefaultSearchFolders(),
