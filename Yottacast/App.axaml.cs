@@ -146,6 +146,7 @@ public partial class App : Application {
         services.AddSingleton<TerminalDiscovery>();
         services.AddSingleton<FileSearch>();
         services.AddSingleton<ClipboardService>();
+        services.AddSingleton<ICurrencyRateProvider, StaticCurrencyRateProvider>();
         services.AddSingleton<MathJsEngine>();
         services.AddSingleton<CalculatorSearch>();
         services.AddSingleton<EmojiDataLoader>();

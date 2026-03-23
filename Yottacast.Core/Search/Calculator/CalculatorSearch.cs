@@ -20,21 +20,20 @@ public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard) :
     public Task WhenReady() => engine.WhenReady();
     public Task Stop() => Task.CompletedTask;
 
-    public IReadOnlyList<ResultItemViewModel> Search(string query, int limit) {
+    public IReadOnlyList<ResultItemViewModel> Search(string query, int _) {
         var q = query.Trim();
         var result = engine.Evaluate(q);
 
-        if (result == null || result == q)
+        if (!result.IsSuccess || result.Value == q)
             return [];
 
         var isConversion = UnitConvPattern.IsMatch(q);
-        var capturedResult = result;
-        var capturedQuery = q;
+        var capturedResult = result.Value;
 
         return [new ResultItemViewModel {
             Icon = isConversion ? "📐" : "🧮",
             Title = capturedResult,
-            Subtitle = capturedQuery,
+            Subtitle = q,
             Category = isConversion ? "Converter" : "Calculator",
             Score = 4,
             OnActivate = () => clipboard.CopyText(capturedResult),
