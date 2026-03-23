@@ -49,6 +49,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Search/Calculator/math.min.js" Condition="Exists('Search/Calculator/math.min.js')" />
+    <EmbeddedResource Include="Search/Calculator/mathjs-helpers.js" />
     <EmbeddedResource Include="Search/Emoji/emoji-cache.json" Condition="Exists('Search/Emoji/emoji-cache.json')" />
     <EmbeddedResource Include="Search/Emoji/emoji-data.json" Condition="Exists('Search/Emoji/emoji-data.json')" />
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">

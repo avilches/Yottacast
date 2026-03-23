@@ -7,7 +7,7 @@ namespace Yottacast.Core.Search.Calculator;
 /// Initialization runs on a background thread so the app startup is not blocked.
 /// Thread-safe: a lock guards the engine during evaluation.
 /// </summary>
-public sealed class MathJsEngine : IDisposable {
+public sealed class  MathJsEngine : IDisposable {
     private readonly Lock _lock = new();
     private readonly ICurrencyRateProvider _currencyRates;
     private Engine? _engine;
@@ -29,53 +29,8 @@ public sealed class MathJsEngine : IDisposable {
     private void Initialize() {
         var engine = new Engine(opts => opts.LimitRecursion(64));
         var asm = typeof(MathJsEngine).Assembly;
-        const string resourceName = "Yottacast.Core.Search.Calculator.math.min.js";
-        using var stream = asm.GetManifestResourceStream(resourceName)
-                           ?? throw new InvalidOperationException($"Embedded resource not found: {resourceName}.");
-        using var reader = new StreamReader(stream);
-        engine.Execute(reader.ReadToEnd());
-
-        // Register USD as base currency and define helpers
-        engine.Execute("""
-            math.createUnit('USD');
-
-            function registerCurrency(name, rateVsUSD) {
-                // rateVsUSD: units of 'name' per 1 USD (e.g. EUR=0.92 means 1 USD = 0.92 EUR)
-                math.createUnit(name, { definition: (1 / rateVsUSD) + ' USD' }, { override: true });
-            }
-
-            // Parses the expression into an AST, normalizes any known currency SymbolNodes to their
-            // canonical uppercase ISO form in-place, and returns [normalizedExpr, ...currencyCodes].
-            // knownCurrenciesCsv is a comma-separated list of uppercase ISO codes (e.g. "USD,EUR,GBP").
-            // defaultCurrency: if currencies are found but no 'to' conversion exists, appends "to <defaultCurrency>".
-            // Throws if the expression is syntactically invalid — the caller should treat that as no result.
-            function normalizeExpression(expression, knownCurrenciesCsv, defaultCurrency) {
-                var known = {};
-                knownCurrenciesCsv.split(',').forEach(function(c) { known[c] = true; });
-
-                var node = math.parse(expression);
-                var currencies = [];
-                var hasConversion = false;
-                node.traverse(function(n) {
-                    if (n.type === 'SymbolNode') {
-                        var upper = n.name.toUpperCase();
-                        if (known[upper]) {
-                            n.name = upper;
-                            if (currencies.indexOf(upper) < 0) currencies.push(upper);
-                        }
-                    }
-                    if (n.type === 'OperatorNode' && n.op === 'to') {
-                        hasConversion = true;
-                    }
-                });
-                var normalizedExpr = node.toString();
-                if (currencies.length > 0 && !hasConversion && defaultCurrency) {
-                    normalizedExpr = normalizedExpr + ' to ' + defaultCurrency;
-                    if (currencies.indexOf(defaultCurrency) < 0) currencies.push(defaultCurrency);
-                }
-                return [normalizedExpr].concat(currencies);
-            }
-            """);
+        engine.Execute(LoadResource("Yottacast.Core.Search.Calculator.math.min.js"));
+        engine.Execute(LoadResource("Yottacast.Core.Search.Calculator.mathjs-helpers.js"));
 
         engine.Evaluate("math.evaluate('1+1')"); // warmup: trigger JIT so first real call is instant
         lock (_lock) {
@@ -109,7 +64,8 @@ public sealed class MathJsEngine : IDisposable {
                     .ToList();
 
                 var exprToEval = items[0];
-                var currenciesInExpr = items.Skip(1).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                var isConversion = items[1] == "true";
+                var currenciesInExpr = items.Skip(2).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
                 // Register currencies whose rates are new or have changed.
                 foreach (var currency in currenciesInExpr) {
@@ -127,7 +83,7 @@ public sealed class MathJsEngine : IDisposable {
                 var result = _engine.Evaluate(js).ToString();
                 return string.IsNullOrWhiteSpace(result)
                     ? new EvaluationResult(null, null)
-                    : new EvaluationResult(result, null);
+                    : new EvaluationResult(result, null, isConversion);
             } catch (Exception ex) {
                 return new EvaluationResult(null, ex.Message);
             }
@@ -135,6 +91,13 @@ public sealed class MathJsEngine : IDisposable {
     }
 
     private static string Escape(string s) => s.Replace("\\", @"\\").Replace("'", "\\'");
+
+    private static string LoadResource(string name) {
+        using var stream = typeof(MathJsEngine).Assembly.GetManifestResourceStream(name)
+                           ?? throw new InvalidOperationException($"Embedded resource not found: {name}.");
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    }
 
     public void Dispose() {
         try {

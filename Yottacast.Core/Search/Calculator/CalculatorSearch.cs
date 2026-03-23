@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using Yottacast.Core.Services;
 using Yottacast.Core.ViewModels;
 
@@ -11,11 +10,6 @@ namespace Yottacast.Core.Search.Calculator;
 /// </summary>
 public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard) : IInstantSearchSource {
 
-    // NUMBER UNIT (to|in|en) UNIT — shown as converter instead of calculator
-    private static readonly Regex UnitConvPattern = new(
-        @"^\d+(?:[.,]\d+)?\s+[a-zA-Zμ°/²³]+\s+(?:to|in|en)\s+[a-zA-Zμ°/²³]",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase);
-
     public void Start() { }
     public Task WhenReady() => engine.WhenReady();
     public Task Stop() => Task.CompletedTask;
@@ -27,14 +21,13 @@ public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard) :
         if (!result.IsSuccess || result.Value == q)
             return [];
 
-        var isConversion = UnitConvPattern.IsMatch(q);
         var capturedResult = result.Value;
 
         return [new ResultItemViewModel {
-            Icon = isConversion ? "📐" : "🧮",
+            Icon = result.IsConversion ? "📐" : "🧮",
             Title = capturedResult,
             Subtitle = q,
-            Category = isConversion ? "Converter" : "Calculator",
+            Category = result.IsConversion ? "Converter" : "Calculator",
             Score = 4,
             OnActivate = () => clipboard.CopyText(capturedResult),
         }];
