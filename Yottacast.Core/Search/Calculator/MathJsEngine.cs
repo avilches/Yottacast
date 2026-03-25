@@ -55,19 +55,19 @@ public sealed class  MathJsEngine : IDisposable {
                 var cachedRates = _currencyRates.CachedRates;
                 var knownCsv = string.Join(",", cachedRates.Keys.Select(k => k.ToUpperInvariant()).Append("USD"));
 
-                // Parse in JS, normalize currency casing in the AST, append default currency target
-                // if currencies are found but no 'to' conversion exists, and return the expression + detected currencies.
+                // Parse in JS, normalize currency/unit/function casing in the AST, append default currency target
+                // if currencies are found but no 'to' conversion exists, and return { expr, hasConversion, currencies }.
                 // Throws on invalid syntax → caught below → EvaluationResult(null, error) → no result shown.
-                var items = _engine.Evaluate($"normalizeExpression('{Escape(expression)}', '{knownCsv}', '{DefaultCurrency}')")
-                    .AsArray()
+                var normalized = _engine.Evaluate($"normalizeExpression('{Escape(expression)}', '{knownCsv}', '{DefaultCurrency}')")
+                    .AsObject();
+
+                var exprToEval = normalized.Get("expr").AsString();
+                var isConversion = normalized.Get("hasConversion").AsBoolean();
+                var currenciesInExpr = normalized.Get("currencies").AsArray()
                     .Select(x => x.AsString())
-                    .ToList();
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-                var exprToEval = items[0];
-                var isConversion = items[1] == "true";
-                var currenciesInExpr = items.Skip(2).ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-                // Register currencies whose rates are new or have changed.
+                // Register currencies whose rates are new or have changed
                 foreach (var currency in currenciesInExpr) {
                     if (string.Equals(currency, "USD", StringComparison.OrdinalIgnoreCase)) continue;
                     if (!cachedRates.TryGetValue(currency, out var rate)) continue;
@@ -87,6 +87,17 @@ public sealed class  MathJsEngine : IDisposable {
             } catch (Exception ex) {
                 return new EvaluationResult(null, ex.Message);
             }
+        }
+    }
+
+    /// <summary>
+    /// Returns a pretty-printed JSON snapshot of the math.js unit registry and the derived
+    /// token map. Used by MathJsUnitSnapshotTests to detect changes when upgrading math.js.
+    /// </summary>
+    public string ExtractUnitSnapshot() {
+        lock (_lock) {
+            if (_engine == null) throw new InvalidOperationException("Engine not ready");
+            return _engine.Evaluate("JSON.stringify(extractUnitSnapshot(), null, 2)").ToString();
         }
     }
 

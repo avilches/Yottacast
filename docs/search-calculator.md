@@ -32,6 +32,52 @@ Implementado como `IInstantSearchSource`: `CalculatorSearch`. Maneja tanto expre
 
 **La inicialización arranca en el momento de la resolución DI**: `MathJsEngine` está registrado como singleton y su constructor lanza `Task.Run(Initialize)` inmediatamente. Esto significa que el background thread de inicialización empieza cuando el contenedor construye el singleton — antes de que `GlobalSearch.Start()` lo solicite explícitamente — lo que amplía el tiempo disponible para el warmup.
 
+## Normalización de mayúsculas/minúsculas en unidades
+
+math.js es case-sensitive: `kg` y `KG` son tokens distintos (el segundo es inválido). Para que el usuario pueda escribir `KG`, `Km` o `MILES` sin preocuparse por el case, `mathjs-helpers.js` construye un mapa de normalización en startup y lo aplica antes de evaluar.
+
+**`_unitTokenMap`**: se construye una sola vez al cargar el script, iterando `math.Unit.UNITS` y aplicando todos sus prefijos de `math.Unit.PREFIXES`. Para cada combinación `(prefijo + unidad)` se registra la forma canónica bajo su versión en minúsculas. El resultado es un mapa `lowercase → [canonicals]`.
+
+**Tokens unívocos vs ambiguos**:
+- Si un lowercase tiene un solo canónico → el token puede escribirse en cualquier capitalización; `_resolveUnitToken` lo normaliza automáticamente. Ejemplos: `kg`→`kg`, `KM`→`km`, `FAHRENHEIT`→`fahrenheit`.
+- Si un lowercase tiene varios canónicos → hay colisión de case real (ambigüedad). `_resolveUnitToken` solo acepta el token si ya es uno de los canónicos; de lo contrario devuelve `null` y el token se deja intacto (math.js lo rechazará si es incorrecto). Ejemplo: `mg` es ambiguo porque colisiona con `Mg` (mili-gramo vs mega-gramo); el usuario debe escribir el case exacto.
+
+Las ambigüedades surgen casi siempre de la colisión entre pares de prefijos que solo se diferencian en case (`M`/`m`, `P`/`p`, `Z`/`z`, `Y`/`y`) aplicados a unidades del grupo SHORT. Los casos más frecuentes en uso real son `mg`/`Mg`, `mm`/`Mm`, `ms`/`mS`/`Ms`, `ml` (4 formas canónicas), `mV`/`MV`, `mW`/`MW`, `s`/`S`, `t`/`T`, `h`/`H`, `b`/`B`.
+
+**`_unitOverrides`**: tabla de excepciones manuales que se aplica antes del mapa. Permite forzar un mapeo específico para un token concreto, independientemente del análisis automático. Definida en `mathjs-helpers.js`.
+
+**Normalización de funciones**: el mismo paso de traversal del AST normaliza los nombres de función usando `_mathFunctionNames` (mapa `lowercase → canonical` construido desde las propiedades de `math`). Así `SQRT(2)` se convierte en `sqrt(2)`.
+
+**`extractUnitSnapshot()` / `ExtractUnitSnapshot()`**: función JS que serializa el estado actual del registry — version de math.js, lista de unidades, grupos de prefijos, `_unitTokenMap` y lista de tokens ambiguos — como objeto JSON. `MathJsEngine.ExtractUnitSnapshot()` la invoca y devuelve el JSON formateado. Se usa exclusivamente por los tests de snapshot.
+
+## Snapshot de unidades y detección de cambios al actualizar math.js
+
+`Yottacast.Core.Tests/Search/mathjs-unit-snapshot.json` es un baseline comprometido en el repo que captura el estado del registry de math.js en un momento dado: versión, lista de unidades, grupos de prefijos, `tokenMap` y tokens ambiguos.
+
+El test `MathJsUnitSnapshotTests.UnitSnapshot_MatchesCommittedBaseline` (colección `"MathJsSnapshot"`) compara el snapshot del engine en runtime contra el fichero. Si coinciden, pasa. Si difieren, falla con un diff legible:
+
+```
+math.js unit data changed. Review and update snapshot:
+  MATHJS_UPDATE_SNAPSHOT=1 dotnet test --filter UnitSnapshot
+  Version: 11.12.0 → 11.13.0
+  New units (2): furlong, league
+  New ambiguous tokens (regression): mpa, pa
+```
+
+El diff muestra solo lo relevante: unidades añadidas/eliminadas y cambios en ambigüedades (regresiones o mejoras). El `tokenMap` completo queda en el fichero JSON para inspeccionarlo con `git diff`.
+
+**Fixture dedicada**: el test usa `MathJsSnapshotFixture` (colección propia `"MathJsSnapshot"`), que construye un engine con `EmptyCurrencyRateProvider`. Esto es necesario porque la fixture compartida `"MathJs"` tiene tests que llaman `registerCurrency`, lo que añadiría divisas como unidades al registry y contaminaría el snapshot.
+
+**Workflow al actualizar math.js**:
+1. Cambiar la URL de descarga en `Yottacast.Core.csproj` a la nueva versión
+2. Borrar `Search/Calculator/math.min.js` (se redescarga en el siguiente build)
+3. `dotnet build`
+4. `dotnet test --filter UnitSnapshot` — falla con el diff
+5. Revisar el diff; si los cambios son aceptables: `MATHJS_UPDATE_SNAPSHOT=1 dotnet test --filter UnitSnapshot`
+6. El fichero `mathjs-unit-snapshot.json` queda actualizado en el source tree listo para commitear
+
+**Consultar qué tokens son ambiguos**: la clave `ambiguous` del JSON contiene la lista completa. La clave `tokenMap` permite ver las formas canónicas de cada token.
+
 ## CalculatorSearch
 
 **Detección de expresiones**:

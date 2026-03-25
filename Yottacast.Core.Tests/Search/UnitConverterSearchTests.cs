@@ -31,6 +31,11 @@ public class UnitConverterSearchTests(MathJsEngineFixture fixture) {
         { "1 hour to seconds",           "3600 seconds",      "seconds" },
         { "1 day to hours",              "24 hours",          "hours"   },
         { "1 litre to ml",               "1000 ml",           "ml"      },
+        // Case-insensitive: operator TO and units in uppercase
+        { "10 km TO miles",              "6.213711922 miles", "miles"   },
+        { "10 KG to lbs",                "22.04622622 lbs",   "lbs"     },
+        { "100 FAHRENHEIT to celsius",   "37.77777778 celsius", "celsius" },
+        { "1 HOUR to seconds",           "3600 seconds",      "seconds" },
     };
 
     [Theory]

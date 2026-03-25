@@ -51,6 +51,13 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
         { "ceil(3.1)",  "4"   },
         { "round(2.6)", "3"   },
         { "log(e)",     "1"   },
+        // Case-insensitive function names
+        { "Sin(pi/2)",  "1"   },
+        { "SQRT(144)",  "12"  },
+        { "Cos(0)",     "1"   },
+        { "ABS(-42)",   "42"  },
+        { "FLOOR(3.9)", "3"   },
+        { "CEIL(3.1)",  "4"   },
     };
 
     [Theory]
@@ -114,6 +121,42 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
     [MemberData(nameof(CurrencyConversionCases))]
     public void Currency_Converts(string query, string expectedFragment) {
         Assert.Contains(expectedFragment, SearchResult(BuildSearch(out _), query).Title);
+    }
+
+    // ── Unit case-insensitivity ───────────────────────────────────────────────
+
+    public static TheoryData<string, string> UnitCaseCases => new() {
+        // NONE-prefix units — siempre seguros
+        { "5 MILES to km",             "8.04672 km"         },
+        { "10 INCH to cm",             "25.4 cm"            },
+        { "5 FOOT to m",               "1.524 m"            },
+        { "1 YARD to meter",           "0.9144 meter"       },
+        { "32 FAHRENHEIT to celsius",  "0 celsius"          },
+        { "100 CELSIUS to fahrenheit", "212 fahrenheit"     },
+        // SHORT-prefix units con combinaciones seguras
+        { "5 KG to lbs",               "11.02311311 lbs"    },
+        { "5 KM to miles",             "3.106855961 miles"  },
+        { "100 GRAM to kg",            "0.1 kg"             },
+        { "1 RADIAN to degree",        "57.29577951 degree" },
+        // Funciones + unidades mezcladas
+        { "SQRT(144) km to miles",     "7.456454307 miles"  },
+    };
+
+    [Theory, MemberData(nameof(UnitCaseCases))]
+    public void Units_CaseInsensitive(string query, string expectedFragment) {
+        Assert.Contains(expectedFragment, SearchResult(BuildSearch(out _), query).Title);
+    }
+
+    // Verificar que tokens ambiguos (M/m prefix) conservan su casing original
+    [Fact]
+    public void Units_AmbiguousPrefix_MilliVsMega_NotMutated() {
+        // "mg" = miligramo (m+g), "Mg" = megagramo (M+g)
+        var r1 = fixture.Engine.Evaluate("1 Mg to g");  // 1 megagramo = 1e6 g
+        var r2 = fixture.Engine.Evaluate("1 mg to g");  // 1 miligramo = 0.001 g
+        Assert.True(r1.IsSuccess, r1.Error);
+        Assert.True(r2.IsSuccess, r2.Error);
+        Assert.NotEqual(r1.Value, r2.Value);
+        Assert.Contains("1e+6", r1.Value!); // 1 Mg = 1,000,000 g (math.js formato científico)
     }
 
     // ── Non-currency units do NOT trigger auto-conversion ─────────────────────
