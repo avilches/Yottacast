@@ -94,54 +94,63 @@
             Background="{DynamicResource Theme.WindowBackground}">
         <DockPanel>
 
-            <!-- ── Search row ── -->
-            <Grid DockPanel.Dock="Top"
-                  ColumnDefinitions="Auto,*,Auto"
-                  Margin="18,0"
-                  Height="64">
+            <!-- ── Search row + hint ── -->
+            <StackPanel DockPanel.Dock="Top">
+                <Grid ColumnDefinitions="Auto,*,Auto"
+                      Margin="18,0"
+                      Height="64">
 
-                <!-- Magnifier icon -->
-                <PathIcon Grid.Column="0"
-                          Width="19" Height="19"
-                          Margin="0,0,12,0"
-                          Foreground="{DynamicResource Theme.Icon}"
-                          VerticalAlignment="Center"
-                          Data="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                    <!-- Magnifier icon -->
+                    <PathIcon Grid.Column="0"
+                              Width="19" Height="19"
+                              Margin="0,0,12,0"
+                              Foreground="{DynamicResource Theme.Icon}"
+                              VerticalAlignment="Center"
+                              Data="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
 
-                <!-- Search input -->
-                <TextBox Grid.Column="1"
-                         x:Name="SearchBox"
-                         Text="{Binding SearchText}"
-                         Watermark="Search for apps, files, commands…"
-                         FontSize="{DynamicResource Theme.FontSizeSearch}"
-                         FontWeight="Regular"
-                         VerticalAlignment="Center"
-                         VerticalContentAlignment="Center"
-                         Foreground="{DynamicResource Theme.SearchText}"
-                         CaretBrush="{DynamicResource Theme.SearchCaret}"
-                         SelectionBrush="{DynamicResource Theme.SearchSelection}"/>
+                    <!-- Search input -->
+                    <TextBox Grid.Column="1"
+                             x:Name="SearchBox"
+                             Text="{Binding SearchText}"
+                             Watermark="Search for apps, files, commands…"
+                             FontSize="{DynamicResource Theme.FontSizeSearch}"
+                             FontWeight="Regular"
+                             VerticalAlignment="Center"
+                             VerticalContentAlignment="Center"
+                             Foreground="{DynamicResource Theme.SearchText}"
+                             CaretBrush="{DynamicResource Theme.SearchCaret}"
+                             SelectionBrush="{DynamicResource Theme.SearchSelection}"/>
 
-                <!-- Right side: spinner while searching, ESC badge when idle and empty -->
-                <Panel Grid.Column="2" VerticalAlignment="Center">
+                    <!-- Right side: spinner while searching, ESC badge when idle and empty -->
+                    <Panel Grid.Column="2" VerticalAlignment="Center">
 
-                    <!-- ESC badge (visible only when text is empty and not searching) -->
-                    <Border Background="{DynamicResource Theme.EscBadgeBackground}"
-                            CornerRadius="{DynamicResource Theme.CornerRadiusEsc}"
-                            Padding="8,4"
-                            IsVisible="{Binding SearchText, Converter={x:Static StringConverters.IsNullOrEmpty}}">
-                        <TextBlock Text="ESC"
-                                   Foreground="{DynamicResource Theme.EscBadgeText}"
-                                   FontSize="{DynamicResource Theme.FontSizeSmall}"
-                                   FontWeight="Medium"/>
-                    </Border>
+                        <!-- ESC badge (visible only when text is empty and not searching) -->
+                        <Border Background="{DynamicResource Theme.EscBadgeBackground}"
+                                CornerRadius="{DynamicResource Theme.CornerRadiusEsc}"
+                                Padding="8,4"
+                                IsVisible="{Binding SearchText, Converter={x:Static StringConverters.IsNullOrEmpty}}">
+                            <TextBlock Text="ESC"
+                                       Foreground="{DynamicResource Theme.EscBadgeText}"
+                                       FontSize="{DynamicResource Theme.FontSizeSmall}"
+                                       FontWeight="Medium"/>
+                        </Border>
 
-                    <!-- Spinner (visible while deferred search is running) -->
-                    <Ellipse Classes="spinner"
-                             Width="16" Height="16"
-                             Fill="{DynamicResource Theme.Icon}"
-                             IsVisible="{Binding IsSearching}"/>
-                </Panel>
-            </Grid>
+                        <!-- Spinner (visible while deferred search is running) -->
+                        <Ellipse Classes="spinner"
+                                 Width="16" Height="16"
+                                 Fill="{DynamicResource Theme.Icon}"
+                                 IsVisible="{Binding IsSearching}"/>
+                    </Panel>
+                </Grid>
+
+                <!-- Error hint (shown below the input when calculator detects an actionable error) -->
+                <TextBlock Text="{Binding SearchHint}"
+                           Foreground="#FF3B30"
+                           FontSize="{DynamicResource Theme.FontSizeSmall}"
+                           Margin="49,0,18,8"
+                           TextTrimming="CharacterEllipsis"
+                           IsVisible="{Binding SearchHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+            </StackPanel>
 
             <!-- ── Divider ── -->
             <Rectangle DockPanel.Dock="Top"

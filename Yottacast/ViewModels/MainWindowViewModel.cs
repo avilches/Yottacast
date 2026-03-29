@@ -32,6 +32,7 @@ public partial class MainWindowViewModel(
 
     [ObservableProperty] private bool _updateAvailable;
     [ObservableProperty] private string _updateBannerText = "";
+    [ObservableProperty] private string? _searchHint;
 
     public ObservableCollection<ResultItemViewModel> Results { get; } = [];
 
@@ -80,6 +81,7 @@ public partial class MainWindowViewModel(
             Results.Clear();
             HasResults = false;
             ShowNoResults = false;
+            SearchHint = null;
             return;
         }
 
@@ -96,7 +98,9 @@ public partial class MainWindowViewModel(
 
         // Phase 1: instant sources (in-memory cache) — no delay
         if (ct.IsCancellationRequested) return;
-        _instantSnapshot = globalSearch.SearchInstant(query, limit: SearchSourceLimit);
+        var (instantItems, hint) = globalSearch.SearchInstant(query, limit: SearchSourceLimit);
+        _instantSnapshot = instantItems;
+        SearchHint = hint;
         RefreshResults();
 
         // Emoji mode: only instant sources, skip deferred search

@@ -1,6 +1,6 @@
 {
   "version": "11.12.0",
-  "unitCount": 251,
+  "unitCount": 250,
   "units": [
     "A",
     "B",
@@ -17,7 +17,6 @@
     "Pa",
     "S",
     "T",
-    "USD",
     "V",
     "VA",
     "VAR",
@@ -5859,9 +5858,6 @@
     "us": [
       "uS",
       "us"
-    ],
-    "usd": [
-      "USD"
     ],
     "ut": [
       "uT",

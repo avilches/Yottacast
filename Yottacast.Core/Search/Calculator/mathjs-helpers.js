@@ -5,46 +5,12 @@ function registerCurrency(name, rateVsUSD) {
     math.createUnit(name, { definition: (1 / rateVsUSD) + ' USD' }, { override: true });
 }
 
-// Map of lowercase function name → canonical math.js function name (built once at load time).
-var _mathFunctionNames = (function() {
-    var m = {};
-    Object.keys(math).forEach(function(k) {
-        if (typeof math[k] === 'function') m[k.toLowerCase()] = k;
-    });
-    return m;
-})();
-
-// ── Unit case-normalization map ───────────────────────────────────────────────
-// Built at startup from math.js's own UNITS + PREFIXES tables.
-// Maps each lowercase token form to ALL canonical math.js tokens with that lowercase.
-//
-// Safe to normalize (1 canonical form): "KG"→"kg", "RADIAN"→"radian", "MILES"→"miles",
-//   "FAHRENHEIT"→"fahrenheit", "KM"→"km", etc.
-//
-// Ambiguous (>1 canonical form — case is preserved):
-//   "mg"/"Mg" coexisten (milli-gram vs mega-gram). Lo mismo con cualquier combinación de
-//   los pares de prefijos M/m, P/p, Z/z, Y/y aplicados a unidades de grupo SHORT.
-//   Ejemplos: mV/MV, mW/MW, mJ/MJ, mL/ML, ms/Ms (second vs siemens), pF/PF, etc.
-//
-// Para añadir excepciones manuales, editar _unitOverrides más abajo.
-var _unitTokenMap = (function() {
-    var map = {};
-    function addToken(canonical) {
-        var lower = canonical.toLowerCase();
-        if (!map[lower]) map[lower] = [];
-        if (map[lower].indexOf(canonical) < 0) map[lower].push(canonical);
-    }
-    Object.keys(math.Unit.UNITS).forEach(function(unitName) {
-        var unit = math.Unit.UNITS[unitName];
-        addToken(unitName);
-        if (unit.prefixes) {
-            Object.keys(unit.prefixes).forEach(function(prefix) {
-                if (prefix !== '') addToken(prefix + unitName);
-            });
-        }
-    });
-    return map;
-})();
+// Pre-computed maps injected by loadPrecomputedData() before any expression is evaluated.
+// These are produced by mathjs-precompute.js and embedded as a resource in the assembly.
+// See MathJsDataGenerator.GenerateData() in Yottacast.Core.Tests to regenerate them.
+var _mathFunctionNames = null;
+var _unitTokenMap      = null;
+var _unitLongNameCache = null;
 
 // Overrides manuales: forzar un mapeo específico independientemente del análisis automático.
 // Añade aquí cualquier caso especial que quieras permitir o bloquear.
@@ -52,8 +18,16 @@ var _unitOverrides = {
     // 'MG': 'Mg',   // ejemplo: forzar MG → megagramo en vez de dejar ambiguo
 };
 
+// Injects pre-computed maps produced by mathjs-precompute.js.
+// Must be called before any expression evaluation.
+function loadPrecomputedData(data) {
+    _unitTokenMap      = data.tokenMap;
+    _unitLongNameCache = data.longNameCache;
+    _mathFunctionNames = data.functionNames;
+}
+
 // Devuelve la forma canónica math.js del token de unidad, o null si es ambiguo/desconocido.
-function _resolveUnitToken(name) {
+function resolveUnitToken(name) {
     var override = _unitOverrides[name];
     if (override !== undefined) return override;
     var lower = name.toLowerCase();
@@ -66,38 +40,51 @@ function _resolveUnitToken(name) {
 }
 
 // Parses the expression into an AST, normalizes currency and unit casing, fixes function casing,
-// and returns { expr, hasConversion, currencies }.
+// detects ambiguous unit tokens, and returns { expr, isConversion, currencies, ambiguities }.
 // knownCurrenciesCsv is a comma-separated list of uppercase ISO codes (e.g. "USD,EUR,GBP").
 // defaultCurrency: if currencies are found but no 'to' conversion exists, appends "to <defaultCurrency>".
-// hasConversion is true if the expression contains an explicit 'to' unit-conversion operator.
+// isConversion is true if the expression is an explicit 'to' unit-conversion operator.
+// ambiguities: [{input, candidates:[{symbol, longName}]}] for tokens that map to multiple canonical forms.
 // Throws if the expression is syntactically invalid — the caller should treat that as no result.
 function normalizeExpression(expression, knownCurrenciesCsv, defaultCurrency) {
-    var known = {};
-    knownCurrenciesCsv.split(',').forEach(function(c) { known[c] = true; });
-
     // Normalize 'to'/'in' keywords to lowercase before parsing — the math.js parser is
     // case-sensitive and rejects TO/IN as unknown identifiers.
     expression = expression.replace(/\bto\b/gi, 'to');
     expression = expression.replace(/\bin\b/gi, 'in');
 
-    var node = math.parse(expression);
+    var knownCurrencies = {};
+    knownCurrenciesCsv.split(',').forEach(function(c) { knownCurrencies[c] = true; });
     var currencies = [];
-    var hasConversion = false;
-    node.traverse(function(n) {
+    var ambiguities = [];
+    var seenAmbiguous = {};
+
+    var root = math.parse(expression);
+    root.traverse(function(n) {
         if (n.type === 'SymbolNode') {
             // Currencies → uppercase
             var upper = n.name.toUpperCase();
-            if (known[upper]) {
+            var lower = n.name.toLowerCase();
+            if (knownCurrencies[upper]) {
                 n.name = upper;
                 if (currencies.indexOf(upper) < 0) currencies.push(upper);
                 return;
             }
-            var resolvedUnit = _resolveUnitToken(n.name);
+            var candidates = _unitTokenMap[lower];
+            // Detect ambiguity before mutating n.name (preserves the original user token).
+            if (candidates && candidates.length > 1 && !_mathFunctionNames[lower] && !seenAmbiguous[lower]) {
+                seenAmbiguous[lower] = true;
+                ambiguities.push({
+                    input: n.name,
+                    candidates: candidates.map(function(sym) {
+                        return { symbol: sym, longName: _unitLongNameCache[sym] };
+                    })
+                });
+            }
+            var resolvedUnit = resolveUnitToken(n.name);
             if (resolvedUnit !== null) {
                 n.name = resolvedUnit;
                 return;
             }
-            var lower = n.name.toLowerCase();
             // Function names → canonical casing.
             // In math.js, the fn of a FunctionNode is itself a SymbolNode, so the traverse visits it here.
             // Modifying n.name directly updates the SymbolNode that FunctionNode.toString() uses.
@@ -105,43 +92,59 @@ function normalizeExpression(expression, knownCurrenciesCsv, defaultCurrency) {
                 n.name = _mathFunctionNames[lower];
             }
         }
-        if (n.type === 'OperatorNode' && n.op === 'to') {
-            hasConversion = true;
-        }
     });
-    var normalizedExpr = node.toString();
-    if (currencies.length > 0 && !hasConversion && defaultCurrency) {
+    var isConversion = root.type === 'OperatorNode' && root.op === 'to';
+    // Only auto-append "to defaultCurrency" when the root is exactly "N CURRENCY" (implicit multiply).
+    var isSingleCurrencyUnit =
+        root.type === 'OperatorNode' && root.implicit === true &&
+        root.args.length === 2 &&
+        root.args[1].type === 'SymbolNode' &&
+        knownCurrencies[root.args[1].name.toUpperCase()];
+    var normalizedExpr = root.toString();
+    if (isSingleCurrencyUnit && defaultCurrency) {
         normalizedExpr = normalizedExpr + ' to ' + defaultCurrency;
         if (currencies.indexOf(defaultCurrency) < 0) currencies.push(defaultCurrency);
     }
-    return { expr: normalizedExpr, hasConversion: hasConversion, currencies: currencies };
+    return { expr: normalizedExpr, isConversion: isConversion, currencies: currencies, ambiguities: ambiguities };
 }
 
-// Returns a JSON-serializable snapshot of the math.js unit registry and the
-// derived _unitTokenMap. Used by tests to detect changes when upgrading math.js.
-function extractUnitSnapshot() {
-    var units = Object.keys(math.Unit.UNITS).sort();
+// Classifies a math.js error message into a structured object.
+// Returns { type, token, suggestions } where:
+//   type: 'wrong_unit_casing' | 'unknown_symbol' | 'incompatible_units' | 'syntax' | 'other'
+//   token: the problematic identifier (for symbol errors), or null
+//   suggestions: [{symbol, longName}] when the token maps to known unit variants, or null
+function classifyError(errorMessage) {
+    // "Undefined symbol XYZ" or "Unit 'XYZ' not found"
+    var tokenMatch =
+        /undefined symbol\s+'?(\w+)'?/i.exec(errorMessage) ||
+        /unit\s+'?(\w+)'?\s+(?:not found|undefined)/i.exec(errorMessage);
+    if (tokenMatch) {
+        var token = tokenMatch[1];
+        var lower = token.toLowerCase();
+        var candidates = _unitTokenMap[lower];
+        if (candidates && candidates.length > 0) {
+            // Token's lowercase maps to known unit(s) — wrong casing
+            return {
+                type: 'wrong_unit_casing',
+                token: token,
+                suggestions: candidates.map(function(sym) {
+                    return { symbol: sym, longName: _unitLongNameCache[sym] };
+                })
+            };
+        }
+        return { type: 'unknown_symbol', token: token, suggestions: null };
+    }
 
-    var prefixGroups = {};
-    Object.keys(math.Unit.PREFIXES).sort().forEach(function(groupName) {
-        prefixGroups[groupName] = Object.keys(math.Unit.PREFIXES[groupName]).sort();
-    });
+    // Incompatible unit conversion (e.g. kg to meter)
+    if (/units do not match|cannot convert|unit mismatch/i.test(errorMessage)) {
+        return { type: 'incompatible_units', token: null, suggestions: null };
+    }
 
-    var sortedTokenMap = {};
-    Object.keys(_unitTokenMap).sort().forEach(function(k) {
-        sortedTokenMap[k] = _unitTokenMap[k].slice().sort();
-    });
+    // Syntax / parse errors
+    if (/syntaxerror|unexpected token|unexpected end|parse error/i.test(errorMessage) ||
+        errorMessage.toLowerCase().startsWith('syntaxerror')) {
+        return { type: 'syntax', token: null, suggestions: null };
+    }
 
-    var ambiguous = Object.keys(_unitTokenMap).filter(function(k) {
-        return _unitTokenMap[k].length > 1;
-    }).sort();
-
-    return {
-        version:      math.version || 'unknown',
-        unitCount:    units.length,
-        units:        units,
-        prefixGroups: prefixGroups,
-        tokenMap:     sortedTokenMap,
-        ambiguous:    ambiguous
-    };
+    return { type: 'other', token: null, suggestions: null };
 }

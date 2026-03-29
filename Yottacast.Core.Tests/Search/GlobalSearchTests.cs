@@ -113,7 +113,7 @@ public class GlobalSearchTests {
         var deferred = new StubDeferredSource([ResultItem.Make("B", 1.0)]);
         var global = new GlobalSearch([instant], [deferred]);
 
-        var result = global.SearchInstant("q", 10);
+        var (result, _) = global.SearchInstant("q", 10);
 
         Assert.True(instant.WasSearched, "instant source should have been searched");
         Assert.False(deferred.WasSearched, "deferred source must NOT be searched by SearchInstant");
@@ -151,7 +151,7 @@ public class GlobalSearchTests {
         ]);
         var global = new GlobalSearch([s1, s2], []);
 
-        var result = global.SearchInstant("q", 10);
+        var (result, _) = global.SearchInstant("q", 10);
 
         Assert.Equal(3, result.Count);
         Assert.Equal("High", result[0].Title);
@@ -265,7 +265,7 @@ public class GlobalSearchTests {
         ]);
         var global = new GlobalSearch([s1, s2], []);
 
-        var result = global.SearchInstant("q", limit: 3);
+        var (result, _) = global.SearchInstant("q", limit: 3);
 
         Assert.Equal(3, result.Count);
         Assert.Equal("A", result[0].Title);
@@ -279,7 +279,7 @@ public class GlobalSearchTests {
     public async Task NoSources_ReturnsNoSnapshots() {
         var global = new GlobalSearch([], []);
 
-        var instantResult = global.SearchInstant("q", 10);
+        var (instantResult, _) = global.SearchInstant("q", 10);
         Assert.Empty(instantResult);
 
         var count = 0;
@@ -377,7 +377,7 @@ public class GlobalSearchTests {
     public void SearchInstant_NoInstantSources_ReturnsEmpty() {
         var global = new GlobalSearch([], [new StubDeferredSource([ResultItem.Make("D", 1.0)])]);
 
-        var result = global.SearchInstant("q", 10);
+        var (result, _) = global.SearchInstant("q", 10);
 
         Assert.Empty(result);
     }
@@ -401,7 +401,7 @@ public class GlobalSearchTests {
         var deferred = new StubDeferredSource([ResultItem.Make("Deferred", 0.9)]);
         var global = new GlobalSearch([instant], [deferred]);
 
-        var instantResult = global.SearchInstant("q", 10);
+        var (instantResult, _) = global.SearchInstant("q", 10);
 
         IReadOnlyList<ResultItemViewModel> deferredResult = [];
         await foreach (var snap in global.SearchDeferredAsync("q", 10))

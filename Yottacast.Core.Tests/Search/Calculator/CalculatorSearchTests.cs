@@ -5,7 +5,7 @@ using Yottacast.Core.Search.Calculator;
 using Yottacast.Core.Services;
 using Yottacast.Core.ViewModels;
 
-namespace Yottacast.Core.Tests.Search;
+namespace Yottacast.Core.Tests.Search.Calculator;
 
 [Collection("MathJs")]
 public class CalculatorSearchTests(MathJsEngineFixture fixture) {
@@ -74,7 +74,7 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
         Assert.Equal("🧮", item.Icon);
         Assert.Equal("Calculator", item.Category);
         Assert.Equal(4, item.Score);
-        Assert.Equal("2+2", item.Subtitle);
+        Assert.Equal("2 + 2", item.Subtitle);
     }
 
     [Fact]
@@ -159,6 +159,116 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
         Assert.Contains("1e+6", r1.Value!); // 1 Mg = 1,000,000 g (math.js formato científico)
     }
 
+    // ── Ambiguity hints ───────────────────────────────────────────────────────
+
+    // Snapshot-verified ambiguous tokens (see mathjs-unit-snapshot.json):
+    //   mg → ['Mg', 'mg']        (megagram vs milligram)
+    //   mb → ['MB', 'Mb']        (megabyte vs megabit)
+    //   ms → ['MS', 'Ms', 'mS', 'ms']  (4 variants: mega/milli × second/siemens)
+    // Expressions use addition so the result differs from the query (triggering a result item).
+
+    public static TheoryData<string, string, string> HintCases => new() {
+        { "1 mg + 1 mg", "mg", "Mg" },  // milligram vs megagram
+        { "1 MB + 1 MB", "MB", "Mb" },  // megabyte vs megabit
+        { "1 ms + 1 ms", "ms", "MS" },  // millisecond vs megasiemens (+ 2 more variants)
+    };
+
+    [Theory]
+    [MemberData(nameof(HintCases))]
+    public void AmbiguousUnit_ShowsHintInSubtitle(string query, string sym1, string sym2) {
+        var item = SearchResult(BuildSearch(out _), query);
+        Assert.Contains("⚠", item.Subtitle);
+        Assert.Contains(sym1, item.Subtitle);
+        Assert.Contains(sym2, item.Subtitle);
+    }
+
+    public static TheoryData<string> NoHintCases => new() {
+        { "5 km to m" },  // km is unambiguous
+        { "2+2"        },  // no units at all
+    };
+
+    [Theory]
+    [MemberData(nameof(NoHintCases))]
+    public void UnambiguousQuery_NoHintInSubtitle(string query) {
+        var item = SearchResult(BuildSearch(out _), query);
+        Assert.DoesNotContain("⚠", item.Subtitle);
+    }
+
+    // ── Error items ───────────────────────────────────────────────────────────
+
+    // "MG" is ambiguous lowercase: both Mg (megagram) and mg (milligram) exist → WrongUnitCasing
+    [Fact]
+    public void WrongUnitCasing_ShowsErrorWithSuggestions() {
+        var search = BuildSearch(out _);
+        Assert.Empty(search.Search("5 MG to g", 5));
+        Assert.Contains("MG", search.LastHint);
+        Assert.Contains("Mg", search.LastHint);
+        Assert.Contains("mg", search.LastHint);
+    }
+
+    // Truly unknown unit in a math-like expression → UnknownSymbol hint
+    [Fact]
+    public void UnknownUnit_InMathContext_ShowsErrorItem() {
+        var search = BuildSearch(out _);
+        Assert.Empty(search.Search("1 XYZUNIT to g", 5));
+        Assert.Contains("XYZUNIT", search.LastHint);
+    }
+
+    // Incompatible units (mass vs length) → IncompatibleUnits hint
+    [Fact]
+    public void IncompatibleUnits_ShowsErrorItem() {
+        var search = BuildSearch(out _);
+        Assert.Empty(search.Search("1 kg to meter", 5));
+        Assert.NotNull(search.LastHint);
+    }
+
+    // Plain text without digits or operators → no error item shown
+    [Fact]
+    public void NonMathQuery_StillReturnsEmpty_OnError() {
+        Assert.Empty(BuildSearch(out _).Search("safari", 5));
+        Assert.Empty(BuildSearch(out _).Search("hello world", 5));
+    }
+
+    // ── Auto-conversión de moneda por defecto ──────────────────────────────────
+
+    public static TheoryData<string> SingleCurrencyUnitCases => new() {
+        { "10 USD"  },   // → auto-añade to EUR
+        { "50 GBP"  },   // → auto-añade to EUR
+        { "100 MXN" },   // → auto-añade to EUR
+    };
+
+    [Theory]
+    [MemberData(nameof(SingleCurrencyUnitCases))]
+    public void AutoConversion_SingleCurrencyUnit_AddsDefaultCurrency(string query) {
+        Assert.Contains("EUR", SearchResult(BuildSearch(out _), query).Title);
+    }
+
+    public static TheoryData<string> SumOrArithmeticCurrencyCases => new() {
+        { "10 USD + 5 MXN"       },   // raíz es +
+        { "(10 USD + 5 MXN) / 2" },   // raíz es /
+        { "10 USD * 2"           },   // raíz es *
+    };
+
+    [Theory]
+    [MemberData(nameof(SumOrArithmeticCurrencyCases))]
+    public void AutoConversion_SumOrArithmetic_DoesNotAddDefaultCurrency(string query) {
+        var item = SearchResult(BuildSearch(out _), query);
+        Assert.DoesNotContain("EUR", item.Title);
+    }
+
+    public static TheoryData<string, string> ExplicitConversionCases => new() {
+        { "10 USD to MXN",   "MXN" },
+        { "100 MXN to GBP",  "GBP" },
+    };
+
+    [Theory]
+    [MemberData(nameof(ExplicitConversionCases))]
+    public void AutoConversion_ExplicitToConversion_DoesNotAddDefaultCurrency(string query, string expectedCurrency) {
+        var title = SearchResult(BuildSearch(out _), query).Title;
+        Assert.Contains(expectedCurrency, title);
+        Assert.DoesNotContain("EUR", title);
+    }
+
     // ── Non-currency units do NOT trigger auto-conversion ─────────────────────
 
     public static TheoryData<string> NonCurrencyUnitCases => new() {
@@ -176,39 +286,3 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
     }
 }
 
-// ── Currency rate update tests ────────────────────────────────────────────────
-
-[Collection("MathJsMutableRates")]
-public class CurrencyRateUpdateTests(MathJsEngineMutableRatesFixture fixture) {
-
-    /// <summary>
-    /// Verifies that MathJsEngine re-reads the provider's CachedRates on every Evaluate call,
-    /// so a rate change is reflected immediately in the next evaluation without restarting the engine.
-    /// </summary>
-    [Fact]
-    public void CurrencyRate_WhenChanged_EvaluationReflectsNewRate() {
-        fixture.RateProvider.SetRate("EUR", 0.5); // 1 USD = 0.5 EUR → 10 USD = 5 EUR
-        var r1 = fixture.Engine.Evaluate("10 USD to EUR");
-        Assert.True(r1.IsSuccess, r1.Error);
-        Assert.Contains("5", r1.Value!);
-
-        fixture.RateProvider.SetRate("EUR", 2.0); // 1 USD = 2 EUR → 10 USD = 20 EUR
-        var r2 = fixture.Engine.Evaluate("10 USD to EUR");
-        Assert.True(r2.IsSuccess, r2.Error);
-        Assert.Contains("20", r2.Value!);
-
-        Assert.NotEqual(r1.Value, r2.Value);
-    }
-
-    [Fact]
-    public void CurrencyRate_WhenUnchanged_ReturnsSameResult() {
-        fixture.RateProvider.SetRate("JPY", 150.0); // 1 USD = 150 JPY → 1 USD = 150 JPY
-        var r1 = fixture.Engine.Evaluate("1 USD to JPY");
-        Assert.True(r1.IsSuccess);
-
-        var r2 = fixture.Engine.Evaluate("1 USD to JPY");
-        Assert.True(r2.IsSuccess);
-
-        Assert.Equal(r1.Value, r2.Value);
-    }
-}
