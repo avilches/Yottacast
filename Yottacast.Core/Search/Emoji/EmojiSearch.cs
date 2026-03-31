@@ -17,12 +17,11 @@ public class EmojiSearch(ClipboardService clipboard, string cacheDir, EmojiDataL
     private volatile IReadOnlyList<EmojiEntry> _entries = [];
 
     public void Start() {
-        _loadTask = Task.Run(() => dataLoader.LoadAsync(cacheDir));
-        _ = _loadTask.ContinueWith(
-            t => {
-                if (!t.IsFaulted) _entries = t.Result;
-            },
-            TaskScheduler.Default);
+        _loadTask = Task.Run(async () => {
+            var entries = await dataLoader.LoadAsync(cacheDir);
+            _entries = entries;
+            return entries;
+        });
     }
 
     public Task WhenReady() => _loadTask ?? Task.CompletedTask;
