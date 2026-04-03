@@ -5,7 +5,7 @@ namespace Yottacast.Core.Tests.Search.Calculator;
 
 
 // Tests the JS classifyError function end-to-end via MathJsEngine.Evaluate,
-// checking that EvaluationResult.ErrorKind / ErrorToken / ErrorSuggestions are
+// checking that ErrorResult.ErrorKind / ErrorToken are
 // populated correctly for each error category.
 
 [Collection("MathJs")]
@@ -17,8 +17,6 @@ public class ClassifyErrorTests(MathJsEngineFixture fixture) {
     // which classifyError doesn't recognise → Other → CalculatorSearch shows nothing.
 
     public static TheoryData<string, CalcErrorKind, string?> ErrorKindCases => new() {
-        // WrongUnitCasing: token whose lowercase maps to >1 canonical form; input is none of them
-        { "5 MG to g",      CalcErrorKind.WrongUnitCasing,  "MG"      },
         // UnknownSymbol: identifier not in the unit token map at all
         { "1 XYZUNIT to g", CalcErrorKind.UnknownSymbol,   "XYZUNIT" },
         { "10 USD to U",    CalcErrorKind.UnknownSymbol,   "U"       },
@@ -35,42 +33,27 @@ public class ClassifyErrorTests(MathJsEngineFixture fixture) {
     public void Error_ClassifiesKindAndToken(string expression, CalcErrorKind expectedKind, string? expectedToken) {
         var r = fixture.Engine.Evaluate(expression);
         Assert.False(r.IsSuccess);
-        Assert.Equal(expectedKind, r.ErrorKind);
-        if (expectedToken is not null) Assert.Equal(expectedToken, r.ErrorToken);
+        var err = Assert.IsType<ErrorResult>(r);
+        Assert.Equal(expectedKind, err.ErrorKind);
+        if (expectedToken is not null) Assert.Equal(expectedToken, err.ErrorToken);
     }
 
-    // ── WrongUnitCasing → suggestions ─────────────────────────────────────────
+    // ── MG resolves to Mg (success + ambiguity hint, not an error) ────────────
 
     [Fact]
-    public void WrongUnitCasing_PopulatesSuggestions() {
+    public void AmbiguousCasing_ResolvesSuccessfully_WithHint() {
         var r = fixture.Engine.Evaluate("5 MG to g");
-        Assert.NotNull(r.ErrorSuggestions);
-        Assert.Contains(r.ErrorSuggestions, s => s.Symbol == "Mg");
-        Assert.Contains(r.ErrorSuggestions, s => s.Symbol == "mg");
-    }
-
-    // Long names populated in _unitLongNameCache (e.g. "mg" → "milligram")
-    public static TheoryData<string, string, string> LongNameCases => new() {
-        { "5 MG to g", "mg", "milligram" },
-        { "5 MG to g", "Mg", "megagram"  },
-    };
-
-    [Theory, MemberData(nameof(LongNameCases))]
-    public void WrongUnitCasing_SuggestionHasLongName(string expression, string symbol, string expectedLongNameFragment) {
-        var r = fixture.Engine.Evaluate(expression);
-        Assert.NotNull(r.ErrorSuggestions);
-        var s = r.ErrorSuggestions.First(x => x.Symbol == symbol);
-        Assert.Contains(expectedLongNameFragment, s.LongName, StringComparison.OrdinalIgnoreCase);
+        Assert.True(r.IsSuccess, r.Error);
+        Assert.NotNull(r.AmbiguityHints);
+        Assert.Contains(r.AmbiguityHints, h => h.Input == "MG");
     }
 
     // ── Success ───────────────────────────────────────────────────────────────
 
     [Fact]
-    public void SuccessfulEval_ErrorKindIsNone() {
+    public void SuccessfulEval_IsNotError() {
         var r = fixture.Engine.Evaluate("2 + 2");
         Assert.True(r.IsSuccess);
-        Assert.Equal(CalcErrorKind.None, r.ErrorKind);
-        Assert.Null(r.ErrorToken);
-        Assert.Null(r.ErrorSuggestions);
+        Assert.IsNotType<ErrorResult>(r);
     }
 }

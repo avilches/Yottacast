@@ -224,6 +224,76 @@
                         </StackPanel>
                     </DataTemplate>
 
+                    <!-- Conversion template (two-column from → to layout) -->
+                    <DataTemplate x:DataType="viewModels:ConversionResultItemViewModel">
+                        <Grid ColumnDefinitions="Auto,*,Auto" MinHeight="44">
+
+                            <!-- Icon box -->
+                            <Border Grid.Column="0"
+                                    Classes="icon-box"
+                                    Width="36" Height="36"
+                                    CornerRadius="{DynamicResource Theme.CornerRadiusIcon}"
+                                    Background="{DynamicResource Theme.ItemIconBackground}"
+                                    VerticalAlignment="Center"
+                                    Margin="0,0,12,0">
+                                <TextBlock Text="{Binding Icon}"
+                                           FontSize="17"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                            </Border>
+
+                            <!-- Two columns: from → to -->
+                            <Grid Grid.Column="1" ColumnDefinitions="*,Auto,*" VerticalAlignment="Center">
+                                <!-- From -->
+                                <StackPanel Grid.Column="0" Orientation="Vertical" Spacing="2">
+                                    <TextBlock Text="{Binding FromShort}"
+                                               Foreground="{DynamicResource Theme.ItemTitle}"
+                                               FontSize="{DynamicResource Theme.FontSizeTitle}"
+                                               FontWeight="Medium"/>
+                                    <TextBlock Text="{Binding FromLong}"
+                                               Foreground="{DynamicResource Theme.ItemSubtitle}"
+                                               FontSize="{DynamicResource Theme.FontSizeSubtitle}"
+                                               IsVisible="{Binding FromLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                </StackPanel>
+                                <!-- Arrow -->
+                                <TextBlock Grid.Column="1"
+                                           Text="→"
+                                           Foreground="{DynamicResource Theme.ItemSubtitle}"
+                                           VerticalAlignment="Center"
+                                           Margin="8,0"/>
+                                <!-- To -->
+                                <StackPanel Grid.Column="2" Orientation="Vertical" Spacing="2">
+                                    <TextBlock Text="{Binding ToShort}"
+                                               Foreground="{DynamicResource Theme.ItemTitle}"
+                                               FontSize="{DynamicResource Theme.FontSizeTitle}"
+                                               FontWeight="Medium"/>
+                                    <TextBlock Text="{Binding ToLong}"
+                                               Foreground="{DynamicResource Theme.ItemSubtitle}"
+                                               FontSize="{DynamicResource Theme.FontSizeSubtitle}"
+                                               IsVisible="{Binding ToLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Category + hint -->
+                            <StackPanel Grid.Column="2"
+                                        Orientation="Horizontal"
+                                        VerticalAlignment="Center"
+                                        Spacing="8"
+                                        Margin="12,0,0,0">
+                                <TextBlock Text="{Binding Subtitle}"
+                                           Foreground="{DynamicResource Theme.ItemSubtitle}"
+                                           FontSize="{DynamicResource Theme.FontSizeSmall}"
+                                           VerticalAlignment="Center"
+                                           IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                <TextBlock Text="{Binding Category}"
+                                           Foreground="{DynamicResource Theme.ItemCategory}"
+                                           FontSize="{DynamicResource Theme.FontSizeSmall}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+
+                        </Grid>
+                    </DataTemplate>
+
                     <!-- Standard template (apps, files, etc.) -->
                     <DataTemplate x:DataType="viewModels:ResultItemViewModel">
                         <Grid ColumnDefinitions="Auto,*,Auto" MinHeight="44">

@@ -1,0 +1,67 @@
+{
+  "inputAliases": {
+    "°c": "degC",
+    "ºc": "degC",
+    "°f": "degF",
+    "ºf": "degF"
+  },
+  "tokenAliases": {
+    "c": "degC",
+    "f": "degF",
+    "v": "V",
+    "w": "W"
+  },
+  "evalSafeAliases": {
+    "min": "minute"
+  },
+  "displayNames": {
+    "degC": "°C",
+    "degF": "°F",
+    "degR": "°R",
+    "minute": "min"
+  },
+  "longNames": {
+    "s":      "second",
+    "ms":     "millisecond",
+    "minute": "minute",
+    "h":      "hour",
+    "day":    "day",
+    "week":   "week",
+    "month":  "month",
+    "a":      "year",
+    "degC":   "celsius",
+    "degF":   "fahrenheit",
+    "degK":   "kelvin",
+    "degR":   "rankine"
+  },
+  "defaultTargets": {
+    "ms": "s",       "s": "ms",
+    "minute": "s",   "h": "minute",  "day": "h",
+    "week": "day",   "month": "day", "a": "day",
+    "m": "ft",       "ft": "m",
+    "km": "mile",    "mile": "km",
+    "cm": "in",      "in": "cm",
+    "mm": "in",      "yard": "m",
+    "kg": "lb",      "lb": "kg",
+    "g": "oz",       "oz": "g",
+    "degC": "degF",  "degF": "degC",
+    "L": "gallon",   "gallon": "L",
+    "Pa": "psi",     "psi": "bar",  "bar": "psi",
+    "N": "lbf",      "lbf": "N",
+    "J": "BTU",      "kJ": "BTU",   "BTU": "kJ",  "kcal": "kJ",
+    "A": "mA",       "mA": "A",
+    "V": "mV",       "mV": "V",
+    "W": "kW",       "kW": "W",
+    "B": "kB",       "kB": "MB",
+    "F": "uF",
+    "H": "mH",
+    "C": "mC",
+    "T": "mT",
+    "rad": "deg",    "deg": "rad"
+  },
+  "blocked": [
+    "li", "ch", "rd", "link", "links", "rod", "rods", "chain", "chains",
+    "obl", "lt", "gi", "cp", "gtt", "gtts", "fldr", "fluiddram", "fluiddrams",
+    "minim", "minims", "gill", "gills", "sqmil", "sqrd", "sqch"
+  ]
+}

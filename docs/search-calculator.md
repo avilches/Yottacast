@@ -1,28 +1,28 @@
 # Calculadora y conversor de unidades
 
-Implementado como `IInstantSearchSource`: `CalculatorSearch`. Maneja tanto expresiones matemáticas como conversiones de unidades.
+Implementado como `IInstantSearchSource`: `CalculatorSearch` (`Yottacast.Core/Search/Calculator/CalculatorSearch.cs`). Maneja tanto expresiones matemáticas como conversiones de unidades.
 
 ## Motor: MathJsEngine
 
-`MathJsEngine` (`Search/Calculator/MathJsEngine.cs`) — singleton que carga math.js embebido en la DLL (embedded resource en `Yottacast.Core/Search/Calculator/math.min.js`) dentro de un engine Jint 3.x. La inicialización se hace en un background thread; hasta que `WhenReady()` se complete, `Evaluate()` devuelve `null`.
+`MathJsEngine` (`Yottacast.Core/Search/Calculator/MathJsEngine.cs`) — singleton que carga math.js embebido en la DLL (embedded resource en `Yottacast.Core/Search/Calculator/math.min.js`) dentro de un engine Jint 3.x. La inicialización se hace en un background thread; hasta que `WhenReady()` se complete, `Evaluate()` devuelve `ErrorResult` sin bloquear.
 
 **Configuración del engine**: se crea con un límite de recursión (ver `MathJsEngine`).
 
-**WarmUp**: al final de `Initialize()` se ejecuta `math.evaluate('1+1')` para disparar la compilación JIT de Jint, de modo que la primera query real del usuario sea instantánea.
+**WarmUp**: `mathjs-helpers.js` ejecuta `math.createUnit('USD')` al cargarse, lo que dispara la inicialización del sistema de unidades de math.js y actúa como warmup JIT de Jint, de modo que la primera query real del usuario sea instantánea.
 
 **Thread safety**: un `lock (_lock)` protege el acceso al engine durante cada llamada a `Evaluate()`. Es seguro llamarlo desde múltiples hilos.
 
-**Escape de entrada**: antes de pasarla a math.js, la expresión tiene las barras invertidas escapadas (`\` → `\\`) y las comillas simples escapadas (`'` → `\'`).
+**Escape de entrada**: antes de pasarla a math.js, la expresión tiene las barras invertidas, comillas simples, saltos de línea y caracteres nulos escapados (ver `Escape()` en `MathJsEngine`).
 
 **Formateo de resultados**: los resultados se formatean con `math.format(r, { precision: 10 })` — 10 dígitos significativos — para evitar ruido de coma flotante como `22.046226218487758`.
 
 **Double-checked null guard**: `Evaluate()` comprueba `_engine == null` antes de adquirir el lock y de nuevo dentro de él. La comprobación exterior garantiza un fast-path sin contención cuando el engine todavía no está listo; la interior garantiza corrección ante una hipotética carrera con `Dispose()`.
 
-**`Evaluate()` devuelve `null` si el resultado es whitespace**: además de capturar excepciones, descarta resultados vacíos (`string.IsNullOrWhiteSpace`) antes de devolverlos.
+**Tipos de resultado de `Evaluate()`**: devuelve un `EvalResult` (`Yottacast.Core/Search/Calculator/EvalResult.cs`) — subtipo `CalcResult` para expresiones aritméticas, `ConversionResult` para conversiones de unidades o divisas, y `ErrorResult` para errores o expresiones inválidas. `ErrorResult` incluye `ErrorKind` (`UnknownSymbol`, `IncompatibleUnits`, `Syntax`, `Other`) y el token problemático cuando aplica.
 
-**Manejo de errores**: `Evaluate()` captura silenciosamente todas las excepciones (errores de sintaxis, división por cero, etc.) y devuelve `null`. Las expresiones inválidas no producen ningún resultado.
+**Manejo de errores**: los errores de evaluación se clasifican con `classifyError()` (JS, en `mathjs-helpers.js`) en `CalcErrorKind`. Para `UnknownSymbol` e `IncompatibleUnits`, `CalculatorSearch` implementa `ISearchHintProvider` y expone `LastHint` con un mensaje legible. Los errores de sintaxis y otros se descartan silenciosamente.
 
-**math.js descargado en build**: el `.csproj` de Core incluye un target `DownloadMathJs` que ejecuta `curl` si el fichero no existe. El fichero se excluye del repositorio (`.gitignore`). El primer `dotnet build` lo descarga automáticamente.
+**math.js descargado en build**: el `.csproj` de Core (`Yottacast.Core/Yottacast.Core.csproj`) incluye un target `DownloadMathJs` que ejecuta `curl` si el fichero no existe. El fichero se excluye del repositorio (`.gitignore`). El primer `dotnet build` lo descarga automáticamente.
 
 **Gotcha — versión de math.js incompatible con Jint**: versiones recientes de math.js lanzan "Assignment to constant variable" dentro de Jint 3.x al ejecutar `math.evaluate`. La versión de math.js embebida está fijada; ver el target `DownloadMathJs` del `.csproj`. Si se actualiza Jint a una versión con soporte ES2022+, se puede probar una versión más reciente de math.js.
 
@@ -32,81 +32,134 @@ Implementado como `IInstantSearchSource`: `CalculatorSearch`. Maneja tanto expre
 
 **La inicialización arranca en el momento de la resolución DI**: `MathJsEngine` está registrado como singleton y su constructor lanza `Task.Run(Initialize)` inmediatamente. Esto significa que el background thread de inicialización empieza cuando el contenedor construye el singleton — antes de que `GlobalSearch.Start()` lo solicite explícitamente — lo que amplía el tiempo disponible para el warmup.
 
-## Normalización de mayúsculas/minúsculas en unidades
+## Normalización de unidades
 
-math.js es case-sensitive: `kg` y `KG` son tokens distintos (el segundo es inválido). Para que el usuario pueda escribir `KG`, `Km` o `MILES` sin preocuparse por el case, `mathjs-helpers.js` construye un mapa de normalización en startup y lo aplica antes de evaluar.
+math.js es case-sensitive: `kg` y `KG` son tokens distintos (el segundo es inválido). Para que el usuario pueda escribir `KG`, `Km` o `MILES` sin preocuparse por el case, `mathjs-helpers.js` (`Yottacast.Core/Search/Calculator/mathjs-helpers.js`) mantiene mapas de normalización que se aplican sobre el AST antes de evaluar.
 
-**`_unitTokenMap`**: se construye una sola vez al cargar el script, iterando `math.Unit.UNITS` y aplicando todos sus prefijos de `math.Unit.PREFIXES`. Para cada combinación `(prefijo + unidad)` se registra la forma canónica bajo su versión en minúsculas. El resultado es un mapa `lowercase → [canonicals]`.
+### Datos precomputados
 
-**Tokens unívocos vs ambiguos**:
-- Si un lowercase tiene un solo canónico → el token puede escribirse en cualquier capitalización; `_resolveUnitToken` lo normaliza automáticamente. Ejemplos: `kg`→`kg`, `KM`→`km`, `FAHRENHEIT`→`fahrenheit`.
-- Si un lowercase tiene varios canónicos → hay colisión de case real (ambigüedad). `_resolveUnitToken` solo acepta el token si ya es uno de los canónicos; de lo contrario devuelve `null` y el token se deja intacto (math.js lo rechazará si es incorrecto). Ejemplo: `mg` es ambiguo porque colisiona con `Mg` (mili-gramo vs mega-gramo); el usuario debe escribir el case exacto.
+**`mathjs-precomputed.json`** (`Yottacast.Core/Search/Calculator/mathjs-precomputed.json`, embedded resource) — generado por `mathjs-precompute.js` (`Yottacast.Core/Search/Calculator/mathjs-precompute.js`). Contiene tres estructuras:
+- `symbols`: lista de todos los tokens canónicos del registry de math.js.
+- `ambiguous`: mapa `lowercase → [{symbol, longName}]` solo para tokens con múltiples formas canónicas distintas.
+- `functionNames`: mapa `lowercase → canonical` de nombres de funciones math.js (para `SQRT` → `sqrt`).
 
-Las ambigüedades surgen casi siempre de la colisión entre pares de prefijos que solo se diferencian en case (`M`/`m`, `P`/`p`, `Z`/`z`, `Y`/`y`) aplicados a unidades del grupo SHORT. Los casos más frecuentes en uso real son `mg`/`Mg`, `mm`/`Mm`, `ms`/`mS`/`Ms`, `ml` (4 formas canónicas), `mV`/`MV`, `mW`/`MW`, `s`/`S`, `t`/`T`, `h`/`H`, `b`/`B`.
+Se inyecta en el engine con `loadPrecomputedData()`. A partir de él se construyen:
+- `_unitSymbols` — `lowercase → canonical` para tokens no ambiguos.
+- `_unitAmbiguousMap` — `lowercase → [{symbol, longName}]` para tokens ambiguos.
 
-**`_unitOverrides`**: tabla de excepciones manuales que se aplica antes del mapa. Permite forzar un mapeo específico para un token concreto, independientemente del análisis automático. Definida en `mathjs-helpers.js`.
+El propósito es la cobertura automática total del registry de math.js: sin este mapa, `resolveUnitToken('KG')` no sabría que debe devolver `kg`. `unit-config.json` solo contiene excepciones manuales para unos pocos casos especiales; `mathjs-precomputed.json` cubre los cientos de combinaciones prefijo+unidad automáticamente.
 
-**Normalización de funciones**: el mismo paso de traversal del AST normaliza los nombres de función usando `_mathFunctionNames` (mapa `lowercase → canonical` construido desde las propiedades de `math`). Así `SQRT(2)` se convierte en `sqrt(2)`.
+### Configuración manual: `unit-config.json`
 
-**`extractUnitSnapshot()` / `ExtractUnitSnapshot()`**: función JS que serializa el estado actual del registry — version de math.js, lista de unidades, grupos de prefijos, `_unitTokenMap` y lista de tokens ambiguos — como objeto JSON. `MathJsEngine.ExtractUnitSnapshot()` la invoca y devuelve el JSON formateado. Se usa exclusivamente por los tests de snapshot.
+Embedded resource en `Yottacast.Core/Search/Calculator/unit-config.json`. Se carga con `loadAliasData()` y define:
+
+- **`inputAliases`**: aliases de entrada con caracteres especiales que se reemplazan antes del parseo (ej. `"°c"` → `"degC"`). Aplicados por `NormalizeExpressionCore` en `MathJsEngine.cs` antes de llamar al JS.
+- **`tokenAliases`**: overrides de tokens en el traversal del AST (ej. `"c"` → `"degC"`, `"v"` → `"V"`). Se mergen en `_unitOverrides`.
+- **`evalSafeAliases`**: sustituciones que se aplican en el nombre del nodo AST antes de que la expresión llegue a `math.evaluate()`, para evitar colisiones con funciones de math.js. Por ejemplo, `"min"` → `"minute"` evita que math.js interprete `min` como la función `math.min`. El resultado se re-transforma para display vía `displayNames` (ver abajo), de modo que el usuario escribe `min` y ve `min` en el resultado.
+- **`displayNames`**: nombres de display para el resultado final (ej. `"degC"` → `"°C"`, `"minute"` → `"min"`). Usados por `DisplayUnit()` en `MathJsEngine.cs`. Solo aplica a la unidad en formato corto (`fromShort`/`toShort`); los nombres largos se construyen aparte.
+- **`longNames`**: nombres largos explícitos para unidades que no tienen forma larga derivable automáticamente vía el grupo de prefijos LONG (ej. unidades de tiempo como `"h"` → `"hour"`, temperaturas como `"degC"` → `"celsius"`). Usados por `getExplicitLongName()`. Pueden ser iguales al símbolo (ej. `"day"` → `"day"`) cuando el único objetivo es habilitar la pluralización (`"10 days"`).
+- **`defaultTargets`**: mapa `unidad → target` para la conversión por defecto cuando el usuario escribe solo `valor + unidad`. Las conversiones priorizan pares métrico↔imperial. Ver los valores en `unit-config.json`.
+- **`blocked`**: tokens bloqueados — no se reconocen como unidades (ej. símbolos históricos ambiguos o inutilizables).
+
+### Resolución de tokens: `resolveUnitToken`
+
+Definida en `mathjs-helpers.js`. Aplica los checks en este orden:
+
+1. **Bloqueado** (`_blockedUnits`) — descartado inmediatamente.
+2. **Override manual** (`_unitOverrides`, alimentado por `tokenAliases`) — se aplica antes que cualquier otra lógica.
+3. **Sinónimos** — si todos los candidatos del mapa ambiguo comparten el mismo `longName` (ej. `l` y `L` son ambos "litre"), se normaliza al primer canónico sin marcar como ambiguo.
+4. **Ya canónico** — si el input ya es exactamente uno de los canónicos con distinto significado, se devuelve tal cual sin ambigüedad.
+5. **Verdaderamente ambiguo** — múltiples candidatos con distintos significados. Se devuelve el primero con `ambiguous: true` y la lista de candidatos para mostrar la pista al usuario. Ejemplo: `mg` colisiona con `Mg` (miligramo vs megagramo).
+
+Las ambigüedades surgen casi siempre de la colisión entre pares de prefijos que solo se diferencian en case (`M`/`m`, `P`/`p`, `Z`/`z`, `Y`/`y`) aplicados a unidades del grupo SHORT.
+
+### Normalización de expresiones: `normalizeExpression`
+
+Función JS en `mathjs-helpers.js` que: parsea el AST, elimina bloques y asignaciones, recorre los nodos aplicando resolución de unidades + `_evalSafeAliases` + normalización de funciones, detecta ambigüedades y monedas, y determina el `kind` de la expresión:
+
+- **`calculation`**: expresión aritmética sin conversión de unidades.
+- **`unit_entry`**: `valor unidad` implícito con target por defecto conocido (ej. `10 km` → añade `to mile`).
+- **`simple_conversion`**: `valor unidad to unidad`.
+- **`complex_conversion`**: `expresión to unidad`.
+
+El record C# es `NormalizedExpression` (en `MathJsEngine.cs`).
+
+### Nombres largos: `getUnitLongName` / `getExplicitLongName`
+
+Ambas funciones definidas en `mathjs-helpers.js`.
+
+`getUnitLongName(symbol)` busca el nombre largo derivado de math.js: descompone el símbolo con `math.Unit.parse`, localiza el prefijo en `PREFIXES.LONG` y la unidad base en `math.Unit.UNITS` con prefijos LONG, y combina los nombres. Retorna el símbolo si no encuentra forma larga (ej. unidades de tiempo que usan prefijos NONE en math.js).
+
+`getExplicitLongName(symbol)` solo consulta `_longNames` (cargado de `unit-config.json`) y retorna vacío si no hay entrada. En C#, `GetUnitLongName` (en `MathJsEngine.cs`) llama primero a `getExplicitLongName` — si hay override explícito lo usa directamente; si no, llama a `getUnitLongName` y descarta el resultado si es igual al símbolo.
+
+`LongForm()` en `CalculatorSearch.cs` pluraliza el nombre largo y lo compara con la forma corta; devuelve `null` si no añade información (ej. si `"10 kilometer"` ya es distinto de `"10 km"`, devuelve `"10 kilometers"`).
 
 ## Snapshot de unidades y detección de cambios al actualizar math.js
 
-`Yottacast.Core.Tests/Search/mathjs-unit-snapshot.json` es un baseline comprometido en el repo que captura el estado del registry de math.js en un momento dado: versión, lista de unidades, grupos de prefijos, `tokenMap` y tokens ambiguos.
+Hay dos archivos generados automáticamente y verificados por tests:
 
-El test `MathJsUnitSnapshotTests.UnitSnapshot_MatchesCommittedBaseline` (colección `"MathJsSnapshot"`) compara el snapshot del engine en runtime contra el fichero. Si coinciden, pasa. Si difieren, falla con un diff legible:
+- **`Yottacast.Core.Tests/Search/mathjs-unit-snapshot.json`** — baseline de regresión. Captura la versión, lista de unidades, grupos de prefijos y tokens ambiguos del registry de math.js.
+- **`Yottacast.Core/Search/Calculator/mathjs-precomputed.json`** — resource embebido usado en runtime. Contiene `symbols`, `ambiguous` y `functionNames`.
+
+Ambos los genera `extractPrecomputedData()` y `extractUnitSnapshot()` en `mathjs-precompute.js`, que carga `math.min.js` y `mathjs-helpers.js` (en ese orden — `mathjs-precompute.js` llama a `getUnitLongName()` que está definida en helpers).
+
+El test `MathJsGeneratedFilesTests.GeneratedFiles_MatchCommittedBaseline` (clase en `Yottacast.Core.Tests/Search/MathJsUnitSnapshotTests.cs`, colección `"MathJsSnapshot"`) regenera ambos archivos en memoria y los compara con los comprometidos. Si difieren, falla con un diff legible:
 
 ```
-math.js unit data changed. Review and update snapshot:
-  MATHJS_UPDATE_SNAPSHOT=1 dotnet test --filter UnitSnapshot
+math.js unit data changed. Delete the snapshot files and re-run tests to regenerate.
   Version: 11.12.0 → 11.13.0
   New units (2): furlong, league
   New ambiguous tokens (regression): mpa, pa
 ```
 
-El diff muestra solo lo relevante: unidades añadidas/eliminadas y cambios en ambigüedades (regresiones o mejoras). El `tokenMap` completo queda en el fichero JSON para inspeccionarlo con `git diff`.
-
-**Fixture dedicada**: el test usa `MathJsSnapshotFixture` (colección propia `"MathJsSnapshot"`), que construye un engine con `EmptyCurrencyRateProvider`. Esto es necesario porque la fixture compartida `"MathJs"` tiene tests que llaman `registerCurrency`, lo que añadiría divisas como unidades al registry y contaminaría el snapshot.
+**Fixture dedicada**: el test usa `MathJsSnapshotFixture` con `EmptyCurrencyRateProvider` para no contaminar el snapshot con divisas registradas por otros tests.
 
 **Workflow al actualizar math.js**:
-1. Cambiar la URL de descarga en `Yottacast.Core.csproj` a la nueva versión
-2. Borrar `Search/Calculator/math.min.js` (se redescarga en el siguiente build)
+1. Cambiar la URL de descarga en `Yottacast.Core/Yottacast.Core.csproj` a la nueva versión
+2. Borrar `Yottacast.Core/Search/Calculator/math.min.js` (se redescarga en el siguiente build)
 3. `dotnet build`
-4. `dotnet test --filter UnitSnapshot` — falla con el diff
-5. Revisar el diff; si los cambios son aceptables: `MATHJS_UPDATE_SNAPSHOT=1 dotnet test --filter UnitSnapshot`
-6. El fichero `mathjs-unit-snapshot.json` queda actualizado en el source tree listo para commitear
-
-**Consultar qué tokens son ambiguos**: la clave `ambiguous` del JSON contiene la lista completa. La clave `tokenMap` permite ver las formas canónicas de cada token.
+4. Borrar `Yottacast.Core.Tests/Search/mathjs-unit-snapshot.json` y `Yottacast.Core/Search/Calculator/mathjs-precomputed.json`
+5. `dotnet test --filter GeneratedFiles_MatchCommittedBaseline` — los regenera
+6. `dotnet build` para re-embedder el nuevo `mathjs-precomputed.json`
+7. `dotnet test` para verificar que todo pasa
 
 ## CalculatorSearch
 
-**Detección de expresiones**:
-- Digit + operador/paréntesis en cualquier lado: `2+2`, `(3+4)*2`, `2^10`
-- Referencia a función math o constante: `sqrt(144)`, `sin(pi/2)`, `pi * r`
-- Queries con un valor numérico + unidad origen + palabra clave (`to`/`in`/`en`) + unidad destino se detectan como conversión de unidades; el resto como calculadora. Ver el regex en `CalculatorSearch`.
+**Detección de expresiones**: la clasificación la hace `normalizeExpression()` vía análisis del AST. El `kind` determina el camino de evaluación: `calculation` para aritmética, `unit_entry` para un valor con unidad que tiene conversión por defecto, `simple_conversion` y `complex_conversion` para expresiones con `to`/`in`.
 
-**Conversión de unidades**:
-- Formato: `NUMBER UNIT (to|in|en) UNIT`
-- El número acepta tanto punto como coma como separador decimal (`10.5` o `10,5`)
-- Los caracteres de unidad incluyen letras ASCII, `μ` (mu griego), `°` (grado), `/`, `²`, `³`
-- Las palabras clave `to`, `in` y `en` se reconocen (case-insensitive)
-- math.js las evalúa nativamente: `10 kg to lbs`, `100 fahrenheit to celsius`, `5 miles to km`
+**Conversiones de unidades**:
+- Formato explícito: `NÚMERO UNIDAD (to|in) UNIDAD` — ej. `10 kg to lbs`, `100 F to C`
+- Formato implícito: `NÚMERO UNIDAD` — ej. `10 km` se convierte automáticamente usando `defaultTargets` (ver `unit-config.json`)
+- math.js las evalúa nativamente; `normalizeExpression` normaliza el case antes de evaluar
+
+**Divisas**: soportadas vía `ICurrencyRateProvider`. Las tasas se registran dinámicamente en el engine con `registerCurrency()` en cada llamada a `Evaluate()`, actualizándose si la tasa ha cambiado. Los códigos de divisa (ej. `USD`, `EUR`) se normalizan a mayúsculas en el AST. Al escribir una sola divisa (ej. `10 USD`), se convierte al par por defecto definido en `_defaultCurrencyPair` en `mathjs-helpers.js` (`['EUR', 'USD']`).
+
+**`ConversionResultItemViewModel`** (`Yottacast.Core/ViewModels/ConversionResultItemViewModel.cs`): resultado de conversión con cuatro campos:
+- `FromShort` / `ToShort`: valor + unidad en formato corto (ej. `"10 km"`, `"6.213711922 mile"`)
+- `FromLong` / `ToLong`: forma larga con pluralización (ej. `"10 kilometers"`, `"6.213711922 miles"`); `null` si no añade información sobre la forma corta
+
+**Ambigüedades**: cuando un token es ambiguo (ej. `mg` puede ser miligramo o megagramo), el `Subtitle` del resultado incluye una advertencia `⚠ 'mg', mg=milligram · Mg=megagram` con los candidatos. El primero de la lista se usa para la evaluación.
+
+**`ISearchHintProvider` / `LastHint`**: `CalculatorSearch` implementa `ISearchHintProvider`. Para errores `UnknownSymbol` e `IncompatibleUnits`, `LastHint` se establece con un mensaje legible para el usuario. Para otros errores (sintaxis, etc.) no se muestra hint.
 
 **No-result cuando el resultado coincide con la query**: si `Evaluate()` devuelve exactamente la misma cadena que la query de entrada (por ejemplo, al escribir sólo un número como `42`), `Search` no devuelve ningún resultado.
 
-**Display contract**: el `Title` del `ResultItemViewModel` es el resultado formateado; el `Subtitle` es la query original (tal como la escribió el usuario). El icono es "🧮" para calculadora y "📐" para conversor.
+**Display contract**: el `Title` del resultado es el valor de destino en formato corto; el `Subtitle` es la query normalizada (`NormalizedQuery`), opcionalmente seguida del hint de ambigüedad. El icono es "🧮" para calculadora y "📐" para conversor.
 
 `CalculatorSearch` tiene un score de 4, mayor que otras fuentes, por lo que sus resultados aparecen cerca de la cima cuando la query es reconocida.
 
-**`Start()` es no-op**: a diferencia de otras instant sources, `CalculatorSearch.Start()` no inicia ningún proceso. `WhenReady()` delega directamente en `engine.WhenReady()` — el gating lo determina la inicialización del engine.
+**`Start()` es no-op**: a diferencia de otras instant sources, `CalculatorSearch.Start()` no inicia ningún proceso. `WhenReady()` delega directamente en `engine.WhenReady()`.
 
-**Activación**: al activar un resultado de calculadora/conversor se copia el resultado al portapapeles (`OnActivate = () => clipboard.CopyText(result)`).
+**Activación**: al activar un resultado se copia al portapapeles — el resultado aritmético (`RawValue`) para calculadora, o el valor de destino en formato corto (`toShort`) para conversiones.
 
-**Limitación de monedas**: las conversiones de divisa (`100 usd to eur`) no están soportadas — math.js no incluye tasas de cambio FX. La query es descartada porque `Evaluate()` devuelve la query original o un error.
+**El parámetro `limit` se ignora**: `CalculatorSearch.Search()` acepta `limit` por contrato de `IInstantSearchSource` pero nunca lo usa. La fuente devuelve como máximo un elemento.
 
-**El parámetro `limit` se ignora**: `CalculatorSearch.Search()` acepta `limit` por contrato de `IInstantSearchSource` pero nunca lo usa. La fuente devuelve como máximo un elemento, por lo que el límite nunca aplica en la práctica.
-
-**Tests**: los tests están repartidos en dos clases xUnit — `CalculatorSearchTests` (aritmética y funciones) y `UnitConverterSearchTests` (conversiones de unidades). Ambas usan la fixture compartida `MathJsEngineFixture` (colección `"MathJs"`) para inicializar el engine una sola vez: cargar y ejecutar ~700 KB de JS por cada clase de test sería demasiado lento.
+**Tests**: repartidos en varias clases xUnit que usan `MathJsEngineFixture` (colección `"MathJs"`) para inicializar el engine una sola vez:
+- `Yottacast.Core.Tests/Search/Calculator/CalculatorSearchTests.cs` — aritmética y funciones
+- `Yottacast.Core.Tests/Search/Calculator/UnitConverterSearchTests.cs` — conversiones de unidades
+- `Yottacast.Core.Tests/Search/Calculator/DefaultConversionTests.cs` — conversiones por defecto y nombres largos
+- `Yottacast.Core.Tests/Search/Calculator/ClassifyErrorTests.cs` — clasificación de errores
+- `Yottacast.Core.Tests/Search/Calculator/NormalizeExpressionTests.cs` — normalización de expresiones y detección de kinds
 
 ## ClipboardService
 

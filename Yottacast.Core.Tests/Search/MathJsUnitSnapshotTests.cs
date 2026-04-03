@@ -33,8 +33,7 @@ file class EmptyCurrencyRateProvider : ICurrencyRateProvider {
 ///   - Yottacast.Core.Tests/Search/mathjs-unit-snapshot.json  (regression baseline)
 ///   - Yottacast.Core/Search/Calculator/mathjs-precomputed.json  (runtime maps)
 ///
-/// To regenerate after upgrading math.js:
-///   MATHJS_UPDATE_SNAPSHOT=1 dotnet test --project Yottacast.Core.Tests
+/// To regenerate after upgrading math.js: delete both files and run the tests.
 /// </summary>
 public class MathJsGeneratedFilesTests {
 
@@ -53,12 +52,11 @@ public class MathJsGeneratedFilesTests {
     [Fact]
     public void GeneratedFiles_MatchCommittedBaseline() {
         var (currentPrecomputed, currentSnapshot) = MathJsDataGenerator.GenerateData();
-        var updateMode = Environment.GetEnvironmentVariable("MATHJS_UPDATE_SNAPSHOT") == "1";
 
-        if (!File.Exists(SnapshotPath) || !File.Exists(PrecomputedPath) || updateMode) {
+        if (!File.Exists(SnapshotPath) || !File.Exists(PrecomputedPath)) {
             File.WriteAllText(SnapshotPath,    currentSnapshot);
             File.WriteAllText(PrecomputedPath, currentPrecomputed);
-            return; // Archivos creados/actualizados: test pasa
+            return; // Archivos creados: test pasa
         }
 
         var committedSnapshot = File.ReadAllText(SnapshotPath);
@@ -69,12 +67,11 @@ public class MathJsGeneratedFilesTests {
 
             var newUnits      = current.Units.Except(committed.Units).ToList();
             var removedUnits  = committed.Units.Except(current.Units).ToList();
-            var newAmbig      = current.Ambiguous.Except(committed.Ambiguous).ToList();
-            var resolvedAmbig = committed.Ambiguous.Except(current.Ambiguous).ToList();
+            var newAmbig      = current.Ambiguous.Keys.Except(committed.Ambiguous.Keys).ToList();
+            var resolvedAmbig = committed.Ambiguous.Keys.Except(current.Ambiguous.Keys).ToList();
 
             var sb = new StringBuilder();
-            sb.AppendLine("math.js unit data changed. Review and update snapshot:");
-            sb.AppendLine("  MATHJS_UPDATE_SNAPSHOT=1 dotnet test --filter GeneratedFiles");
+            sb.AppendLine("math.js unit data changed. Delete the snapshot files and re-run tests to regenerate.");
             if (current.Version != committed.Version)
                 sb.AppendLine($"  Version: {committed.Version} → {current.Version}");
             if (newUnits.Count != 0)
@@ -102,8 +99,9 @@ file static class MathJsDataGenerator {
     public static (string PrecomputedJson, string SnapshotJson) GenerateData() {
         var engine = new Engine(opts => opts.LimitRecursion(64));
         engine.Execute(LoadResource("Yottacast.Core.Search.Calculator.math.min.js"));
+        engine.Execute(LoadResource("Yottacast.Core.Search.Calculator.mathjs-helpers.js"));
         engine.Execute(LoadResource("Yottacast.Core.Search.Calculator.mathjs-precompute.js"));
-        var precomputed = engine.Evaluate("JSON.stringify(extractPrecomputedData())").ToString();
+        var precomputed = engine.Evaluate("JSON.stringify(extractPrecomputedData(), null, 2)").ToString();
         var snapshot    = engine.Evaluate("JSON.stringify(extractUnitSnapshot(), null, 2)").ToString();
         engine.Dispose();
         return (precomputed, snapshot);
@@ -120,10 +118,10 @@ file static class MathJsDataGenerator {
 internal record MathJsSnapshot(
     string Version,
     int UnitCount,
-    [property: JsonPropertyName("units")]     string[] Units,
+    [property: JsonPropertyName("units")]        string[] Units,
     [property: JsonPropertyName("prefixGroups")] Dictionary<string, string[]> PrefixGroups,
-    [property: JsonPropertyName("tokenMap")]  Dictionary<string, string[]> TokenMap,
-    [property: JsonPropertyName("ambiguous")] string[] Ambiguous
+    [property: JsonPropertyName("symbols")]      string[] Symbols,
+    [property: JsonPropertyName("ambiguous")]    Dictionary<string, string[]> Ambiguous
 );
 
 // ── Unit casing invariants derived from the snapshot ─────────────────────────
@@ -141,7 +139,7 @@ public class MathJsUnitCasingTests(MathJsSnapshotFixture fixture) {
     }
 
     /// <summary>
-    /// For every non-ambiguous token in the snapshot: evaluating "1 unit" in its canonical
+    /// For every non-ambiguous symbol in the snapshot: evaluating "1 unit" in its canonical
     /// casing and in ALL-CAPS must return the same result (normalization makes them equivalent).
     /// </summary>
     [Fact]
@@ -149,10 +147,8 @@ public class MathJsUnitCasingTests(MathJsSnapshotFixture fixture) {
         var snapshot = ReadSnapshot();
         var failures = new List<string>();
 
-        // Tokens with exactly one canonical form and not in the ambiguous list
-        var candidates = snapshot.TokenMap
-            .Where(kv => kv.Value.Length == 1 && !snapshot.Ambiguous.Contains(kv.Key))
-            .Select(kv => kv.Value[0])
+        var candidates = snapshot.Symbols
+            .Where(s => !snapshot.Ambiguous.ContainsKey(s.ToLowerInvariant()))
             .Take(40)
             .ToList();
 
@@ -172,30 +168,26 @@ public class MathJsUnitCasingTests(MathJsSnapshotFixture fixture) {
     }
 
     /// <summary>
-    /// For every ambiguous token in the snapshot: the two case-distinct variants stored in
-    /// the tokenMap must evaluate to different results (they are genuinely different units,
-    /// e.g. "mg" = milligram vs "Mg" = megagram).
+    /// For every ambiguous token in the snapshot: at least some case-distinct variant pairs
+    /// must evaluate to genuinely different results (e.g. "mg" = milligram vs "Mg" = megagram).
     /// </summary>
     [Fact]
     public void AmbiguousUnits_DifferentCasingsGiveDifferentResults() {
         var snapshot = ReadSnapshot();
-        var failures = new List<string>();
 
-        var candidates = snapshot.TokenMap
-            .Where(kv => kv.Value.Length >= 2)
-            .Take(20)
-            .ToList();
+        var candidates = snapshot.Ambiguous.Take(20).ToList();
 
-        foreach (var (token, variants) in candidates) {
+        int distinctCount = 0;
+        foreach (var (_, variants) in candidates) {
             var r1 = fixture.Engine.Evaluate($"1 {variants[0]}");
             var r2 = fixture.Engine.Evaluate($"1 {variants[1]}");
 
             if (!r1.IsSuccess || !r2.IsSuccess) continue; // skip unsupported standalone units
+            if (r1.Value == r2.Value) continue; // synonym forms of the same unit (e.g. aL vs al for attoliter)
 
-            if (r1.Value == r2.Value)
-                failures.Add($"Token '{token}': '{variants[0]}' and '{variants[1]}' both produced '{r1.Value}'");
+            distinctCount++;
         }
 
-        Assert.Empty(failures);
+        Assert.True(distinctCount > 0, $"Expected some ambiguous token variants to produce different results, but none did (checked {candidates.Count} tokens).");
     }
 }

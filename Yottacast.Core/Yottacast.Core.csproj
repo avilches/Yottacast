@@ -52,6 +52,7 @@
     <EmbeddedResource Include="Search/Calculator/mathjs-helpers.js" />
     <EmbeddedResource Include="Search/Calculator/mathjs-precompute.js" />
     <EmbeddedResource Include="Search/Calculator/mathjs-precomputed.json" Condition="Exists('Search/Calculator/mathjs-precomputed.json')" />
+    <EmbeddedResource Include="Search/Calculator/unit-config.json" />
     <EmbeddedResource Include="Search/Emoji/emoji-cache.json" Condition="Exists('Search/Emoji/emoji-cache.json')" />
     <EmbeddedResource Include="Search/Emoji/emoji-data.json" Condition="Exists('Search/Emoji/emoji-data.json')" />
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">

@@ -168,9 +168,8 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
     // Expressions use addition so the result differs from the query (triggering a result item).
 
     public static TheoryData<string, string, string> HintCases => new() {
-        { "1 mg + 1 mg", "mg", "Mg" },  // milligram vs megagram
-        { "1 MB + 1 MB", "MB", "Mb" },  // megabyte vs megabit
-        { "1 ms + 1 ms", "ms", "MS" },  // millisecond vs megasiemens (+ 2 more variants)
+        { "1 MG + 1 MG", "Mg", "mg" },  // MG not a canonical form → ambiguous (megagram vs milligram)
+        { "1 mB + 1 mB", "MB", "Mb" },  // mB not a canonical form → ambiguous (megabyte vs megabit)
     };
 
     [Theory]
@@ -183,8 +182,9 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
     }
 
     public static TheoryData<string> NoHintCases => new() {
-        { "5 km to m" },  // km is unambiguous
-        { "2+2"        },  // no units at all
+        { "5 km to m"   },  // km is unambiguous
+        { "2+2"         },  // no units at all
+        { "1 mg + 1 mg" },  // mg is exact canonical form → no ambiguity
     };
 
     [Theory]
@@ -196,14 +196,13 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
 
     // ── Error items ───────────────────────────────────────────────────────────
 
-    // "MG" is ambiguous lowercase: both Mg (megagram) and mg (milligram) exist → WrongUnitCasing
+    // "MG" is ambiguous: resolves to Mg (megagram), shows hint with both Mg and mg
     [Fact]
-    public void WrongUnitCasing_ShowsErrorWithSuggestions() {
-        var search = BuildSearch(out _);
-        Assert.Empty(search.Search("5 MG to g", 5));
-        Assert.Contains("MG", search.LastHint);
-        Assert.Contains("Mg", search.LastHint);
-        Assert.Contains("mg", search.LastHint);
+    public void AmbiguousUnit_InConversion_ShowsHintInSubtitle() {
+        var item = SearchResult(BuildSearch(out _), "5 MG to g");
+        Assert.Contains("⚠", item.Subtitle);
+        Assert.Contains("Mg", item.Subtitle);
+        Assert.Contains("mg", item.Subtitle);
     }
 
     // Truly unknown unit in a math-like expression → UnknownSymbol hint
@@ -283,6 +282,56 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
         var item = SearchResult(BuildSearch(out _), query);
         Assert.DoesNotContain("EUR", item.Title);
         Assert.DoesNotContain("USD", item.Title);
+    }
+
+    // ── Auto-conversión de unidades físicas ────────────────────────────────────
+
+    public static TheoryData<string, string> PhysicalAutoConversionCases => new() {
+        { "10 kg",   "lb"   },   // mass: kg → lb
+        { "5 km",    "mile" },   // length: km → mile
+    };
+
+    [Theory]
+    [MemberData(nameof(PhysicalAutoConversionCases))]
+    public void AutoConversion_SinglePhysicalUnit_AddsDefaultTarget(string query, string expectedUnitFragment) {
+        Assert.Contains(expectedUnitFragment, SearchResult(BuildSearch(out _), query).Title);
+    }
+
+    // ── ConversionResultItemViewModel ─────────────────────────────────────────
+
+    [Fact]
+    public void Conversion_ReturnsConversionResultItemViewModel() {
+        var item = SearchResult(BuildSearch(out _), "10 km to m");
+        Assert.IsType<ConversionResultItemViewModel>(item);
+    }
+
+    public static TheoryData<string, string, string> ConversionLongFormCases => new() {
+        { "10 km to m",   "10000 meters",    "10 kilometers"  },
+        { "1000 m to km", "1 kilometer",     "1000 meters"    },   // singular on destination (toValue == 1)
+        { "5 kg to g",    "5000 grams",      "5 kilograms"    },
+    };
+
+    [Theory, MemberData(nameof(ConversionLongFormCases))]
+    public void Conversion_LongFormFields(string query, string expectedToLong, string expectedFromLong) {
+        var item = Assert.IsType<ConversionResultItemViewModel>(SearchResult(BuildSearch(out _), query));
+        Assert.Contains(expectedToLong,   item.ToLong   ?? "");
+        Assert.Contains(expectedFromLong, item.FromLong ?? "");
+    }
+
+    [Fact]
+    public void Conversion_Currency_NoLongForm() {
+        var item = Assert.IsType<ConversionResultItemViewModel>(SearchResult(BuildSearch(out _), "10 USD to EUR"));
+        Assert.Null(item.ToLong);
+        Assert.Null(item.FromLong);
+        Assert.DoesNotContain("⚠", item.Subtitle);
+    }
+
+    [Fact]
+    public void Conversion_AmbiguousUnit_HintInSubtitle() {
+        var item = Assert.IsType<ConversionResultItemViewModel>(SearchResult(BuildSearch(out _), "5 MG to g"));
+        Assert.Contains("⚠",  item.Subtitle);
+        Assert.Contains("Mg", item.Subtitle);
+        Assert.Contains("mg", item.Subtitle);
     }
 }
 

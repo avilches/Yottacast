@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+using System.Globalization;
 using Yottacast.Core.Services;
 using Yottacast.Core.ViewModels;
 
@@ -8,8 +8,8 @@ namespace Yottacast.Core.Search.Calculator;
 /// Instant search source that evaluates math expressions and unit conversions via math.js (Jint).
 /// Activating the result copies the value to the clipboard.
 /// Validation is fully delegated to math.js — if Evaluate returns null, there is no result.
-/// When the expression fails with an actionable error (unknown unit, wrong casing, incompatible
-/// units) and the query looks math-like, an informational error item is shown instead.
+/// When the expression fails with an actionable error (unknown unit, incompatible units) an
+/// informational error item is shown via LastHint.
 /// </summary>
 public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard) : IInstantSearchSource, ISearchHintProvider {
     public string? LastHint { get; private set; }
@@ -21,52 +21,82 @@ public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard) :
     public IReadOnlyList<ResultItemViewModel> Search(string query, int _) {
         LastHint = null;
         var q = query.Trim();
-        var result = engine.Evaluate(q);
 
-        if (result.IsSuccess && result.Value != q) {
-            var capturedResult = result.Value!;
-            var subtitle = result.NormalizedQuery;
-            if (result.AmbiguityHints is { Count: > 0 } hints) {
-                var hintParts = hints.Select(h => {
-                    var candidates = string.Join(" · ", h.Candidates.Select(c => $"{c.Symbol}={c.LongName}"));
-                    return $"'{h.Input}', {candidates}";
-                });
-                subtitle = $"{q}   ⚠ {string.Join("; ", hintParts)}";
+        switch (engine.Evaluate(q)) {
+            case ConversionResult r: {
+                var fromUnit  = engine.DisplayUnit(r.FromUnit);
+                var toUnit    = engine.DisplayUnit(r.ToUnit);
+                var fromShort = $"{r.FromValue} {fromUnit}".Trim();
+                var toShort   = $"{r.ToValue} {toUnit}".Trim();
+                var fromLong  = LongForm(r.FromValue, r.FromUnitLong, r.FromUnit);
+                var toLong    = LongForm(r.ToValue,   r.ToUnitLong,   r.ToUnit);
+                var captured  = toShort;
+                return [new ConversionResultItemViewModel {
+                    Icon      = "📐",
+                    Title     = toShort,
+                    Subtitle  = BuildSubtitle(r.NormalizedQuery, r.AmbiguityHints),
+                    Category  = "Converter",
+                    Score     = 4,
+                    FromShort = fromShort,
+                    FromLong  = fromLong,
+                    ToShort   = toShort,
+                    ToLong    = toLong,
+                    OnActivate = () => clipboard.CopyText(captured),
+                }];
             }
-            return [new ResultItemViewModel {
-                Icon = result.IsConversion ? "📐" : "🧮",
-                Title = capturedResult,
-                Subtitle = subtitle,
-                Category = result.IsConversion ? "Converter" : "Calculator",
-                Score = 4,
-                OnActivate = () => clipboard.CopyText(capturedResult),
-            }];
-        }
-
-        if (result.ErrorKind is
-                CalcErrorKind.WrongUnitCasing or
-                CalcErrorKind.UnknownSymbol or
-                CalcErrorKind.IncompatibleUnits) {
-            LastHint = BuildErrorTitle(result);
+            case CalcResult r when r.RawValue != q: {
+                var subtitle = BuildSubtitle(r.NormalizedQuery, r.AmbiguityHints);
+                var captured = r.RawValue;
+                return [new ResultItemViewModel {
+                    Icon = "🧮",
+                    Title = r.RawValue,
+                    Subtitle = subtitle,
+                    Category = "Calculator",
+                    Score = 4,
+                    OnActivate = () => clipboard.CopyText(captured),
+                }];
+            }
+            case ErrorResult r when r.ErrorKind is CalcErrorKind.UnknownSymbol or CalcErrorKind.IncompatibleUnits:
+                LastHint = BuildErrorHint(r);
+                break;
         }
 
         return [];
     }
 
-    private static string BuildErrorTitle(EvaluationResult result) => result.ErrorKind switch {
-        CalcErrorKind.WrongUnitCasing when result.ErrorSuggestions is { Count: > 0 } suggestions =>
-            $"'{result.ErrorToken}' not found – did you mean: {string.Join(" · ", suggestions.Select(s => $"{s.Symbol} ({s.LongName})"))}?",
-        CalcErrorKind.UnknownSymbol =>
-            $"Unknown unit or variable: '{result.ErrorToken}'",
-        CalcErrorKind.IncompatibleUnits =>
-            result.Error ?? "Incompatible units",
-        _ => result.Error ?? "Error"
-    };
+    private static string BuildSubtitle(string normalizedQuery, IReadOnlyList<AmbiguityHint>? hints) {
+        var hintText = BuildHints(hints);
+        return string.IsNullOrEmpty(hintText) ? normalizedQuery : $"{normalizedQuery}   {hintText}";
+    }
 
-    /// Returns true when the query looks like a math expression (digits or operators),
-    /// so we avoid showing error items for random non-math text like "safari".
-    private static bool LooksMathLike(string q) =>
-        q.Any(char.IsDigit) ||
-        q.IndexOfAny(['+', '*', '/', '^', '%']) >= 0 ||
-        Regex.IsMatch(q, @"\bto\b", RegexOptions.IgnoreCase);
+    private static string BuildHints(IReadOnlyList<AmbiguityHint>? hints) {
+        if (hints is not { Count: > 0 }) return "";
+        var parts = hints.Select(h => {
+            var candidates = string.Join(" · ", h.Candidates.Select(c => $"{c.Symbol}={c.LongName}"));
+            return $"'{h.Input}', {candidates}";
+        });
+        return $"⚠ {string.Join("; ", parts)}";
+    }
+
+    private static string Pluralize(string name, string valueStr) {
+        if (!double.TryParse(valueStr, NumberStyles.Float, CultureInfo.InvariantCulture, out var d))
+            return name;
+        if (Math.Abs(d) == 1.0) return name;
+        return name.EndsWith('s') || name.EndsWith("heit") ? name : name + "s";
+    }
+
+    private static string? LongForm(string value, string? unitLong, string unitShort) {
+        if (unitLong == null) return null;
+        var s = $"{value} {Pluralize(unitLong, value)}";
+        var shortForm = $"{value} {unitShort}".Trim();
+        return s == shortForm ? null : s;
+    }
+
+    private static string BuildErrorHint(ErrorResult r) => r.ErrorKind switch {
+        CalcErrorKind.UnknownSymbol =>
+            $"Unknown unit or variable: '{r.ErrorToken}'",
+        CalcErrorKind.IncompatibleUnits =>
+            r.ErrorMessage ?? "Incompatible units",
+        _ => r.ErrorMessage ?? "Error"
+    };
 }
