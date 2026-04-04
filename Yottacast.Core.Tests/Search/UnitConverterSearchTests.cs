@@ -14,9 +14,10 @@ public class UnitConverterSearchTests(MathJsEngineFixture fixture) {
         return new CalculatorSearch(fixture.Engine, clipboard);
     }
 
-    private static IReadOnlyList<Yottacast.Core.ViewModels.ResultItemViewModel> SearchResults(
+    private static IReadOnlyList<Yottacast.Core.ViewModels.ConversionResultItemViewModel> SearchResults(
         CalculatorSearch search, string query) {
-        return search.Search(query, 5);
+        return search.Search(query, 5)
+            .Cast<Yottacast.Core.ViewModels.ConversionResultItemViewModel>().ToList();
     }
 
     // ── Conversions ───────────────────────────────────────────────────────────
@@ -43,7 +44,7 @@ public class UnitConverterSearchTests(MathJsEngineFixture fixture) {
     public void Conversion_TitleMatchesExpected(string query, string expectedTitle, string unitHint) {
         var results = SearchResults(BuildSearch(out _), query);
         var item = Assert.Single(results);
-        Assert.Equal(expectedTitle, item.Title);
+        Assert.Equal(expectedTitle, item.ToShort);
         _ = unitHint; // used as documentation only
     }
 
@@ -56,7 +57,6 @@ public class UnitConverterSearchTests(MathJsEngineFixture fixture) {
         Assert.Equal("📐", item.Icon);
         Assert.Equal("Converter", item.Category);
         Assert.Equal(4, item.Score);
-        Assert.Equal("10 kg to lbs", item.Subtitle);
     }
 
     [Fact]

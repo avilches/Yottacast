@@ -17,7 +17,7 @@ file sealed class StubInstantSource(IReadOnlyList<ResultItemViewModel> results) 
     public Task WhenReady() => Task.CompletedTask;
     public Task Stop() => Task.CompletedTask;
 
-    public IReadOnlyList<ResultItemViewModel> Search(string query, int limit) {
+    public IReadOnlyList<BaseResultItemViewModel> Search(string query, int limit) {
         WasSearched = true;
         return results;
     }
@@ -35,7 +35,7 @@ file sealed class StubDeferredSource(IReadOnlyList<ResultItemViewModel> results)
     public Task WhenReady() => Task.CompletedTask;
     public Task Stop() => Task.CompletedTask;
 
-    public async IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>> SearchAsync(
+    public async IAsyncEnumerable<IReadOnlyList<BaseResultItemViewModel>> SearchAsync(
         string query, int limit, [EnumeratorCancellation] CancellationToken ct = default) {
         WasSearched = true;
         await Task.Yield();
@@ -54,7 +54,7 @@ file sealed class MultiSnapshotDeferredSource(IReadOnlyList<IReadOnlyList<Result
     public Task WhenReady() => Task.CompletedTask;
     public Task Stop() => Task.CompletedTask;
 
-    public async IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>> SearchAsync(
+    public async IAsyncEnumerable<IReadOnlyList<BaseResultItemViewModel>> SearchAsync(
         string query, int limit, [EnumeratorCancellation] CancellationToken ct = default) {
         foreach (var snap in snapshots) {
             if (delayMs > 0)
@@ -74,7 +74,7 @@ file sealed class BlockingDeferredSource : IDeferredSearchSource {
     public Task WhenReady() => Task.CompletedTask;
     public Task Stop() => Task.CompletedTask;
 
-    public async IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>> SearchAsync(
+    public async IAsyncEnumerable<IReadOnlyList<BaseResultItemViewModel>> SearchAsync(
         string query, int limit, [EnumeratorCancellation] CancellationToken ct = default) {
         await Task.Delay(Timeout.Infinite, ct).ConfigureAwait(false);
         yield break; // unreachable, but satisfies the compiler
@@ -91,7 +91,7 @@ file sealed class DelayedReadyInstantSource(TaskCompletionSource tcs, IReadOnlyL
     public Task WhenReady() => tcs.Task;
     public Task Stop() => Task.CompletedTask;
 
-    public IReadOnlyList<ResultItemViewModel> Search(string query, int limit) => results;
+    public IReadOnlyList<BaseResultItemViewModel> Search(string query, int limit) => results;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -99,6 +99,9 @@ file sealed class DelayedReadyInstantSource(TaskCompletionSource tcs, IReadOnlyL
 file static class ResultItem {
     public static ResultItemViewModel Make(string title, double score) =>
         new() { Title = title, Score = score };
+
+    public static string TitleOf(BaseResultItemViewModel item) =>
+        ((ResultItemViewModel)item).Title;
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -118,7 +121,7 @@ public class GlobalSearchTests {
         Assert.True(instant.WasSearched, "instant source should have been searched");
         Assert.False(deferred.WasSearched, "deferred source must NOT be searched by SearchInstant");
         Assert.Single(result);
-        Assert.Equal("A", result[0].Title);
+        Assert.Equal("A", ResultItem.TitleOf(result[0]));
     }
 
     [Fact]
@@ -127,7 +130,7 @@ public class GlobalSearchTests {
         var deferred = new StubDeferredSource([ResultItem.Make("B", 1.0)]);
         var global = new GlobalSearch([instant], [deferred]);
 
-        var snapshots = new List<IReadOnlyList<ResultItemViewModel>>();
+        var snapshots = new List<IReadOnlyList<BaseResultItemViewModel>>();
         await foreach (var snap in global.SearchDeferredAsync("q", 10))
             snapshots.Add(snap);
 
@@ -135,7 +138,7 @@ public class GlobalSearchTests {
         Assert.True(deferred.WasSearched, "deferred source should have been searched");
         Assert.Single(snapshots);
         Assert.Single(snapshots[0]);
-        Assert.Equal("B", snapshots[0][0].Title);
+        Assert.Equal("B", ResultItem.TitleOf(snapshots[0][0]));
     }
 
     // ── Merging and ordering ──────────────────────────────────────────────────
@@ -154,9 +157,9 @@ public class GlobalSearchTests {
         var (result, _) = global.SearchInstant("q", 10);
 
         Assert.Equal(3, result.Count);
-        Assert.Equal("High", result[0].Title);
-        Assert.Equal("Mid", result[1].Title);
-        Assert.Equal("Low", result[2].Title);
+        Assert.Equal("High", ResultItem.TitleOf(result[0]));
+        Assert.Equal("Mid",  ResultItem.TitleOf(result[1]));
+        Assert.Equal("Low",  ResultItem.TitleOf(result[2]));
     }
 
     [Fact]
@@ -170,14 +173,14 @@ public class GlobalSearchTests {
         ]);
         var global = new GlobalSearch([], [s1, s2]);
 
-        IReadOnlyList<ResultItemViewModel> last = [];
+        IReadOnlyList<BaseResultItemViewModel> last = [];
         await foreach (var snap in global.SearchDeferredAsync("q", 10))
             last = snap;
 
         Assert.Equal(3, last.Count);
-        Assert.Equal("Top", last[0].Title);
-        Assert.Equal("Mid", last[1].Title);
-        Assert.Equal("Low", last[2].Title);
+        Assert.Equal("Top", ResultItem.TitleOf(last[0]));
+        Assert.Equal("Mid", ResultItem.TitleOf(last[1]));
+        Assert.Equal("Low", ResultItem.TitleOf(last[2]));
     }
 
     // ── Snapshot-slot replacement (not accumulation) ──────────────────────────
@@ -190,7 +193,7 @@ public class GlobalSearchTests {
         var source = new MultiSnapshotDeferredSource([snap1, snap2]);
         var global = new GlobalSearch([], [source]);
 
-        var allSnapshots = new List<IReadOnlyList<ResultItemViewModel>>();
+        var allSnapshots = new List<IReadOnlyList<BaseResultItemViewModel>>();
         await foreach (var snap in global.SearchDeferredAsync("q", 10))
             allSnapshots.Add(snap);
 
@@ -199,11 +202,11 @@ public class GlobalSearchTests {
 
         // First emission: only "A"
         Assert.Single(allSnapshots[0]);
-        Assert.Equal("A", allSnapshots[0][0].Title);
+        Assert.Equal("A", ResultItem.TitleOf(allSnapshots[0][0]));
 
         // Second emission: slot replaced → only "B", "A" is gone
         Assert.Single(allSnapshots[1]);
-        Assert.Equal("B", allSnapshots[1][0].Title);
+        Assert.Equal("B", ResultItem.TitleOf(allSnapshots[1][0]));
     }
 
     [Fact]
@@ -215,16 +218,16 @@ public class GlobalSearchTests {
         var s2 = new MultiSnapshotDeferredSource([snap2a, snap2b]);
         var global = new GlobalSearch([], [s1, s2]);
 
-        IReadOnlyList<ResultItemViewModel> last = [];
+        IReadOnlyList<BaseResultItemViewModel> last = [];
         await foreach (var snap in global.SearchDeferredAsync("q", 10))
             last = snap;
 
         // Final state: S1 (0.5) + S2v2 (0.7), sorted → S2v2, S1
         Assert.Equal(2, last.Count);
-        Assert.Equal("S2v2", last[0].Title);
-        Assert.Equal("S1", last[1].Title);
+        Assert.Equal("S2v2", ResultItem.TitleOf(last[0]));
+        Assert.Equal("S1",   ResultItem.TitleOf(last[1]));
         // S2v1 must NOT appear (it was replaced)
-        Assert.DoesNotContain(last, r => r.Title == "S2v1");
+        Assert.DoesNotContain(last, r => r is ResultItemViewModel ri && ri.Title == "S2v1");
     }
 
     // ── Limit ─────────────────────────────────────────────────────────────────
@@ -242,14 +245,14 @@ public class GlobalSearchTests {
         ]);
         var global = new GlobalSearch([], [s1, s2]);
 
-        IReadOnlyList<ResultItemViewModel> last = [];
+        IReadOnlyList<BaseResultItemViewModel> last = [];
         await foreach (var snap in global.SearchDeferredAsync("q", limit: 3))
             last = snap;
 
         Assert.Equal(3, last.Count);
-        Assert.Equal("A", last[0].Title);
-        Assert.Equal("B", last[1].Title);
-        Assert.Equal("C", last[2].Title);
+        Assert.Equal("A", ResultItem.TitleOf(last[0]));
+        Assert.Equal("B", ResultItem.TitleOf(last[1]));
+        Assert.Equal("C", ResultItem.TitleOf(last[2]));
     }
 
     [Fact]
@@ -268,9 +271,9 @@ public class GlobalSearchTests {
         var (result, _) = global.SearchInstant("q", limit: 3);
 
         Assert.Equal(3, result.Count);
-        Assert.Equal("A", result[0].Title);
-        Assert.Equal("B", result[1].Title);
-        Assert.Equal("C", result[2].Title);
+        Assert.Equal("A", ResultItem.TitleOf(result[0]));
+        Assert.Equal("B", ResultItem.TitleOf(result[1]));
+        Assert.Equal("C", ResultItem.TitleOf(result[2]));
     }
 
     // ── Empty query / no sources ──────────────────────────────────────────────
@@ -296,7 +299,7 @@ public class GlobalSearchTests {
         var source = new StubDeferredSource([]);
         var global = new GlobalSearch([], [source]);
 
-        var snapshots = new List<IReadOnlyList<ResultItemViewModel>>();
+        var snapshots = new List<IReadOnlyList<BaseResultItemViewModel>>();
         await foreach (var snap in global.SearchDeferredAsync("q", 10))
             snapshots.Add(snap);
 
@@ -403,14 +406,14 @@ public class GlobalSearchTests {
 
         var (instantResult, _) = global.SearchInstant("q", 10);
 
-        IReadOnlyList<ResultItemViewModel> deferredResult = [];
+        IReadOnlyList<BaseResultItemViewModel> deferredResult = [];
         await foreach (var snap in global.SearchDeferredAsync("q", 10))
             deferredResult = snap;
 
         Assert.Single(instantResult);
-        Assert.Equal("Instant", instantResult[0].Title);
+        Assert.Equal("Instant", ResultItem.TitleOf(instantResult[0]));
 
         Assert.Single(deferredResult);
-        Assert.Equal("Deferred", deferredResult[0].Title);
+        Assert.Equal("Deferred", ResultItem.TitleOf(deferredResult[0]));
     }
 }

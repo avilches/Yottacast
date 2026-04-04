@@ -274,22 +274,13 @@
                                 </StackPanel>
                             </Grid>
 
-                            <!-- Category + hint -->
-                            <StackPanel Grid.Column="2"
-                                        Orientation="Horizontal"
-                                        VerticalAlignment="Center"
-                                        Spacing="8"
-                                        Margin="12,0,0,0">
-                                <TextBlock Text="{Binding Subtitle}"
-                                           Foreground="{DynamicResource Theme.ItemSubtitle}"
-                                           FontSize="{DynamicResource Theme.FontSizeSmall}"
-                                           VerticalAlignment="Center"
-                                           IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                                <TextBlock Text="{Binding Category}"
-                                           Foreground="{DynamicResource Theme.ItemCategory}"
-                                           FontSize="{DynamicResource Theme.FontSizeSmall}"
-                                           VerticalAlignment="Center"/>
-                            </StackPanel>
+                            <!-- Category -->
+                            <TextBlock Grid.Column="2"
+                                       Text="{Binding Category}"
+                                       Foreground="{DynamicResource Theme.ItemCategory}"
+                                       FontSize="{DynamicResource Theme.FontSizeSmall}"
+                                       VerticalAlignment="Center"
+                                       Margin="12,0,0,0"/>
 
                         </Grid>
                     </DataTemplate>

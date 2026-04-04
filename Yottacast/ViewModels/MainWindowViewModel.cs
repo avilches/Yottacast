@@ -22,7 +22,7 @@ public partial class MainWindowViewModel(
 
     [ObservableProperty] private string _searchText = "";
 
-    [ObservableProperty] private ResultItemViewModel? _selectedResult;
+    [ObservableProperty] private BaseResultItemViewModel? _selectedResult;
 
     [ObservableProperty] private bool _hasResults;
 
@@ -34,13 +34,13 @@ public partial class MainWindowViewModel(
     [ObservableProperty] private string _updateBannerText = "";
     [ObservableProperty] private string? _searchHint;
 
-    public ObservableCollection<ResultItemViewModel> Results { get; } = [];
+    public ObservableCollection<BaseResultItemViewModel> Results { get; } = [];
 
     private CancellationTokenSource? _cts;
     private CancellationTokenSource? _deferredCts;
 
-    private IReadOnlyList<ResultItemViewModel> _instantSnapshot = [];
-    private IReadOnlyList<ResultItemViewModel> _deferredSnapshot = [];
+    private IReadOnlyList<BaseResultItemViewModel> _instantSnapshot = [];
+    private IReadOnlyList<BaseResultItemViewModel> _deferredSnapshot = [];
     private ResultItemViewModel? _googleItem;
     private bool _userNavigated;
 
@@ -134,7 +134,7 @@ public partial class MainWindowViewModel(
     }
 
     private void RefreshResults() {
-        var merged = (_googleItem != null ? new[] { _googleItem } : Array.Empty<ResultItemViewModel>())
+        var merged = (_googleItem != null ? new[] { (BaseResultItemViewModel)_googleItem } : Array.Empty<BaseResultItemViewModel>())
             .Concat(_instantSnapshot)
             .Concat(_deferredSnapshot)
             .OrderByDescending(x => x.Score)
@@ -146,7 +146,9 @@ public partial class MainWindowViewModel(
         HasResults = Results.Count > 0;
         ShowNoResults = false;
 
-        var calcResult = merged.FirstOrDefault(x => x.Category is "Calculator" or "Converter");
+        var calcResult = merged.FirstOrDefault(x =>
+            x is ConversionResultItemViewModel ||
+            (x is ResultItemViewModel r && r.Category is "Calculator"));
         if (calcResult != null && !_userNavigated) {
             SelectedResult = calcResult;
         } else {

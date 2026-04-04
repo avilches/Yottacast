@@ -1,6 +1,8 @@
 namespace Yottacast.Core.ViewModels;
 
-public class ConversionResultItemViewModel : ResultItemViewModel {
+public class ConversionResultItemViewModel : BaseResultItemViewModel {
+    public string Icon     { get; init; } = "";
+    public string Category { get; init; } = "";
     /// <summary>Forma corta del origen: "12 km"</summary>
     public string FromShort { get; init; } = "";
     /// <summary>Forma larga del origen: "12 kilometers" — null si no disponible o igual a FromShort</summary>

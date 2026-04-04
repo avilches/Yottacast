@@ -41,7 +41,8 @@ public class ApplicationSearchTests {
 
     private static IReadOnlyList<Yottacast.Core.ViewModels.ResultItemViewModel> SearchAll(
         ApplicationSearch search, string query, int limit = 50) {
-        return search.Search(query, limit);
+        return search.Search(query, limit)
+            .Cast<Yottacast.Core.ViewModels.ResultItemViewModel>().ToList();
     }
 
     // ── Before WhenReady ──────────────────────────────────────────────────────

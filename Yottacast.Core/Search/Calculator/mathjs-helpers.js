@@ -13,6 +13,9 @@ var _mathFunctionNames = null;
 var _unitSymbols       = null;
 // lowercase → [{symbol, longName}], only for tokens with >1 canonical form
 var _unitAmbiguousMap  = null;
+// longForm → shortForm: maps long-form unit symbols to their short canonical equivalent.
+// E.g. "centimeter" → "cm", "kilometer" → "km". Populated by loadPrecomputedData().
+var _longToShort       = {};
 
 // Overrides manuales: forzar un mapeo específico independientemente del análisis automático.
 // Añade aquí cualquier caso especial que quieras permitir o bloquear.
@@ -95,6 +98,7 @@ function loadAliasData(data) {
 function loadPrecomputedData(data) {
     _unitAmbiguousMap  = data.ambiguous;
     _mathFunctionNames = data.functionNames;
+    _longToShort       = data.longToShort || {};
     // Build lowercase → canonical lookup for non-ambiguous tokens
     _unitSymbols = {};
     data.symbols.forEach(function(sym) {
@@ -127,9 +131,13 @@ function resolveUnitToken(name) {
         return { resolved: candidates[0].symbol, ambiguous: true, candidates: candidates };
     }
 
-    // Token no ambiguo: el mapa _unitSymbols da la forma canónica directamente
+    // Token no ambiguo: el mapa _unitSymbols da la forma canónica directamente.
+    // Si hay un equivalente corto en _longToShort, se usa como canónico único.
     const canonical = _unitSymbols[lower];
-    if (canonical !== undefined) return { resolved: canonical, ambiguous: false };
+    if (canonical !== undefined) {
+        var short = _longToShort[canonical];
+        return { resolved: short !== undefined ? short : canonical, ambiguous: false };
+    }
     return null;
 }
 

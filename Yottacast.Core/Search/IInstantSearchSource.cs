@@ -8,5 +8,5 @@ public interface IInstantSearchSource {
     /// <summary>Returns a Task that completes once the initial scan is done and the source is ready to serve queries.</summary>
     Task WhenReady();
     Task Stop();
-    IReadOnlyList<ResultItemViewModel> Search(string query, int limit);
+    IReadOnlyList<BaseResultItemViewModel> Search(string query, int limit);
 }

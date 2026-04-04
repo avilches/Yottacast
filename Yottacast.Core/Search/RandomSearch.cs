@@ -22,7 +22,7 @@ public class RandomSearch : IDeferredSearchSource {
     public Task WhenReady() => Task.CompletedTask;
     public Task Stop() => Task.CompletedTask;
 
-    public async IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>> SearchAsync(
+    public async IAsyncEnumerable<IReadOnlyList<BaseResultItemViewModel>> SearchAsync(
         string query, int limit, [EnumeratorCancellation] CancellationToken ct = default) {
         var count = Math.Min(5, limit);
         var results = new List<ResultItemViewModel>();

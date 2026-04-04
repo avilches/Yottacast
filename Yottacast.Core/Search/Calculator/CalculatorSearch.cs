@@ -18,7 +18,7 @@ public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard) :
     public Task WhenReady() => engine.WhenReady();
     public Task Stop() => Task.CompletedTask;
 
-    public IReadOnlyList<ResultItemViewModel> Search(string query, int _) {
+    public IReadOnlyList<BaseResultItemViewModel> Search(string query, int _) {
         LastHint = null;
         var q = query.Trim();
 
@@ -33,8 +33,6 @@ public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard) :
                 var captured  = toShort;
                 return [new ConversionResultItemViewModel {
                     Icon      = "📐",
-                    Title     = toShort,
-                    Subtitle  = BuildSubtitle(r.NormalizedQuery, r.AmbiguityHints),
                     Category  = "Converter",
                     Score     = 4,
                     FromShort = fromShort,

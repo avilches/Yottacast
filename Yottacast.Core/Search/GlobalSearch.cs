@@ -25,7 +25,7 @@ public class GlobalSearch(IEnumerable<IInstantSearchSource> instantSources, IEnu
         _instantSources.Select(s => s.Stop())
         .Concat(_deferredSources.Select(s => s.Stop())));
 
-    public (IReadOnlyList<ResultItemViewModel> Items, string? Hint) SearchInstant(string query, int limit) {
+    public (IReadOnlyList<BaseResultItemViewModel> Items, string? Hint) SearchInstant(string query, int limit) {
         var items = _instantSources
             .SelectMany(s => s.Search(query, limit))
             .OrderByDescending(x => x.Score)
@@ -35,7 +35,7 @@ public class GlobalSearch(IEnumerable<IInstantSearchSource> instantSources, IEnu
         return (items, hint);
     }
 
-    public IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>> SearchDeferredAsync(
+    public IAsyncEnumerable<IReadOnlyList<BaseResultItemViewModel>> SearchDeferredAsync(
         string query, int limit, CancellationToken ct = default)
         => SearchSourcesAsync(_deferredSources, query, limit, ct);
 
@@ -43,14 +43,14 @@ public class GlobalSearch(IEnumerable<IInstantSearchSource> instantSources, IEnu
     /// Merges snapshots from all sources. Each source owns a slot; when it emits a new
     /// snapshot the slot is updated and the merged+sorted union is yielded.
     /// </summary>
-    private static async IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>> SearchSourcesAsync(
+    private static async IAsyncEnumerable<IReadOnlyList<BaseResultItemViewModel>> SearchSourcesAsync(
         IReadOnlyList<IDeferredSearchSource> subset, string query, int limit,
         [EnumeratorCancellation] CancellationToken ct = default) {
 
-        var snapshots = new List<ResultItemViewModel>[subset.Count];
+        var snapshots = new List<BaseResultItemViewModel>[subset.Count];
         for (var i = 0; i < subset.Count; i++) snapshots[i] = [];
 
-        var channel = Channel.CreateUnbounded<(int, IReadOnlyList<ResultItemViewModel>)>();
+        var channel = Channel.CreateUnbounded<(int, IReadOnlyList<BaseResultItemViewModel>)>();
 
         var tasks = subset.Select((s, i) => Task.Run(async () => {
             try {

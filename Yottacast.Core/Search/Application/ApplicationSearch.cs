@@ -53,7 +53,7 @@ public sealed class ApplicationSearch(UserSettings settings, PlatformProvider pl
         return Task.CompletedTask;
     }
 
-    public IReadOnlyList<ResultItemViewModel> Search(string query, int limit) {
+    public IReadOnlyList<BaseResultItemViewModel> Search(string query, int limit) {
         var results = _apps.Values
             .Select(a => (app: a, score: NameMatcher.Score(a.Name, query)))
             .Where(x => x.score > 0)

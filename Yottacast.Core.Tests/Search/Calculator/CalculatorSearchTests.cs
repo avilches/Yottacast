@@ -15,10 +15,19 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
         return new CalculatorSearch(fixture.Engine, clipboard);
     }
 
-    private static ResultItemViewModel SearchResult(CalculatorSearch search, string query) {
+    private static BaseResultItemViewModel SearchResult(CalculatorSearch search, string query) {
         var results = search.Search(query, 5);
         return Assert.Single(results);
     }
+
+    private static ResultItemViewModel StandardResult(CalculatorSearch search, string query) =>
+        Assert.IsType<ResultItemViewModel>(SearchResult(search, query));
+
+    private static string ValueOf(BaseResultItemViewModel item) => item switch {
+        ConversionResultItemViewModel c => c.ToShort,
+        ResultItemViewModel r => r.Title,
+        _ => throw new InvalidOperationException($"Unknown type: {item.GetType()}")
+    };
 
     // ── Arithmetic detection ──────────────────────────────────────────────────
 
@@ -36,7 +45,7 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
     [Theory]
     [MemberData(nameof(ArithmeticCases))]
     public void Arithmetic_ReturnsCorrectTitle(string query, string expected) {
-        Assert.Equal(expected, SearchResult(BuildSearch(out _), query).Title);
+        Assert.Equal(expected, StandardResult(BuildSearch(out _), query).Title);
     }
 
     // ── Math functions ────────────────────────────────────────────────────────
@@ -63,14 +72,14 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
     [Theory]
     [MemberData(nameof(FunctionCases))]
     public void Functions_ReturnsCorrectTitle(string query, string expected) {
-        Assert.Equal(expected, SearchResult(BuildSearch(out _), query).Title);
+        Assert.Equal(expected, StandardResult(BuildSearch(out _), query).Title);
     }
 
     // ── Result shape ──────────────────────────────────────────────────────────
 
     [Fact]
     public void Result_HasCorrectIconCategoryScore() {
-        var item = SearchResult(BuildSearch(out _), "2+2");
+        var item = StandardResult(BuildSearch(out _), "2+2");
         Assert.Equal("🧮", item.Icon);
         Assert.Equal("Calculator", item.Category);
         Assert.Equal(4, item.Score);
@@ -83,7 +92,7 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
         string copied = "";
         clipboard.Initialize(text => copied = text);
 
-        var item = SearchResult(search, "2+2");
+        var item = StandardResult(search, "2+2");
         Assert.NotNull(item.OnActivate);
         item.OnActivate();
 
@@ -120,7 +129,7 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
     [Theory]
     [MemberData(nameof(CurrencyConversionCases))]
     public void Currency_Converts(string query, string expectedFragment) {
-        Assert.Contains(expectedFragment, SearchResult(BuildSearch(out _), query).Title);
+        Assert.Contains(expectedFragment, ValueOf(SearchResult(BuildSearch(out _), query)));
     }
 
     // ── Unit case-insensitivity ───────────────────────────────────────────────
@@ -144,7 +153,7 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
 
     [Theory, MemberData(nameof(UnitCaseCases))]
     public void Units_CaseInsensitive(string query, string expectedFragment) {
-        Assert.Contains(expectedFragment, SearchResult(BuildSearch(out _), query).Title);
+        Assert.Contains(expectedFragment, ValueOf(SearchResult(BuildSearch(out _), query)));
     }
 
     // Verificar que tokens ambiguos (M/m prefix) conservan su casing original
@@ -175,14 +184,13 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
     [Theory]
     [MemberData(nameof(HintCases))]
     public void AmbiguousUnit_ShowsHintInSubtitle(string query, string sym1, string sym2) {
-        var item = SearchResult(BuildSearch(out _), query);
+        var item = StandardResult(BuildSearch(out _), query);
         Assert.Contains("⚠", item.Subtitle);
         Assert.Contains(sym1, item.Subtitle);
         Assert.Contains(sym2, item.Subtitle);
     }
 
     public static TheoryData<string> NoHintCases => new() {
-        { "5 km to m"   },  // km is unambiguous
         { "2+2"         },  // no units at all
         { "1 mg + 1 mg" },  // mg is exact canonical form → no ambiguity
     };
@@ -190,20 +198,11 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
     [Theory]
     [MemberData(nameof(NoHintCases))]
     public void UnambiguousQuery_NoHintInSubtitle(string query) {
-        var item = SearchResult(BuildSearch(out _), query);
+        var item = StandardResult(BuildSearch(out _), query);
         Assert.DoesNotContain("⚠", item.Subtitle);
     }
 
     // ── Error items ───────────────────────────────────────────────────────────
-
-    // "MG" is ambiguous: resolves to Mg (megagram), shows hint with both Mg and mg
-    [Fact]
-    public void AmbiguousUnit_InConversion_ShowsHintInSubtitle() {
-        var item = SearchResult(BuildSearch(out _), "5 MG to g");
-        Assert.Contains("⚠", item.Subtitle);
-        Assert.Contains("Mg", item.Subtitle);
-        Assert.Contains("mg", item.Subtitle);
-    }
 
     // Truly unknown unit in a math-like expression → UnknownSymbol hint
     [Fact]
@@ -239,7 +238,7 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
     [Theory]
     [MemberData(nameof(SingleCurrencyUnitCases))]
     public void AutoConversion_SingleCurrencyUnit_AddsDefaultCurrency(string query) {
-        Assert.Contains("EUR", SearchResult(BuildSearch(out _), query).Title);
+        Assert.Contains("EUR", ValueOf(SearchResult(BuildSearch(out _), query)));
     }
 
     public static TheoryData<string> SumOrArithmeticCurrencyCases => new() {
@@ -252,7 +251,7 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
     [MemberData(nameof(SumOrArithmeticCurrencyCases))]
     public void AutoConversion_SumOrArithmetic_DoesNotAddDefaultCurrency(string query) {
         var item = SearchResult(BuildSearch(out _), query);
-        Assert.DoesNotContain("EUR", item.Title);
+        Assert.DoesNotContain("EUR", ValueOf(item));
     }
 
     public static TheoryData<string, string> ExplicitConversionCases => new() {
@@ -263,9 +262,9 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
     [Theory]
     [MemberData(nameof(ExplicitConversionCases))]
     public void AutoConversion_ExplicitToConversion_DoesNotAddDefaultCurrency(string query, string expectedCurrency) {
-        var title = SearchResult(BuildSearch(out _), query).Title;
-        Assert.Contains(expectedCurrency, title);
-        Assert.DoesNotContain("EUR", title);
+        var value = ValueOf(SearchResult(BuildSearch(out _), query));
+        Assert.Contains(expectedCurrency, value);
+        Assert.DoesNotContain("EUR", value);
     }
 
     // ── Non-currency units do NOT trigger auto-conversion ─────────────────────
@@ -279,22 +278,25 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
     [Theory]
     [MemberData(nameof(NonCurrencyUnitCases))]
     public void NonCurrencyUnits_DoNotAutoAppendCurrencyConversion(string query) {
-        var item = SearchResult(BuildSearch(out _), query);
-        Assert.DoesNotContain("EUR", item.Title);
-        Assert.DoesNotContain("USD", item.Title);
+        var value = ValueOf(SearchResult(BuildSearch(out _), query));
+        Assert.DoesNotContain("EUR", value);
+        Assert.DoesNotContain("USD", value);
     }
 
     // ── Auto-conversión de unidades físicas ────────────────────────────────────
 
     public static TheoryData<string, string> PhysicalAutoConversionCases => new() {
-        { "10 kg",   "lb"   },   // mass: kg → lb
-        { "5 km",    "mile" },   // length: km → mile
+        { "10 kg",         "lb"   },   // mass: kg → lb
+        { "5 km",          "mile" },   // length: km → mile
+        { "10 centimeter", "in"   },   // long-form → same target as "cm"
+        { "5 kilometer",   "mile" },   // long-form → same target as "km"
+        { "3 kilogram",    "lb"   },   // long-form → same target as "kg"
     };
 
     [Theory]
     [MemberData(nameof(PhysicalAutoConversionCases))]
     public void AutoConversion_SinglePhysicalUnit_AddsDefaultTarget(string query, string expectedUnitFragment) {
-        Assert.Contains(expectedUnitFragment, SearchResult(BuildSearch(out _), query).Title);
+        Assert.Contains(expectedUnitFragment, ValueOf(SearchResult(BuildSearch(out _), query)));
     }
 
     // ── ConversionResultItemViewModel ─────────────────────────────────────────
@@ -323,15 +325,6 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
         var item = Assert.IsType<ConversionResultItemViewModel>(SearchResult(BuildSearch(out _), "10 USD to EUR"));
         Assert.Null(item.ToLong);
         Assert.Null(item.FromLong);
-        Assert.DoesNotContain("⚠", item.Subtitle);
-    }
-
-    [Fact]
-    public void Conversion_AmbiguousUnit_HintInSubtitle() {
-        var item = Assert.IsType<ConversionResultItemViewModel>(SearchResult(BuildSearch(out _), "5 MG to g"));
-        Assert.Contains("⚠",  item.Subtitle);
-        Assert.Contains("Mg", item.Subtitle);
-        Assert.Contains("mg", item.Subtitle);
     }
 }
 

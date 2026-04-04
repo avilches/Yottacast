@@ -27,7 +27,7 @@ public class EmojiSearch(ClipboardService clipboard, string cacheDir, EmojiDataL
     public Task WhenReady() => _loadTask ?? Task.CompletedTask;
     public Task Stop() => Task.CompletedTask;
 
-    public IReadOnlyList<ResultItemViewModel> Search(string query, int limit) {
+    public IReadOnlyList<BaseResultItemViewModel> Search(string query, int limit) {
         if (!query.StartsWith(':')) return [];
 
         var term = query[1..].Trim().ToLowerInvariant();

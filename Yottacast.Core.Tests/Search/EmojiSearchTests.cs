@@ -21,7 +21,7 @@ public class EmojiSearchTests {
 
     private static IReadOnlyList<Yottacast.Core.ViewModels.ResultItemViewModel> SearchResults(
         EmojiSearch search, string query) {
-        return search.Search(query, 10);
+        return search.Search(query, 10).Cast<Yottacast.Core.ViewModels.ResultItemViewModel>().ToList();
     }
 
     // ── Default results ───────────────────────────────────────────────────────

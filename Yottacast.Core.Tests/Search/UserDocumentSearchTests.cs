@@ -22,10 +22,10 @@ public class UserDocumentSearchTests {
     /// <summary>Collects all snapshots and returns the last one (final state).</summary>
     private static async Task<IReadOnlyList<ResultItemViewModel>> SearchAllAsync(
         UserDocumentSearch search, string query, int limit = 20) {
-        IReadOnlyList<ResultItemViewModel> last = [];
+        IReadOnlyList<BaseResultItemViewModel> last = [];
         await foreach (var snapshot in search.SearchAsync(query, limit))
             last = snapshot;
-        return last;
+        return last.Cast<ResultItemViewModel>().ToList();
     }
 
     // ── Single file ───────────────────────────────────────────────────────────

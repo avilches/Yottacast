@@ -8,5 +8,5 @@ public interface IDeferredSearchSource {
     /// <summary>Returns a Task that completes once the initial scan is done and the source is ready to serve queries.</summary>
     Task WhenReady();
     Task Stop();
-    IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>> SearchAsync(string query, int limit, CancellationToken ct = default);
+    IAsyncEnumerable<IReadOnlyList<BaseResultItemViewModel>> SearchAsync(string query, int limit, CancellationToken ct = default);
 }

@@ -23,7 +23,7 @@ public class UserDocumentSearch(
     public Task WhenReady() => Task.CompletedTask;
     public Task Stop() => Task.CompletedTask;
 
-    public async IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>> SearchAsync(
+    public async IAsyncEnumerable<IReadOnlyList<BaseResultItemViewModel>> SearchAsync(
         string query, int limit, [EnumeratorCancellation] CancellationToken ct = default) {
 
         if (query.Length < 2) yield break;
