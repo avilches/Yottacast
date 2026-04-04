@@ -357,6 +357,26 @@ function getExplicitLongName(symbol) {
     return (v !== undefined) ? v : '';
 }
 
+// Formats a math.js result value as a string with smart decimal precision:
+// - Numbers with an integer part (|x| >= 1) and a decimal point: rounded to 2 decimal places.
+// - Numbers < 1 or in scientific notation: full 10-significant-figure precision.
+// - Integers (no decimal point): unchanged.
+// Examples: 6.213711922 mi → "6.21 mi", 0.001450377377 psi → "0.001450377377 psi", 600 min → "600 min"
+function smartFormat(r) {
+    var s = math.format(r, {precision: 10});
+    // Only post-process strings with a plain decimal number (no scientific notation).
+    // The pattern requires digits.digits followed immediately by whitespace or end of string.
+    var m = /^(-?\d+\.\d+)(\s|$)/.exec(s);
+    if (!m) return s;
+    var n = parseFloat(m[1]);
+    if (Math.abs(n) < 1) return s;  // no integer part, keep full precision
+    var rounded = Math.round(n * 100) / 100;
+    var numStr = (rounded === Math.floor(rounded))
+        ? rounded.toString()
+        : rounded.toFixed(2).replace(/0+$/, '');
+    return numStr + s.slice(m[1].length);
+}
+
 // Classifies a math.js error message into a structured object.
 // Returns { type, token, suggestions } where:
 //   type: 'unknown_symbol' | 'incompatible_units' | 'syntax' | 'other'

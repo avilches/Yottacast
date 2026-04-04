@@ -284,9 +284,9 @@ public sealed class MathJsEngine : IDisposable {
         );
     }
 
-    // math.format rounds to 10 significant digits to avoid noise like 22.046226218487758
+    // smartFormat applies smart decimal precision: 2 d.p. for numbers >= 1, full 10 sig-figs for small numbers.
     private string? EvalJs(string expr) {
-        var js = $"(function(){{ var r = math.evaluate('{Escape(expr)}'); return math.format(r, {{precision: 10}}); }})()";
+        var js = $"(function(){{ var r = math.evaluate('{Escape(expr)}'); return smartFormat(r); }})()";
         var result = _engine!.Evaluate(js).ToString();
         return string.IsNullOrWhiteSpace(result) ? null : result;
     }
