@@ -54,10 +54,10 @@ El propósito es la cobertura automática total del registry de math.js: sin est
 Embedded resource en `Yottacast.Core/Search/Calculator/unit-config.json`. Se carga con `loadAliasData()` y define:
 
 - **`inputAliases`**: aliases de entrada con caracteres especiales que se reemplazan antes del parseo (ej. `"°c"` → `"degC"`). Aplicados por `NormalizeExpressionCore` en `MathJsEngine.cs` antes de llamar al JS.
-- **`tokenAliases`**: overrides de tokens en el traversal del AST (ej. `"c"` → `"degC"`, `"v"` → `"V"`). Se mergen en `_unitOverrides`.
+- **`tokenAliases`**: overrides de tokens en el traversal del AST. Incluye aliases de un solo carácter con case significativo (ej. `"c"` → `"degC"`, `"v"` → `"V"`) y formas plurales de unidades cuyo canónico es la forma corta (ej. `"hours"` → `"h"`, `"seconds"` → `"s"`). Se mergen en `_unitOverrides`.
 - **`evalSafeAliases`**: sustituciones que se aplican en el nombre del nodo AST antes de que la expresión llegue a `math.evaluate()`, para evitar colisiones con funciones de math.js. Por ejemplo, `"min"` → `"minute"` evita que math.js interprete `min` como la función `math.min`. El resultado se re-transforma para display vía `displayNames` (ver abajo), de modo que el usuario escribe `min` y ve `min` en el resultado.
 - **`displayNames`**: nombres de display para el resultado final (ej. `"degC"` → `"°C"`, `"minute"` → `"min"`). Usados por `DisplayUnit()` en `MathJsEngine.cs`. Solo aplica a la unidad en formato corto (`fromShort`/`toShort`); los nombres largos se construyen aparte.
-- **`longNames`**: nombres largos explícitos para unidades que no tienen forma larga derivable automáticamente vía el grupo de prefijos LONG (ej. unidades de tiempo como `"h"` → `"hour"`, temperaturas como `"degC"` → `"celsius"`). Usados por `getExplicitLongName()`. Pueden ser iguales al símbolo (ej. `"day"` → `"day"`) cuando el único objetivo es habilitar la pluralización (`"10 days"`).
+- **`longNames`**: nombres largos explícitos para unidades que no tienen forma larga derivable automáticamente vía el grupo de prefijos LONG (ej. `"h"` → `"hour"`, `"degC"` → `"celsius"`). Sirven para dos propósitos: (1) display — `getExplicitLongName()` los usa para mostrar `"10 hours"` en lugar de `"10 h"`; (2) reconocimiento de input — `loadAliasData()` genera automáticamente el mapeado inverso (ej. `longNames["h"]="hour"` → `_unitOverrides["hour"]="h"`), de modo que `"10 hour"` se normaliza igual que `"10h"`. Las entradas donde clave y valor son iguales (ej. `"day":"day"`) solo sirven para habilitar la pluralización (`"10 days"`).
 - **`defaultTargets`**: mapa `unidad → target` para la conversión por defecto cuando el usuario escribe solo `valor + unidad`. Las conversiones priorizan pares métrico↔imperial. Ver los valores en `unit-config.json`.
 - **`blocked`**: tokens bloqueados — no se reconocen como unidades (ej. símbolos históricos ambiguos o inutilizables).
 
@@ -66,10 +66,11 @@ Embedded resource en `Yottacast.Core/Search/Calculator/unit-config.json`. Se car
 Definida en `mathjs-helpers.js`. Aplica los checks en este orden:
 
 1. **Bloqueado** (`_blockedUnits`) — descartado inmediatamente.
-2. **Override manual** (`_unitOverrides`, alimentado por `tokenAliases`) — se aplica antes que cualquier otra lógica.
-3. **Sinónimos** — si todos los candidatos del mapa ambiguo comparten el mismo `longName` (ej. `l` y `L` son ambos "litre"), se normaliza al primer canónico sin marcar como ambiguo.
-4. **Ya canónico** — si el input ya es exactamente uno de los canónicos con distinto significado, se devuelve tal cual sin ambigüedad.
-5. **Verdaderamente ambiguo** — múltiples candidatos con distintos significados. Se devuelve el primero con `ambiguous: true` y la lista de candidatos para mostrar la pista al usuario. Ejemplo: `mg` colisiona con `Mg` (miligramo vs megagramo).
+2. **Override exacto** (`_unitOverrides[name]`) — override de case exacto. Cubre tokens de un solo carácter donde el case importa (`"c"` → `degC` pero `"C"` → Coulomb).
+3. **Override lowercase para multi-char** — para tokens de más de un carácter, también se busca `_unitOverrides[name.toLowerCase()]`. Esto hace que `"Hour"`, `"HOUR"`, `"Celsius"`, `"FAHRENHEIT"` etc. funcionen igual que sus formas en minúscula. Los tokens de un solo carácter se excluyen intencionalmente de este fallback para preservar la distinción case-sensitive (`"c"` ≠ `"C"`).
+4. **Sinónimos** — si todos los candidatos del mapa ambiguo comparten el mismo `longName` (ej. `l` y `L` son ambos "litre"), se normaliza al primer canónico sin marcar como ambiguo.
+5. **Ya canónico** — si el input ya es exactamente uno de los canónicos con distinto significado, se devuelve tal cual sin ambigüedad.
+6. **Verdaderamente ambiguo** — múltiples candidatos con distintos significados. Se devuelve el primero con `ambiguous: true` y la lista de candidatos para mostrar la pista al usuario. Ejemplo: `mg` colisiona con `Mg` (miligramo vs megagramo).
 
 Las ambigüedades surgen casi siempre de la colisión entre pares de prefijos que solo se diferencian en case (`M`/`m`, `P`/`p`, `Z`/`z`, `Y`/`y`) aplicados a unidades del grupo SHORT.
 

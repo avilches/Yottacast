@@ -24,22 +24,24 @@ public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard) :
 
         switch (engine.Evaluate(q)) {
             case ConversionResult r: {
-                var fromUnit  = engine.DisplayUnit(r.FromUnit);
-                var toUnit    = engine.DisplayUnit(r.ToUnit);
-                var fromShort = $"{r.FromValue} {fromUnit}".Trim();
-                var toShort   = $"{r.ToValue} {toUnit}".Trim();
-                var fromLong  = LongForm(r.FromValue, r.FromUnitLong, r.FromUnit);
-                var toLong    = LongForm(r.ToValue,   r.ToUnitLong,   r.ToUnit);
-                var captured  = toShort;
+                var fromUnit      = engine.DisplayUnit(r.FromUnit);
+                var toUnit        = engine.DisplayUnit(r.ToUnit);
+                var fromShort     = $"{r.FromValue} {fromUnit}".Trim();
+                var toShort       = $"{r.ToValue} {toUnit}".Trim();
+                var fromLong      = LongForm(r.FromValue, r.FromUnitLong, r.FromUnit);
+                var toLong        = LongForm(r.ToValue,   r.ToUnitLong,   r.ToUnit);
+                var ambiguityHint = BuildHints(r.AmbiguityHints);
+                var captured      = toShort;
                 return [new ConversionResultItemViewModel {
-                    Icon      = "📐",
-                    Category  = "Converter",
-                    Score     = 4,
-                    FromShort = fromShort,
-                    FromLong  = fromLong,
-                    ToShort   = toShort,
-                    ToLong    = toLong,
-                    OnActivate = () => clipboard.CopyText(captured),
+                    Icon          = "📐",
+                    Category      = "Converter",
+                    Score         = 4,
+                    FromShort     = fromShort,
+                    FromLong      = fromLong,
+                    ToShort       = toShort,
+                    ToLong        = toLong,
+                    AmbiguityHint = string.IsNullOrEmpty(ambiguityHint) ? null : ambiguityHint,
+                    OnActivate    = () => clipboard.CopyText(captured),
                 }];
             }
             case CalcResult r when r.RawValue != q: {

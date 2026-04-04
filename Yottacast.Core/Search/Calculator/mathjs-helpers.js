@@ -90,6 +90,16 @@ function loadAliasData(data) {
         Object.keys(data.longNames).forEach(function(k) {
             _longNames[k] = data.longNames[k];
         });
+        // Auto-build reverse mappings: long name → canonical short symbol.
+        // E.g. longNames["h"]="hour" → _unitOverrides["hour"]="h", so "10 hour" normalizes to "10 h".
+        // Skips entries where the key and long name are equal (canonical already is the long form, e.g. "minute":"minute").
+        // Does not overwrite explicit tokenAliases (those take precedence).
+        Object.keys(data.longNames).forEach(function(k) {
+            var longName = data.longNames[k];
+            if (longName && longName !== k && _unitOverrides[longName] === undefined) {
+                _unitOverrides[longName] = k;
+            }
+        });
     }
 }
 
@@ -116,6 +126,12 @@ function resolveUnitToken(name) {
     if (_blockedUnits.has(name.toLowerCase())) return null;
     const override = _unitOverrides[name];
     if (override !== undefined) return { resolved: override, ambiguous: false };
+    // Multi-char tokens: also try the lowercase key so that "Hour", "HOUR" etc. resolve the same as "hour".
+    // Single-char tokens are intentionally case-sensitive: "c"→degC but "C"→Coulomb, "f"→degF but "F"→Farad.
+    if (name.length > 1) {
+        const lowerOverride = _unitOverrides[name.toLowerCase()];
+        if (lowerOverride !== undefined) return { resolved: lowerOverride, ambiguous: false };
+    }
     const lower = name.toLowerCase();
 
     const candidates = _unitAmbiguousMap[lower];

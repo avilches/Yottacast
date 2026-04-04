@@ -77,6 +77,7 @@ public partial class MainWindow : Window {
             case Key.Escape:
                 if (vm.IsSearching) {
                     vm.CancelDeferredSearch();
+                    vm.SearchText = "";
                 } else if (!string.IsNullOrEmpty(vm.SearchText)) {
                     vm.SearchText = "";
                 } else {

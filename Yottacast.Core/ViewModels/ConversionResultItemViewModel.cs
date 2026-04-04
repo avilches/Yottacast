@@ -11,4 +11,6 @@ public class ConversionResultItemViewModel : BaseResultItemViewModel {
     public string ToShort   { get; init; } = "";
     /// <summary>Forma larga del destino: "12000 meters" — null si no disponible o igual a ToShort</summary>
     public string? ToLong    { get; init; }
+    /// <summary>Aviso de ambigüedad, ej. "⚠ 'mg', mg=milligram · Mg=megagram" — null si no hay ambigüedad</summary>
+    public string? AmbiguityHint { get; init; }
 }

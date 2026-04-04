@@ -226,7 +226,7 @@
 
                     <!-- Conversion template (two-column from → to layout) -->
                     <DataTemplate x:DataType="viewModels:ConversionResultItemViewModel">
-                        <Grid ColumnDefinitions="Auto,*,Auto" MinHeight="44">
+                        <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" MinHeight="44">
 
                             <!-- Icon box -->
                             <Border Grid.Column="0"
@@ -281,6 +281,14 @@
                                        FontSize="{DynamicResource Theme.FontSizeSmall}"
                                        VerticalAlignment="Center"
                                        Margin="12,0,0,0"/>
+
+                            <!-- Ambiguity hint row -->
+                            <TextBlock Grid.Row="1" Grid.Column="1"
+                                       Text="{Binding AmbiguityHint}"
+                                       Foreground="{DynamicResource Theme.ItemSubtitle}"
+                                       FontSize="{DynamicResource Theme.FontSizeSubtitle}"
+                                       IsVisible="{Binding AmbiguityHint, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                       Margin="0,2,0,4"/>
 
                         </Grid>
                     </DataTemplate>

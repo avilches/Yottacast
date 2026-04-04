@@ -1,10 +1,9 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
-using Yottacast.Core.Search;
 using Yottacast.Core.Search.Calculator;
 using Yottacast.Core.Services;
 
-namespace Yottacast.Core.Tests.Search;
+namespace Yottacast.Core.Tests.Search.Calculator;
 
 [Collection("MathJs")]
 public class UnitConverterSearchTests(MathJsEngineFixture fixture) {
@@ -14,10 +13,10 @@ public class UnitConverterSearchTests(MathJsEngineFixture fixture) {
         return new CalculatorSearch(fixture.Engine, clipboard);
     }
 
-    private static IReadOnlyList<Yottacast.Core.ViewModels.ConversionResultItemViewModel> SearchResults(
+    private static IReadOnlyList<ViewModels.ConversionResultItemViewModel> SearchResults(
         CalculatorSearch search, string query) {
         return search.Search(query, 5)
-            .Cast<Yottacast.Core.ViewModels.ConversionResultItemViewModel>().ToList();
+            .Cast<ViewModels.ConversionResultItemViewModel>().ToList();
     }
 
     // ── Conversions ───────────────────────────────────────────────────────────
@@ -27,16 +26,18 @@ public class UnitConverterSearchTests(MathJsEngineFixture fixture) {
         { "1 kg to g",                   "1000 g",            "g"       },
         { "5 miles to km",               "8.04672 km",        "km"      },
         { "1 km to m",                   "1000 m",            "m"       },
-        { "100 fahrenheit to celsius",   "37.77777778 celsius", "celsius" },
-        { "0 celsius to fahrenheit",     "32 fahrenheit",     "fahrenheit" },
-        { "1 hour to seconds",           "3600 seconds",      "seconds" },
-        { "1 day to hours",              "24 hours",          "hours"   },
+        // Temperatura: long-form aliases normalize to canonical (degC/degF) with display names °C/°F
+        { "100 fahrenheit to celsius",   "37.77777778 °C",    "°C"      },
+        { "0 celsius to fahrenheit",     "32 °F",             "°F"      },
+        // Tiempo: long-form "hour"→"h", plural "seconds"→"s" normalize before evaluation
+        { "1 hour to seconds",           "3600 s",            "s"       },
+        { "1 day to hours",              "24 h",              "h"       },
         { "1 litre to ml",               "1000 ml",           "ml"      },
-        // Case-insensitive: operator TO and units in uppercase
+        // Case-insensitive: operator TO y unidades en mayúscula
         { "10 km TO miles",              "6.213711922 miles", "miles"   },
         { "10 KG to lbs",                "22.04622622 lbs",   "lbs"     },
-        { "100 FAHRENHEIT to celsius",   "37.77777778 celsius", "celsius" },
-        { "1 HOUR to seconds",           "3600 seconds",      "seconds" },
+        { "100 FAHRENHEIT to celsius",   "37.77777778 °C",    "°C"      },
+        { "1 HOUR to seconds",           "3600 s",            "s"       },
     };
 
     [Theory]

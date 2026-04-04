@@ -9,7 +9,15 @@
     "c": "degC",
     "f": "degF",
     "v": "V",
-    "w": "W"
+    "w": "W",
+    "hours":        "h",
+    "seconds":      "s",
+    "milliseconds": "ms",
+    "minutes":      "minute",
+    "days":         "day",
+    "weeks":        "week",
+    "months":       "month",
+    "years":        "year"
   },
   "evalSafeAliases": {
     "min": "minute"
@@ -28,7 +36,6 @@
     "day":    "day",
     "week":   "week",
     "month":  "month",
-    "a":      "year",
     "degC":   "celsius",
     "degF":   "fahrenheit",
     "degK":   "kelvin",
@@ -37,7 +44,7 @@
   "defaultTargets": {
     "ms": "s",       "s": "ms",
     "minute": "s",   "h": "minute",  "day": "h",
-    "week": "day",   "month": "day", "a": "day",
+    "week": "day",   "month": "day", "year": "day",
     "m": "ft",       "ft": "m",
     "km": "mile",    "mile": "km",
     "cm": "in",      "in": "cm",

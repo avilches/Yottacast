@@ -140,8 +140,8 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
         { "10 INCH to cm",             "25.4 cm"            },
         { "5 FOOT to m",               "1.524 m"            },
         { "1 YARD to meter",           "0.9144 meter"       },
-        { "32 FAHRENHEIT to celsius",  "0 celsius"          },
-        { "100 CELSIUS to fahrenheit", "212 fahrenheit"     },
+        { "32 FAHRENHEIT to celsius",  "0 °C"               },
+        { "100 CELSIUS to fahrenheit", "212 °F"             },
         // SHORT-prefix units con combinaciones seguras
         { "5 KG to lbs",               "11.02311311 lbs"    },
         { "5 KM to miles",             "3.106855961 miles"  },
@@ -325,6 +325,25 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
         var item = Assert.IsType<ConversionResultItemViewModel>(SearchResult(BuildSearch(out _), "10 USD to EUR"));
         Assert.Null(item.ToLong);
         Assert.Null(item.FromLong);
+    }
+
+    // ── Ambiguity hints en ConversionResultItemViewModel ──────────────────────
+
+    // "10 MG" → auto-conversión a g (ConversionResult), MG es ambiguo (Mg/mg)
+    [Fact]
+    public void AmbiguousUnit_InConversion_ShowsHintInAmbiguityHint() {
+        var item = Assert.IsType<ConversionResultItemViewModel>(SearchResult(BuildSearch(out _), "10 MG"));
+        Assert.NotNull(item.AmbiguityHint);
+        Assert.Contains("⚠", item.AmbiguityHint);
+        Assert.Contains("Mg", item.AmbiguityHint);
+        Assert.Contains("mg", item.AmbiguityHint);
+    }
+
+    // "10 kg" → unidad canónica, sin hint de ambigüedad
+    [Fact]
+    public void UnambiguousUnit_InConversion_NoAmbiguityHint() {
+        var item = Assert.IsType<ConversionResultItemViewModel>(SearchResult(BuildSearch(out _), "10 kg"));
+        Assert.Null(item.AmbiguityHint);
     }
 }
 

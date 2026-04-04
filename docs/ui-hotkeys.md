@@ -2,7 +2,7 @@
 
 ## Keyboard shortcuts (MainWindow)
 
-- `ESC` con búsqueda en curso → para la búsqueda diferida (mantiene texto y resultados parciales)
+- `ESC` con búsqueda en curso → para la búsqueda diferida y limpia el texto
 - `ESC` sin búsqueda en curso y texto no vacío → limpia el texto
 - `ESC` sin búsqueda y sin texto → oculta la ventana
 - `↑` / `↓` → navega resultados (wrapping circular: de último ítem vuelve al primero y viceversa)
