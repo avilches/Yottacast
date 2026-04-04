@@ -82,6 +82,8 @@ public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard) :
         if (!double.TryParse(valueStr, NumberStyles.Float, CultureInfo.InvariantCulture, out var d))
             return name;
         if (Math.Abs(d) == 1.0) return name;
+        if (name == "foot")  return "feet";
+        if (name == "inch")  return "inches";
         return name.EndsWith('s') || name.EndsWith("heit") ? name : name + "s";
     }
 

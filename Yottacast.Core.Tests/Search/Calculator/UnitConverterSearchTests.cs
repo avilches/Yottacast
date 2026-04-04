@@ -22,7 +22,7 @@ public class UnitConverterSearchTests(MathJsEngineFixture fixture) {
     // ── Conversions ───────────────────────────────────────────────────────────
 
     public static TheoryData<string, string, string> ConversionCases => new() {
-        { "10 kg to lbs",                "22.04622622 lbs",   "lbs"     },
+        { "10 kg to lbs",                "22.04622622 lb",    "lb"      },
         { "1 kg to g",                   "1000 g",            "g"       },
         { "5 miles to km",               "8.04672 km",        "km"      },
         { "1 km to m",                   "1000 m",            "m"       },
@@ -34,8 +34,8 @@ public class UnitConverterSearchTests(MathJsEngineFixture fixture) {
         { "1 day to hours",              "24 h",              "h"       },
         { "1 litre to ml",               "1000 ml",           "ml"      },
         // Case-insensitive: operator TO y unidades en mayúscula
-        { "10 km TO miles",              "6.213711922 miles", "miles"   },
-        { "10 KG to lbs",                "22.04622622 lbs",   "lbs"     },
+        { "10 km TO miles",              "6.213711922 mi",    "mi"      },
+        { "10 KG to lbs",                "22.04622622 lb",    "lb"      },
         { "100 FAHRENHEIT to celsius",   "37.77777778 °C",    "°C"      },
         { "1 HOUR to seconds",           "3600 s",            "s"       },
     };
