@@ -452,7 +452,7 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "0.01 mol",   "10 mmol / 10 millimoles -> 10 mmol / 10 millimoles"             },
         { "0.01 S",     "10 mS / 10 millisiemens -> 10 mS / 10 millisiemens"            },
         // ── Tiempo adicional ──────────────────────────────────────────────────
-        { "0.01 year",   "0.01 year / 0.01 years -> 3 day 15 h 39.6 min / 3 days 15 hours 39.6 minutes" },
+        { "0.01 year",   "0.01 year / 0.01 years -> 3 day 15 h 39 min 36 s / 3 days 15 hours 39 minutes 36 seconds" },
         { "0.01 decade", "0.01 decade / 0.01 decades -> 0.1 year / 0.1 years"           },
         // ── Volumen menor ─────────────────────────────────────────────────────
         { "0.01 pint",   "0.01 pint / 0.01 pints -> 0.02000000423 cup / 0.02000000423 cups"    },

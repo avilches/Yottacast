@@ -481,7 +481,7 @@ function computeNormalization(valueStr, unit) {
         if (remaining < epsilon) break;
         var step = chain[j];
         var isLastInChain = (j === chain.length - 1);
-        var willHitCap = (components.length >= 2);
+        var willHitCap = (components.length >= 3);
 
         if (isLastInChain || willHitCap) {
             var fracAmt = remaining / step.factorInBase;
