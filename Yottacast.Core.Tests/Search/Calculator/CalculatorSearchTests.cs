@@ -139,7 +139,7 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
         { "5 MILES to km",             "8.05 km"            },
         { "10 INCH to cm",             "25.4 cm"            },
         { "5 FOOT to m",               "1.52 m"             },
-        { "1 YARD to meter",           "0.9144 m"           },
+        { "1 YARD to meter",           "0.914 m"            },
         { "32 FAHRENHEIT to celsius",  "0 °C"               },
         { "100 CELSIUS to fahrenheit", "212 °F"             },
         // SHORT-prefix units con combinaciones seguras

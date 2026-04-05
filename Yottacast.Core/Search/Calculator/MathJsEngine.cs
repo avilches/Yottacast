@@ -13,6 +13,17 @@ public record NormalizedExpression(
     HashSet<string> Currencies, List<AmbiguityHint> Ambiguities);
 
 /// <summary>
+/// Controls decimal formatting in <see cref="MathJsEngine"/>.
+/// </summary>
+/// <param name="LargeNumberDecimals">Decimal places for results where |n| ≥ 1 (e.g. "6.21 mi").</param>
+/// <param name="SmallNumberSigFigs">Significant figures for results where |n| &lt; 1 (e.g. "0.00145 psi").</param>
+/// <param name="BasePrecision">Significant figures passed to math.format() before rounding.</param>
+public record FormatConfig(
+    int LargeNumberDecimals = 2,
+    int SmallNumberSigFigs  = 3,
+    int BasePrecision       = 10);
+
+/// <summary>
 /// Wraps a Jint engine loaded with math.js (embedded resource).
 /// Initialization runs on a background thread so the app startup is not blocked.
 /// Thread-safe: a lock guards the engine during evaluation.
@@ -20,6 +31,7 @@ public record NormalizedExpression(
 public sealed class MathJsEngine : IDisposable {
     private readonly Lock _lock = new();
     private readonly ICurrencyRateProvider _currencyRates;
+    private readonly FormatConfig _formatConfig;
     private volatile Engine? _engine;
 
     private readonly Task _initTask;
@@ -43,14 +55,19 @@ public sealed class MathJsEngine : IDisposable {
         [property: JsonPropertyName("blocked")]             List<string>                Blocked,
         [property: JsonPropertyName("normalizeUnits")]      List<string>?               NormalizeUnits);
 
-    public MathJsEngine(ICurrencyRateProvider currencyRates) {
+    public MathJsEngine(ICurrencyRateProvider currencyRates, FormatConfig? formatConfig = null) {
         _currencyRates = currencyRates;
+        _formatConfig = formatConfig ?? new FormatConfig();
         _initTask = Task.Run(Initialize);
     }
 
     private void Initialize() {
         var engine = new Engine(opts => opts.LimitRecursion(64));
         engine.Execute(LoadResource("Yottacast.Core.Search.Calculator.math.min.js"));
+        // Inject format constants before mathjs-helpers.js so smartFormat can use them.
+        engine.SetValue("_FMT_LARGE_DECIMALS", _formatConfig.LargeNumberDecimals);
+        engine.SetValue("_FMT_SMALL_SIG_FIGS",  _formatConfig.SmallNumberSigFigs);
+        engine.SetValue("_FMT_BASE_PRECISION",   _formatConfig.BasePrecision);
         engine.Execute(LoadResource("Yottacast.Core.Search.Calculator.mathjs-helpers.js"));
 
         // Inject pre-computed maps — required. If the resource is missing, the app cannot start.

@@ -421,22 +421,32 @@ function getExplicitLongName(symbol) {
 }
 
 // Formats a math.js result value as a string with smart decimal precision:
-// - Numbers with an integer part (|x| >= 1) and a decimal point: rounded to 2 decimal places.
-// - Numbers < 1 or in scientific notation: full 10-significant-figure precision.
+// - Numbers with an integer part (|x| >= 1): rounded to _FMT_LARGE_DECIMALS decimal places.
+// - Numbers < 1: limited to _FMT_SMALL_SIG_FIGS significant figures.
 // - Integers (no decimal point): unchanged.
-// Examples: 6.213711922 mi → "6.21 mi", 0.001450377377 psi → "0.001450377377 psi", 600 min → "600 min"
+// Examples: 6.213711922 mi → "6.21 mi", 0.001450377377 psi → "0.00145 psi", 600 min → "600 min"
 function smartFormat(r) {
-    var s = math.format(r, {precision: 10});
+    var s = math.format(r, {precision: _FMT_BASE_PRECISION});
     // Only post-process strings with a plain decimal number (no scientific notation).
     // The pattern requires digits.digits followed immediately by whitespace or end of string.
     var m = /^(-?\d+\.\d+)(\s|$)/.exec(s);
     if (!m) return s;
     var n = parseFloat(m[1]);
-    if (Math.abs(n) < 1) return s;  // no integer part, keep full precision
-    var rounded = Math.round(n * 100) / 100;
-    var numStr = (rounded === Math.floor(rounded))
-        ? rounded.toString()
-        : rounded.toFixed(2).replace(/0+$/, '');
+    var numStr;
+    if (Math.abs(n) < 1) {
+        // Limit to _FMT_SMALL_SIG_FIGS significant figures
+        var magnitude = Math.floor(Math.log10(Math.abs(n)));
+        var decimalPlaces = _FMT_SMALL_SIG_FIGS - 1 - magnitude;
+        var factor = Math.pow(10, decimalPlaces);
+        var rounded = Math.round(n * factor) / factor;
+        numStr = rounded.toFixed(decimalPlaces).replace(/0+$/, '').replace(/\.$/, '');
+    } else {
+        var factor = Math.pow(10, _FMT_LARGE_DECIMALS);
+        var rounded = Math.round(n * factor) / factor;
+        numStr = (rounded === Math.floor(rounded))
+            ? rounded.toString()
+            : rounded.toFixed(_FMT_LARGE_DECIMALS).replace(/0+$/, '');
+    }
     return numStr + s.slice(m[1].length);
 }
 
