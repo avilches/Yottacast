@@ -258,6 +258,81 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         // ── Fuerza — formas largas ────────────────────────────────────────────
         { "10 newton",      "10 N / 10 newtons -> 2.25 lbf / 2.25 pound-forces"          },
         { "10 newtons",     "10 N / 10 newtons -> 2.25 lbf / 2.25 pound-forces"          },
+        // ── Smoke test 0.01 — detección de errores de redondeo y formato ─────
+        // Nota: el sistema normaliza el "from" al prefijo SI más conveniente
+        // (0.01 V → 10 mV, 0.01 s → 10 ms, 0.01 km → 10 m, etc.)
+        // ── Temperatura ───────────────────────────────────────────────────────
+        { "0.01c",      "10 mdegC / 10 millicelsius -> 32.02 °F / 32.02 fahrenheit"      },
+        { "0.01f",      "10 mdegF / 10 millifahrenheit -> -17.77 °C / -17.77 celsius"    },
+        // La parte decimal es tan pequeña que se absorbe en el redondeo a 2 decimales → "32"
+        { "0.00001c",   "10 udegC / 10 microcelsius -> 32 °F / 32 fahrenheit"            },
+        // ── Electricidad ──────────────────────────────────────────────────────
+        { "0.01V",      "10 mV / 10 millivolts -> 10 mV / 10 millivolts"                 },
+        { "0.01A",      "10 mA / 10 milliamperes -> 10 mA / 10 milliamperes"             },
+        { "0.01W",      "10 mW / 10 milliwatts -> 1e-5 kW / 1e-5 kilowatts"             },
+        { "0.01H",      "10 mH / 10 millihenrys -> 10 mH / 10 millihenrys"              },
+        { "0.01T",      "10 mT / 10 milliteslas -> 10 mT / 10 milliteslas"              },
+        { "0.01C",      "10 mC / 10 millicoulombs -> 10 mC / 10 millicoulombs"          },
+        { "0.01F",      "10 mF / 10 millifarads -> 10000 uF / 10000 microfarads"        },
+        // ── Tiempo ────────────────────────────────────────────────────────────
+        { "0.01h",      "0.01 h / 0.01 hours -> 0.6 min / 0.6 minutes"                   },
+        { "0.01 day",   "0.01 day / 0.01 days -> 0.24 h / 0.24 hours"                    },
+        { "0.01 min",   "0.01 min / 0.01 minutes -> 0.6 s / 0.6 seconds"                 },
+        { "0.01s",      "10 ms / 10 milliseconds -> 10 ms / 10 milliseconds"              },
+        { "0.01ms",     "10 us / 10 microseconds -> 1e-5 s / 1e-5 seconds"               },
+        { "0.01Ms",     "10 ks / 10 kiloseconds -> 2.78 h / 2.78 hours"                  },
+        // ── Masa ──────────────────────────────────────────────────────────────
+        { "0.01t",      "10 mt / 10 millitonnes -> 10 kg / 10 kilograms"                 },
+        { "0.01 g",     "10 mg / 10 milligrams -> 3.527396195e-4 oz / 3.527396195e-4 ounces" },
+        { "0.01 oz",    "0.01 oz / 0.01 ounces -> 0.2834952313 g / 0.2834952313 grams"  },
+        { "0.01 lb",    "0.01 lb / 0.01 pounds -> 0.0045359237 kg / 0.0045359237 kilograms" },
+        // ── Longitud ──────────────────────────────────────────────────────────
+        { "0.01 m",     "10 mm / 10 millimeters -> 0.03280839895 ft / 0.03280839895 feet" },
+        { "0.01 km",    "10 m / 10 meters -> 0.006213711922 mile / 0.006213711922 miles" },
+        { "0.01 cm",    "100 um / 100 micrometers -> 0.003937007874 in / 0.003937007874 inches" },
+        { "0.01 mm",    "10 um / 10 micrometers -> 3.937007874e-4 in / 3.937007874e-4 inches" },
+        { "0.01 ft",    "0.01 ft / 0.01 feet -> 0.003048 m / 0.003048 meters"            },
+        { "0.01 in",    "0.01 in / 0.01 inches -> 0.0254 cm / 0.0254 centimeters"        },
+        { "0.01 yard",  "0.01 yard / 0.01 yards -> 0.009144 m / 0.009144 meters"         },
+        { "0.01 mi",    "0.01 mi / 0.01 miles -> 0.01609344 km / 0.01609344 kilometers"  },
+        // ── Volumen ───────────────────────────────────────────────────────────
+        { "0.01 l",     "10 mL / 10 millilitres -> 0.002641720373 gallon / 0.002641720373 gallons" },
+        { "0.01 gal",   "0.01 gallon / 0.01 gallons -> 0.03785412 L / 0.03785412 litres" },
+        // ── Presión ───────────────────────────────────────────────────────────
+        { "0.01 Pa",    "10 mPa -> 1.450377377e-6 psi"                                   },
+        { "0.01 bar",   "10 mbar -> 0.1450377377 psi"                                    },
+        { "0.01 atm",   "0.01 atm / 0.01 atmospheres -> 0.0101325 bar / 0.0101325 bars"  },
+        { "0.01 psi",   "0.01 psi -> 6.894757293e-4 bar / 6.894757293e-4 bars"           },
+        { "0.01 torr",  "0.01 torr -> 0.01 mmHg"                                         },
+        { "0.01 mmHg",  "0.01 mmHg -> 0.00133322 kPa"                                   },
+        // ── Fuerza ────────────────────────────────────────────────────────────
+        { "0.01 N",     "10 mN / 10 millinewtons -> 0.002248089431 lbf / 0.002248089431 pound-forces" },
+        { "0.01 lbf",   "0.01 lbf / 0.01 pound-forces -> 0.04448221615 N / 0.04448221615 newtons" },
+        { "0.01 kgf",   "0.01 kgf / 0.01 kilogram-forces -> 0.0980665 N / 0.0980665 newtons" },
+        { "0.01 dyn",   "10 mdyn / 10 millidynes -> 1e-4 mN / 1e-4 millinewtons"        },
+        // ── Energía ───────────────────────────────────────────────────────────
+        { "0.01 J",     "10 mJ / 10 millijoules -> 9.478171203e-6 BTU"                   },
+        { "0.01 kJ",    "10 J / 10 joules -> 0.009478171203 BTU"                         },
+        { "0.01 BTU",   "0.01 BTU -> 0.01055055853 kJ / 0.01055055853 kilojoules"       },
+        { "0.01 Wh",    "10 mWh -> 0.036 kJ / 0.036 kilojoules"                         },
+        { "0.01 eV",    "10 meV / 10 millielectronvolts -> 1.602176565e-21 J / 1.602176565e-21 joules" },
+        { "0.01 erg",   "10 merg -> 1e-9 J / 1e-9 joules"                               },
+        // ── Potencia ──────────────────────────────────────────────────────────
+        { "0.01 hp",    "0.01 hp / 0.01 horsepowers -> 0.007456998715 kW / 0.007456998715 kilowatts" },
+        // ── Datos ─────────────────────────────────────────────────────────────
+        { "0.01 B",     "0.01 B -> 1e-5 kB"                                              },
+        { "0.01 kB",    "10 B -> 1e-5 MB"                                                },
+        { "0.01 MB",    "10 kB -> 1e-5 GB"                                               },
+        // ── Ángulo ────────────────────────────────────────────────────────────
+        { "0.01 rad",   "10 mrad / 10 milliradians -> 0.5729577951 deg / 0.5729577951 degrees" },
+        { "0.01 deg",   "10 mdeg / 10 millidegrees -> 1.745329252e-4 rad / 1.745329252e-4 radians" },
+        { "0.01 grad",  "10 mgrad / 10 milligradians -> 0.009 deg / 0.009 degrees"       },
+        { "0.01 arcmin","0.01 arcmin / 0.01 arcminutes -> 0.6 arcsec / 0.6 arcseconds"  },
+        // ── Área ──────────────────────────────────────────────────────────────
+        { "0.01 m2",    "10000 mm2 -> 0.1076391042 sqft"                                 },
+        { "0.01 sqft",  "0.01 sqft -> 9.290304e-4 m2"                                    },
+        { "0.01 ha",    "0.01 ha / 0.01 hectares -> 0.0247105163 acre / 0.0247105163 acres" },
+        { "0.01 acre",  "0.01 acre / 0.01 acres -> 0.00404686 ha / 0.00404686 hectares"  },
     };
 
     [Theory]
