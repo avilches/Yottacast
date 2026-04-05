@@ -85,8 +85,8 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "10megasecond",  "10 Ms / 10 megaseconds -> 2777.78 h / 2777.78 hours"                      },
         { "10megaseconds", "10 Ms / 10 megaseconds -> 2777.78 h / 2777.78 hours"                      },
         // ── Masa ────────────────────────────────────────────────────────────
-        { "10t",      "10 t / 10 tonnes -> 10000 kg / 10000 kilograms"                            },
-        { "10tonnes", "10 t / 10 tonnes -> 10000 kg / 10000 kilograms"                            },
+        { "10t",      "10 t / 10 tonnes -> 22046.23 lb / 22046.23 pounds"                          },
+        { "10tonnes", "10 t / 10 tonnes -> 22046.23 lb / 22046.23 pounds"                          },
         { "10 kg",    "10 kg / 10 kilograms -> 22.05 lb / 22.05 pounds"                           },
         { "10 g",     "10 g / 10 grams -> 0.3527396195 oz / 0.3527396195 ounces"                 },
         { "10 grams", "10 g / 10 grams -> 0.3527396195 oz / 0.3527396195 ounces"                 },
@@ -272,7 +272,7 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "10 horsepowers", "10 hp / 10 horsepowers -> 7.46 kW / 7.46 kilowatts"       },
         // ── Masa — formas largas y plurales ──────────────────────────────────
         { "10 gram",        "10 g / 10 grams -> 0.3527396195 oz / 0.3527396195 ounces"    },
-        { "10 tonne",       "10 t / 10 tonnes -> 10000 kg / 10000 kilograms"              },
+        { "10 tonne",       "10 t / 10 tonnes -> 22046.23 lb / 22046.23 pounds"            },
         // ── Electricidad — formas largas ──────────────────────────────────────
         { "10 watt",        "10 W / 10 watts -> 0.01 kW / 0.01 kilowatts"                },
         { "10 volt",        "10 V / 10 volts -> 10000 mV / 10000 millivolts"             },
@@ -405,7 +405,7 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "0.01ms",     "10 us / 10 microseconds -> 1e-5 s / 1e-5 seconds"               },
         { "0.01Ms",     "10 ks / 10 kiloseconds -> 2.78 h / 2.78 hours"                  },
         // ── Masa ──────────────────────────────────────────────────────────────
-        { "0.01t",      "10 mt / 10 millitonnes -> 10 kg / 10 kilograms"                 },
+        { "0.01t",      "10 mt / 10 millitonnes -> 22.05 lb / 22.05 pounds"              },
         { "0.01 g",     "10 mg / 10 milligrams -> 3.527396195e-4 oz / 3.527396195e-4 ounces" },
         { "0.01 oz",    "0.01 oz / 0.01 ounces -> 0.2834952313 g / 0.2834952313 grams"  },
         { "0.01 lb",    "0.01 lb / 0.01 pounds -> 0.0045359237 kg / 0.0045359237 kilograms" },
