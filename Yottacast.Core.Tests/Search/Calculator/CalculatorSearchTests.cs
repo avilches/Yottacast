@@ -170,22 +170,20 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
 
     // ── Ambiguity hints ───────────────────────────────────────────────────────
 
-    // Snapshot-verified ambiguous tokens (see mathjs-unit-snapshot.json):
-    //   mg → ['Mg', 'mg']        (megagram vs milligram)
-    //   mb → ['MB', 'Mb']        (megabyte vs megabit)
-    //   ms → ['MS', 'Ms', 'mS', 'ms']  (4 variants: mega/milli × second/siemens)
-    // Expressions use addition so the result differs from the query (triggering a result item).
+    // Tokens with no ambiguityOverride: expressions use addition so result differs from query.
+    // "gt" → ambiguous (Gt=gigatonne vs GT=gigatesla), no override configured.
 
     public static TheoryData<string, string, string> HintCases => new() {
-        { "1 MG + 1 MG", "Mg", "mg" },  // MG not a canonical form → ambiguous (megagram vs milligram)
-        { "1 mB + 1 mB", "MB", "Mb" },  // mB not a canonical form → ambiguous (megabyte vs megabit)
+        { "1 gt + 1 gt", "GT", "gigatesla" },  // gt not canonical, no override → "Maybe you meant GT (gigatesla)?"
+        { "1 MG + 1 MG", "Mg", "megagram"  },  // MG not canonical, override fires → "Maybe you meant Mg (megagram)?"
+        { "1 mB + 1 mB", "Mb", "Mb"        },  // mB not canonical, override fires → "Maybe you meant Mb (Mb)?"
     };
 
     [Theory]
     [MemberData(nameof(HintCases))]
     public void AmbiguousUnit_ShowsHintInSubtitle(string query, string sym1, string sym2) {
         var item = StandardResult(BuildSearch(out _), query);
-        Assert.Contains("⚠", item.Subtitle);
+        Assert.Contains("Maybe you meant", item.Subtitle);
         Assert.Contains(sym1, item.Subtitle);
         Assert.Contains(sym2, item.Subtitle);
     }
@@ -193,13 +191,14 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
     public static TheoryData<string> NoHintCases => new() {
         { "2+2"         },  // no units at all
         { "1 mg + 1 mg" },  // mg is exact canonical form → no ambiguity
+        { "1 MB + 1 MB" },  // MB is exact canonical form → no ambiguity
     };
 
     [Theory]
     [MemberData(nameof(NoHintCases))]
     public void UnambiguousQuery_NoHintInSubtitle(string query) {
         var item = StandardResult(BuildSearch(out _), query);
-        Assert.DoesNotContain("⚠", item.Subtitle);
+        Assert.DoesNotContain("Maybe you meant", item.Subtitle);
     }
 
     // ── Error items ───────────────────────────────────────────────────────────
@@ -329,12 +328,13 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
 
     // ── Ambiguity hints en ConversionResultItemViewModel ──────────────────────
 
-    // "10 MG" → ambiguityOverrides resuelve a mg (milligram), sin hint de ambigüedad
+    // "10 MG" → ambiguityOverrides resuelve a mg (milligram), hint con alternativa Mg (megagram)
     [Fact]
-    public void AmbiguousUnit_WithOverride_ResolvesToExpectedUnit_NoHint() {
+    public void AmbiguousUnit_WithOverride_ResolvesToExpectedUnit_WithAlternativeHint() {
         var item = Assert.IsType<ConversionResultItemViewModel>(SearchResult(BuildSearch(out _), "10 MG"));
-        Assert.Null(item.AmbiguityHint);           // override suprimió la ambigüedad
         Assert.Contains("mg", item.FromShort);     // resuelto a milligram, no megagram
+        Assert.NotNull(item.AmbiguityHint);        // hint con alternativa
+        Assert.Contains("Mg", item.AmbiguityHint); // "Maybe you meant Mg (megagram)?"
     }
 
     // "10 gt" → sin override: Gt (gigatonne) con hint en formato "Maybe you meant GT (gigatesla)?"

@@ -23,6 +23,12 @@ var _unitOverrides = {
     // 'MG': 'Mg',   // ejemplo: forzar MG → megagramo en vez de dejar ambiguo
 };
 
+// Overrides de desambiguación: cuando un token no coincide exactamente con ningún canónico,
+// define qué canónico usar en vez del primero de la lista de candidatos.
+// Clave: token en minúsculas. Valor: símbolo canónico preferido.
+// Cargado desde ambiguityOverrides en unit-config.json vía loadAliasData().
+var _ambiguityOverrides = {};
+
 // Set of blocked unit symbols (lowercase). Populated by loadAliasData().
 var _blockedUnits = new Set();
 
@@ -117,6 +123,13 @@ function loadAliasData(data) {
             _evalSafeAliases[k] = data.evalSafeAliases[k];
         });
     }
+    // Populate ambiguity overrides: when a token is not an exact canonical, use the configured
+    // preferred canonical instead of always defaulting to candidates[0].
+    if (data.ambiguityOverrides) {
+        Object.keys(data.ambiguityOverrides).forEach(function(k) {
+            _ambiguityOverrides[k.toLowerCase()] = data.ambiguityOverrides[k];
+        });
+    }
     // Populate explicit long names for units not derivable via LONG prefix group (e.g. time units)
     if (data.normalizeUnits) {
         data.normalizeUnits.forEach(function(u) { _normalizeUnits.add(u); });
@@ -178,7 +191,22 @@ function resolveUnitToken(name) {
         // Input ya es exactamente uno de los canónicos → sin ambigüedad
         if (candidates.some(function(c) { return c.symbol === name; }))
             return { resolved: name, ambiguous: false };
-        // Verdaderamente ambiguo: múltiples formas canónicas con distinto significado
+        // Override configurado: resolver al símbolo preferido y marcar como ambiguo con candidatos
+        // reordenados (preferred primero) para que BuildHints muestre las alternativas al usuario.
+        var preferred = _ambiguityOverrides[lower];
+        if (preferred !== undefined) {
+            var preferredIdx = -1;
+            for (var i = 0; i < candidates.length; i++) {
+                if (candidates[i].symbol === preferred) { preferredIdx = i; break; }
+            }
+            if (preferredIdx >= 0) {
+                var reordered = [candidates[preferredIdx]];
+                for (var j = 0; j < candidates.length; j++) {
+                    if (j !== preferredIdx) reordered.push(candidates[j]);
+                }
+                return { resolved: preferred, ambiguous: true, candidates: reordered };
+            }
+        }
         return { resolved: candidates[0].symbol, ambiguous: true, candidates: candidates };
     }
 

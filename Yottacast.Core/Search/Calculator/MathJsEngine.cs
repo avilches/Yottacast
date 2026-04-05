@@ -34,13 +34,14 @@ public sealed class MathJsEngine : IDisposable {
     private HashSet<string> _normalizeUnits = [];
 
     private record UnitConfig(
-        [property: JsonPropertyName("inputAliases")]   Dictionary<string, string>  InputAliases,
-        [property: JsonPropertyName("tokenAliases")]   Dictionary<string, string>  TokenAliases,
-        [property: JsonPropertyName("displayNames")]   Dictionary<string, string>  DisplayNames,
-        [property: JsonPropertyName("longNames")]      Dictionary<string, string>? LongNames,
-        [property: JsonPropertyName("defaultTargets")] Dictionary<string, string>  DefaultTargets,
-        [property: JsonPropertyName("blocked")]        List<string>                Blocked,
-        [property: JsonPropertyName("normalizeUnits")] List<string>?               NormalizeUnits);
+        [property: JsonPropertyName("inputAliases")]        Dictionary<string, string>  InputAliases,
+        [property: JsonPropertyName("tokenAliases")]        Dictionary<string, string>  TokenAliases,
+        [property: JsonPropertyName("ambiguityOverrides")]  Dictionary<string, string>? AmbiguityOverrides,
+        [property: JsonPropertyName("displayNames")]        Dictionary<string, string>  DisplayNames,
+        [property: JsonPropertyName("longNames")]           Dictionary<string, string>? LongNames,
+        [property: JsonPropertyName("defaultTargets")]      Dictionary<string, string>  DefaultTargets,
+        [property: JsonPropertyName("blocked")]             List<string>                Blocked,
+        [property: JsonPropertyName("normalizeUnits")]      List<string>?               NormalizeUnits);
 
     public MathJsEngine(ICurrencyRateProvider currencyRates) {
         _currencyRates = currencyRates;

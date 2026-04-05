@@ -38,13 +38,17 @@ public class ClassifyErrorTests(MathJsEngineFixture fixture) {
         if (expectedToken is not null) Assert.Equal(expectedToken, err.ErrorToken);
     }
 
-    // ── MG resolves to Mg (success + ambiguity hint, not an error) ────────────
+    // ── MG resolves via ambiguityOverrides to mg (milligram), shows alternative hint ─
 
     [Fact]
-    public void AmbiguousCasing_ResolvesSuccessfully_WithHint() {
+    public void AmbiguousCasing_MG_ResolvesToMilligram_WithAlternativeHint() {
+        // "MG" is not an exact canonical; ambiguityOverrides maps "mg" → "mg" (milligram)
         var r = fixture.Engine.Evaluate("5 MG to g");
         Assert.True(r.IsSuccess, r.Error);
-        Assert.NotNull(r.AmbiguityHints);
+        var conv = Assert.IsType<ConversionResult>(r);
+        Assert.Equal("mg", conv.FromUnit);   // milligram (not Mg megagram)
+        Assert.Equal("0.005", conv.ToValue); // 5 mg = 0.005 g
+        Assert.NotNull(r.AmbiguityHints);    // override shows the alternative
         Assert.Contains(r.AmbiguityHints, h => h.Input == "MG");
     }
 

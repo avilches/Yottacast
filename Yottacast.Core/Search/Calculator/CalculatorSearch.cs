@@ -74,10 +74,16 @@ public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard) :
     private static string BuildHints(IReadOnlyList<AmbiguityHint>? hints) {
         if (hints is not { Count: > 0 }) return "";
         var parts = hints.Select(h => {
-            var candidates = string.Join(" · ", h.Candidates.Select(c => $"{c.Symbol}={c.LongName}"));
-            return $"'{h.Input}', {candidates}";
-        });
-        return $"⚠ {string.Join("; ", parts)}";
+            // Candidates[0] is the one selected; show the alternatives
+            var alternatives = h.Candidates.Skip(1)
+                .GroupBy(c => c.LongName, StringComparer.OrdinalIgnoreCase)
+                .Select(g => g.First())
+                .ToList();
+            if (alternatives.Count == 0) return null;
+            var altText = string.Join(" or ", alternatives.Select(c => $"{c.Symbol} ({c.LongName})"));
+            return $"Maybe you meant {altText}?";
+        }).OfType<string>();
+        return string.Join("  ", parts);
     }
 
     private static string Pluralize(string name, string valueStr) {

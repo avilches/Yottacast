@@ -79,13 +79,26 @@ public class NormalizeExpressionTests(MathJsEngineFixture fixture) {
 
     [Fact]
     public void AmbiguousUnit_PopulatesHints() {
-        // "MG" is not a canonical form → resolves to "Mg" with ambiguity hint for Mg/mg
+        // "gt" is not a canonical form and has no ambiguityOverride → resolves to "Gt" (gigatonne)
+        // with ambiguity hint for Gt vs GT (gigatesla)
+        var r = Normalize("1 gt");
+        Assert.NotNull(r);
+        Assert.Single(r.Ambiguities);
+        Assert.Equal("gt", r.Ambiguities[0].Input);
+        Assert.Contains(r.Ambiguities[0].Candidates, c => c.Symbol == "Gt");
+        Assert.Contains(r.Ambiguities[0].Candidates, c => c.Symbol == "GT");
+    }
+
+    [Fact]
+    public void AmbiguousUnit_WithOverride_ProducesAlternativeHint() {
+        // "MG" is not a canonical form; ambiguityOverrides resolves to "mg" (milligram)
+        // and produces an ambiguity hint showing the alternative "Mg" (megagram)
         var r = Normalize("1 MG");
         Assert.NotNull(r);
         Assert.Single(r.Ambiguities);
         Assert.Equal("MG", r.Ambiguities[0].Input);
-        Assert.Contains(r.Ambiguities[0].Candidates, c => c.Symbol == "Mg");
-        Assert.Contains(r.Ambiguities[0].Candidates, c => c.Symbol == "mg");
+        Assert.Equal("mg", r.Ambiguities[0].Candidates[0].Symbol);  // chosen: milligram
+        Assert.Contains(r.Ambiguities[0].Candidates, c => c.Symbol == "Mg");  // alternative: megagram
     }
 
     [Fact]

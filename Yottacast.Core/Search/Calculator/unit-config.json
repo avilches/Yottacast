@@ -81,6 +81,7 @@
     "horsepower":   "hp",
     "horsepowers":  "hp",
     "bytes":        "B",
+    "kb":           "kB",
     "kilobytes":    "kB",
     "megabytes":    "MB",
     "gigabytes":    "GB",
@@ -200,6 +201,65 @@
     "m2": "sqft",    "sqft": "m2",
     "sqin": "sqft",  "sqyd": "m2",  "sqmi": "km2",
     "hectare": "acre", "acre": "hectare"
+  },
+  "ambiguityOverrides": {
+    "mm": "mm",    "pm": "pm",    "zm": "zm",    "ym": "ym",
+    "mm2": "mm2",  "pm2": "pm2",  "zm2": "zm2",  "ym2": "ym2",
+    "mm3": "mm3",  "pm3": "pm3",  "zm3": "zm3",  "ym3": "ym3",
+
+    "ml": "mL",    "pl": "pL",    "zl": "zL",    "yl": "yL",
+    "mlt": "mlt",  "plt": "plt",  "zlt": "zlt",  "ylt": "ylt",
+
+    "mg": "mg",    "pg": "pg",    "zg": "zg",    "yg": "yg",
+    "mton": "mton", "pton": "pton", "zton": "zton", "yton": "yton",
+    "mtons": "mtons", "ptons": "ptons", "ztons": "ztons", "ytons": "ytons",
+
+    "ft": "ft",    "cc": "cc",
+
+    "phz": "pHz",  "zhz": "zHz",  "yhz": "yHz",
+    "mhz": "MHz",  "ev": "eV",    "mev": "MeV",  "pev": "PeV",  "zev": "ZeV",  "yev": "YeV",
+
+    "mrad": "mrad", "prad": "prad", "zrad": "zrad", "yrad": "yrad",
+    "mdeg": "mdeg", "pdeg": "pdeg", "zdeg": "zdeg", "ydeg": "ydeg",
+    "mgrad": "mgrad", "pgrad": "pgrad", "zgrad": "zgrad", "ygrad": "ygrad",
+
+    "ma": "mA",    "pa": "Pa",    "za": "zA",    "ya": "yA",
+    "mk": "mK",    "pk": "pK",    "zk": "zK",    "yk": "yK",
+
+    "mdegc": "mdegC", "pdegc": "pdegC", "zdegc": "zdegC", "ydegc": "ydegC",
+    "mdegf": "mdegF", "pdegf": "pdegF", "zdegf": "zdegF", "ydegf": "ydegF",
+    "mdegr": "mdegR", "pdegr": "pdegR", "zdegr": "zdegR", "ydegr": "ydegR",
+
+    "mmol": "mmol", "pmol": "pmol", "zmol": "zmol", "ymol": "ymol",
+    "mcd": "mcd",  "pcd": "pcd",  "zcd": "zcd",  "ycd": "ycd",
+
+    "mn": "mN",    "pn": "pN",    "zn": "zN",    "yn": "yN",
+    "mdyn": "mdyn", "pdyn": "pdyn", "zdyn": "zdyn", "ydyn": "ydyn",
+
+    "mj": "mJ",    "pj": "pJ",    "zj": "zJ",    "yj": "yJ",
+    "merg": "merg", "perg": "perg", "zerg": "zerg", "yerg": "yerg",
+
+    "mwh": "MWh",  "pwh": "pWh",  "zwh": "zWh",  "ywh": "yWh",
+    "mvar": "MVAR", "mva": "MVA",
+
+    "mw": "mW",    "pw": "pW",    "zw": "zW",    "yw": "yW",
+    "mv": "mV",    "pv": "pV",    "zv": "zV",    "yv": "yV",
+    "mh": "mH",    "ph": "pH",    "zh": "zH",    "yh": "yH",
+    "mc": "mC",    "pc": "pC",    "zc": "zC",    "yc": "yC",
+    "mf": "mF",    "pf": "pF",    "zf": "zF",    "yf": "yF",
+    "mwb": "mWb",  "pwb": "pWb",  "zwb": "zWb",  "ywb": "yWb",
+
+    "mpa": "MPa",  "ppa": "pPa",  "zpa": "zPa",  "ypa": "yPa",
+    "mbar": "mbar", "pbar": "pbar", "zbar": "zbar", "ybar": "ybar",
+    "mmhg": "mmHg", "mmh2o": "mmH2O", "cmh2o": "cmH2O",
+
+    "mohm": "mohm", "pohm": "pohm", "zohm": "zohm", "yohm": "yohm",
+    "mohms": "mohms", "pohms": "pohms", "zohms": "zohms", "yohms": "yohms",
+
+    "kb": "kB",    "mb": "MB",    "gb": "GB",    "tb": "TB",
+    "pb": "PB",    "eb": "EB",    "zb": "ZB",    "yb": "YB",
+    "kib": "KiB",  "mib": "MiB",  "gib": "GiB",  "tib": "TiB",
+    "pib": "PiB",  "eib": "EiB",  "zib": "ZiB",  "yib": "YiB"
   },
   "normalizeUnits": ["ms", "s", "minute", "h", "day", "week", "year", "B", "kB", "MB", "GB", "TB"],
   "blocked": [
