@@ -277,10 +277,16 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "10poundforce",   "10 lbf / 10 pound-forces -> 44.48 N / 44.48 newtons"        },
         { "10 poundforces", "10 lbf / 10 pound-forces -> 44.48 N / 44.48 newtons"        },
         // ── Datos — formas largas y plurales ─────────────────────────────────
+        { "10 byte",        "10 B / 10 bytes -> 0.01 kB / 0.01 kilobytes"                },
         { "10 bytes",       "10 B / 10 bytes -> 0.01 kB / 0.01 kilobytes"                },
+        { "10 kilobyte",    "10 kB / 10 kilobytes -> 0.01 MB / 0.01 megabytes"           },
         { "10 kilobytes",   "10 kB / 10 kilobytes -> 0.01 MB / 0.01 megabytes"           },
+        { "10 megabyte",    "10 MB / 10 megabytes -> 0.01 GB / 0.01 gigabytes"           },
         { "10 megabytes",   "10 MB / 10 megabytes -> 0.01 GB / 0.01 gigabytes"           },
+        { "10 gigabyte",    "10 GB / 10 gigabytes -> 0.01 TB / 0.01 terabytes"           },
         { "10 gigabytes",   "10 GB / 10 gigabytes -> 0.01 TB / 0.01 terabytes"           },
+        { "10 terabyte",    "10 TB / 10 terabytes -> 1000 GB / 1000 gigabytes"           },
+        { "10 terabytes",   "10 TB / 10 terabytes -> 1000 GB / 1000 gigabytes"           },
         // ── Electricidad adicional — plurales ─────────────────────────────────
         { "10 ohms",        "10 ohm / 10 ohms -> 0.01 kohm / 0.01 kilohms"                },
         { "10 moles",       "10 mol / 10 moles -> 10000 mmol / 10000 millimoles"         },
@@ -300,6 +306,60 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "10 teaspoon",    "10 teaspoon / 10 teaspoons -> 50 mL / 50 millilitres"         },
         // ── Fuerza — poundforce singular ──────────────────────────────────────
         { "10 poundforce",  "10 lbf / 10 pound-forces -> 44.48 N / 44.48 newtons"         },
+        // ── Singular (1 unit) — long name suprimido cuando símbolo == longName ──
+        // Regla: long name solo se muestra si aporta información (símbolo ≠ longName).
+        // Suprimidos (símbolo==longName en singular): pint, quart, cup, ohm, year, decade, tablespoon, teaspoon.
+        // Visibles: B/byte, kB/kilobyte, S/siemens, mol/mole, lbf/pound-force, hp/horsepower, floz/fluid ounce, etc.
+        // ── Datos ─────────────────────────────────────────────────────────────
+        { "1 B",           "1 B / 1 byte -> 0.001 kB / 0.001 kilobytes"              },
+        { "1 byte",        "1 B / 1 byte -> 0.001 kB / 0.001 kilobytes"              },
+        { "1 bytes",       "1 B / 1 byte -> 0.001 kB / 0.001 kilobytes"              },
+        { "1 kB",          "1 kB / 1 kilobyte -> 0.001 MB / 0.001 megabytes"         },
+        { "1 kilobyte",    "1 kB / 1 kilobyte -> 0.001 MB / 0.001 megabytes"         },
+        { "1 kilobytes",   "1 kB / 1 kilobyte -> 0.001 MB / 0.001 megabytes"         },
+        { "1 MB",          "1 MB / 1 megabyte -> 0.001 GB / 0.001 gigabytes"         },
+        { "1 megabyte",    "1 MB / 1 megabyte -> 0.001 GB / 0.001 gigabytes"         },
+        { "1 megabytes",   "1 MB / 1 megabyte -> 0.001 GB / 0.001 gigabytes"         },
+        { "1 GB",          "1 GB / 1 gigabyte -> 0.001 TB / 0.001 terabytes"         },
+        { "1 gigabyte",    "1 GB / 1 gigabyte -> 0.001 TB / 0.001 terabytes"         },
+        { "1 gigabytes",   "1 GB / 1 gigabyte -> 0.001 TB / 0.001 terabytes"         },
+        { "1 TB",          "1 TB / 1 terabyte -> 1000 GB / 1000 gigabytes"           },
+        { "1 terabyte",    "1 TB / 1 terabyte -> 1000 GB / 1000 gigabytes"           },
+        { "1 terabytes",   "1 TB / 1 terabyte -> 1000 GB / 1000 gigabytes"           },
+        // ── Electromagnetismo adicional ────────────────────────────────────────
+        { "1 ohm",         "1 ohm -> 0.001 kohm / 0.001 kilohms"                     },
+        { "1 ohms",        "1 ohm -> 0.001 kohm / 0.001 kilohms"                     },
+        { "1 mol",         "1 mol / 1 mole -> 1000 mmol / 1000 millimoles"           },
+        { "1 moles",       "1 mol / 1 mole -> 1000 mmol / 1000 millimoles"           },
+        { "1 S",           "1 S / 1 siemens -> 1000 mS / 1000 millisiemens"          },
+        { "1 siemens",     "1 S / 1 siemens -> 1000 mS / 1000 millisiemens"          },
+        // ── Tiempo adicional ──────────────────────────────────────────────────
+        { "1 year",        "1 year -> 365.25 day / 365.25 days"                       },
+        { "1 years",       "1 year -> 365.25 day / 365.25 days"                       },
+        { "1 decade",      "1 decade -> 10 year / 10 years"                           },
+        { "1 decades",     "1 decade -> 10 year / 10 years"                           },
+        // ── Volumen menor ─────────────────────────────────────────────────────
+        { "1 pint",        "1 pint -> 2 cup / 2 cups"                                 },
+        { "1 pints",       "1 pint -> 2 cup / 2 cups"                                 },
+        { "1 quart",       "1 quart -> 2 pint / 2 pints"                              },
+        { "1 quarts",      "1 quart -> 2 pint / 2 pints"                              },
+        { "1 cup",         "1 cup -> 8 floz / 8 fluid ounces"                         },
+        { "1 cups",        "1 cup -> 8 floz / 8 fluid ounces"                         },
+        { "1 floz",        "1 floz / 1 fluid ounce -> 29.57 mL / 29.57 millilitres"  },
+        { "1 tbsp",        "1 tablespoon -> 3 teaspoon / 3 teaspoons"                 },
+        { "1 tablespoon",  "1 tablespoon -> 3 teaspoon / 3 teaspoons"                 },
+        { "1 tablespoons", "1 tablespoon -> 3 teaspoon / 3 teaspoons"                 },
+        { "1 tsp",         "1 teaspoon -> 5 mL / 5 millilitres"                       },
+        { "1 teaspoon",    "1 teaspoon -> 5 mL / 5 millilitres"                       },
+        { "1 teaspoons",   "1 teaspoon -> 5 mL / 5 millilitres"                       },
+        { "1 cc",          "1 cc / 1 cubic centimeter -> 1 mL / 1 millilitre"         },
+        // ── Fuerza ────────────────────────────────────────────────────────────
+        { "1 lbf",         "1 lbf / 1 pound-force -> 4.45 N / 4.45 newtons"          },
+        { "1 poundforce",  "1 lbf / 1 pound-force -> 4.45 N / 4.45 newtons"          },
+        { "1 poundforces", "1 lbf / 1 pound-force -> 4.45 N / 4.45 newtons"          },
+        // ── Potencia ─────────────────────────────────────────────────────────
+        { "1 horsepower",  "1 hp / 1 horsepower -> 0.7456998715 kW / 0.7456998715 kilowatts" },
+        { "1 horsepowers", "1 hp / 1 horsepower -> 0.7456998715 kW / 0.7456998715 kilowatts" },
         // ── Smoke test 0.01 — detección de errores de redondeo y formato ─────
         // Nota: el sistema normaliza el "from" al prefijo SI más conveniente
         // (0.01 V → 10 mV, 0.01 s → 10 ms, 0.01 km → 10 m, etc.)
