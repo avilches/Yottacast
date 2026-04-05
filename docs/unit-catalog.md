@@ -209,15 +209,15 @@ La configuración resultante vive en `Yottacast.Core/Search/Calculator/unit-conf
 
 | Símbolo | Long name | Tipo | Decisión | Notas |
 |---------|-----------|------|----------|-------|
-| A, ampere | ampere | 🌍 cotidiana | ✅ mantener | |
-| V, volt | volt | 🌍 cotidiana | ✅ mantener | |
-| ohm | ohm | 🌍 cotidiana | ✅ mantener | tokenAlias: `ohms` → ohm. Nota: `kohm` target no tiene long name (ohm usa NONE prefix en math.js) |
-| F, farad | farad | 🔬 científica | ✅ mantener | tokenAlias `f` → degF (no afecta `F` mayúscula) |
-| H, henry | henry | 🔬 científica | ✅ mantener | |
+| A, ampere | ampere | 🌍 cotidiana | ✅ mantener | sin panel de conversión automático |
+| V, volt | volt | 🌍 cotidiana | ✅ mantener | sin panel de conversión automático |
+| ohm | ohm | 🌍 cotidiana | ✅ mantener | tokenAlias: `ohms` → ohm; sin panel de conversión automático |
+| F, farad | farad | 🔬 científica | ✅ mantener | tokenAlias `f` y `F` → degF; válido en cálculos, sin panel de conversión automático |
+| H, henry | henry | 🔬 científica | ✅ mantener | sin panel de conversión automático |
 | Wb, weber | weber | 🔬 científica | ✅ mantener | |
-| T, tesla | tesla | 🔬 científica | ✅ mantener | |
-| S, siemens | siemens | 🔬 científica | ✅ mantener | tokenAlias: `siemens` → S |
-| C, coulomb | coulomb | 🔬 científica | ✅ mantener | tokenAlias `c` → degC (no afecta `C` mayúscula) |
+| T, tesla | tesla | 🔬 científica | ✅ mantener | sin panel de conversión automático |
+| S, siemens | siemens | 🔬 científica | ✅ mantener | tokenAlias: `siemens` → S; sin panel de conversión automático |
+| C, coulomb | coulomb | 🔬 científica | ✅ mantener | tokenAlias `c` y `C` → degC; válido en cálculos, sin panel de conversión automático |
 | Sv, sievert | sievert | 🔬 científica | ❌ bloquear | En `blocked`. No existe en esta build de math.js |
 | Gy, gray | gray | 🔬 científica | ❌ bloquear | En `blocked`. No existe en esta build de math.js |
 | Bq, becquerel | becquerel | 🔬 científica | ❌ bloquear | En `blocked`. No existe en esta build de math.js |
@@ -225,7 +225,7 @@ La configuración resultante vive en `Yottacast.Core/Search/Calculator/unit-conf
 | lm, lumen | lumen | 🔬 científica | ❌ bloquear | En `blocked`. No existe en esta build de math.js |
 | lx, lux | lux | 🔬 científica | ❌ bloquear | En `blocked`. No existe en esta build de math.js |
 | cd, candela | candela | 🔬 científica | ❌ bloquear | En `blocked`. Sin par de conversión cotidiano |
-| mol, mole | mole | 🔬 científica | ✅ mantener | tokenAlias: `moles` → mol |
+| mol, mole | mole | 🔬 científica | ✅ mantener | tokenAlias: `moles` → mol; sin panel de conversión automático |
 
 ---
 
@@ -253,7 +253,7 @@ La configuración resultante vive en `Yottacast.Core/Search/Calculator/unit-conf
 | mph | miles per hour | 🇺🇸 EEUU | ✅ mantener | Solo funciona en cálculos, no como unit_entry |
 | knot | knot | 🏭 náutica | — | No existe en esta build de math.js |
 | kn | — | — | — | `kn` resuelve a `kN` (kilonewton), no a knot |
-| c (velocidad de la luz) | speed of light | 🔬 científica | ⚠ override | tokenAlias `c` → degC. `C` mayúscula sigue siendo coulomb. Usar `lightspeed` para la velocidad de la luz |
+| c (velocidad de la luz) | speed of light | 🔬 científica | ⚠ override | tokenAlias `c` y `C` → degC. Usar `lightspeed` para la velocidad de la luz |
 
 ---
 
@@ -271,7 +271,8 @@ La configuración resultante vive en `Yottacast.Core/Search/Calculator/unit-conf
 
 ## Notas de diseño
 
-- `tokenAliases` `c` → `degC` y `f` → `degF` son aliases de **token lowercase**. Math.js distingue mayúsculas: `C` (coulomb) y `F` (farad) siguen funcionando porque `resolveUnitToken` solo aplica el override al token exacto `c`/`f`.
+- `tokenAliases` `c`/`C` → `degC` y `f`/`F` → `degF` hacen que tanto mayúsculas como minúsculas se interpreten como temperatura. `10C` y `10c` son celsius; `10F` y `10f` son fahrenheit. Las unidades físicas coulomb y farad siguen disponibles via `resolveUnitToken` pero sin panel de conversión automático.
+- Las unidades `A`, `V`, `ohm`, `F`, `H`, `C`, `T`, `S`, `mol` no generan panel de conversión automático porque sus únicos targets serían prefijos (mA, mV, kohm…) sin valor informativo. Siguen siendo válidas en cálculos y expresiones.
 - Las unidades `blocked` se definen en `unit-config.json` y se rechazan en `resolveUnitToken()` antes de que math.js las interprete, evitando resultados desconcertantes.
 - Los `displayNames` solo afectan a la presentación en la UI y al texto copiado al portapapeles; la evaluación interna siempre usa los símbolos canónicos de math.js.
 - `tablespoon` y `teaspoon` son los símbolos canónicos en esta build de math.js. `tsp` y `tbsp` no existen como símbolos directos — deben ir como `tokenAliases`.

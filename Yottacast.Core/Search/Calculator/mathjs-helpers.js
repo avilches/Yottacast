@@ -58,9 +58,9 @@ var _defaultUnitPairs = [
     ['Pa', 'psi'],    // presión: métrico↔imperial
     ['N', 'lbf'],     // fuerza: métrico↔imperial
     ['h', 'minute'],  // tiempo: fallback ('minute' es eval-safe)
-    ['A', 'mA'],      ['V', 'mV'],   ['W', 'kW'],
-    ['B', 'kB'],      ['F', 'uF'],   ['H', 'mH'],
-    ['T', 'mT'],      ['rad', 'deg'],
+    ['W', 'kW'],
+    ['B', 'kB'],
+    ['rad', 'deg'],
 ];
 
 // Default currency pair: if the user types a single currency, suggest the other.

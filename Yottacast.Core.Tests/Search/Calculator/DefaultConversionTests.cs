@@ -39,27 +39,12 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "10 degf",  "10 °F / 10 fahrenheit -> -12.22 °C / -12.22 celsius"                       },
         { "10 DEGF",  "10 °F / 10 fahrenheit -> -12.22 °C / -12.22 celsius"                       },
         // ── Electricidad/magnetismo ──────────────────────────────────────────
-        // 10c is celsius
-        { "10C",      "10 C / 10 coulombs -> 10000 mC / 10000 millicoulombs"                      },
-        // 10f is fahrenheit
-        { "10F",      "10 F / 10 farads -> 1e+7 uF / 1e+7 microfarads"                            },
-        { "10v",      "10 V / 10 volts -> 10000 mV / 10000 millivolts"                            },
-        { "10V",      "10 V / 10 volts -> 10000 mV / 10000 millivolts"                            },
-        { "10Volts",  "10 V / 10 volts -> 10000 mV / 10000 millivolts"                            },
-        { "10 mV",    "10 mV / 10 millivolts -> 0.01 V / 0.01 volts"                              },
-        { "10a",      "10 A / 10 amperes -> 10000 mA / 10000 milliamperes"                        },
-        { "10A",      "10 A / 10 amperes -> 10000 mA / 10000 milliamperes"                        },
-        { "10amPeres","10 A / 10 amperes -> 10000 mA / 10000 milliamperes"                        },
-        { "10 mA",    "10 mA / 10 milliamperes -> 0.01 A / 0.01 amperes"                          },
+        // C y F son aliases de degC/degF (tokenAlias); 10c y 10C → celsius, 10f y 10F → fahrenheit
+        { "10C",      "10 °C / 10 celsius -> 50 °F / 50 fahrenheit"                               },
+        { "10F",      "10 °F / 10 fahrenheit -> -12.22 °C / -12.22 celsius"                       },
         { "10w",      "10 W / 10 watts -> 0.01 kW / 0.01 kilowatts"                               },
         { "10W",      "10 W / 10 watts -> 0.01 kW / 0.01 kilowatts"                               },
         { "10watts",  "10 W / 10 watts -> 0.01 kW / 0.01 kilowatts"                               },
-        // 10h is hour
-        { "10H",      "10 H / 10 henrys -> 10000 mH / 10000 millihenrys"                          },
-        { "10Henrys", "10 H / 10 henrys -> 10000 mH / 10000 millihenrys"                          },
-        // 10 t is tonne
-        { "10T",      "10 T / 10 teslas -> 10000 mT / 10000 milliteslas"                          },
-        { "10Teslas", "10 T / 10 teslas -> 10000 mT / 10000 milliteslas"                          },
         // ── Tiempo ──────────────────────────────────────────────────────────
         // h ≠ H, a ≠ A
         { "10h",           "10 h / 10 hours -> 600 min / 600 minutes"                                  },
@@ -168,10 +153,6 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "10 TB",     "10 TB / 10 terabytes -> 10000 GB / 10000 gigabytes"                     },
         // Normalize datos
         { "1500 MB",  "1500 MB / 1500 megabytes -> 1.5 GB / 1.5 gigabytes"                    },
-        // ── Electromagnetismo adicional ─────────────────────────────────────
-        { "10 ohm",    "10 ohm / 10 ohms -> 0.01 kohm / 0.01 kilohms"                          },
-        { "10 mol",   "10 mol / 10 moles -> 10000 mmol / 10000 millimoles"                       },
-        { "10 S",     "10 S / 10 siemens -> 10000 mS / 10000 millisiemens"                       },
         // ── Tiempo adicional ────────────────────────────────────────────────
         { "10 week",   "10 week / 10 weeks -> 70 day / 70 days"                                  },
         { "10 year",   "10 year / 10 years -> 3652.5 day / 3652.5 days"                          },
@@ -275,10 +256,6 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "10 tonne",       "10 t / 10 tonnes -> 22046.23 lb / 22046.23 pounds"            },
         // ── Electricidad — formas largas ──────────────────────────────────────
         { "10 watt",        "10 W / 10 watts -> 0.01 kW / 0.01 kilowatts"                },
-        { "10 volt",        "10 V / 10 volts -> 10000 mV / 10000 millivolts"             },
-        { "10 ampere",      "10 A / 10 amperes -> 10000 mA / 10000 milliamperes"         },
-        { "10 henry",       "10 H / 10 henrys -> 10000 mH / 10000 millihenrys"           },
-        { "10 tesla",       "10 T / 10 teslas -> 10000 mT / 10000 milliteslas"           },
         // ── Presión — formas largas ───────────────────────────────────────────
         { "10 pascal",      "10 Pa / 10 pascals -> 0.00145 psi"                    },
         { "10 atmosphere",  "10 atm / 10 atmospheres -> 10.13 bar / 10.13 bars"           },
@@ -308,10 +285,6 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "10 gigabyte",    "10 GB / 10 gigabytes -> 0.01 TB / 0.01 terabytes"           },
         { "10 gigabytes",   "10 GB / 10 gigabytes -> 0.01 TB / 0.01 terabytes"           },
         { "10 terabyte",    "10 TB / 10 terabytes -> 10000 GB / 10000 gigabytes"          },
-        // ── Electricidad adicional — plurales ─────────────────────────────────
-        { "10 ohms",        "10 ohm / 10 ohms -> 0.01 kohm / 0.01 kilohms"                },
-        { "10 moles",       "10 mol / 10 moles -> 10000 mmol / 10000 millimoles"         },
-        { "10 siemens",     "10 S / 10 siemens -> 10000 mS / 10000 millisiemens"         },
         // ── Volumen menor — plurales ──────────────────────────────────────────
         { "10 pints",       "10 pint / 10 pints -> 20 cup / 20 cups"                     },
         { "10 quarts",      "10 quart / 10 quarts -> 20 pint / 20 pints"                 },
@@ -347,13 +320,6 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "1 TB",          "1 TB / 1 terabyte -> 1000 GB / 1000 gigabytes"           },
         { "1 terabyte",    "1 TB / 1 terabyte -> 1000 GB / 1000 gigabytes"           },
         { "1 terabytes",   "1 TB / 1 terabyte -> 1000 GB / 1000 gigabytes"           },
-        // ── Electromagnetismo adicional ────────────────────────────────────────
-        { "1 ohm",         "1 ohm -> 0.001 kohm / 0.001 kilohms"                     },
-        { "1 ohms",        "1 ohm -> 0.001 kohm / 0.001 kilohms"                     },
-        { "1 mol",         "1 mol / 1 mole -> 1000 mmol / 1000 millimoles"           },
-        { "1 moles",       "1 mol / 1 mole -> 1000 mmol / 1000 millimoles"           },
-        { "1 S",           "1 S / 1 siemens -> 1000 mS / 1000 millisiemens"          },
-        { "1 siemens",     "1 S / 1 siemens -> 1000 mS / 1000 millisiemens"          },
         // ── Tiempo adicional ──────────────────────────────────────────────────
         { "1 year",        "1 year -> 365.25 day / 365.25 days"                       },
         { "1 years",       "1 year -> 365.25 day / 365.25 days"                       },
@@ -390,13 +356,10 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         // La parte decimal es tan pequeña que se absorbe en el redondeo a 2 decimales → "32"
         { "0.00001c",   "10 udegC / 10 microcelsius -> 32 °F / 32 fahrenheit"            },
         // ── Electricidad ──────────────────────────────────────────────────────
-        { "0.01V",      "10 mV / 10 millivolts -> 10 mV / 10 millivolts"                 },
-        { "0.01A",      "10 mA / 10 milliamperes -> 10 mA / 10 milliamperes"             },
         { "0.01W",      "10 mW / 10 milliwatts -> 1e-5 kW / 1e-5 kilowatts"             },
-        { "0.01H",      "10 mH / 10 millihenrys -> 10 mH / 10 millihenrys"              },
-        { "0.01T",      "10 mT / 10 milliteslas -> 10 mT / 10 milliteslas"              },
-        { "0.01C",      "10 mC / 10 millicoulombs -> 10 mC / 10 millicoulombs"          },
-        { "0.01F",      "10 mF / 10 millifarads -> 10000 uF / 10000 microfarads"        },
+        // C y F son aliases de degC/degF
+        { "0.01C",      "10 mdegC / 10 millicelsius -> 32.02 °F / 32.02 fahrenheit"     },
+        { "0.01F",      "10 mdegF / 10 millifahrenheit -> -17.77 °C / -17.77 celsius"   },
         // ── Tiempo ────────────────────────────────────────────────────────────
         { "0.01h",      "0.01 h / 0.01 hours -> 36 s / 36 seconds"                        },
         { "0.01 day",   "0.01 day / 0.01 days -> 14 min 24 s / 14 minutes 24 seconds"    },
@@ -447,10 +410,6 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "0.01 MB",    "0.01 MB / 0.01 megabytes -> 10 kB / 10 kilobytes"              },
         { "0.01 GB",    "0.01 GB / 0.01 gigabytes -> 10 MB / 10 megabytes"              },
         { "0.01 TB",    "0.01 TB / 0.01 terabytes -> 10 GB / 10 gigabytes"              },
-        // ── Electromagnetismo adicional ────────────────────────────────────────
-        { "0.01 ohm",   "10 mohm / 10 milliohms -> 1e-5 kohm / 1e-5 kilohms"             },
-        { "0.01 mol",   "10 mmol / 10 millimoles -> 10 mmol / 10 millimoles"             },
-        { "0.01 S",     "10 mS / 10 millisiemens -> 10 mS / 10 millisiemens"            },
         // ── Tiempo adicional ──────────────────────────────────────────────────
         { "0.01 year",   "0.01 year / 0.01 years -> 3 day 15 h 39 min 36 s / 3 days 15 hours 39 minutes 36 seconds" },
         { "0.01 decade", "0.01 decade / 0.01 decades -> 0.1 year / 0.1 years"           },
@@ -497,8 +456,6 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
     public static TheoryData<string, string, string> FromPrefixNormalizationCases => new() {
         // query              from esperado               long suffix (o "" si null)
         // ── SI estándar: normaliza hacia abajo cuando coeff < 1 ──────────────
-        { "0.001 V",    "1 mV",         "millivolt"      },
-        { "0.001 A",    "1 mA",         "milliampere"    },
         { "0.001 m",    "1 mm",         "millimeter"     },
         { "0.001 g",    "1 mg",         "milligram"      },
         { "0.001 J",    "1 mJ",         "millijoule"     },
@@ -508,7 +465,6 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "1000 m",     "1000 m",       "meters"         },
         { "1000 g",     "1000 g",       "grams"          },
         { "1000 W",     "1000 W",       "watts"          },
-        { "1000 V",     "1000 V",       "volts"          },
         // ── Tiempo/datos (normalizeUnits): from preservado, to viene del normalize ──
         // El intercept de normalize usa EvalJs("... to origUnit") para fijar la unidad,
         // por lo que el from ya no sufre la auto-norm de math.js.
