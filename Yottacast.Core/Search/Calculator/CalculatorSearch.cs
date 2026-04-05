@@ -58,7 +58,7 @@ public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard) :
                     OnActivate = () => clipboard.CopyText(captured),
                 }];
             }
-            case ErrorResult r when r.ErrorKind is CalcErrorKind.UnknownSymbol or CalcErrorKind.IncompatibleUnits:
+            case ErrorResult r when r.ErrorKind is CalcErrorKind.IncompatibleUnits:
                 LastHint = BuildErrorHint(r);
                 break;
         }

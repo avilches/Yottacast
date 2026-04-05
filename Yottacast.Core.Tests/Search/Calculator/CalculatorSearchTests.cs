@@ -209,7 +209,7 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
     public void UnknownUnit_InMathContext_ShowsErrorItem() {
         var search = BuildSearch(out _);
         Assert.Empty(search.Search("1 XYZUNIT to g", 5));
-        Assert.Contains("XYZUNIT", search.LastHint);
+        Assert.Null(search.LastHint);
     }
 
     // Incompatible units (mass vs length) → IncompatibleUnits hint
@@ -329,14 +329,22 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
 
     // ── Ambiguity hints en ConversionResultItemViewModel ──────────────────────
 
-    // "10 MG" → auto-conversión a g (ConversionResult), MG es ambiguo (Mg/mg)
+    // "10 MG" → ambiguityOverrides resuelve a mg (milligram), sin hint de ambigüedad
     [Fact]
-    public void AmbiguousUnit_InConversion_ShowsHintInAmbiguityHint() {
+    public void AmbiguousUnit_WithOverride_ResolvesToExpectedUnit_NoHint() {
         var item = Assert.IsType<ConversionResultItemViewModel>(SearchResult(BuildSearch(out _), "10 MG"));
+        Assert.Null(item.AmbiguityHint);           // override suprimió la ambigüedad
+        Assert.Contains("mg", item.FromShort);     // resuelto a milligram, no megagram
+    }
+
+    // "10 gt" → sin override: Gt (gigatonne) con hint en formato "Maybe you meant GT (gigatesla)?"
+    [Fact]
+    public void AmbiguousUnit_WithoutOverride_ShowsMaybeYouMeantHint() {
+        var item = Assert.IsType<ConversionResultItemViewModel>(SearchResult(BuildSearch(out _), "10 gt"));
         Assert.NotNull(item.AmbiguityHint);
-        Assert.Contains("⚠", item.AmbiguityHint);
-        Assert.Contains("Mg", item.AmbiguityHint);
-        Assert.Contains("mg", item.AmbiguityHint);
+        Assert.Contains("Maybe you meant", item.AmbiguityHint);
+        Assert.Contains("GT", item.AmbiguityHint);
+        Assert.Contains("gigatesla", item.AmbiguityHint);
     }
 
     // "10 kg" → unidad canónica, sin hint de ambigüedad
