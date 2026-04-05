@@ -460,4 +460,49 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         var summary = $"{Fmt(item.FromShort, item.FromLong)} -> {Fmt(item.ToShort, item.ToLong)}";
         Assert.Equal(expectedSummary, summary);
     }
+
+    // ── Normalización de prefijo SI en el "from" ─────────────────────────────
+    // math.js (vía math.format) reformatea el valor de entrada al prefijo SI
+    // más conveniente cuando el coeficiente es < 1 en la unidad original.
+    // Solo ocurre hacia ABAJO (0.001 V → 1 mV); no ocurre hacia ARRIBA
+    // (1000 m permanece como 1000 m, no se convierte a 1 km).
+    // Las unidades imperiales y no-SI (oz, ft, atm, psi, hp, acre…) NO se
+    // normalizan nunca — conservan el valor tal como lo escribió el usuario.
+    // Ref: math.format() → unit.simplify() en math.js.
+
+    public static TheoryData<string, string, string> FromPrefixNormalizationCases => new() {
+        // query              from esperado               long suffix (o "" si null)
+        // ── SI: normaliza hacia abajo cuando coeff < 1 ───────────────────────
+        { "0.001 V",    "1 mV",         "millivolt"      },
+        { "0.001 A",    "1 mA",         "milliampere"    },
+        { "0.001 s",    "1 ms",         "millisecond"    },
+        { "0.001 m",    "1 mm",         "millimeter"     },
+        { "0.001 g",    "1 mg",         "milligram"      },
+        { "0.001 J",    "1 mJ",         "millijoule"     },
+        { "0.001 W",    "1 mW",         "milliwatt"      },
+        { "0.001 Pa",   "1 mPa",        ""               },  // Pa no tiene longName en LONG prefix group
+        // ── SI: NO normaliza hacia arriba cuando coeff >= 1 ──────────────────
+        { "1000 m",     "1000 m",       "meters"         },
+        { "1000 g",     "1000 g",       "grams"          },
+        { "1000 W",     "1000 W",       "watts"          },
+        { "1000 V",     "1000 V",       "volts"          },
+        // ── No-SI / imperial: nunca normaliza ─────────────────────────────────
+        { "0.001 ft",   "0.001 ft",     "feet"           },
+        { "0.001 oz",   "0.001 oz",     "ounces"         },
+        { "0.001 atm",  "0.001 atm",    "atmospheres"    },
+        { "0.001 psi",  "0.001 psi",    ""               },  // psi no tiene longName
+        { "0.001 hp",   "0.001 hp",     "horsepowers"    },
+        { "0.001 acre", "0.001 acre",   "acres"          },
+    };
+
+    [Theory]
+    [MemberData(nameof(FromPrefixNormalizationCases))]
+    public void FromUnit_AutoNormalizesToBestSIPrefix(string query, string expectedFromShort, string expectedFromLongSuffix) {
+        var item = GetConversionItem(query);
+        Assert.Equal(expectedFromShort, item.FromShort);
+        if (!string.IsNullOrEmpty(expectedFromLongSuffix))
+            Assert.EndsWith(expectedFromLongSuffix, item.FromLong);
+        else
+            Assert.Null(item.FromLong);
+    }
 }

@@ -139,6 +139,8 @@ math.js unit data changed. Delete the snapshot files and re-run tests to regener
 - `FromShort` / `ToShort`: valor + unidad en formato corto (ej. `"10 km"`, `"6.213711922 mile"`)
 - `FromLong` / `ToLong`: forma larga con pluralización (ej. `"10 kilometers"`, `"6.213711922 miles"`); `null` si no añade información sobre la forma corta
 
+**Normalización automática de prefijo SI en `FromShort`**: cuando el valor introducido tiene un coeficiente < 1 en la unidad original (ej. `0.001 V`), `math.format()` reescribe automáticamente el from al prefijo SI más conveniente (`0.001 V` → `1 mV`, `0.01 s` → `10 ms`). Esta normalización solo ocurre hacia abajo (coeff < 1): `1000 m` permanece como `1000 m`, no se convierte a `1 km`. Las unidades imperiales y no-SI (ft, oz, atm, psi, hp, acre…) nunca se normalizan — conservan el valor tal como lo escribió el usuario. Este comportamiento está verificado en `DefaultConversionTests.FromUnit_AutoNormalizesToBestSIPrefix`.
+
 **Ambigüedades**: cuando un token es ambiguo (ej. `mg` puede ser miligramo o megagramo), el `Subtitle` del resultado incluye una advertencia `⚠ 'mg', mg=milligram · Mg=megagram` con los candidatos. El primero de la lista se usa para la evaluación.
 
 **`ISearchHintProvider` / `LastHint`**: `CalculatorSearch` implementa `ISearchHintProvider`. Para errores `UnknownSymbol` e `IncompatibleUnits`, `LastHint` se establece con un mensaje legible para el usuario. Para otros errores (sintaxis, etc.) no se muestra hint.
