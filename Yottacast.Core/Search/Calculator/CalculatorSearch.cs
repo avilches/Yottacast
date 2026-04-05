@@ -29,7 +29,9 @@ public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard) :
                 var fromShort     = $"{r.FromValue} {fromUnit}".Trim();
                 var toShort       = $"{r.ToValue} {toUnit}".Trim();
                 var fromLong      = LongForm(r.FromValue, r.FromUnitLong, r.FromUnit);
-                var toLong        = LongForm(r.ToValue,   r.ToUnitLong,   r.ToUnit);
+                var toLong        = string.IsNullOrEmpty(r.ToUnit)
+                    ? (r.ToUnitLong is not null && r.ToUnitLong != toShort ? r.ToUnitLong : null)
+                    : LongForm(r.ToValue, r.ToUnitLong, r.ToUnit);
                 var ambiguityHint = BuildHints(r.AmbiguityHints);
                 var captured      = toShort;
                 return [new ConversionResultItemViewModel {

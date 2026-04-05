@@ -18,7 +18,6 @@
     "minutes":      "minute",
     "days":         "day",
     "weeks":        "week",
-    "months":       "month",
     "years":        "year",
     "decades":      "decade",
     "foot":         "ft",
@@ -116,7 +115,6 @@
     "h":          "hour",
     "day":        "day",
     "week":       "week",
-    "month":      "month",
     "year":       "year",
     "decade":     "decade",
     "Pa":         "pascal",
@@ -164,7 +162,7 @@
   "defaultTargets": {
     "ms": "s",       "s": "ms",
     "minute": "s",   "h": "minute",  "day": "h",
-    "week": "day",   "month": "day", "year": "day",
+    "week": "day",   "year": "day",
     "decade": "year",
     "m": "ft",       "ft": "m",
     "km": "mile",    "mile": "km",   "mi": "km",
@@ -186,7 +184,7 @@
     "Wh": "kJ",
     "A": "mA",       "mA": "A",
     "V": "mV",       "mV": "V",
-    "W": "kW",       "kW": "W",
+    "W": "kW",       "kW": "hp",
     "hp": "kW",
     "ohm": "kohm",
     "mol": "mmol",
@@ -203,11 +201,13 @@
     "sqin": "sqft",  "sqyd": "m2",  "sqmi": "km2",
     "hectare": "acre", "acre": "hectare"
   },
+  "normalizeUnits": ["ms", "s", "minute", "h", "day", "week", "year", "B", "kB", "MB", "GB", "TB"],
   "blocked": [
     "li", "ch", "rd", "link", "links", "rod", "rods", "chain", "chains",
     "obl", "lt", "gi", "cp", "gtt", "gtts", "fldr", "fluiddram", "fluiddrams",
     "minim", "minims", "gill", "gills", "sqmil", "sqrd", "sqch",
     "BTU", "cd",
-    "Bq", "Sv", "Gy", "lm", "lx"
+    "Bq", "Sv", "Gy", "lm", "lx",
+    "month", "months"
   ]
 }

@@ -31,6 +31,7 @@ public sealed class MathJsEngine : IDisposable {
 
     private IReadOnlyDictionary<string, string> _inputAliases = new Dictionary<string, string>();
     private IReadOnlyDictionary<string, string> _displayNames = new Dictionary<string, string>();
+    private HashSet<string> _normalizeUnits = [];
 
     private record UnitConfig(
         [property: JsonPropertyName("inputAliases")]   Dictionary<string, string>  InputAliases,
@@ -38,7 +39,8 @@ public sealed class MathJsEngine : IDisposable {
         [property: JsonPropertyName("displayNames")]   Dictionary<string, string>  DisplayNames,
         [property: JsonPropertyName("longNames")]      Dictionary<string, string>? LongNames,
         [property: JsonPropertyName("defaultTargets")] Dictionary<string, string>  DefaultTargets,
-        [property: JsonPropertyName("blocked")]        List<string>                Blocked);
+        [property: JsonPropertyName("blocked")]        List<string>                Blocked,
+        [property: JsonPropertyName("normalizeUnits")] List<string>?               NormalizeUnits);
 
     public MathJsEngine(ICurrencyRateProvider currencyRates) {
         _currencyRates = currencyRates;
@@ -61,6 +63,9 @@ public sealed class MathJsEngine : IDisposable {
         var aliasData = JsonSerializer.Deserialize<UnitConfig>(aliasJson)!;
         _inputAliases = aliasData.InputAliases;
         _displayNames = aliasData.DisplayNames;
+        _normalizeUnits = new HashSet<string>(
+            aliasData.NormalizeUnits ?? [],
+            StringComparer.OrdinalIgnoreCase);
         engine.SetValue("_aliasJson", aliasJson);
         engine.Execute("loadAliasData(JSON.parse(_aliasJson));");
 
@@ -142,6 +147,14 @@ public sealed class MathJsEngine : IDisposable {
     }
 
     private EvalResult EvaluateSimple(NormalizedExpression normalized, IReadOnlyList<AmbiguityHint>? hints) {
+        // Normalize intercept: decompose into natural multi-unit representation when interesting
+        if (normalized.Kind == ExprKind.UnitEntry
+            && normalized.FromUnit != null
+            && _normalizeUnits.Contains(normalized.FromUnit)) {
+            var normResult = TryNormalize(normalized, hints);
+            if (normResult != null) return normResult;
+        }
+
         var result = EvalJs(normalized.Expr);
         if (result == null) return new ErrorResult() { NormalizedQuery = normalized.Expr, AmbiguityHints = hints };
 
@@ -309,6 +322,75 @@ public sealed class MathJsEngine : IDisposable {
                            ?? throw new InvalidOperationException($"Embedded resource not found: {name}.");
         using var reader = new StreamReader(stream);
         return reader.ReadToEnd();
+    }
+
+    private record NormComponent(string Value, string Unit, string Display, string LongName);
+
+    private List<NormComponent>? ComputeNormalization(string value, string unit) {
+        var json = _engine!.Evaluate(
+            $"(function(){{ var r=computeNormalization('{Escape(value)}','{Escape(unit)}'); " +
+            $"return r?JSON.stringify(r):null; }})()").ToString();
+        if (string.IsNullOrEmpty(json) || json == "null") return null;
+        try {
+            using var doc = JsonDocument.Parse(json);
+            return doc.RootElement.EnumerateArray()
+                .Select(el => new NormComponent(
+                    el.GetProperty("value").GetString()!,
+                    el.GetProperty("unit").GetString()!,
+                    el.GetProperty("display").GetString()!,
+                    el.GetProperty("longName").GetString()!))
+                .ToList();
+        } catch { return null; }
+    }
+
+    private static string FormatNormalizedShort(List<NormComponent> components) =>
+        string.Join(" ", components.Select(c => $"{c.Value} {c.Display}"));
+
+    private static string FormatNormalizedLong(List<NormComponent> components) =>
+        string.Join(" ", components.Select(c => $"{c.Value} {PluralizeName(c.LongName, c.Value)}"));
+
+    private static string PluralizeName(string name, string valueStr) {
+        if (!double.TryParse(valueStr, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var d)) return name;
+        if (Math.Abs(d) == 1.0) return name;
+        if (name == "foot")  return "feet";
+        if (name == "inch")  return "inches";
+        return name.EndsWith('s') || name.EndsWith("heit") ? name : name + "s";
+    }
+
+    private ConversionResult? TryNormalize(NormalizedExpression normalized, IReadOnlyList<AmbiguityHint>? hints) {
+        var toIdx = normalized.Expr.LastIndexOf(" to ", StringComparison.Ordinal);
+        var lhsExpr = toIdx >= 0 ? normalized.Expr[..toIdx] : normalized.Expr;
+        var origUnit = normalized.FromUnit!;
+        // Force result in original unit to prevent math.js SI auto-normalization (e.g. 38000s → 38 ks)
+        var origResult = EvalJs($"{lhsExpr} to {origUnit}");
+        if (origResult == null) return null;
+
+        var (fromValue, fromUnit) = SplitValueUnit(origResult);
+        var components = ComputeNormalization(fromValue, fromUnit);
+        if (components == null || components.Count == 0) return null;
+
+        bool isInteresting = components.Count > 1 || components[0].Unit != fromUnit;
+        if (!isInteresting) return null;
+
+        if (components.Count == 1) {
+            return new ConversionResult(fromValue, fromUnit, components[0].Value, components[0].Unit,
+                FromUnitLong: GetUnitLongName(fromUnit),
+                ToUnitLong:   GetUnitLongName(components[0].Unit)) {
+                NormalizedQuery = normalized.Expr,
+                AmbiguityHints = hints
+            };
+        }
+
+        // Multi-component: ToUnit="" and ToUnitLong holds the pre-formatted long string
+        var toShort = FormatNormalizedShort(components);
+        var toLong  = FormatNormalizedLong(components);
+        return new ConversionResult(fromValue, fromUnit, toShort, "",
+            FromUnitLong: GetUnitLongName(fromUnit),
+            ToUnitLong:   toLong != toShort ? toLong : null) {
+            NormalizedQuery = normalized.Expr,
+            AmbiguityHints = hints
+        };
     }
 
     public void Dispose() {

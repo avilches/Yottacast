@@ -129,7 +129,7 @@ La configuración resultante vive en `Yottacast.Core/Search/Calculator/unit-conf
 | h, hr, hour | hour | 🌍 cotidiana | ✅ mantener | |
 | day | day | 🌍 cotidiana | ✅ mantener | tokenAlias: `d` → day, `days` → day |
 | week | week | 🌍 cotidiana | ✅ mantener | tokenAlias: `weeks` → week |
-| month | month | 🌍 cotidiana | ✅ mantener | tokenAlias: `months` → month |
+| month | month | 🌍 cotidiana | ❌ bloquear | En `blocked`. La duración variable (28-31 días) hace que las conversiones sean confusas |
 | year | year | 🌍 cotidiana | ✅ mantener | tokenAlias: `years` → year |
 | decade | decade | 🌍 cotidiana | ✅ mantener | tokenAlias: `decades` → decade |
 | century | century | 🌍 cotidiana | ✅ mantener | |

@@ -58,7 +58,8 @@ Embedded resource en `Yottacast.Core/Search/Calculator/unit-config.json`. Se car
 - **`evalSafeAliases`**: sustituciones que se aplican en el nombre del nodo AST antes de que la expresión llegue a `math.evaluate()`, para evitar colisiones con funciones de math.js. Por ejemplo, `"min"` → `"minute"` evita que math.js interprete `min` como la función `math.min`. El resultado se re-transforma para display vía `displayNames` (ver abajo), de modo que el usuario escribe `min` y ve `min` en el resultado.
 - **`displayNames`**: nombres de display para el resultado final (ej. `"degC"` → `"°C"`, `"minute"` → `"min"`). Usados por `DisplayUnit()` en `MathJsEngine.cs`. Solo aplica a la unidad en formato corto (`fromShort`/`toShort`); los nombres largos se construyen aparte.
 - **`longNames`**: nombres largos explícitos para unidades que no tienen forma larga derivable automáticamente vía el grupo de prefijos LONG (ej. `"h"` → `"hour"`, `"degC"` → `"celsius"`). Sirven para dos propósitos: (1) display — `getExplicitLongName()` los usa para mostrar `"10 hours"` en lugar de `"10 h"`; (2) reconocimiento de input — `loadAliasData()` genera automáticamente el mapeado inverso (ej. `longNames["h"]="hour"` → `_unitOverrides["hour"]="h"`), de modo que `"10 hour"` se normaliza igual que `"10h"`. Las entradas donde clave y valor son iguales (ej. `"day":"day"`) solo sirven para habilitar la pluralización (`"10 days"`).
-- **`defaultTargets`**: mapa `unidad → target` para la conversión por defecto cuando el usuario escribe solo `valor + unidad`. Las conversiones priorizan pares métrico↔imperial. Ver los valores en `unit-config.json`.
+- **`defaultTargets`**: mapa `unidad → target` para la conversión por defecto cuando el usuario escribe solo `valor + unidad`. Las conversiones priorizan pares métrico↔imperial. Actúa como fallback cuando el intercept de `normalizeUnits` no produce un resultado interesante. Ver los valores en `unit-config.json`.
+- **`normalizeUnits`**: lista de unidades que activan el modo de descomposición natural (tiempo) o selección de mejor unidad (datos). Ver la sección "Normalización natural" más abajo.
 - **`blocked`**: tokens bloqueados — no se reconocen como unidades (ej. símbolos históricos ambiguos o inutilizables).
 
 ### Resolución de tokens: `resolveUnitToken`
@@ -124,6 +125,27 @@ math.js unit data changed. Delete the snapshot files and re-run tests to regener
 6. `dotnet build` para re-embedder el nuevo `mathjs-precomputed.json`
 7. `dotnet test` para verificar que todo pasa
 
+## Normalización natural (`normalizeUnits`)
+
+Cuando el usuario escribe un único valor con unidad (`unit_entry`) y esa unidad pertenece a `normalizeUnits`, `MathJsEngine.EvaluateSimple` intercepta la evaluación antes de usar `defaultTargets` y llama a `TryNormalize`. Si el resultado es "interesante" (unidad o componentes distintos a la entrada), se devuelve directamente; si es trivial (misma unidad, mismo valor), `TryNormalize` retorna `null` y la evaluación cae al comportamiento habitual de `defaultTargets`.
+
+### Modos de normalización
+
+Hay dos modos, configurados por el campo `mode` de cada cadena en `_normalizeChains` (`mathjs-helpers.js`):
+
+**`decompose` (tiempo)** — descompone el valor en hasta 3 componentes, de mayor a menor (año → día → hora → minuto → segundo → milisegundo). Ejemplos: `38000s → 10h 33min 20s`, `49h → 2 day 1 h`. El resultado multi-componente usa `ToUnit=""` y `ToUnitLong` como string largo pre-formateado; `CalculatorSearch` lo detecta y lo usa directamente en el `toLong`.
+
+**`best_unit` (datos)** — encuentra la unidad más alta donde el valor ≥ 1 y lo expresa con hasta 3 decimales. Ejemplos: `1500 MB → 1.5 GB`, `0.01 GB → 10 MB`. El resultado es siempre un único componente.
+
+### Implementación
+
+- **JS**: `computeNormalization(valueStr, unit)` en `mathjs-helpers.js` — convierte el valor a la unidad base de la cadena (ej. segundos para tiempo, bytes para datos) y aplica el algoritmo según el `mode`. `formatMaxDec(value, maxDec)` formatea con máx `maxDec` decimales eliminando ceros finales.
+- **C#**: `TryNormalize(normalized, hints)` en `MathJsEngine.cs` — llama a `EvalJs($"{lhsExpr} to {origUnit}")` (con target explícito para evitar la auto-normalización SI de math.js en el from), invoca `computeNormalization` vía JS y construye el `ConversionResult`. `FormatNormalizedShort` / `FormatNormalizedLong` componen el string multi-componente; `PluralizeName` replica la lógica de `CalculatorSearch.Pluralize`.
+
+### Preservación del from-side
+
+El intercept usa `EvalJs("... to origUnit")` en lugar de `EvalJs("...")`. Esto fija la unidad de salida e impide que math.js elija un prefijo SI automáticamente. Como resultado, el `fromShort` refleja siempre la entrada literal del usuario (`0.001 s` → from: `"0.001 s"`, to: `"1 ms"`), a diferencia de unidades SI estándar fuera de `normalizeUnits` donde el from se auto-normaliza hacia abajo (`0.001 V` → from: `"1 mV"`).
+
 ## CalculatorSearch
 
 **Detección de expresiones**: la clasificación la hace `normalizeExpression()` vía análisis del AST. El `kind` determina el camino de evaluación: `calculation` para aritmética, `unit_entry` para un valor con unidad que tiene conversión por defecto, `simple_conversion` y `complex_conversion` para expresiones con `to`/`in`.
@@ -139,7 +161,7 @@ math.js unit data changed. Delete the snapshot files and re-run tests to regener
 - `FromShort` / `ToShort`: valor + unidad en formato corto (ej. `"10 km"`, `"6.213711922 mile"`)
 - `FromLong` / `ToLong`: forma larga con pluralización (ej. `"10 kilometers"`, `"6.213711922 miles"`); `null` si no añade información sobre la forma corta
 
-**Normalización automática de prefijo SI en `FromShort`**: cuando el valor introducido tiene un coeficiente < 1 en la unidad original (ej. `0.001 V`), `math.format()` reescribe automáticamente el from al prefijo SI más conveniente (`0.001 V` → `1 mV`, `0.01 s` → `10 ms`). Esta normalización solo ocurre hacia abajo (coeff < 1): `1000 m` permanece como `1000 m`, no se convierte a `1 km`. Las unidades imperiales y no-SI (ft, oz, atm, psi, hp, acre…) nunca se normalizan — conservan el valor tal como lo escribió el usuario. Este comportamiento está verificado en `DefaultConversionTests.FromUnit_AutoNormalizesToBestSIPrefix`.
+**Normalización automática de prefijo SI en `FromShort`**: cuando el valor introducido tiene un coeficiente < 1 en la unidad original (ej. `0.001 V`), `math.format()` reescribe automáticamente el from al prefijo SI más conveniente (`0.001 V` → `1 mV`). Esta normalización solo ocurre hacia abajo (coeff < 1): `1000 m` permanece como `1000 m`, no se convierte a `1 km`. Las unidades imperiales y no-SI (ft, oz, atm, psi, hp, acre…) nunca se normalizan — conservan el valor tal como lo escribió el usuario. **Excepción**: las unidades en `normalizeUnits` (tiempo y datos) no sufren esta auto-normalización porque el intercept de `TryNormalize` fija la unidad con `EvalJs("... to origUnit")`, preservando siempre la entrada del usuario en el from. Este comportamiento está verificado en `DefaultConversionTests.FromUnit_AutoNormalizesToBestSIPrefix`.
 
 **Ambigüedades**: cuando un token es ambiguo (ej. `mg` puede ser miligramo o megagramo), el `Subtitle` del resultado incluye una advertencia `⚠ 'mg', mg=milligram · Mg=megagram` con los candidatos. El primero de la lista se usa para la evaluación.
 

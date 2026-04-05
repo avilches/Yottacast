@@ -46,9 +46,11 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "10v",      "10 V / 10 volts -> 10000 mV / 10000 millivolts"                            },
         { "10V",      "10 V / 10 volts -> 10000 mV / 10000 millivolts"                            },
         { "10Volts",  "10 V / 10 volts -> 10000 mV / 10000 millivolts"                            },
+        { "10 mV",    "10 mV / 10 millivolts -> 0.01 V / 0.01 volts"                              },
         { "10a",      "10 A / 10 amperes -> 10000 mA / 10000 milliamperes"                        },
         { "10A",      "10 A / 10 amperes -> 10000 mA / 10000 milliamperes"                        },
         { "10amPeres","10 A / 10 amperes -> 10000 mA / 10000 milliamperes"                        },
+        { "10 mA",    "10 mA / 10 milliamperes -> 0.01 A / 0.01 amperes"                          },
         { "10w",      "10 W / 10 watts -> 0.01 kW / 0.01 kilowatts"                               },
         { "10W",      "10 W / 10 watts -> 0.01 kW / 0.01 kilowatts"                               },
         { "10watts",  "10 W / 10 watts -> 0.01 kW / 0.01 kilowatts"                               },
@@ -73,12 +75,19 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "10ms",          "10 ms / 10 milliseconds -> 0.01 s / 0.01 seconds"                          },
         { "10millisecond", "10 ms / 10 milliseconds -> 0.01 s / 0.01 seconds"                          },
         { "10milliseconds","10 ms / 10 milliseconds -> 0.01 s / 0.01 seconds"                          },
+        { "10000 ms",      "10000 ms / 10000 milliseconds -> 10 s / 10 seconds"                        },
         { "10Ms",          "10 Ms / 10 megaseconds -> 2777.78 h / 2777.78 hours"                      },
+        // ── Normalize: descomposición en múltiples unidades ──────────────────
+        { "38000s",        "38000 s / 38000 seconds -> 10 h 33 min 20 s / 10 hours 33 minutes 20 seconds" },
+        { "48h",           "48 h / 48 hours -> 2 day / 2 days"                                             },
+        { "49h",           "49 h / 49 hours -> 2 day 1 h / 2 days 1 hour"                                 },
+        { "2500ms",        "2500 ms / 2500 milliseconds -> 2 s 500 ms / 2 seconds 500 milliseconds"        },
         { "10megasecond",  "10 Ms / 10 megaseconds -> 2777.78 h / 2777.78 hours"                      },
         { "10megaseconds", "10 Ms / 10 megaseconds -> 2777.78 h / 2777.78 hours"                      },
         // ── Masa ────────────────────────────────────────────────────────────
         { "10t",      "10 t / 10 tonnes -> 10000 kg / 10000 kilograms"                            },
         { "10tonnes", "10 t / 10 tonnes -> 10000 kg / 10000 kilograms"                            },
+        { "10 kg",    "10 kg / 10 kilograms -> 22.05 lb / 22.05 pounds"                           },
         { "10 g",     "10 g / 10 grams -> 0.3527396195 oz / 0.3527396195 ounces"                 },
         { "10 grams", "10 g / 10 grams -> 0.3527396195 oz / 0.3527396195 ounces"                 },
         { "10 oz",    "10 oz / 10 ounces -> 283.5 g / 283.5 grams"                               },
@@ -144,17 +153,27 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "10 hp",          "10 hp / 10 horsepowers -> 7.46 kW / 7.46 kilowatts"                      },
         { "10 horsepower",  "10 hp / 10 horsepowers -> 7.46 kW / 7.46 kilowatts"                      },
         { "10 horsepowers", "10 hp / 10 horsepowers -> 7.46 kW / 7.46 kilowatts"                      },
+        { "10 kW",          "10 kW / 10 kilowatts -> 13.41 hp / 13.41 horsepowers"                    },
+        { "1 kW",           "1 kW / 1 kilowatt -> 1.34 hp / 1.34 horsepowers"                         },
+        { "0.01 kW",        "10 W / 10 watts -> 0.0134102209 hp / 0.0134102209 horsepowers"           },
         // ── Datos ───────────────────────────────────────────────────────────
-        { "10 B",     "10 B / 10 bytes -> 0.01 kB / 0.01 kilobytes"                              },
-        { "10 kB",    "10 kB / 10 kilobytes -> 0.01 MB / 0.01 megabytes"                         },
-        { "10 MB",    "10 MB / 10 megabytes -> 0.01 GB / 0.01 gigabytes"                         },
-        { "10 GB",    "10 GB / 10 gigabytes -> 0.01 TB / 0.01 terabytes"                         },
-        { "10 TB",    "10 TB / 10 terabytes -> 10000 GB / 10000 gigabytes"                       },
+        { "10 B",      "10 B / 10 bytes -> 0.01 kB / 0.01 kilobytes"                             },
+        { "10000 B",   "10000 B / 10000 bytes -> 10 kB / 10 kilobytes"                          },
+        { "10 kB",     "10 kB / 10 kilobytes -> 0.01 MB / 0.01 megabytes"                       },
+        { "10000 kB",  "10000 kB / 10000 kilobytes -> 10 MB / 10 megabytes"                     },
+        { "10 MB",     "10 MB / 10 megabytes -> 0.01 GB / 0.01 gigabytes"                       },
+        { "10000 MB",  "10000 MB / 10000 megabytes -> 10 GB / 10 gigabytes"                     },
+        { "10 GB",     "10 GB / 10 gigabytes -> 0.01 TB / 0.01 terabytes"                       },
+        { "10000 GB",  "10000 GB / 10000 gigabytes -> 10 TB / 10 terabytes"                     },
+        { "10 TB",     "10 TB / 10 terabytes -> 10000 GB / 10000 gigabytes"                     },
+        // Normalize datos
+        { "1500 MB",  "1500 MB / 1500 megabytes -> 1.5 GB / 1.5 gigabytes"                    },
         // ── Electromagnetismo adicional ─────────────────────────────────────
-        { "10 ohm",   "10 ohm / 10 ohms -> 0.01 kohm / 0.01 kilohms"                           },
+        { "10 ohm",    "10 ohm / 10 ohms -> 0.01 kohm / 0.01 kilohms"                          },
         { "10 mol",   "10 mol / 10 moles -> 10000 mmol / 10000 millimoles"                       },
         { "10 S",     "10 S / 10 siemens -> 10000 mS / 10000 millisiemens"                       },
         // ── Tiempo adicional ────────────────────────────────────────────────
+        { "10 week",   "10 week / 10 weeks -> 70 day / 70 days"                                  },
         { "10 year",   "10 year / 10 years -> 3652.5 day / 3652.5 days"                          },
         { "10 decade", "10 decade / 10 decades -> 100 year / 100 years"                          },
         // ── Volumen menor ───────────────────────────────────────────────────
@@ -177,10 +196,14 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "10 gradians", "10 grad / 10 gradians -> 9 deg / 9 degrees"                               },
         { "10 arcmin",   "10 arcmin / 10 arcminutes -> 600 arcsec / 600 arcseconds"                 },
         { "10 arcminute","10 arcmin / 10 arcminutes -> 600 arcsec / 600 arcseconds"                 },
-        { "10 arcminutes","10 arcmin / 10 arcminutes -> 600 arcsec / 600 arcseconds"                 },
+        { "10 arcminutes","10 arcmin / 10 arcminutes -> 600 arcsec / 600 arcseconds"                },
+        { "10 arcsec",   "10 arcsec / 10 arcseconds -> 0.1666666667 arcmin / 0.1666666667 arcminutes" },
         // ── Área ────────────────────────────────────────────────────────────
         { "10 m2",       "10 m2 -> 107.64 sqft"                                                     },
         { "10 sqft",     "10 sqft -> 0.9290304 m2"                                                  },
+        { "10 sqin",     "10 sqin -> 0.06944444444 sqft"                                            },
+        { "10 sqyd",     "10 sqyd -> 8.36 m2"                                                       },
+        { "10 sqmi",     "10 sqmi -> 25.9 km2"                                                      },
         { "10 ha",       "10 ha / 10 hectares -> 24.71 acre / 24.71 acres"                          },
         { "10 hectare",  "10 ha / 10 hectares -> 24.71 acre / 24.71 acres"                          },
         { "10 hectares", "10 ha / 10 hectares -> 24.71 acre / 24.71 acres"                          },
@@ -212,7 +235,6 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "10 minutes",     "10 min / 10 minutes -> 600 s / 600 seconds"                },
         { "10 days",        "10 day / 10 days -> 240 h / 240 hours"                     },
         { "10 weeks",       "10 week / 10 weeks -> 70 day / 70 days"                    },
-        { "10 months",      "10 month / 10 months -> 304.38 day / 304.38 days"          },
         { "10 years",       "10 year / 10 years -> 3652.5 day / 3652.5 days"          },
         // Tiempo — capitalización variada
         { "10 Hour",        "10 h / 10 hours -> 600 min / 600 minutes"                  },
@@ -285,8 +307,7 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "10 megabytes",   "10 MB / 10 megabytes -> 0.01 GB / 0.01 gigabytes"           },
         { "10 gigabyte",    "10 GB / 10 gigabytes -> 0.01 TB / 0.01 terabytes"           },
         { "10 gigabytes",   "10 GB / 10 gigabytes -> 0.01 TB / 0.01 terabytes"           },
-        { "10 terabyte",    "10 TB / 10 terabytes -> 1000 GB / 1000 gigabytes"           },
-        { "10 terabytes",   "10 TB / 10 terabytes -> 1000 GB / 1000 gigabytes"           },
+        { "10 terabyte",    "10 TB / 10 terabytes -> 10000 GB / 10000 gigabytes"          },
         // ── Electricidad adicional — plurales ─────────────────────────────────
         { "10 ohms",        "10 ohm / 10 ohms -> 0.01 kohm / 0.01 kilohms"                },
         { "10 moles",       "10 mol / 10 moles -> 10000 mmol / 10000 millimoles"         },
@@ -377,10 +398,10 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "0.01C",      "10 mC / 10 millicoulombs -> 10 mC / 10 millicoulombs"          },
         { "0.01F",      "10 mF / 10 millifarads -> 10000 uF / 10000 microfarads"        },
         // ── Tiempo ────────────────────────────────────────────────────────────
-        { "0.01h",      "0.01 h / 0.01 hours -> 0.6 min / 0.6 minutes"                   },
-        { "0.01 day",   "0.01 day / 0.01 days -> 0.24 h / 0.24 hours"                    },
-        { "0.01 min",   "0.01 min / 0.01 minutes -> 0.6 s / 0.6 seconds"                 },
-        { "0.01s",      "10 ms / 10 milliseconds -> 10 ms / 10 milliseconds"              },
+        { "0.01h",      "0.01 h / 0.01 hours -> 36 s / 36 seconds"                        },
+        { "0.01 day",   "0.01 day / 0.01 days -> 14 min 24 s / 14 minutes 24 seconds"    },
+        { "0.01 min",   "0.01 min / 0.01 minutes -> 600 ms / 600 milliseconds"           },
+        { "0.01s",      "0.01 s / 0.01 seconds -> 10 ms / 10 milliseconds"              },
         { "0.01ms",     "10 us / 10 microseconds -> 1e-5 s / 1e-5 seconds"               },
         { "0.01Ms",     "10 ks / 10 kiloseconds -> 2.78 h / 2.78 hours"                  },
         // ── Masa ──────────────────────────────────────────────────────────────
@@ -422,16 +443,16 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "0.01 hp",    "0.01 hp / 0.01 horsepowers -> 0.007456998715 kW / 0.007456998715 kilowatts" },
         // ── Datos ─────────────────────────────────────────────────────────────
         { "0.01 B",     "0.01 B / 0.01 bytes -> 1e-5 kB / 1e-5 kilobytes"                 },
-        { "0.01 kB",    "10 B / 10 bytes -> 1e-5 MB / 1e-5 megabytes"                   },
-        { "0.01 MB",    "10 kB / 10 kilobytes -> 1e-5 GB / 1e-5 gigabytes"              },
-        { "0.01 GB",    "10 MB / 10 megabytes -> 1e-5 TB / 1e-5 terabytes"              },
-        { "0.01 TB",    "10 GB / 10 gigabytes -> 10 GB / 10 gigabytes"                  },
+        { "0.01 kB",    "0.01 kB / 0.01 kilobytes -> 10 B / 10 bytes"                    },
+        { "0.01 MB",    "0.01 MB / 0.01 megabytes -> 10 kB / 10 kilobytes"              },
+        { "0.01 GB",    "0.01 GB / 0.01 gigabytes -> 10 MB / 10 megabytes"              },
+        { "0.01 TB",    "0.01 TB / 0.01 terabytes -> 10 GB / 10 gigabytes"              },
         // ── Electromagnetismo adicional ────────────────────────────────────────
         { "0.01 ohm",   "10 mohm / 10 milliohms -> 1e-5 kohm / 1e-5 kilohms"             },
         { "0.01 mol",   "10 mmol / 10 millimoles -> 10 mmol / 10 millimoles"             },
         { "0.01 S",     "10 mS / 10 millisiemens -> 10 mS / 10 millisiemens"            },
         // ── Tiempo adicional ──────────────────────────────────────────────────
-        { "0.01 year",   "0.01 year / 0.01 years -> 3.65 day / 3.65 days"               },
+        { "0.01 year",   "0.01 year / 0.01 years -> 3 day 15 h 39.6 min / 3 days 15 hours 39.6 minutes" },
         { "0.01 decade", "0.01 decade / 0.01 decades -> 0.1 year / 0.1 years"           },
         // ── Volumen menor ─────────────────────────────────────────────────────
         { "0.01 pint",   "0.01 pint / 0.01 pints -> 0.02000000423 cup / 0.02000000423 cups"    },
@@ -468,14 +489,16 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
     // (1000 m permanece como 1000 m, no se convierte a 1 km).
     // Las unidades imperiales y no-SI (oz, ft, atm, psi, hp, acre…) NO se
     // normalizan nunca — conservan el valor tal como lo escribió el usuario.
+    // EXCEPCIÓN — unidades en normalizeUnits (tiempo, datos): el intercept de
+    // normalize preserva la entrada del usuario en el from (0.001 s → from: "0.001 s",
+    // to: "1 ms"), en lugar de que math.js elija el prefijo óptimo.
     // Ref: math.format() → unit.simplify() en math.js.
 
     public static TheoryData<string, string, string> FromPrefixNormalizationCases => new() {
         // query              from esperado               long suffix (o "" si null)
-        // ── SI: normaliza hacia abajo cuando coeff < 1 ───────────────────────
+        // ── SI estándar: normaliza hacia abajo cuando coeff < 1 ──────────────
         { "0.001 V",    "1 mV",         "millivolt"      },
         { "0.001 A",    "1 mA",         "milliampere"    },
-        { "0.001 s",    "1 ms",         "millisecond"    },
         { "0.001 m",    "1 mm",         "millimeter"     },
         { "0.001 g",    "1 mg",         "milligram"      },
         { "0.001 J",    "1 mJ",         "millijoule"     },
@@ -486,7 +509,11 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "1000 g",     "1000 g",       "grams"          },
         { "1000 W",     "1000 W",       "watts"          },
         { "1000 V",     "1000 V",       "volts"          },
-        // ── No-SI / imperial: nunca normaliza ─────────────────────────────────
+        // ── Tiempo/datos (normalizeUnits): from preservado, to viene del normalize ──
+        // El intercept de normalize usa EvalJs("... to origUnit") para fijar la unidad,
+        // por lo que el from ya no sufre la auto-norm de math.js.
+        { "0.001 s",    "0.001 s",      "seconds"        },  // to: 1 ms (via normalize)
+        // ── No-SI / imperial: nunca normaliza ────────────────────────────────
         { "0.001 ft",   "0.001 ft",     "feet"           },
         { "0.001 oz",   "0.001 oz",     "ounces"         },
         { "0.001 atm",  "0.001 atm",    "atmospheres"    },

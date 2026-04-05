@@ -60,6 +60,38 @@ var _defaultUnitPairs = [
 // Default currency pair: if the user types a single currency, suggest the other.
 var _defaultCurrencyPair = ['EUR', 'USD'];
 
+// Set of units that get normalize decomposition behavior. Populated by loadAliasData().
+var _normalizeUnits = new Set();
+
+// Normalize chains: define how to decompose a value into human-readable components.
+// Each chain entry: { unit, display, longName, factorInBase }
+// factorInBase: how many base units equal 1 of this unit.
+var _normalizeChains = {
+    time: {
+        baseUnit: 's',
+        chain: [
+            { unit: 'year',   display: 'year', longName: 'year',        factorInBase: 31557600 },
+            { unit: 'day',    display: 'day',  longName: 'day',         factorInBase: 86400 },
+            { unit: 'h',      display: 'h',    longName: 'hour',        factorInBase: 3600 },
+            { unit: 'minute', display: 'min',  longName: 'minute',      factorInBase: 60 },
+            { unit: 's',      display: 's',    longName: 'second',      factorInBase: 1 },
+            { unit: 'ms',     display: 'ms',   longName: 'millisecond', factorInBase: 0.001 },
+        ]
+    },
+    data: {
+        baseUnit: 'B',
+        mode: 'best_unit',   // single best unit (e.g. 1500 MB → 1.5 GB), not multi-component
+        maxDecimals: 3,
+        chain: [
+            { unit: 'TB', display: 'TB', longName: 'terabyte',  factorInBase: 1e12 },
+            { unit: 'GB', display: 'GB', longName: 'gigabyte',  factorInBase: 1e9 },
+            { unit: 'MB', display: 'MB', longName: 'megabyte',  factorInBase: 1e6 },
+            { unit: 'kB', display: 'kB', longName: 'kilobyte',  factorInBase: 1e3 },
+            { unit: 'B',  display: 'B',  longName: 'byte',      factorInBase: 1 },
+        ]
+    }
+};
+
 // Loads alias/blocked configuration from unit-config.json.
 // Must be called after loadPrecomputedData().
 function loadAliasData(data) {
@@ -86,6 +118,9 @@ function loadAliasData(data) {
         });
     }
     // Populate explicit long names for units not derivable via LONG prefix group (e.g. time units)
+    if (data.normalizeUnits) {
+        data.normalizeUnits.forEach(function(u) { _normalizeUnits.add(u); });
+    }
     if (data.longNames) {
         Object.keys(data.longNames).forEach(function(k) {
             _longNames[k] = data.longNames[k];
@@ -375,6 +410,100 @@ function smartFormat(r) {
         ? rounded.toString()
         : rounded.toFixed(2).replace(/0+$/, '');
     return numStr + s.slice(m[1].length);
+}
+
+// Formats a number with at most maxDec decimal places, stripping trailing zeros.
+// Examples: formatMaxDec(1.5, 3) → "1.5", formatMaxDec(1.024, 3) → "1.024"
+function formatMaxDec(value, maxDec) {
+    var factor = Math.pow(10, maxDec);
+    var rounded = Math.round(value * factor) / factor;
+    if (rounded === Math.floor(rounded)) return rounded.toString();
+    return rounded.toFixed(maxDec).replace(/0+$/, '');
+}
+
+// Decomposes a value in the given unit into human-readable components.
+// Returns an array of { value, unit, display, longName } or null if not supported.
+// Two modes (set per chain via chainConfig.mode):
+//   'best_unit'  — single component: largest unit where value >= 1 (e.g. 1500 MB → 1.5 GB)
+//   default      — decompose into up to 3 components (e.g. 38000 s → 10 h 33 min 20 s)
+// Only produces an interesting result when the result unit differs from the input unit.
+function computeNormalization(valueStr, unit) {
+    // Find the chain for this unit
+    var chainKey = null;
+    Object.keys(_normalizeChains).forEach(function(key) {
+        _normalizeChains[key].chain.forEach(function(step) {
+            if (step.unit === unit) chainKey = key;
+        });
+    });
+    if (!chainKey) return null;
+
+    var chainConfig = _normalizeChains[chainKey];
+    var baseUnit = chainConfig.baseUnit;
+    var baseVal;
+    try {
+        var r = math.evaluate(valueStr + ' ' + unit + ' to ' + baseUnit);
+        baseVal = parseFloat(math.format(r, { precision: 14 }));
+    } catch(e) { return null; }
+    if (isNaN(baseVal) || !isFinite(baseVal) || baseVal < 0) return null;
+
+    // Special case: 0 — return input unit to keep trivial detection working
+    if (baseVal === 0) {
+        var inputStep = null;
+        chainConfig.chain.forEach(function(s) { if (s.unit === unit) inputStep = s; });
+        var z = inputStep || chainConfig.chain[chainConfig.chain.length - 1];
+        return [{ value: '0', unit: z.unit, display: z.display, longName: z.longName }];
+    }
+
+    var chain = chainConfig.chain;
+
+    // best_unit mode: find the largest unit where baseVal / factorInBase >= 1
+    if (chainConfig.mode === 'best_unit') {
+        var maxDec = chainConfig.maxDecimals || 2;
+        for (var i = 0; i < chain.length; i++) {
+            var amount = baseVal / chain[i].factorInBase;
+            if (amount >= 1 - 1e-9) {
+                return [{ value: formatMaxDec(amount, maxDec), unit: chain[i].unit,
+                          display: chain[i].display, longName: chain[i].longName }];
+            }
+        }
+        // Fallback: smallest unit (B)
+        var last = chain[chain.length - 1];
+        return [{ value: formatMaxDec(baseVal, maxDec), unit: last.unit,
+                  display: last.display, longName: last.longName }];
+    }
+
+    // Default mode: decompose into up to 3 components
+    var components = [];
+    var remaining = baseVal;
+    var epsilon = 1e-9 * baseVal;
+
+    for (var j = 0; j < chain.length; j++) {
+        if (remaining < epsilon) break;
+        var step = chain[j];
+        var isLastInChain = (j === chain.length - 1);
+        var willHitCap = (components.length >= 2);
+
+        if (isLastInChain || willHitCap) {
+            var fracAmt = remaining / step.factorInBase;
+            if (fracAmt > epsilon / step.factorInBase) {
+                components.push({ value: smartFormat(fracAmt), unit: step.unit,
+                                  display: step.display, longName: step.longName });
+            }
+            break;
+        }
+        var whole = Math.floor(remaining / step.factorInBase + 1e-9);
+        if (whole > 0) {
+            components.push({ value: whole.toString(), unit: step.unit,
+                              display: step.display, longName: step.longName });
+            remaining -= whole * step.factorInBase;
+        }
+    }
+
+    if (components.length === 0) {
+        var lastStep = chain[chain.length - 1];
+        components.push({ value: '0', unit: lastStep.unit, display: lastStep.display, longName: lastStep.longName });
+    }
+    return components;
 }
 
 // Classifies a math.js error message into a structured object.
