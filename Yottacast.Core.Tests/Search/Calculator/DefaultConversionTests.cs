@@ -135,9 +135,8 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "10 kgf",   "10 kgf / 10 kilogram-forces -> 98.07 N / 98.07 newtons"                  },
         { "10 dyn",   "10 dyn / 10 dynes -> 0.1 mN / 0.1 millinewtons"                          },
         // ── Energía ─────────────────────────────────────────────────────────
-        { "10 J",     "10 J / 10 joules -> 0.009478171203 BTU"                                   },
-        { "10 kJ",    "10 kJ / 10 kilojoules -> 9.48 BTU"                                         },
-        { "10 BTU",   "10 BTU -> 10.55 kJ / 10.55 kilojoules"                                    },
+        { "10 J",     "10 J / 10 joules -> 0.01 kJ / 0.01 kilojoules"                              },
+        { "10 kJ",    "10 kJ / 10 kilojoules -> 2.78 Wh"                                        },
         { "10 Wh",    "10 Wh -> 36 kJ / 36 kilojoules"                                           },
         { "10 eV",    "10 eV / 10 electronvolts -> 1.602176565e-18 J / 1.602176565e-18 joules"  },
         { "10 erg",   "10 erg -> 1e-6 J / 1e-6 joules"                                           },
@@ -146,9 +145,26 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "10 horsepower",  "10 hp / 10 horsepowers -> 7.46 kW / 7.46 kilowatts"                      },
         { "10 horsepowers", "10 hp / 10 horsepowers -> 7.46 kW / 7.46 kilowatts"                      },
         // ── Datos ───────────────────────────────────────────────────────────
-        { "10 B",     "10 B -> 0.01 kB"                                                           },
-        { "10 kB",    "10 kB -> 0.01 MB"                                                          },
-        { "10 MB",    "10 MB -> 0.01 GB"                                                          },
+        { "10 B",     "10 B / 10 bytes -> 0.01 kB / 0.01 kilobytes"                              },
+        { "10 kB",    "10 kB / 10 kilobytes -> 0.01 MB / 0.01 megabytes"                         },
+        { "10 MB",    "10 MB / 10 megabytes -> 0.01 GB / 0.01 gigabytes"                         },
+        { "10 GB",    "10 GB / 10 gigabytes -> 0.01 TB / 0.01 terabytes"                         },
+        { "10 TB",    "10 TB / 10 terabytes -> 10000 GB / 10000 gigabytes"                       },
+        // ── Electromagnetismo adicional ─────────────────────────────────────
+        { "10 ohm",   "10 ohm / 10 ohms -> 0.01 kohm / 0.01 kilohms"                           },
+        { "10 mol",   "10 mol / 10 moles -> 10000 mmol / 10000 millimoles"                       },
+        { "10 S",     "10 S / 10 siemens -> 10000 mS / 10000 millisiemens"                       },
+        // ── Tiempo adicional ────────────────────────────────────────────────
+        { "10 year",   "10 year / 10 years -> 3652.5 day / 3652.5 days"                          },
+        { "10 decade", "10 decade / 10 decades -> 100 year / 100 years"                          },
+        // ── Volumen menor ───────────────────────────────────────────────────
+        { "10 pint",  "10 pint / 10 pints -> 20 cup / 20 cups"                                   },
+        { "10 quart", "10 quart / 10 quarts -> 20 pint / 20 pints"                               },
+        { "10 cup",   "10 cup / 10 cups -> 80 floz / 80 fluid ounces"                            },
+        { "10 floz",  "10 floz / 10 fluid ounces -> 295.74 mL / 295.74 millilitres"              },
+        { "10 tbsp",  "10 tablespoon / 10 tablespoons -> 30 teaspoon / 30 teaspoons"             },
+        { "10 tsp",   "10 teaspoon / 10 teaspoons -> 50 mL / 50 millilitres"                    },
+        { "10 cc",    "10 cc / 10 cubic centimeters -> 10 mL / 10 millilitres"                   },
         // ── Ángulo ──────────────────────────────────────────────────────────
         { "10 rad",      "10 rad / 10 radians -> 572.96 deg / 572.96 degrees"                       },
         { "10 radian",   "10 rad / 10 radians -> 572.96 deg / 572.96 degrees"                       },
@@ -197,7 +213,7 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "10 days",        "10 day / 10 days -> 240 h / 240 hours"                     },
         { "10 weeks",       "10 week / 10 weeks -> 70 day / 70 days"                    },
         { "10 months",      "10 month / 10 months -> 304.38 day / 304.38 days"          },
-        { "10 years",       "10 year -> 3652.5 day / 3652.5 days"                       },
+        { "10 years",       "10 year / 10 years -> 3652.5 day / 3652.5 days"          },
         // Tiempo — capitalización variada
         { "10 Hour",        "10 h / 10 hours -> 600 min / 600 minutes"                  },
         { "10 Hours",       "10 h / 10 hours -> 600 min / 600 minutes"                  },
@@ -255,9 +271,35 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "10 millimeters", "10 mm / 10 millimeters -> 0.3937007874 in / 0.3937007874 inches" },
         // ── Volumen — formas largas ───────────────────────────────────────────
         { "10 gal",         "10 gallon / 10 gallons -> 37.85 L / 37.85 litres"            },
-        // ── Fuerza — formas largas ────────────────────────────────────────────
+        // ── Fuerza — formas largas y poundforce ──────────────────────────────
         { "10 newton",      "10 N / 10 newtons -> 2.25 lbf / 2.25 pound-forces"          },
         { "10 newtons",     "10 N / 10 newtons -> 2.25 lbf / 2.25 pound-forces"          },
+        { "10poundforce",   "10 lbf / 10 pound-forces -> 44.48 N / 44.48 newtons"        },
+        { "10 poundforces", "10 lbf / 10 pound-forces -> 44.48 N / 44.48 newtons"        },
+        // ── Datos — formas largas y plurales ─────────────────────────────────
+        { "10 bytes",       "10 B / 10 bytes -> 0.01 kB / 0.01 kilobytes"                },
+        { "10 kilobytes",   "10 kB / 10 kilobytes -> 0.01 MB / 0.01 megabytes"           },
+        { "10 megabytes",   "10 MB / 10 megabytes -> 0.01 GB / 0.01 gigabytes"           },
+        { "10 gigabytes",   "10 GB / 10 gigabytes -> 0.01 TB / 0.01 terabytes"           },
+        // ── Electricidad adicional — plurales ─────────────────────────────────
+        { "10 ohms",        "10 ohm / 10 ohms -> 0.01 kohm / 0.01 kilohms"                },
+        { "10 moles",       "10 mol / 10 moles -> 10000 mmol / 10000 millimoles"         },
+        { "10 siemens",     "10 S / 10 siemens -> 10000 mS / 10000 millisiemens"         },
+        // ── Volumen menor — plurales ──────────────────────────────────────────
+        { "10 pints",       "10 pint / 10 pints -> 20 cup / 20 cups"                     },
+        { "10 quarts",      "10 quart / 10 quarts -> 20 pint / 20 pints"                 },
+        { "10 cups",        "10 cup / 10 cups -> 80 floz / 80 fluid ounces"              },
+        { "10 tablespoons", "10 tablespoon / 10 tablespoons -> 30 teaspoon / 30 teaspoons" },
+        { "10 teaspoons",   "10 teaspoon / 10 teaspoons -> 50 mL / 50 millilitres"        },
+        // ── Tiempo — decade alias ─────────────────────────────────────────────
+        { "10 decades",     "10 decade / 10 decades -> 100 year / 100 years"             },
+        // ── Datos — TB longname ────────────────────────────────────────────────
+        { "10 terabytes",   "10 TB / 10 terabytes -> 10000 GB / 10000 gigabytes"          },
+        // ── Volumen menor — singulares canónicos ──────────────────────────────
+        { "10 tablespoon",  "10 tablespoon / 10 tablespoons -> 30 teaspoon / 30 teaspoons" },
+        { "10 teaspoon",    "10 teaspoon / 10 teaspoons -> 50 mL / 50 millilitres"         },
+        // ── Fuerza — poundforce singular ──────────────────────────────────────
+        { "10 poundforce",  "10 lbf / 10 pound-forces -> 44.48 N / 44.48 newtons"         },
         // ── Smoke test 0.01 — detección de errores de redondeo y formato ─────
         // Nota: el sistema normaliza el "from" al prefijo SI más conveniente
         // (0.01 V → 10 mV, 0.01 s → 10 ms, 0.01 km → 10 m, etc.)
@@ -311,18 +353,34 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "0.01 kgf",   "0.01 kgf / 0.01 kilogram-forces -> 0.0980665 N / 0.0980665 newtons" },
         { "0.01 dyn",   "10 mdyn / 10 millidynes -> 1e-4 mN / 1e-4 millinewtons"        },
         // ── Energía ───────────────────────────────────────────────────────────
-        { "0.01 J",     "10 mJ / 10 millijoules -> 9.478171203e-6 BTU"                   },
-        { "0.01 kJ",    "10 J / 10 joules -> 0.009478171203 BTU"                         },
-        { "0.01 BTU",   "0.01 BTU -> 0.01055055853 kJ / 0.01055055853 kilojoules"       },
+        { "0.01 J",     "10 mJ / 10 millijoules -> 1e-5 kJ / 1e-5 kilojoules"             },
+        { "0.01 kJ",    "10 J / 10 joules -> 0.002777777778 Wh"                                },
         { "0.01 Wh",    "10 mWh -> 0.036 kJ / 0.036 kilojoules"                         },
         { "0.01 eV",    "10 meV / 10 millielectronvolts -> 1.602176565e-21 J / 1.602176565e-21 joules" },
         { "0.01 erg",   "10 merg -> 1e-9 J / 1e-9 joules"                               },
         // ── Potencia ──────────────────────────────────────────────────────────
         { "0.01 hp",    "0.01 hp / 0.01 horsepowers -> 0.007456998715 kW / 0.007456998715 kilowatts" },
         // ── Datos ─────────────────────────────────────────────────────────────
-        { "0.01 B",     "0.01 B -> 1e-5 kB"                                              },
-        { "0.01 kB",    "10 B -> 1e-5 MB"                                                },
-        { "0.01 MB",    "10 kB -> 1e-5 GB"                                               },
+        { "0.01 B",     "0.01 B / 0.01 bytes -> 1e-5 kB / 1e-5 kilobytes"                 },
+        { "0.01 kB",    "10 B / 10 bytes -> 1e-5 MB / 1e-5 megabytes"                   },
+        { "0.01 MB",    "10 kB / 10 kilobytes -> 1e-5 GB / 1e-5 gigabytes"              },
+        { "0.01 GB",    "10 MB / 10 megabytes -> 1e-5 TB / 1e-5 terabytes"              },
+        { "0.01 TB",    "10 GB / 10 gigabytes -> 10 GB / 10 gigabytes"                  },
+        // ── Electromagnetismo adicional ────────────────────────────────────────
+        { "0.01 ohm",   "10 mohm / 10 milliohms -> 1e-5 kohm / 1e-5 kilohms"             },
+        { "0.01 mol",   "10 mmol / 10 millimoles -> 10 mmol / 10 millimoles"             },
+        { "0.01 S",     "10 mS / 10 millisiemens -> 10 mS / 10 millisiemens"            },
+        // ── Tiempo adicional ──────────────────────────────────────────────────
+        { "0.01 year",   "0.01 year / 0.01 years -> 3.65 day / 3.65 days"               },
+        { "0.01 decade", "0.01 decade / 0.01 decades -> 0.1 year / 0.1 years"           },
+        // ── Volumen menor ─────────────────────────────────────────────────────
+        { "0.01 pint",   "0.01 pint / 0.01 pints -> 0.02000000423 cup / 0.02000000423 cups"    },
+        { "0.01 quart",  "0.01 quart / 0.01 quarts -> 0.01999999789 pint / 0.01999999789 pints" },
+        { "0.01 cup",    "0.01 cup / 0.01 cups -> 0.07999998647 floz / 0.07999998647 fluid ounces" },
+        { "0.01 floz",   "0.01 floz / 0.01 fluid ounces -> 0.2957353 mL / 0.2957353 millilitres" },
+        { "0.01 tbsp",   "0.01 tablespoon / 0.01 tablespoons -> 0.03 teaspoon / 0.03 teaspoons" },
+        { "0.01 tsp",    "0.01 teaspoon / 0.01 teaspoons -> 0.05 mL / 0.05 millilitres" },
+        { "0.01 cc",     "0.01 cc / 0.01 cubic centimeters -> 0.01 mL / 0.01 millilitres" },
         // ── Ángulo ────────────────────────────────────────────────────────────
         { "0.01 rad",   "10 mrad / 10 milliradians -> 0.5729577951 deg / 0.5729577951 degrees" },
         { "0.01 deg",   "10 mdeg / 10 millidegrees -> 1.745329252e-4 rad / 1.745329252e-4 radians" },

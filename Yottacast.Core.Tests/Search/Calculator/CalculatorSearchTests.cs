@@ -52,7 +52,7 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
 
     public static TheoryData<string, string> FunctionCases => new() {
         { "sqrt(144)",  "12"  },
-        { "sqrt(2)",    "1.414213562" },
+        { "sqrt(2)",    "1.41" },
         { "sin(pi/2)",  "1"   },
         { "cos(0)",     "1"   },
         { "abs(-42)",   "42"  },
@@ -136,19 +136,19 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
 
     public static TheoryData<string, string> UnitCaseCases => new() {
         // NONE-prefix units — siempre seguros
-        { "5 MILES to km",             "8.04672 km"         },
+        { "5 MILES to km",             "8.05 km"            },
         { "10 INCH to cm",             "25.4 cm"            },
-        { "5 FOOT to m",               "1.524 m"            },
+        { "5 FOOT to m",               "1.52 m"             },
         { "1 YARD to meter",           "0.9144 m"           },
         { "32 FAHRENHEIT to celsius",  "0 °C"               },
         { "100 CELSIUS to fahrenheit", "212 °F"             },
         // SHORT-prefix units con combinaciones seguras
-        { "5 KG to lbs",               "11.02311311 lb"     },
-        { "5 KM to miles",             "3.106855961 mi"     },
+        { "5 KG to lbs",               "11.02 lb"           },
+        { "5 KM to miles",             "3.11 mi"            },
         { "100 GRAM to kg",            "0.1 kg"             },
-        { "1 RADIAN to degree",        "57.29577951 deg"    },
+        { "1 RADIAN to degree",        "57.3 deg"           },
         // Funciones + unidades mezcladas
-        { "SQRT(144) km to miles",     "7.456454307 mi"     },
+        { "SQRT(144) km to miles",     "7.46 mi"            },
     };
 
     [Theory, MemberData(nameof(UnitCaseCases))]

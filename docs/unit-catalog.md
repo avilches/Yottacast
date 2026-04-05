@@ -103,12 +103,12 @@ La configuración resultante vive en `Yottacast.Core/Search/Calculator/unit-conf
 | L, l, litre, liter | liter | 🌍 cotidiana | ✅ mantener | |
 | mL, ml | milliliter | 🌍 cotidiana | ✅ mantener | |
 | gallon, gal | gallon (US) | 🇺🇸 EEUU | ✅ mantener | |
-| quart, qt | quart | 🇺🇸 EEUU | ✅ mantener | |
-| pint, pt | pint | 🇺🇸 EEUU | ✅ mantener | |
-| cup | cup | 🇺🇸 EEUU | ✅ mantener | |
+| quart | quart | 🇺🇸 EEUU | ✅ mantener | tokenAlias: `quarts` → quart |
+| pint | pint | 🇺🇸 EEUU | ✅ mantener | tokenAlias: `pints` → pint |
+| cup | cup | 🇺🇸 EEUU | ✅ mantener | tokenAlias: `cups` → cup |
 | floz | fluid ounce | 🇺🇸 EEUU | ✅ mantener | |
-| tbsp, tablespoon | tablespoon | 🇺🇸 EEUU | ✅ mantener | |
-| tsp, teaspoon | teaspoon | 🇺🇸 EEUU | ✅ mantener | |
+| tablespoon | tablespoon | 🇺🇸 EEUU | ✅ mantener | Símbolo canónico en math.js. tokenAliases: `tbsp` → tablespoon, `tablespoons` → tablespoon |
+| teaspoon | teaspoon | 🇺🇸 EEUU | ✅ mantener | Símbolo canónico en math.js. tokenAliases: `tsp` → teaspoon, `teaspoons` → teaspoon |
 | obl | oil barrel | 🏭 industrial | ❌ bloquear | Ya en `blocked` |
 | lt | UK long ton (liq) | 📜 histórica | ❌ bloquear | Ya en `blocked` |
 | gi, gill, gills | gill | 📜 histórica | ❌ bloquear | Ya en `blocked` |
@@ -127,11 +127,11 @@ La configuración resultante vive en `Yottacast.Core/Search/Calculator/unit-conf
 | s, sec, second | second | 🌍 cotidiana | ✅ mantener | |
 | min, minute | minute | 🌍 cotidiana | ✅ mantener | |
 | h, hr, hour | hour | 🌍 cotidiana | ✅ mantener | |
-| day | day | 🌍 cotidiana | ✅ mantener | |
-| week | week | 🌍 cotidiana | ✅ mantener | |
-| month | month | 🌍 cotidiana | ✅ mantener | |
-| year | year | 🌍 cotidiana | ✅ mantener | |
-| decade | decade | 🌍 cotidiana | ✅ mantener | |
+| day | day | 🌍 cotidiana | ✅ mantener | tokenAlias: `d` → day, `days` → day |
+| week | week | 🌍 cotidiana | ✅ mantener | tokenAlias: `weeks` → week |
+| month | month | 🌍 cotidiana | ✅ mantener | tokenAlias: `months` → month |
+| year | year | 🌍 cotidiana | ✅ mantener | tokenAlias: `years` → year |
+| decade | decade | 🌍 cotidiana | ✅ mantener | tokenAlias: `decades` → decade |
 | century | century | 🌍 cotidiana | ✅ mantener | |
 | millennium | millennium | 🌍 cotidiana | ✅ mantener | |
 | planckTime | Planck time | 🔬 científica | ✅ mantener | |
@@ -175,9 +175,9 @@ La configuración resultante vive en `Yottacast.Core/Search/Calculator/unit-conf
 | J, joule | joule | 🌍 cotidiana | ✅ mantener | |
 | eV, electronvolt | electronvolt | 🔬 científica | ✅ mantener | |
 | Wh | watt-hour | 🌍 cotidiana | ✅ mantener | |
-| BTU, btu | British thermal unit | 🇺🇸 EEUU | ✅ mantener | |
-| cal, calorie | calorie | 🌍 cotidiana | ✅ mantener | |
-| kcal | kilocalorie | 🌍 cotidiana | ✅ mantener | |
+| BTU, btu | British thermal unit | 🇺🇸 EEUU | ❌ bloquear | En `blocked`. Cadena práctica: J → kJ → Wh |
+| cal, calorie | calorie | 🌍 cotidiana | ✅ mantener | No disponible en esta build de math.js; da error de símbolo desconocido |
+| kcal | kilocalorie | 🌍 cotidiana | ✅ mantener | No disponible en esta build de math.js; da error de símbolo desconocido |
 | erg | erg | 🔬 científica | ✅ mantener | |
 | planckEnergy | Planck energy | 🔬 científica | ✅ mantener | |
 
@@ -189,7 +189,7 @@ La configuración resultante vive en `Yottacast.Core/Search/Calculator/unit-conf
 |---------|-----------|------|----------|-------|
 | W, watt | watt | 🌍 cotidiana | ✅ mantener | |
 | hp, horsepower | horsepower | 🇺🇸 EEUU | ✅ mantener | |
-| BTU/h | BTU per hour | 🏭 industrial | ✅ mantener | |
+| BTU/h | BTU per hour | 🏭 industrial | ❌ bloquear | Expresión compuesta; BTU en `blocked` |
 
 ---
 
@@ -211,21 +211,21 @@ La configuración resultante vive en `Yottacast.Core/Search/Calculator/unit-conf
 |---------|-----------|------|----------|-------|
 | A, ampere | ampere | 🌍 cotidiana | ✅ mantener | |
 | V, volt | volt | 🌍 cotidiana | ✅ mantener | |
-| ohm | ohm | 🌍 cotidiana | ✅ mantener | |
+| ohm | ohm | 🌍 cotidiana | ✅ mantener | tokenAlias: `ohms` → ohm. Nota: `kohm` target no tiene long name (ohm usa NONE prefix en math.js) |
 | F, farad | farad | 🔬 científica | ✅ mantener | tokenAlias `f` → degF (no afecta `F` mayúscula) |
 | H, henry | henry | 🔬 científica | ✅ mantener | |
 | Wb, weber | weber | 🔬 científica | ✅ mantener | |
 | T, tesla | tesla | 🔬 científica | ✅ mantener | |
-| S, siemens | siemens | 🔬 científica | ✅ mantener | |
+| S, siemens | siemens | 🔬 científica | ✅ mantener | tokenAlias: `siemens` → S |
 | C, coulomb | coulomb | 🔬 científica | ✅ mantener | tokenAlias `c` → degC (no afecta `C` mayúscula) |
-| Sv, sievert | sievert | 🔬 científica | ✅ mantener | |
-| Gy, gray | gray | 🔬 científica | ✅ mantener | |
-| Bq, becquerel | becquerel | 🔬 científica | ✅ mantener | |
+| Sv, sievert | sievert | 🔬 científica | ❌ bloquear | En `blocked`. No existe en esta build de math.js |
+| Gy, gray | gray | 🔬 científica | ❌ bloquear | En `blocked`. No existe en esta build de math.js |
+| Bq, becquerel | becquerel | 🔬 científica | ❌ bloquear | En `blocked`. No existe en esta build de math.js |
 | Hz, hertz | hertz | 🌍 cotidiana | ✅ mantener | |
-| lm, lumen | lumen | 🔬 científica | ✅ mantener | |
-| lx, lux | lux | 🔬 científica | ✅ mantener | |
-| cd, candela | candela | 🔬 científica | ✅ mantener | |
-| mol, mole | mole | 🔬 científica | ✅ mantener | |
+| lm, lumen | lumen | 🔬 científica | ❌ bloquear | En `blocked`. No existe en esta build de math.js |
+| lx, lux | lux | 🔬 científica | ❌ bloquear | En `blocked`. No existe en esta build de math.js |
+| cd, candela | candela | 🔬 científica | ❌ bloquear | En `blocked`. Sin par de conversión cotidiano |
+| mol, mole | mole | 🔬 científica | ✅ mantener | tokenAlias: `moles` → mol |
 
 ---
 
@@ -234,22 +234,25 @@ La configuración resultante vive en `Yottacast.Core/Search/Calculator/unit-conf
 | Símbolo | Long name | Tipo | Decisión | Notas |
 |---------|-----------|------|----------|-------|
 | bit, b | bit | 🌍 cotidiana | ✅ mantener | |
-| byte, B | byte | 🌍 cotidiana | ✅ mantener | |
-| KB, kB | kilobyte | 🌍 cotidiana | ✅ mantener | |
-| MB | megabyte | 🌍 cotidiana | ✅ mantener | |
-| GB | gigabyte | 🌍 cotidiana | ✅ mantener | |
-| TB | terabyte | 🌍 cotidiana | ✅ mantener | |
+| B | byte | 🌍 cotidiana | ✅ mantener | tokenAlias: `bytes` → B |
+| kB | kilobyte | 🌍 cotidiana | ✅ mantener | tokenAlias: `kilobytes` → kB |
+| MB | megabyte | 🌍 cotidiana | ✅ mantener | tokenAlias: `megabytes` → MB |
+| GB | gigabyte | 🌍 cotidiana | ✅ mantener | tokenAlias: `gigabytes` → GB |
+| TB | terabyte | 🌍 cotidiana | ✅ mantener | tokenAlias: `terabytes` → TB |
 
 ---
 
 ## Velocidad
 
+> **Limitación**: las unidades de velocidad son expresiones compuestas en math.js (`m/s`, `km/h`, `mph`) o no existen en esta build (`knot`, `kn`). No funcionan como fuente de auto-conversión `unit_entry` (el AST requiere `OperatorNode(implicit, [number, SymbolNode])`). Se pueden usar en cálculos pero no generarán conversión automática al escribir "10 m/s".
+
 | Símbolo | Long name | Tipo | Decisión | Notas |
 |---------|-----------|------|----------|-------|
-| m/s | meters per second | 🌍 cotidiana | ✅ mantener | |
-| km/h, kph | kilometers per hour | 🌍 cotidiana | ✅ mantener | |
-| mph | miles per hour | 🇺🇸 EEUU | ✅ mantener | |
-| knot, kn | knot | 🏭 náutica | ✅ mantener | |
+| m/s | meters per second | 🌍 cotidiana | ✅ mantener | Solo funciona en cálculos, no como unit_entry |
+| km/h | kilometers per hour | 🌍 cotidiana | ✅ mantener | Solo funciona en cálculos, no como unit_entry |
+| mph | miles per hour | 🇺🇸 EEUU | ✅ mantener | Solo funciona en cálculos, no como unit_entry |
+| knot | knot | 🏭 náutica | — | No existe en esta build de math.js |
+| kn | — | — | — | `kn` resuelve a `kN` (kilonewton), no a knot |
 | c (velocidad de la luz) | speed of light | 🔬 científica | ⚠ override | tokenAlias `c` → degC. `C` mayúscula sigue siendo coulomb. Usar `lightspeed` para la velocidad de la luz |
 
 ---
@@ -260,7 +263,7 @@ La configuración resultante vive en `Yottacast.Core/Search/Calculator/unit-conf
 |---------|-----------|------|----------|-------|
 | N, newton | newton | 🌍 cotidiana | ✅ mantener | |
 | dyn, dyne | dyne | 🔬 científica | ✅ mantener | |
-| lbf | pound-force | 🇺🇸 EEUU | ✅ mantener | |
+| lbf | pound-force | 🇺🇸 EEUU | ✅ mantener | tokenAlias: `poundforce` → lbf, `poundforces` → lbf |
 | kip | kilopound-force | 🇺🇸 EEUU | ✅ mantener | |
 | kgf | kilogram-force | 🌍 cotidiana | ✅ mantener | |
 
@@ -271,3 +274,7 @@ La configuración resultante vive en `Yottacast.Core/Search/Calculator/unit-conf
 - `tokenAliases` `c` → `degC` y `f` → `degF` son aliases de **token lowercase**. Math.js distingue mayúsculas: `C` (coulomb) y `F` (farad) siguen funcionando porque `resolveUnitToken` solo aplica el override al token exacto `c`/`f`.
 - Las unidades `blocked` se definen en `unit-config.json` y se rechazan en `resolveUnitToken()` antes de que math.js las interprete, evitando resultados desconcertantes.
 - Los `displayNames` solo afectan a la presentación en la UI y al texto copiado al portapapeles; la evaluación interna siempre usa los símbolos canónicos de math.js.
+- `tablespoon` y `teaspoon` son los símbolos canónicos en esta build de math.js. `tsp` y `tbsp` no existen como símbolos directos — deben ir como `tokenAliases`.
+- Las unidades de velocidad (`knot`, `mph`, `km/h`, `m/s`) son expresiones compuestas y no funcionan como fuente `unit_entry` para auto-conversión. Se pueden usar en cálculos pero no generan panel de conversión automático.
+- `Bq`, `Sv`, `Gy`, `lm`, `lx` no existen en esta build de math.js (no hay precomputed symbol). Están en `blocked` para que den un error claro en vez de comportamiento inesperado.
+- La cadena de energía práctica es J → kJ → Wh (electricidad). BTU y kcal no están disponibles en esta build.
