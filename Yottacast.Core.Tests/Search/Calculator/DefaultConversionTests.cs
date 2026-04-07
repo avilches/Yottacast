@@ -202,14 +202,16 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "100 kmh",     "100 kmh / 100 kilometers per hour -> 62.14 mph / 62.14 miles per hour"     },
         { "100 kmph",    "100 kmh / 100 kilometers per hour -> 62.14 mph / 62.14 miles per hour"     },
         // ── Velocidad compuesta normalizada (unidades no estándar) ──────────────
-        { "2 mi/s",          "7200 mi / h / 7200 miles per hour -> 11587.28 km / h / 11587.28 kilometers per hour" },
-        { "60 mi/min",       "3600 mi / h / 3600 miles per hour -> 5793.64 km / h / 5793.64 kilometers per hour" },
-        { "5 ft/s",          "3.41 mi / h / 3.41 miles per hour -> 5.49 km / h / 5.49 kilometers per hour"       },
-        { "5 ft/min",        "0.0568 mi / h / 0.0568 miles per hour -> 0.0914 km / h / 0.0914 kilometers per hour" },
+        // Unidades con entrada directa en defaultTargets — FROM queda como el usuario escribió
+        { "2 mi/s",          "2 mi / s / 2 miles per second -> 3.22 km / s / 3.22 kilometers per second"                    },
+        { "60 mi/min",       "60 mi / minute / 60 miles per minute -> 96.56 km / minute / 96.56 kilometers per minute"      },
+        { "5 ft/s",          "5 ft / s / 5 feet per second -> 1.52 m / s / 1.52 meters per second"                          },
+        { "5 ft/min",        "5 ft / minute / 5 feet per minute -> 1.52 m / minute / 1.52 meters per minute"                },
+        { "100 km/min",      "100 km / minute / 100 kilometers per minute -> 3728.23 mi / h / 3728.23 miles per hour"       },
+        // Unidades solo en _normalizeCompound — FROM se normaliza a la forma canónica
         { "2000000 mm/min",  "120 km / h / 120 kilometers per hour -> 74.56 mi / h / 74.56 miles per hour"       },
         { "10 mm/s",         "0.036 km / h / 0.036 kilometers per hour -> 0.0224 mi / h / 0.0224 miles per hour" },
         { "50 cm/s",         "1.8 km / h / 1.8 kilometers per hour -> 1.12 mi / h / 1.12 miles per hour"         },
-        { "100 km/min",      "6000 km / h / 6000 kilometers per hour -> 3728.23 mi / h / 3728.23 miles per hour" },
         // ── Tasas de datos (bit/s ↔ byte/s) ─────────────────────────────────────
         { "1 Gbps",      "1 Gbps / 1 gigabit per second -> 125 MB / s / 125 megabytes per second"    },
         { "100 Mbps",    "100 Mbps / 100 megabits per second -> 12.5 MB / s / 12.5 megabytes per second" },
@@ -504,6 +506,40 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "0.001 hp",   "0.001 hp",     "horsepowers"    },
         { "0.001 acre", "0.001 acre",   "acres"          },
     };
+
+    // ── Velocidad compuesta — nuevas unidades ────────────────────────────────
+    public static TheoryData<string, string> NewCompoundUnitCases => new() {
+        // yard/h, ft/h — en defaultTargets, FROM queda como el usuario escribió
+        { "10 yard/h",  "10 yard / h / 10 yards per hour -> 0.00914 km / h / 0.00914 kilometers per hour" },
+        { "5 ft/h",     "5 ft / h / 5 feet per hour -> 0.00152 km / h / 0.00152 kilometers per hour"      },
+        // mm/h, cm/h — solo en _normalizeCompound, FROM normalizado a km/h
+        { "10 mm/h",    "1e-5 km / h / 1e-5 kilometers per hour -> 6.213711922e-6 mi / h / 6.213711922e-6 miles per hour" },
+        { "10 cm/h",    "1e-4 km / h / 1e-4 kilometers per hour -> 6.213711922e-5 mi / h / 6.213711922e-5 miles per hour" },
+    };
+
+    [Theory]
+    [MemberData(nameof(NewCompoundUnitCases))]
+    public void NewCompoundUnit_DefaultConversion(string query, string expectedSummary) {
+        var item = GetConversionItem(query);
+        var summary = $"{Fmt(item.FromShort, item.FromLong)} -> {Fmt(item.ToShort, item.ToLong)}";
+        Assert.Equal(expectedSummary, summary);
+    }
+
+    // ── Conversión explícita de unidades compuestas — long names en TO ───────
+    public static TheoryData<string, string> ExplicitCompoundConversionCases => new() {
+        // FROM siempre en la unidad compuesta original (no auto-simplificada a custom unit)
+        { "10 mi/ms to m/h",    "10 mi / ms / 10 miles per millisecond -> 5.7936384e+10 m / h / 5.7936384e+10 meters per hour" },
+        { "10 yard/h to mi/s",  "10 yard / h / 10 yards per hour -> 1.578282828e-6 mi / s / 1.578282828e-6 miles per second" },
+        { "10 mi/s to ft/s",    "10 mi / s / 10 miles per second -> 52800 ft / s / 52800 feet per second" },
+    };
+
+    [Theory]
+    [MemberData(nameof(ExplicitCompoundConversionCases))]
+    public void ExplicitCompoundConversion_ShowsLongNameInTo(string query, string expectedSummary) {
+        var item = GetConversionItem(query);
+        var summary = $"{Fmt(item.FromShort, item.FromLong)} -> {Fmt(item.ToShort, item.ToLong)}";
+        Assert.Equal(expectedSummary, summary);
+    }
 
     [Theory]
     [MemberData(nameof(FromPrefixNormalizationCases))]

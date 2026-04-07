@@ -97,7 +97,12 @@ public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard) :
         var perIdx = name.IndexOf(" per ", StringComparison.Ordinal);
         if (perIdx > 0) {
             var first = name[..perIdx];
-            return (first.EndsWith('s') ? first : first + "s") + name[perIdx..];
+            var pluralFirst = first switch {
+                "foot" => "feet",
+                "inch" => "inches",
+                _      => first.EndsWith('s') ? first : first + "s"
+            };
+            return pluralFirst + name[perIdx..];
         }
         return name.EndsWith('s') || name.EndsWith("heit") ? name : name + "s";
     }

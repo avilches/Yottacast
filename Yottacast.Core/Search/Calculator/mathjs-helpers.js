@@ -239,17 +239,16 @@ function resolveUnitToken(name) {
 // Se usa cuando no hay entrada directa en _defaultUnitTargets para la unidad compuesta.
 // El FROM se muestra en la forma canónica; el TO se obtiene del par por defecto de esa forma.
 var _normalizeCompound = {
-    // Velocidad imperial → mi/h
-    'mi / s':      'mi / h',
-    'mi / minute': 'mi / h',
-    'ft / s':      'mi / h',
-    'ft / minute': 'mi / h',
-    // Velocidad SI no estándar → km/h
-    'mm / s':      'km / h',
-    'cm / s':      'km / h',
-    'mm / minute': 'km / h',
-    'cm / minute': 'km / h',
-    'km / minute': 'km / h',
+    // Velocidad imperial extrema → mi/h (sin entrada directa en defaultTargets)
+    'mi / ms':       'mi / h',
+    // Velocidad SI no estándar → km/h (sin entrada directa en defaultTargets)
+    'mm / s':        'km / h',
+    'cm / s':        'km / h',
+    'mm / minute':   'km / h',
+    'cm / minute':   'km / h',
+    'mm / h':        'km / h',
+    'cm / h':        'km / h',
+    'm / h':         'km / h',
 };
 
 // Detecta el patrón AST para unidades compuestas: número × unidadNum / unidadDen
@@ -371,6 +370,10 @@ function normalizeExpression(expression, knownCurrenciesCsv) {
         } else {
             kind = 'complex_conversion';
             leftExpr = left.toString();
+            // Extract compound fromUnit when LHS is "number × unit / unit" (e.g. "10 mi/s")
+            if (_isCompoundUnitEntry(left)) {
+                fromUnit = left.args[0].args[1].name + ' / ' + left.args[1].name;
+            }
         }
     } else if (root.type === 'OperatorNode' && root.implicit === true &&
                root.args.length === 2 && root.args[1].type === 'SymbolNode') {

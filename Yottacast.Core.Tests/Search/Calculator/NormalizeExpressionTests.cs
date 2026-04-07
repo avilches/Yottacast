@@ -135,4 +135,5 @@ public class NormalizeExpressionTests(MathJsEngineFixture fixture) {
         Assert.Contains("gallon", r.Expr);   // no debe convertir l→L (trivial)
         Assert.Empty(r.Ambiguities);
     }
+
 }

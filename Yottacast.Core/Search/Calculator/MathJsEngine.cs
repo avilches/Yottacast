@@ -206,7 +206,13 @@ public sealed class MathJsEngine : IDisposable {
     }
 
     private EvalResult EvaluateComplex(NormalizedExpression normalized, IReadOnlyList<AmbiguityHint>? hints) {
-        var leftResult = EvalJs(normalized.LeftExpr!);
+        // For compound FROM units (e.g. "mi / s"), force display in the declared unit to prevent
+        // math.js from auto-simplifying to a custom unit (e.g. "kmh") registered in the same dimension.
+        bool isCompoundLeft = normalized.FromUnit?.Contains('/') == true;
+        var leftEvalExpr = isCompoundLeft
+            ? $"{normalized.LeftExpr!} to {normalized.FromUnit}"
+            : normalized.LeftExpr!;
+        var leftResult = EvalJs(leftEvalExpr);
         var (fromValue, fromUnit) = leftResult != null
             ? SplitValueUnit(leftResult)
             : ("", normalized.FromUnit ?? "");
@@ -228,7 +234,25 @@ public sealed class MathJsEngine : IDisposable {
         // LongForm still produces a useful plural ("10 days" ≠ "10 day").
         var explicit_ = _engine!.Evaluate($"getExplicitLongName('{Escape(symbol)}')").ToString();
         if (!string.IsNullOrEmpty(explicit_)) return explicit_;
+        // For compound units (e.g. "km / h"), derive long name from components rather than
+        // requiring an explicit entry for every possible combination.
+        var slashIdx = symbol.IndexOf(" / ", StringComparison.Ordinal);
+        if (slashIdx >= 0) {
+            var num = symbol[..slashIdx];
+            var den = symbol[(slashIdx + 3)..];
+            var numLong = GetComponentLongName(num);
+            var denLong = GetComponentLongName(den);
+            if (numLong != null || denLong != null)
+                return $"{numLong ?? num} per {denLong ?? den}";
+        }
         // Fall back to math.js LONG-prefix derivation; discard if it only echoes the symbol.
+        var derived = _engine.Evaluate($"getUnitLongName('{Escape(symbol)}')").ToString();
+        return string.IsNullOrEmpty(derived) || derived == symbol ? null : derived;
+    }
+
+    private string? GetComponentLongName(string symbol) {
+        var explicit_ = _engine!.Evaluate($"getExplicitLongName('{Escape(symbol)}')").ToString();
+        if (!string.IsNullOrEmpty(explicit_)) return explicit_;
         var derived = _engine.Evaluate($"getUnitLongName('{Escape(symbol)}')").ToString();
         return string.IsNullOrEmpty(derived) || derived == symbol ? null : derived;
     }
