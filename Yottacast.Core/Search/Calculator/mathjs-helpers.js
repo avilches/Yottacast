@@ -63,19 +63,8 @@ var _evalSafeAliases = {};
 // Each pair [A, B]: if the user types a value in A, suggest B, and vice-versa.
 // Used as fallback when _defaultUnitTargets has no entry for the resolved unit.
 // Pairs use the SI base unit ↔ Imperial base unit for each dimension.
-var _defaultUnitPairs = [
-    ['m', 'ft'],      // longitud: métrico↔imperial
-    ['kg', 'lb'],     // masa: métrico↔imperial
-    ['degC', 'degF'], // temperatura: métrico↔imperial
-    ['L', 'gallon'],  // volumen: métrico↔imperial
-    ['J', 'BTU'],     // energía: métrico↔imperial
-    ['Pa', 'psi'],    // presión: métrico↔imperial
-    ['N', 'lbf'],     // fuerza: métrico↔imperial
-    ['h', 'minute'],  // tiempo: fallback ('minute' es eval-safe)
-    ['W', 'kW'],
-    ['B', 'kB'],
-    ['rad', 'deg'],
-];
+// Populated from unit-config.json defaultPairs by loadAliasData().
+var _defaultUnitPairs = [];
 
 // Default currency pair: if the user types a single currency, suggest the other.
 var _defaultCurrencyPair = ['EUR', 'USD'];
@@ -130,6 +119,10 @@ function loadAliasData(data) {
         Object.keys(data.defaultTargets).forEach(function(k) {
             _defaultUnitTargets[k] = data.defaultTargets[k];
         });
+    }
+    // Populate dimensional fallback pairs (any unit dimensionally compatible with pair[0] → pair[0] or pair[1])
+    if (data.defaultPairs) {
+        data.defaultPairs.forEach(function(pair) { _defaultUnitPairs.push(pair); });
     }
     // Populate eval-safe aliases (e.g. min → minute to avoid conflict with math.min function)
     if (data.evalSafeAliases) {
@@ -233,23 +226,6 @@ function resolveUnitToken(name) {
     }
     return null;
 }
-
-// Normalización de unidades compuestas no estándar a su forma canónica de visualización.
-// Clave: compoundUnit (e.g. "mi / s"). Valor: unidad canónica (e.g. "mi / h").
-// Se usa cuando no hay entrada directa en _defaultUnitTargets para la unidad compuesta.
-// El FROM se muestra en la forma canónica; el TO se obtiene del par por defecto de esa forma.
-var _normalizeCompound = {
-    // Velocidad imperial extrema → mi/h (sin entrada directa en defaultTargets)
-    'mi / ms':       'mi / h',
-    // Velocidad SI no estándar → km/h (sin entrada directa en defaultTargets)
-    'mm / s':        'km / h',
-    'cm / s':        'km / h',
-    'mm / minute':   'km / h',
-    'cm / minute':   'km / h',
-    'mm / h':        'km / h',
-    'cm / h':        'km / h',
-    'm / h':         'km / h',
-};
 
 // Detecta el patrón AST para unidades compuestas: número × unidadNum / unidadDen
 // Ejemplo: "10 km/h" → OperatorNode('/') con OperatorNode('*', implicit) como numerador
@@ -395,18 +371,6 @@ function normalizeExpression(expression, knownCurrenciesCsv) {
             kind = 'unit_entry';
             fromUnit = compoundUnit;
             toUnit = defaultTarget;
-        } else if (_normalizeCompound[compoundUnit] !== undefined) {
-            // Normalize non-standard compound unit to canonical form for display.
-            // E.g. "mi / s" → fromUnit="mi / h", so "2 mi/s" displays as "7200 mi/h → 11591 km/h".
-            var canonicalFrom = _normalizeCompound[compoundUnit];
-            var canonicalTo = findDefaultTarget(canonicalFrom, knownCurrencies);
-            if (canonicalTo !== null) {
-                kind = 'unit_entry';
-                fromUnit = canonicalFrom;
-                toUnit = canonicalTo;
-            } else {
-                kind = 'calculation';
-            }
         } else {
             kind = 'calculation';
         }

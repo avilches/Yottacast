@@ -68,7 +68,8 @@ Embedded resource en `Yottacast.Core/Search/Calculator/unit-config.json`. Se car
 - **`evalSafeAliases`**: sustituciones que se aplican en el nombre del nodo AST antes de que la expresión llegue a `math.evaluate()`, para evitar colisiones con funciones de math.js. Por ejemplo, `"min"` → `"minute"` evita que math.js interprete `min` como la función `math.min`. El resultado se re-transforma para display vía `displayNames` (ver abajo), de modo que el usuario escribe `min` y ve `min` en el resultado.
 - **`displayNames`**: nombres de display para el resultado final (ej. `"degC"` → `"°C"`, `"minute"` → `"min"`). Usados por `DisplayUnit()` en `MathJsEngine.cs`. Solo aplica a la unidad en formato corto (`fromShort`/`toShort`); los nombres largos se construyen aparte.
 - **`longNames`**: nombres largos explícitos para unidades simples que no tienen forma larga derivable automáticamente (ej. `"h"` → `"hour"`, `"degC"` → `"celsius"`). Las unidades compuestas con ` / ` no necesitan entradas aquí — se derivan automáticamente de sus componentes (ver "Nombres largos"). Las entradas donde clave y valor son iguales (ej. `"day":"day"`) solo sirven para habilitar la pluralización (`"10 days"`). `loadAliasData()` genera automáticamente el mapeado inverso (ej. `longNames["h"]="hour"` → `_unitOverrides["hour"]="h"`), de modo que `"10 hour"` se normaliza igual que `"10h"`.
-- **`defaultTargets`**: mapa `unidad → target` para la conversión por defecto cuando el usuario escribe solo `valor + unidad`. Cubre unidades simples (ej. `"kg"` → `"lb"`) y unidades compuestas de velocidad y datos (ej. `"km / h"` → `"mi / h"`, `"mi / s"` → `"km / s"`, `"Gbps"` → `"MB / s"`). Las conversiones priorizan pares métrico↔imperial o bit↔byte. Actúa como fallback cuando el intercept de `normalizeUnits` no produce un resultado interesante. Ver los valores en `unit-config.json`.
+- **`defaultTargets`**: mapa `unidad → target` para la conversión por defecto cuando el usuario escribe solo `valor + unidad`. Prioridad máxima en `findDefaultTarget`: se consulta antes que `defaultPairs`. Necesario para unidades cuyo target natural difiere del que daría el par dimensional — por ejemplo `"g": "oz"` (no `"kg"`) o `"m / s": "km / h"` (no `"mi / h"`). Las entradas que coinciden exactamente con un par (ej. `"kg": "lb"`) son redundantes con `defaultPairs` pero pueden mantenerse por claridad. Actúa como fallback cuando el intercept de `normalizeUnits` no produce un resultado interesante. Ver los valores en `unit-config.json`.
+- **`defaultPairs`**: lista de pares `[A, B]` para matching dimensional. Fallback cuando la unidad no tiene entrada directa en `defaultTargets`. `findDefaultTarget` compara la dimensión física de la unidad con `A` usando `math.Unit.equalBase`; si coincide, devuelve `A` (salvo que la unidad ya sea `A`, en cuyo caso devuelve `B`). Cubre automáticamente todas las variantes con prefijo no enumeradas: con el par `["kg", "lb"]`, cualquier unidad de masa no listada (`Mg`, `ng`…) devuelve `"kg"`. La elección de `A` importa solo para esas unidades no listadas — `"kg"` (no `"g"`) porque `"10 Mg → kg"` es más legible que `"10 Mg → 10000000 g"`.
 - **`normalizeUnits`**: lista de unidades que activan el modo de descomposición natural (tiempo) o selección de mejor unidad (datos). Ver la sección "Normalización natural" más abajo.
 - **`blocked`**: tokens bloqueados — no se reconocen como unidades (ej. símbolos históricos ambiguos o inutilizables).
 
@@ -103,17 +104,12 @@ Expresiones como `10 km/h` producen en el AST un `OperatorNode('/')` en el que e
 Cuando se detecta una unidad compuesta sin `to` explícito:
 
 1. Se construye `compoundUnit = "num / den"` (ej. `"km / h"`).
-2. Se busca en `defaultTargets`. Si hay entrada directa → `kind = unit_entry`, `fromUnit = compoundUnit`.
-3. Si no hay entrada directa pero `_normalizeCompound[compoundUnit]` existe → se usa la forma canónica como `fromUnit` (ej. `"mm / s"` → `fromUnit = "km / h"`). Ver `_normalizeCompound` más abajo.
-4. Si no hay ninguna entrada → `kind = calculation`.
+2. Se busca en `defaultTargets` (directo) o en `_defaultUnitPairs` (matching dimensional). Si hay target → `kind = unit_entry`, `fromUnit = compoundUnit`.
+3. Si no hay target → `kind = calculation`.
+
+El FROM se muestra siempre tal como lo escribió el usuario. Para el matching dimensional, `defaultPairs` incluye el par `["mi / h", "km / h"]` que cubre cualquier unidad de velocidad no listada en `defaultTargets` (ej. `10 Mm/min` → TO: `mi / h`; `10 mm/s` → TO: `mi / h`).
 
 Para `complex_conversion` con LHS compuesto, `normalizeExpression` también extrae `fromUnit` del patrón `_isCompoundUnitEntry` sobre el nodo izquierdo.
-
-### `_normalizeCompound`
-
-Tabla en `mathjs-helpers.js` que mapea unidades compuestas sin entrada directa en `defaultTargets` a una forma canónica de display. Se usa cuando el valor literal sería ilegible — por ejemplo `2000000 mm/min` se canonicaliza a `km/h` para mostrar `120 km/h` en lugar de `2000000 mm/min`.
-
-Las unidades con su propia entrada en `defaultTargets` (ej. `mi/s`, `ft/s`, `yard/h`, `km/min`) **no** pasan por `_normalizeCompound` — el FROM se muestra tal como lo escribió el usuario. `_normalizeCompound` se reserva para unidades genuinamente no-estándar donde la normalización es necesaria para la legibilidad.
 
 ### Nombres largos: `getUnitLongName` / `getExplicitLongName`
 
@@ -201,9 +197,8 @@ El intercept usa `EvalJs("... to origUnit")` en lugar de `EvalJs("...")`. Esto f
 **Normalización del FROM**: hay varios mecanismos que pueden cambiar la unidad mostrada en FROM:
 
 1. **Auto-simplificación SI de math.js** — para unidades SI simples con coeficiente < 1, math.js reescribe al prefijo más conveniente (`0.001 V` → `1 mV`). Solo ocurre hacia abajo; `1000 m` permanece como `1000 m`. Las imperiales y no-SI nunca se simplifican.
-2. **`_normalizeCompound`** — para compound units sin entrada en `defaultTargets` (ej. `mm/s`, `cm/min`), reescribe el FROM a la forma canónica legible (ej. `km/h`). Ver `_normalizeCompound` más arriba.
-3. **Forzado `to {fromUnit}` para compuestos** — en `EvaluateSimple` e `EvaluateComplex`, si `fromUnit` contiene ` / `, se evalúa el LHS forzando la unidad (`EvalJs("10 km/h to km / h")`). Esto evita que math.js auto-simplifique a una unidad custom registrada de la misma dimensión (ej. `kmh` o `mph`). El usuario ve la unidad exactamente como la escribió.
-4. **`TryNormalize` (tiempo/datos)** — previene la auto-simplificación SI forzando la unidad original con `to origUnit`.
+2. **Forzado `to {fromUnit}` para compuestos** — en `EvaluateSimple` e `EvaluateComplex`, si `fromUnit` contiene ` / `, se evalúa el LHS forzando la unidad (`EvalJs("10 km/h to km / h")`). Esto evita que math.js auto-simplifique a una unidad custom registrada de la misma dimensión (ej. `kmh` o `mph`). El usuario ve la unidad exactamente como la escribió.
+3. **`TryNormalize` (tiempo/datos)** — previene la auto-simplificación SI forzando la unidad original con `to origUnit`.
 
 **`ISearchHintProvider` / `LastHint`**: `CalculatorSearch` implementa `ISearchHintProvider`. Para errores `UnknownSymbol` e `IncompatibleUnits`, `LastHint` se establece con un mensaje legible para el usuario. Para otros errores (sintaxis, etc.) no se muestra hint.
 

@@ -208,10 +208,11 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "5 ft/s",          "5 ft / s / 5 feet per second -> 1.52 m / s / 1.52 meters per second"                          },
         { "5 ft/min",        "5 ft / minute / 5 feet per minute -> 1.52 m / minute / 1.52 meters per minute"                },
         { "100 km/min",      "100 km / minute / 100 kilometers per minute -> 3728.23 mi / h / 3728.23 miles per hour"       },
-        // Unidades solo en _normalizeCompound — FROM se normaliza a la forma canónica
-        { "2000000 mm/min",  "120 km / h / 120 kilometers per hour -> 74.56 mi / h / 74.56 miles per hour"       },
-        { "10 mm/s",         "0.036 km / h / 0.036 kilometers per hour -> 0.0224 mi / h / 0.0224 miles per hour" },
-        { "50 cm/s",         "1.8 km / h / 1.8 kilometers per hour -> 1.12 mi / h / 1.12 miles per hour"         },
+        // Unidades no estándar — FROM queda tal como lo escribió el usuario, TO a mi/h vía par dimensional
+        { "2000000 mm/min",  "2e+6 mm / minute / 2e+6 millimeters per minute -> 74.56 mi / h / 74.56 miles per hour"          },
+        { "10 mm/s",         "10 mm / s / 10 millimeters per second -> 0.0224 mi / h / 0.0224 miles per hour"                 },
+        { "50 cm/s",         "50 cm / s / 50 centimeters per second -> 1.12 mi / h / 1.12 miles per hour"                     },
+        { "10 Mm/min",       "10 Mm / minute / 10 megameters per minute -> 3.728227153e+5 mi / h / 3.728227153e+5 miles per hour" },
         // ── Tasas de datos (bit/s ↔ byte/s) ─────────────────────────────────────
         { "1 Gbps",      "1 Gbps / 1 gigabit per second -> 125 MB / s / 125 megabytes per second"    },
         { "100 Mbps",    "100 Mbps / 100 megabits per second -> 12.5 MB / s / 12.5 megabytes per second" },
@@ -512,9 +513,9 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         // yard/h, ft/h — en defaultTargets, FROM queda como el usuario escribió
         { "10 yard/h",  "10 yard / h / 10 yards per hour -> 0.00914 km / h / 0.00914 kilometers per hour" },
         { "5 ft/h",     "5 ft / h / 5 feet per hour -> 0.00152 km / h / 0.00152 kilometers per hour"      },
-        // mm/h, cm/h — solo en _normalizeCompound, FROM normalizado a km/h
-        { "10 mm/h",    "1e-5 km / h / 1e-5 kilometers per hour -> 6.213711922e-6 mi / h / 6.213711922e-6 miles per hour" },
-        { "10 cm/h",    "1e-4 km / h / 1e-4 kilometers per hour -> 6.213711922e-5 mi / h / 6.213711922e-5 miles per hour" },
+        // mm/h, cm/h — FROM queda tal como lo escribió el usuario, TO a mi/h vía par dimensional
+        { "10 mm/h",    "10 mm / h / 10 millimeters per hour -> 6.213711922e-6 mi / h / 6.213711922e-6 miles per hour" },
+        { "10 cm/h",    "10 cm / h / 10 centimeters per hour -> 6.213711922e-5 mi / h / 6.213711922e-5 miles per hour" },
     };
 
     [Theory]

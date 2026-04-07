@@ -220,6 +220,20 @@
     "ft / h":        "km / h",    "yard / s":      "m / s",
     "yard / minute": "m / minute","yard / h":      "km / h"
   },
+  "defaultPairs": [
+    ["m",      "ft"],
+    ["kg",     "lb"],
+    ["degC",   "degF"],
+    ["L",      "gallon"],
+    ["J",      "BTU"],
+    ["Pa",     "psi"],
+    ["N",      "lbf"],
+    ["mi / h", "km / h"],
+    ["h",      "minute"],
+    ["W",      "kW"],
+    ["B",      "kB"],
+    ["rad",    "deg"]
+  ],
   "ambiguityOverrides": {
     "mm": "mm",    "pm": "pm",    "zm": "zm",    "ym": "ym",
     "mm2": "mm2",  "pm2": "pm2",  "zm2": "zm2",  "ym2": "ym2",
