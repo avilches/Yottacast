@@ -92,6 +92,13 @@ public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard) :
         if (Math.Abs(d) == 1.0) return name;
         if (name == "foot")  return "feet";
         if (name == "inch")  return "inches";
+        if (name == "hertz") return "hertz";
+        // "X per Y" compound names: pluralize first word only (e.g. "kilometer per hour" → "kilometers per hour")
+        var perIdx = name.IndexOf(" per ", StringComparison.Ordinal);
+        if (perIdx > 0) {
+            var first = name[..perIdx];
+            return (first.EndsWith('s') ? first : first + "s") + name[perIdx..];
+        }
         return name.EndsWith('s') || name.EndsWith("heit") ? name : name + "s";
     }
 

@@ -181,13 +181,22 @@ public sealed class MathJsEngine : IDisposable {
         }
 
         // UnitEntry or SimpleConversion → ConversionResult
-        var (toValue, toUnit) = SplitValueUnit(result);
         var toIdx = normalized.Expr.LastIndexOf(" to ", StringComparison.Ordinal);
         var lhsExpr = toIdx >= 0 ? normalized.Expr[..toIdx] : normalized.Expr;
-        var lhsResult = EvalJs(lhsExpr);
+
+        // For compound units (e.g. "km / h"), math.js may auto-simplify the result to a custom
+        // unit (e.g. "mph"). Force LHS/RHS display in the original compound units.
+        bool isCompound = normalized.Kind == ExprKind.UnitEntry
+                          && normalized.FromUnit?.Contains('/') == true;
+        var lhsResult = isCompound
+            ? EvalJs($"{lhsExpr} to {normalized.FromUnit}")
+            : EvalJs(lhsExpr);
         var (fromValue, fromUnit) = lhsResult != null
             ? SplitValueUnit(lhsResult)
             : ("", normalized.FromUnit ?? "");
+
+        var (toValue, toUnit) = SplitValueUnit(result);
+        if (isCompound) toUnit = normalized.ToUnit ?? toUnit;
         return new ConversionResult(fromValue, fromUnit, toValue, toUnit,
             FromUnitLong: GetUnitLongName(fromUnit),
             ToUnitLong:   GetUnitLongName(toUnit)) {

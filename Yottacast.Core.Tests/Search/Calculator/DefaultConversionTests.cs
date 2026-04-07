@@ -190,6 +190,33 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "10 hectares", "10 ha / 10 hectares -> 24.71 acre / 24.71 acres"                          },
         { "10 acre",     "10 acre / 10 acres -> 4.05 ha / 4.05 hectares"                            },
         { "10 acres",    "10 acre / 10 acres -> 4.05 ha / 4.05 hectares"                            },
+        // ── Velocidad compuesta (compound unit_entry) ────────────────────────
+        { "10 km/h",     "10 km / h / 10 kilometers per hour -> 6.21 mi / h / 6.21 miles per hour"   },
+        { "60 mi/h",     "60 mi / h / 60 miles per hour -> 96.56 km / h / 96.56 kilometers per hour" },
+        { "10 m/s",      "10 m / s / 10 meters per second -> 36 km / h / 36 kilometers per hour"     },
+        // ── RPM ↔ Hz ─────────────────────────────────────────────────────────
+        { "3000 rpm",    "3000 rpm / 3000 revolutions per minute -> 50 Hz / 50 hertz"                },
+        { "50 Hz",       "50 Hz / 50 hertz -> 3000 rpm / 3000 revolutions per minute"                },
+        // ── mph / kmh aliases ────────────────────────────────────────────────
+        { "60 mph",      "60 mph / 60 miles per hour -> 96.56 kmh / 96.56 kilometers per hour"       },
+        { "100 kmh",     "100 kmh / 100 kilometers per hour -> 62.14 mph / 62.14 miles per hour"     },
+        { "100 kmph",    "100 kmh / 100 kilometers per hour -> 62.14 mph / 62.14 miles per hour"     },
+        // ── Velocidad compuesta normalizada (unidades no estándar) ──────────────
+        { "2 mi/s",          "7200 mi / h / 7200 miles per hour -> 11587.28 km / h / 11587.28 kilometers per hour" },
+        { "60 mi/min",       "3600 mi / h / 3600 miles per hour -> 5793.64 km / h / 5793.64 kilometers per hour" },
+        { "5 ft/s",          "3.41 mi / h / 3.41 miles per hour -> 5.49 km / h / 5.49 kilometers per hour"       },
+        { "5 ft/min",        "0.0568 mi / h / 0.0568 miles per hour -> 0.0914 km / h / 0.0914 kilometers per hour" },
+        { "2000000 mm/min",  "120 km / h / 120 kilometers per hour -> 74.56 mi / h / 74.56 miles per hour"       },
+        { "10 mm/s",         "0.036 km / h / 0.036 kilometers per hour -> 0.0224 mi / h / 0.0224 miles per hour" },
+        { "50 cm/s",         "1.8 km / h / 1.8 kilometers per hour -> 1.12 mi / h / 1.12 miles per hour"         },
+        { "100 km/min",      "6000 km / h / 6000 kilometers per hour -> 3728.23 mi / h / 3728.23 miles per hour" },
+        // ── Tasas de datos (bit/s ↔ byte/s) ─────────────────────────────────────
+        { "1 Gbps",      "1 Gbps / 1 gigabit per second -> 125 MB / s / 125 megabytes per second"    },
+        { "100 Mbps",    "100 Mbps / 100 megabits per second -> 12.5 MB / s / 12.5 megabytes per second" },
+        { "10 kbps",     "10 kbps / 10 kilobits per second -> 1.25 kB / s / 1.25 kilobytes per second" },
+        { "10 kB/s",     "10 kB / s / 10 kilobytes per second -> 0.08 Mbps / 0.08 megabits per second" },
+        { "100 MB/s",    "100 MB / s / 100 megabytes per second -> 800 Mbps / 800 megabits per second" },
+        { "10 GB/s",     "10 GB / s / 10 gigabytes per second -> 80 Gbps / 80 gigabits per second"  },
     };
 
     [Theory]

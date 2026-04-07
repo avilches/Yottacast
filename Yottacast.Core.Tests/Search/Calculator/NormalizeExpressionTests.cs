@@ -75,6 +75,23 @@ public class NormalizeExpressionTests(MathJsEngineFixture fixture) {
         Assert.Equal("MXN", r.ToUnit);
     }
 
+    [Fact]
+    public void CompoundVelocity_IsUnitEntry_WithDefaultTarget() {
+        var r = Normalize("10 km/h");
+        Assert.NotNull(r);
+        Assert.Equal(ExprKind.UnitEntry, r.Kind);
+        Assert.Equal("km / h", r.FromUnit);
+        Assert.Contains("mi / h", r.Expr);
+    }
+
+    [Fact]
+    public void CompoundVelocity_NoTarget_IsCalculation() {
+        // "km / km" no tiene par por defecto → calculation
+        var r = Normalize("10 km/km");
+        Assert.NotNull(r);
+        Assert.Equal(ExprKind.Calculation, r.Kind);
+    }
+
     // ── Ambiguity detection ──────────────────────────────────────────────────
 
     [Fact]

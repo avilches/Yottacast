@@ -1,5 +1,19 @@
 math.createUnit('USD');
 
+// Velocidad: mph y kmh como unidades simples
+math.createUnit('kmh', { definition: math.unit(1000/3600, 'm/s') });
+math.createUnit('mph', { definition: math.unit(1609.344/3600, 'm/s') });
+
+// Frecuencia/rotación: rpm ↔ Hz (dimensión 1/s)
+math.createUnit('rpm', { definition: math.unit(1/60, '1/s') });
+
+// Tasas de datos: registradas individualmente para nombres exactos
+math.createUnit('bps',  { definition: '1 bit / s' });
+math.createUnit('kbps', { definition: '1000 bps' });
+math.createUnit('Mbps', { definition: '1000 kbps' });
+math.createUnit('Gbps', { definition: '1000 Mbps' });
+math.createUnit('Tbps', { definition: '1000 Gbps' });
+
 function registerCurrency(name, rateVsUSD) {
     // rateVsUSD: units of 'name' per 1 USD (e.g. EUR=0.92 means 1 USD = 0.92 EUR)
     math.createUnit(name, { definition: (1 / rateVsUSD) + ' USD' }, { override: true });
@@ -220,6 +234,36 @@ function resolveUnitToken(name) {
     return null;
 }
 
+// Normalización de unidades compuestas no estándar a su forma canónica de visualización.
+// Clave: compoundUnit (e.g. "mi / s"). Valor: unidad canónica (e.g. "mi / h").
+// Se usa cuando no hay entrada directa en _defaultUnitTargets para la unidad compuesta.
+// El FROM se muestra en la forma canónica; el TO se obtiene del par por defecto de esa forma.
+var _normalizeCompound = {
+    // Velocidad imperial → mi/h
+    'mi / s':      'mi / h',
+    'mi / minute': 'mi / h',
+    'ft / s':      'mi / h',
+    'ft / minute': 'mi / h',
+    // Velocidad SI no estándar → km/h
+    'mm / s':      'km / h',
+    'cm / s':      'km / h',
+    'mm / minute': 'km / h',
+    'cm / minute': 'km / h',
+    'km / minute': 'km / h',
+};
+
+// Detecta el patrón AST para unidades compuestas: número × unidadNum / unidadDen
+// Ejemplo: "10 km/h" → OperatorNode('/') con OperatorNode('*', implicit) como numerador
+function _isCompoundUnitEntry(node) {
+    return node.type === 'OperatorNode' && node.op === '/' && !node.implicit &&
+           node.args.length === 2 &&
+           node.args[0].type === 'OperatorNode' && node.args[0].implicit === true &&
+           node.args[0].args.length === 2 &&
+           node.args[0].args[0].type === 'ConstantNode' &&
+           node.args[0].args[1].type === 'SymbolNode' &&
+           node.args[1].type === 'SymbolNode';
+}
+
 // Devuelve la unidad de destino por defecto para una unidad dada, o null si no hay par.
 // Para monedas usa _defaultCurrencyPair; para unidades físicas primero _defaultUnitTargets
 // (mapa concreto, mayor prioridad) y luego _defaultUnitPairs (matching dimensional, fallback).
@@ -336,6 +380,30 @@ function normalizeExpression(expression, knownCurrenciesCsv) {
             kind = 'unit_entry';
             fromUnit = unitName;
             toUnit = defaultTarget;
+        } else {
+            kind = 'calculation';
+        }
+    } else if (_isCompoundUnitEntry(root)) {
+        var numUnit = root.args[0].args[1].name;
+        var denUnit = root.args[1].name;
+        var compoundUnit = numUnit + ' / ' + denUnit;
+        var defaultTarget = findDefaultTarget(compoundUnit, knownCurrencies);
+        if (defaultTarget !== null) {
+            kind = 'unit_entry';
+            fromUnit = compoundUnit;
+            toUnit = defaultTarget;
+        } else if (_normalizeCompound[compoundUnit] !== undefined) {
+            // Normalize non-standard compound unit to canonical form for display.
+            // E.g. "mi / s" → fromUnit="mi / h", so "2 mi/s" displays as "7200 mi/h → 11591 km/h".
+            var canonicalFrom = _normalizeCompound[compoundUnit];
+            var canonicalTo = findDefaultTarget(canonicalFrom, knownCurrencies);
+            if (canonicalTo !== null) {
+                kind = 'unit_entry';
+                fromUnit = canonicalFrom;
+                toUnit = canonicalTo;
+            } else {
+                kind = 'calculation';
+            }
         } else {
             kind = 'calculation';
         }

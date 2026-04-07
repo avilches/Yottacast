@@ -99,7 +99,9 @@
     "arcsecond":    "arcsec",
     "arcseconds":   "arcsec",
     "hectares":     "hectare",
-    "acres":        "acre"
+    "acres":        "acre",
+    "kmph":         "kmh",
+    "kph":          "kmh"
   },
   "evalSafeAliases": {
     "min": "minute"
@@ -160,7 +162,26 @@
     "hectare":    "hectare",
     "grad":       "gradian",
     "arcmin":     "arcminute",
-    "arcsec":     "arcsecond"
+    "arcsec":     "arcsecond",
+    "rpm":        "revolution per minute",
+    "bps":        "bit per second",
+    "kbps":       "kilobit per second",
+    "Mbps":       "megabit per second",
+    "Gbps":       "gigabit per second",
+    "Tbps":       "terabit per second",
+    "kmh":        "kilometer per hour",
+    "mph":        "mile per hour",
+    "km / h":     "kilometer per hour",
+    "mi / h":     "mile per hour",
+    "m / s":      "meter per second",
+    "km / s":     "kilometer per second",
+    "m / minute": "meter per minute",
+    "km / minute":"kilometer per minute",
+    "B / s":      "byte per second",
+    "kB / s":     "kilobyte per second",
+    "MB / s":     "megabyte per second",
+    "GB / s":     "gigabyte per second",
+    "TB / s":     "terabyte per second"
   },
   "defaultTargets": {
     "ms": "s",       "s": "ms",
@@ -194,7 +215,17 @@
     "grad": "deg",   "arcmin": "arcsec", "arcsec": "arcmin",
     "m2": "sqft",    "sqft": "m2",
     "sqin": "sqft",  "sqyd": "m2",  "sqmi": "km2",
-    "hectare": "acre", "acre": "hectare"
+    "hectare": "acre", "acre": "hectare",
+    "rpm": "Hz",      "Hz": "rpm",
+    "kmh": "mph",     "mph": "kmh",
+    "bps":  "B / s",   "B / s":  "kbps",
+    "kbps": "kB / s",  "kB / s": "Mbps",
+    "Mbps": "MB / s",  "MB / s": "Mbps",
+    "Gbps": "MB / s",  "GB / s": "Gbps",
+    "Tbps": "GB / s",  "TB / s": "Tbps",
+    "km / h": "mi / h",  "mi / h": "km / h",
+    "m / s":  "km / h",  "km / s": "m / s",
+    "m / minute": "km / h"
   },
   "ambiguityOverrides": {
     "mm": "mm",    "pm": "pm",    "zm": "zm",    "ym": "ym",
