@@ -509,97 +509,299 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         Assert.Equal(expectedSummary, summary);
     }
 
-    // ── Normalización de prefijo SI en el "from" ─────────────────────────────
-    // math.js (vía math.format) reformatea el valor de entrada al prefijo SI
-    // más conveniente. La simplificación ocurre en AMBAS direcciones:
-    //   Hacia ABAJO cuando coeff < 0.1: 0.001 m → 1 mm, 0.00001 m → 10 µm.
-    //   Para valores "medios" (coeff ∈ [0.1, 1000]): sin cambio (0.1 m → 0.1 m; 1000 m → 1000 m).
-    //   Hacia ARRIBA cuando coeff > 1000: 2000 m → 2 km, 1000000 m → 1 Mm.
-    // Las unidades imperiales y no-SI (oz, ft, atm, psi, hp, acre…) NO se
-    // normalizan nunca — conservan el valor tal como lo escribió el usuario.
-    // EXCEPCIÓN — normalizeUnits (tiempo, datos): TryNormalize fuerza la evaluación
-    // "... to origUnit", fijando la unidad origen y preservando el from SIEMPRE QUE
-    // computeNormalization encuentre una descomposición con unidad distinta (isInteresting).
-    //   0.001 s → from "0.001 s" (TryNormalize éxito: to "1 ms", isInteresting=true)
-    //   0.01 ms → from "10 µs"   (TryNormalize falla: computeNorm devuelve misma
-    //                              unidad ms, isInteresting=false → fallthrough → math.js simplifica)
-    // Ref: math.format() → unit.simplify() en math.js; TryNormalize en MathJsEngine.cs.
+    // ── Prefijos SI: cobertura completa por unidad ───────────────────────────
+    // Cada TheoryData verifica la cadena completa de prefijos SI para una unidad:
+    //   — "from": valor con prefijo + nombre largo si disponible en math.js
+    //   — "to": conversión por defecto (defaultTargets o defaultPairs dimensional)
+    //
+    // Regla de auto-simplificación SI (math.format):
+    //   coeff < 0.1  → baja de prefijo  (0.001 m → 1 mm)
+    //   coeff ∈ [0.1, 1000] → sin cambio (0.1 m → 0.1 m, 1000 m → 1000 m)
+    //   coeff > 1000 → sube de prefijo  (2000 m → 2 km)
+    // Las unidades imperiales y no-SI nunca se auto-simplifican.
+    // Excepción: normalizeUnits (s, ms, B, kB…) fuerza "expr to origUnit", protegiendo
+    // el from de la simplificación upward. Ver TryNormalize en MathJsEngine.cs.
+    //
+    // defaultTarget para prefijos exóticos (no en defaultTargets):
+    //   → defaultPairs dimensional → devuelve pair[0] (base SI).
+    //   Ejemplo: "ym" no está en defaultTargets → pair["m","ft"] → target="m".
+    //
+    // Nota tonne: "ft" y "pt" en el sistema de tokens resuelven a foot y pint,
+    // no a femtotonne y picotonne (restricción del sistema de tokens de math.js).
 
-    public static TheoryData<string, string, string> FromPrefixNormalizationCases => new() {
-        // query              from esperado               long suffix (o "" si null)
-        // ── SI estándar (un paso): normaliza hacia abajo cuando coeff < 0.1 ───
-        { "0.001 m",    "1 mm",         "millimeter"     },
-        { "0.001 g",    "1 mg",         "milligram"      },
-        { "0.001 J",    "1 mJ",         "millijoule"     },
-        { "0.001 W",    "1 mW",         "milliwatt"      },
-        { "0.001 N",    "1 mN",         "millinewton"    },
-        { "0.001 Pa",   "1 mPa",        ""               },  // Pa no tiene longName en LONG prefix group
-        // ── SI prefijado (k*): simplifica kX → X base cuando coeff < 0.1 ────
-        { "0.001 km",   "1 m",          "meter"          },  // 0.001 × 1000 m = 1 m
-        { "0.001 kg",   "1 g",          "gram"           },  // 0.001 × 1000 g = 1 g
-        { "0.001 kJ",   "1 J",          "joule"          },  // 0.001 kJ = 1 J
-        { "0.001 kW",   "1 W",          "watt"           },  // 0.001 kW = 1 W
-        // ── SI (doble paso): 0.00001 = 1e-5 → dos niveles de simplificación ──
-        { "0.00001 m",  "10 um",        "micrometers"    },  // 1e-5 m → µm (valor=10 → plural)
-        { "0.00001 g",  "10 ug",        "micrograms"     },
-        { "0.00001 W",  "10 uW",        "microwatts"     },
-        { "0.00001 N",  "10 uN",        "micronewtons"   },
-        // ── Frontera inferior exacta del umbral: 0.1 no simplifica, 0.09 sí ──
-        { "0.1 m",      "0.1 m",        "meters"         },  // coeff=0.1 → en el límite, sin cambio
-        { "0.09 m",     "90 mm",        "millimeters"    },  // coeff=0.09 < 0.1 → simplifica (valor=90 → plural)
-        // ── SI: no simplifica en el rango "medio" (coeff ∈ [0.1, 1000]) ───────
-        { "1000 m",     "1000 m",       "meters"         },  // coeff=1000 → en el límite, sin cambio
-        { "1000 g",     "1000 g",       "grams"          },
-        { "1000 W",     "1000 W",       "watts"          },
-        // ── Frontera superior exacta del umbral: 1000 no simplifica, 1100 sí ─
-        { "1100 m",     "1.1 km",       "kilometers"     },  // coeff=1100 > 1000 → simplifica (valor=1.1 → plural)
-        { "2000 m",     "2 km",         "kilometers"     },  // coeff=2000 > 1000 → sube a km (valor=2 → plural)
-        // ── SI (muy grande): simplificación upward hasta prefijo mega ─────────
-        // Aplica a TODAS las familias SI — no solo m/g/W
-        { "1000000 m",  "1 Mm",         "megameter"      },  // longitud
-        { "1000000 g",  "1 Mg",         "megagram"       },  // masa
-        { "1000000 W",  "1 MW",         "megawatt"       },  // potencia
-        { "1000000 J",  "1 MJ",         "megajoule"      },  // energía
-        { "1000000 N",  "1 MN",         "meganewton"     },  // fuerza
-        // ── Cascade T→P: 10000 × cualquier unidad T = 10 × esa unidad en P ──
-        // Documenta que la regla [0.1, 1000] aplica en TODOS los niveles de prefijo
-        { "10000 TW",   "10 PW",        "petawatts"      },  // potencia
-        { "10000 TJ",   "10 PJ",        "petajoules"     },  // energía
-        { "10000 TN",   "10 PN",        "petanewtons"    },  // fuerza
-        { "10000 THz",  "10 PHz",       "petahertz"      },  // frecuencia (hertz no pluraliza)
-        // ── L (litro): LONG prefix en math.js → usa ortografía "litre" (británico) ─
-        { "0.001 L",    "1 mL",         "millilitre"     },  // downward (valor=1 → singular)
-        { "1000000 L",  "1 ML",         "megalitre"      },  // upward (valor=1 → singular)
-        { "10000 TL",   "10 PL",        "petalitres"     },  // T→P cascade (valor=10 → plural)
-        // ── rad (radián): LONG prefix en math.js → nombre largo derivable ──
-        { "0.001 rad",   "1 mrad",      "milliradian"    },  // downward (valor=1 → singular)
-        { "1000000 rad", "1 Mrad",      "megaradian"     },  // upward (valor=1 → singular)
-        { "10000 Trad",  "10 Prad",     "petaradians"    },  // T→P cascade (valor=10 → plural)
-        // ── normalizeUnits: TryNormalize preserva el from cuando isInteresting ─
-        { "0.001 s",    "0.001 s",      "seconds"        },  // to: 1 ms
-        // ── normalizeUnits (ms): TryNormalize falla → fallthrough → math.js simplifica ─
-        { "0.01 ms",    "10 us",        "microseconds"   },  // isInteresting=false → 10 µs (valor=10 → plural)
-        { "0.001 ms",   "1 us",         "microsecond"    },  // valor=1 → singular
-        // ── normalizeUnits (datos): bytes no se simplifican hacia abajo ────────
-        { "0.01 B",     "0.01 B",       "bytes"          },  // TryNormalize falla; math.js no simplifica B (valor≠1 → plural)
-        // ── normalizeUnits (grande): TryNormalize fuerza "to origUnit" → from preservado ─
-        // (sin upward simplification aunque coeff sea 1e6, porque EvalJs fija la unidad)
-        { "1000000 s",  "1e+6 s",       "seconds"        },  // → 11 day 13 h 46 min 40 s
-        { "1000000 ms", "1e+6 ms",      "milliseconds"   },  // → 16 min 40 s
-        { "1000000 B",  "1e+6 B",       "bytes"          },  // → 1 MB
-        // ── No-SI / imperial: nunca normaliza en ninguna dirección ──────────
-        // Hacia abajo: valores pequeños se conservan tal como los escribió el usuario
-        { "0.001 ft",   "0.001 ft",     "feet"           },
-        { "0.001 oz",   "0.001 oz",     "ounces"         },
-        { "0.001 atm",  "0.001 atm",    "atmospheres"    },
-        { "0.001 psi",  "0.001 psi",    ""               },  // psi no tiene longName
-        { "0.001 hp",   "0.001 hp",     "horsepowers"    },
-        { "0.001 acre", "0.001 acre",   "acres"          },
-        // Hacia arriba: valores muy grandes tampoco se simplican (a diferencia de SI)
-        // math.js formatea el número en notación científica pero NO cambia la unidad
-        { "1000000 ft", "1e+6 ft",      "feet"           },  // SI daría 1 Mft; imperial queda en ft
-        { "1000000 oz", "1e+6 oz",      "ounces"         },
+    private void AssertSummary(string query, string expected) {
+        var item = GetConversionItem(query);
+        Assert.Equal(expected, $"{Fmt(item.FromShort, item.FromLong)} -> {Fmt(item.ToShort, item.ToLong)}");
+    }
+
+    // ── metro ────────────────────────────────────────────────────────────────
+    // Prefijos explícitos: mm→in, cm→in, km→mile. Resto →m via defaultPairs.
+    public static TheoryData<string, string> Meter_SIPrefixCases => new() {
+        { "1 m",  "1 m / 1 meter -> 3.28 ft / 3.28 feet"                },
+        { "1 ym", "1 ym / 1 yoctometer -> 1e-24 m / 1e-24 meters"       },
+        { "1 zm", "1 zm / 1 zeptometer -> 1e-21 m / 1e-21 meters"       },
+        { "1 am", "1 am / 1 attometer -> 1e-18 m / 1e-18 meters"        },
+        { "1 fm", "1 fm / 1 femtometer -> 1e-15 m / 1e-15 meters"       },
+        { "1 pm", "1 pm / 1 picometer -> 1e-12 m / 1e-12 meters"        },
+        { "1 nm", "1 nm / 1 nanometer -> 1e-9 m / 1e-9 meters"          },
+        { "1 um", "1 um / 1 micrometer -> 1e-6 m / 1e-6 meters"         },
+        { "1 mm", "1 mm / 1 millimeter -> 0.0394 in / 0.0394 inches"     },
+        { "1 cm", "1 cm / 1 centimeter -> 0.394 in / 0.394 inches"       },
+        { "1 dm", "1 dm / 1 decimeter -> 0.1 m / 0.1 meters"            },
+        { "1 km", "1 km / 1 kilometer -> 0.621 mile / 0.621 miles"       },
+        { "1 Mm", "1 Mm / 1 megameter -> 1e+6 m / 1e+6 meters"          },
+        { "1 Gm", "1 Gm / 1 gigameter -> 1e+9 m / 1e+9 meters"          },
+        { "1 Tm", "1 Tm / 1 terameter -> 1e+12 m / 1e+12 meters"        },
+        { "1 Pm", "1 Pm / 1 petameter -> 1e+15 m / 1e+15 meters"        },
+        { "1 Em", "1 Em / 1 exameter -> 1e+18 m / 1e+18 meters"         },
+        { "1 Zm", "1 Zm / 1 zettameter -> 1e+21 m / 1e+21 meters"       },
+        { "1 Ym", "1 Ym / 1 yottameter -> 1e+24 m / 1e+24 meters"       },
     };
+
+    [Theory, MemberData(nameof(Meter_SIPrefixCases))]
+    public void Meter_SIPrefixes_DefaultConversion(string query, string expected) => AssertSummary(query, expected);
+
+    // ── gramo ────────────────────────────────────────────────────────────────
+    // Prefijos explícitos: g→oz, mg→g, kg→lb. Resto →kg via defaultPairs.
+    public static TheoryData<string, string> Gram_SIPrefixCases => new() {
+        { "1 g",  "1 g / 1 gram -> 0.0353 oz / 0.0353 ounces"            },
+        { "1 yg", "1 yg / 1 yoctogram -> 1e-27 kg / 1e-27 kilograms"     },
+        { "1 zg", "1 zg / 1 zeptogram -> 1e-24 kg / 1e-24 kilograms"     },
+        { "1 ag", "1 ag / 1 attogram -> 1e-21 kg / 1e-21 kilograms"      },
+        { "1 fg", "1 fg / 1 femtogram -> 1e-18 kg / 1e-18 kilograms"     },
+        { "1 pg", "1 pg / 1 picogram -> 1e-15 kg / 1e-15 kilograms"      },
+        { "1 ng", "1 ng / 1 nanogram -> 1e-12 kg / 1e-12 kilograms"      },
+        { "1 ug", "1 ug / 1 microgram -> 1e-9 kg / 1e-9 kilograms"       },
+        { "1 mg", "1 mg / 1 milligram -> 0.001 g / 0.001 grams"          },
+        { "1 kg", "1 kg / 1 kilogram -> 2.2 lb / 2.2 pounds"             },
+        { "1 Mg", "1 Mg / 1 megagram -> 1000 kg / 1000 kilograms"        },
+        { "1 Gg", "1 Gg / 1 gigagram -> 1e+6 kg / 1e+6 kilograms"        },
+        { "1 Tg", "1 Tg / 1 teragram -> 1e+9 kg / 1e+9 kilograms"        },
+        { "1 Pg", "1 Pg / 1 petagram -> 1e+12 kg / 1e+12 kilograms"      },
+        { "1 Eg", "1 Eg / 1 exagram -> 1e+15 kg / 1e+15 kilograms"       },
+        { "1 Zg", "1 Zg / 1 zettagram -> 1e+18 kg / 1e+18 kilograms"     },
+        { "1 Yg", "1 Yg / 1 yottagram -> 1e+21 kg / 1e+21 kilograms"     },
+    };
+
+    [Theory, MemberData(nameof(Gram_SIPrefixCases))]
+    public void Gram_SIPrefixes_DefaultConversion(string query, string expected) => AssertSummary(query, expected);
+
+    // ── vatio ────────────────────────────────────────────────────────────────
+    // Prefijos explícitos: W→kW, kW→hp. Resto →W via defaultPairs.
+    public static TheoryData<string, string> Watt_SIPrefixCases => new() {
+        { "1 W",  "1 W / 1 watt -> 0.001 kW / 0.001 kilowatts"           },
+        { "1 yW", "1 yW / 1 yoctowatt -> 1e-24 W / 1e-24 watts"          },
+        { "1 zW", "1 zW / 1 zeptowatt -> 1e-21 W / 1e-21 watts"          },
+        { "1 aW", "1 aW / 1 attowatt -> 1e-18 W / 1e-18 watts"           },
+        { "1 fW", "1 fW / 1 femtowatt -> 1e-15 W / 1e-15 watts"          },
+        { "1 pW", "1 pW / 1 picowatt -> 1e-12 W / 1e-12 watts"           },
+        { "1 nW", "1 nW / 1 nanowatt -> 1e-9 W / 1e-9 watts"             },
+        { "1 uW", "1 uW / 1 microwatt -> 1e-6 W / 1e-6 watts"            },
+        { "1 mW", "1 mW / 1 milliwatt -> 0.001 W / 0.001 watts"          },
+        { "1 kW", "1 kW / 1 kilowatt -> 1.34 hp / 1.34 horsepowers"      },
+        { "1 MW", "1 MW / 1 megawatt -> 1e+6 W / 1e+6 watts"             },
+        { "1 GW", "1 GW / 1 gigawatt -> 1e+9 W / 1e+9 watts"             },
+        { "1 TW", "1 TW / 1 terawatt -> 1e+12 W / 1e+12 watts"           },
+        { "1 PW", "1 PW / 1 petawatt -> 1e+15 W / 1e+15 watts"           },
+        { "1 EW", "1 EW / 1 exawatt -> 1e+18 W / 1e+18 watts"            },
+        { "1 ZW", "1 ZW / 1 zettawatt -> 1e+21 W / 1e+21 watts"          },
+        { "1 YW", "1 YW / 1 yottawatt -> 1e+24 W / 1e+24 watts"          },
+    };
+
+    [Theory, MemberData(nameof(Watt_SIPrefixCases))]
+    public void Watt_SIPrefixes_DefaultConversion(string query, string expected) => AssertSummary(query, expected);
+
+    // ── julio ────────────────────────────────────────────────────────────────
+    // Prefijos explícitos: J→kJ, kJ→Wh (Wh sin longName en math.js). Resto →J via defaultPairs.
+    public static TheoryData<string, string> Joule_SIPrefixCases => new() {
+        { "1 J",  "1 J / 1 joule -> 0.001 kJ / 0.001 kilojoules"         },
+        { "1 yJ", "1 yJ / 1 yoctojoule -> 1e-24 J / 1e-24 joules"        },
+        { "1 zJ", "1 zJ / 1 zeptojoule -> 1e-21 J / 1e-21 joules"        },
+        { "1 aJ", "1 aJ / 1 attojoule -> 1e-18 J / 1e-18 joules"         },
+        { "1 fJ", "1 fJ / 1 femtojoule -> 1e-15 J / 1e-15 joules"        },
+        { "1 pJ", "1 pJ / 1 picojoule -> 1e-12 J / 1e-12 joules"         },
+        { "1 nJ", "1 nJ / 1 nanojoule -> 1e-9 J / 1e-9 joules"           },
+        { "1 uJ", "1 uJ / 1 microjoule -> 1e-6 J / 1e-6 joules"          },
+        { "1 mJ", "1 mJ / 1 millijoule -> 0.001 J / 0.001 joules"        },
+        { "1 kJ", "1 kJ / 1 kilojoule -> 0.278 Wh"                        },  // Wh sin longName
+        { "1 MJ", "1 MJ / 1 megajoule -> 1e+6 J / 1e+6 joules"           },
+        { "1 GJ", "1 GJ / 1 gigajoule -> 1e+9 J / 1e+9 joules"           },
+        { "1 TJ", "1 TJ / 1 terajoule -> 1e+12 J / 1e+12 joules"         },
+        { "1 PJ", "1 PJ / 1 petajoule -> 1e+15 J / 1e+15 joules"         },
+        { "1 EJ", "1 EJ / 1 exajoule -> 1e+18 J / 1e+18 joules"          },
+        { "1 ZJ", "1 ZJ / 1 zettajoule -> 1e+21 J / 1e+21 joules"        },
+        { "1 YJ", "1 YJ / 1 yottajoule -> 1e+24 J / 1e+24 joules"        },
+    };
+
+    [Theory, MemberData(nameof(Joule_SIPrefixCases))]
+    public void Joule_SIPrefixes_DefaultConversion(string query, string expected) => AssertSummary(query, expected);
+
+    // ── newton ───────────────────────────────────────────────────────────────
+    // Prefijos explícitos: N→lbf, lbf→N, kN→N. Resto →N via defaultPairs.
+    public static TheoryData<string, string> Newton_SIPrefixCases => new() {
+        { "1 N",  "1 N / 1 newton -> 0.225 lbf / 0.225 pound-forces"     },
+        { "1 yN", "1 yN / 1 yoctonewton -> 1e-24 N / 1e-24 newtons"      },
+        { "1 zN", "1 zN / 1 zeptonewton -> 1e-21 N / 1e-21 newtons"      },
+        { "1 aN", "1 aN / 1 attonewton -> 1e-18 N / 1e-18 newtons"       },
+        { "1 fN", "1 fN / 1 femtonewton -> 1e-15 N / 1e-15 newtons"      },
+        { "1 pN", "1 pN / 1 piconewton -> 1e-12 N / 1e-12 newtons"       },
+        { "1 nN", "1 nN / 1 nanonewton -> 1e-9 N / 1e-9 newtons"         },
+        { "1 uN", "1 uN / 1 micronewton -> 1e-6 N / 1e-6 newtons"        },
+        { "1 mN", "1 mN / 1 millinewton -> 0.001 N / 0.001 newtons"      },
+        { "1 kN", "1 kN / 1 kilonewton -> 1000 N / 1000 newtons"         },
+        { "1 MN", "1 MN / 1 meganewton -> 1e+6 N / 1e+6 newtons"         },
+        { "1 GN", "1 GN / 1 giganewton -> 1e+9 N / 1e+9 newtons"         },
+        { "1 TN", "1 TN / 1 teranewton -> 1e+12 N / 1e+12 newtons"       },
+        { "1 PN", "1 PN / 1 petanewton -> 1e+15 N / 1e+15 newtons"       },
+        { "1 EN", "1 EN / 1 exanewton -> 1e+18 N / 1e+18 newtons"        },
+        { "1 ZN", "1 ZN / 1 zettanewton -> 1e+21 N / 1e+21 newtons"      },
+        { "1 YN", "1 YN / 1 yottanewton -> 1e+24 N / 1e+24 newtons"      },
+    };
+
+    [Theory, MemberData(nameof(Newton_SIPrefixCases))]
+    public void Newton_SIPrefixes_DefaultConversion(string query, string expected) => AssertSummary(query, expected);
+
+    // ── litro ────────────────────────────────────────────────────────────────
+    // L usa grupo LONG de math.js con ortografía "litre" (británico).
+    // Prefijo explícito: L→gallon. Resto →L via defaultPairs.
+    public static TheoryData<string, string> Litre_SIPrefixCases => new() {
+        { "1 L",  "1 L / 1 litre -> 0.264 gallon / 0.264 gallons"        },
+        { "1 yL", "1 yL / 1 yoctolitre -> 1e-24 L / 1e-24 litres"        },
+        { "1 zL", "1 zL / 1 zeptolitre -> 1e-21 L / 1e-21 litres"        },
+        { "1 aL", "1 aL / 1 attolitre -> 1e-18 L / 1e-18 litres"         },
+        { "1 fL", "1 fL / 1 femtolitre -> 1e-15 L / 1e-15 litres"        },
+        { "1 pL", "1 pL / 1 picolitre -> 1e-12 L / 1e-12 litres"         },
+        { "1 nL", "1 nL / 1 nanolitre -> 1e-9 L / 1e-9 litres"           },
+        { "1 uL", "1 uL / 1 microlitre -> 1e-6 L / 1e-6 litres"          },
+        { "1 mL", "1 mL / 1 millilitre -> 0.001 L / 0.001 litres"        },
+        { "1 kL", "1 kL / 1 kilolitre -> 1000 L / 1000 litres"           },
+        { "1 ML", "1 ML / 1 megalitre -> 1e+6 L / 1e+6 litres"           },
+        { "1 GL", "1 GL / 1 gigalitre -> 1e+9 L / 1e+9 litres"           },
+        { "1 TL", "1 TL / 1 teralitre -> 1e+12 L / 1e+12 litres"         },
+        { "1 PL", "1 PL / 1 petalitre -> 1e+15 L / 1e+15 litres"         },
+        { "1 EL", "1 EL / 1 exalitre -> 1e+18 L / 1e+18 litres"          },
+        { "1 ZL", "1 ZL / 1 zettalitre -> 1e+21 L / 1e+21 litres"        },
+        { "1 YL", "1 YL / 1 yottalitre -> 1e+24 L / 1e+24 litres"        },
+    };
+
+    [Theory, MemberData(nameof(Litre_SIPrefixCases))]
+    public void Litre_SIPrefixes_DefaultConversion(string query, string expected) => AssertSummary(query, expected);
+
+    // ── radián ───────────────────────────────────────────────────────────────
+    // Prefijo explícito: rad→deg. Resto →rad via defaultPairs.
+    public static TheoryData<string, string> Radian_SIPrefixCases => new() {
+        { "1 rad",  "1 rad / 1 radian -> 57.3 deg / 57.3 degrees"           },
+        { "1 yrad", "1 yrad / 1 yoctoradian -> 1e-24 rad / 1e-24 radians"   },
+        { "1 zrad", "1 zrad / 1 zeptoradian -> 1e-21 rad / 1e-21 radians"   },
+        { "1 arad", "1 arad / 1 attoradian -> 1e-18 rad / 1e-18 radians"    },
+        { "1 frad", "1 frad / 1 femtoradian -> 1e-15 rad / 1e-15 radians"   },
+        { "1 prad", "1 prad / 1 picoradian -> 1e-12 rad / 1e-12 radians"    },
+        { "1 nrad", "1 nrad / 1 nanoradian -> 1e-9 rad / 1e-9 radians"      },
+        { "1 urad", "1 urad / 1 microradian -> 1e-6 rad / 1e-6 radians"     },
+        { "1 mrad", "1 mrad / 1 milliradian -> 0.001 rad / 0.001 radians"   },
+        { "1 krad", "1 krad / 1 kiloradian -> 1000 rad / 1000 radians"      },
+        { "1 Mrad", "1 Mrad / 1 megaradian -> 1e+6 rad / 1e+6 radians"      },
+        { "1 Grad", "1 Grad / 1 gigaradian -> 1e+9 rad / 1e+9 radians"      },
+        { "1 Trad", "1 Trad / 1 teraradian -> 1e+12 rad / 1e+12 radians"    },
+        { "1 Prad", "1 Prad / 1 petaradian -> 1e+15 rad / 1e+15 radians"    },
+        { "1 Erad", "1 Erad / 1 exaradian -> 1e+18 rad / 1e+18 radians"     },
+        { "1 Zrad", "1 Zrad / 1 zettaradian -> 1e+21 rad / 1e+21 radians"   },
+        { "1 Yrad", "1 Yrad / 1 yottaradian -> 1e+24 rad / 1e+24 radians"   },
+    };
+
+    [Theory, MemberData(nameof(Radian_SIPrefixCases))]
+    public void Radian_SIPrefixes_DefaultConversion(string query, string expected) => AssertSummary(query, expected);
+
+    // ── hercio ───────────────────────────────────────────────────────────────
+    // Prefijos explícitos: Hz→rpm, mHz→Hz, kHz→Hz, MHz→kHz, …, YHz→ZHz.
+    // Prefijos sub-mHz (yHz…uHz) no tienen defaultTarget: no producen conversión.
+    // "hertz" no pluraliza; tampoco sus compuestos (kilohertz, megahertz…). Ver Pluralize.
+    public static TheoryData<string, string> Hertz_SIPrefixCases => new() {
+        { "1 Hz",  "1 Hz / 1 hertz -> 60 rpm / 60 revolutions per minute"  },
+        { "1 mHz", "1 mHz / 1 millihertz -> 0.001 Hz / 0.001 hertz"        },
+        { "1 kHz", "1 kHz / 1 kilohertz -> 1000 Hz / 1000 hertz"           },
+        { "1 MHz", "1 MHz / 1 megahertz -> 1000 kHz / 1000 kilohertz"      },
+        { "1 GHz", "1 GHz / 1 gigahertz -> 1000 MHz / 1000 megahertz"      },
+        { "1 THz", "1 THz / 1 terahertz -> 1000 GHz / 1000 gigahertz"      },
+        { "1 PHz", "1 PHz / 1 petahertz -> 1000 THz / 1000 terahertz"      },
+        { "1 EHz", "1 EHz / 1 exahertz -> 1000 PHz / 1000 petahertz"       },
+        { "1 ZHz", "1 ZHz / 1 zettahertz -> 1000 EHz / 1000 exahertz"      },
+        { "1 YHz", "1 YHz / 1 yottahertz -> 1000 ZHz / 1000 zettahertz"    },
+    };
+
+    [Theory, MemberData(nameof(Hertz_SIPrefixCases))]
+    public void Hertz_SIPrefixes_DefaultConversion(string query, string expected) => AssertSummary(query, expected);
+
+    // ── tonelada ─────────────────────────────────────────────────────────────
+    // Prefijo explícito: t→lb. Resto →kg via defaultPairs.
+    // "ft" y "pt" resuelven a foot y pint (no a femtotonne/picotonne).
+    public static TheoryData<string, string> Tonne_SIPrefixCases => new() {
+        { "1 t",  "1 t / 1 tonne -> 2204.62 lb / 2204.62 pounds"           },
+        { "1 yt", "1 yt / 1 yoctotonne -> 1e-21 kg / 1e-21 kilograms"      },
+        { "1 zt", "1 zt / 1 zeptotonne -> 1e-18 kg / 1e-18 kilograms"      },
+        { "1 at", "1 at / 1 attotonne -> 1e-15 kg / 1e-15 kilograms"       },
+        { "1 ft", "1 ft / 1 foot -> 0.305 m / 0.305 meters"                },  // ft=foot, no femtotonne
+        { "1 pt", "1 pt -> 0.473 L / 0.473 litres"                         },  // pt=pint, no picotonne
+        { "1 nt", "1 nt / 1 nanotonne -> 1e-6 kg / 1e-6 kilograms"         },
+        { "1 ut", "1 ut / 1 microtonne -> 0.001 kg / 0.001 kilograms"       },
+        { "1 mt", "1 mt / 1 millitonne -> 1 kg / 1 kilogram"               },
+        { "1 kt", "1 kt / 1 kilotonne -> 1e+6 kg / 1e+6 kilograms"         },
+        { "1 Mt", "1 Mt / 1 megatonne -> 1e+9 kg / 1e+9 kilograms"         },
+        { "1 Gt", "1 Gt / 1 gigatonne -> 1e+12 kg / 1e+12 kilograms"       },
+        { "1 Tt", "1 Tt / 1 teratonne -> 1e+15 kg / 1e+15 kilograms"       },
+        { "1 Pt", "1 Pt / 1 petatonne -> 1e+18 kg / 1e+18 kilograms"       },
+        { "1 Et", "1 Et / 1 exatonne -> 1e+21 kg / 1e+21 kilograms"        },
+        { "1 Zt", "1 Zt / 1 zettatonne -> 1e+24 kg / 1e+24 kilograms"      },
+        { "1 Yt", "1 Yt / 1 yottatonne -> 1e+27 kg / 1e+27 kilograms"      },
+    };
+
+    [Theory, MemberData(nameof(Tonne_SIPrefixCases))]
+    public void Tonne_SIPrefixes_DefaultConversion(string query, string expected) => AssertSummary(query, expected);
+
+    // ── segundo ──────────────────────────────────────────────────────────────
+    // normalizeUnits: TryNormalize fuerza "expr to origUnit" (sin upward simplification).
+    // Prefijos sub-ms → ms (último eslabón). Supra-s → descomposición natural.
+    public static TheoryData<string, string> Second_SIPrefixCases => new() {
+        { "1 s",  "1 s / 1 second -> 1000 ms / 1000 milliseconds"                                                              },
+        { "1 ys", "1 ys / 1 yoctosecond -> 1e-21 ms / 1e-21 milliseconds"                                                     },
+        { "1 zs", "1 zs / 1 zeptosecond -> 1e-18 ms / 1e-18 milliseconds"                                                     },
+        { "1 as", "1 as / 1 attosecond -> 1e-15 ms / 1e-15 milliseconds"                                                      },
+        { "1 fs", "1 fs / 1 femtosecond -> 1e-12 ms / 1e-12 milliseconds"                                                     },
+        { "1 ps", "1 ps / 1 picosecond -> 1e-9 ms / 1e-9 milliseconds"                                                        },
+        { "1 ns", "1 ns / 1 nanosecond -> 1e-6 ms / 1e-6 milliseconds"                                                        },
+        { "1 us", "1 us / 1 microsecond -> 0.001 ms / 0.001 milliseconds"                                                     },
+        { "1 ms", "1 ms / 1 millisecond -> 0.001 s / 0.001 seconds"                                                           },
+        { "1 ks", "1 ks / 1 kilosecond -> 16 min 40 s / 16 minutes 40 seconds"                                                },
+        { "1 Ms", "1 Ms / 1 megasecond -> 11 day 13 h 46 min 40 s / 11 days 13 hours 46 minutes 40 seconds"                  },
+        { "1 Gs", "1 Gs / 1 gigasecond -> 31 year 251 day 7 h 46.67 min / 31 years 251 days 7 hours 46.67 minutes"           },
+        { "1 Ts", "1 Ts / 1 terasecond -> 31688 year 32 day 1 h 46.67 min / 31688 years 32 days 1 hour 46.67 minutes"       },
+        { "1 Ps", "1 Ps / 1 petasecond -> 31688087 year 297 day / 31688087 years 297 days"                                   },
+        { "1 Es", "1 Es / 1 exasecond -> 31688087814 year / 31688087814 years"                                                },
+        { "1 Zs", "1 Zs / 1 zettasecond -> 31688087814028 year / 31688087814028 years"                                       },
+        { "1 Ys", "1 Ys / 1 yottasecond -> 31688087814028948 year / 31688087814028948 years"                                 },
+    };
+
+    [Theory, MemberData(nameof(Second_SIPrefixCases))]
+    public void Second_SIPrefixes_DefaultConversion(string query, string expected) => AssertSummary(query, expected);
+
+    // ── byte ─────────────────────────────────────────────────────────────────
+    // normalizeUnits: TryNormalize fuerza "expr to origUnit".
+    // La cadena best_unit llega hasta TB; PB-YB se expresan en TB.
+    // PB+ sin longName (math.js no deriva nombre largo para esos prefijos de B).
+    public static TheoryData<string, string> Byte_SIPrefixCases => new() {
+        { "1 B",  "1 B / 1 byte -> 0.001 kB / 0.001 kilobytes"            },
+        { "1 kB", "1 kB / 1 kilobyte -> 0.001 MB / 0.001 megabytes"       },
+        { "1 MB", "1 MB / 1 megabyte -> 0.001 GB / 0.001 gigabytes"       },
+        { "1 GB", "1 GB / 1 gigabyte -> 0.001 TB / 0.001 terabytes"       },
+        { "1 TB", "1 TB / 1 terabyte -> 1000 GB / 1000 gigabytes"         },
+        { "1 PB", "1 PB -> 1000 TB / 1000 terabytes"                      },
+        { "1 EB", "1 EB -> 1000000 TB / 1000000 terabytes"                },
+        { "1 ZB", "1 ZB -> 1000000000 TB / 1000000000 terabytes"          },
+        { "1 YB", "1 YB -> 1000000000000 TB / 1000000000000 terabytes"    },
+    };
+
+    [Theory, MemberData(nameof(Byte_SIPrefixCases))]
+    public void Byte_SIPrefixes_DefaultConversion(string query, string expected) => AssertSummary(query, expected);
 
     // ── Velocidad compuesta — nuevas unidades ────────────────────────────────
     public static TheoryData<string, string> NewCompoundUnitCases => new() {
@@ -635,96 +837,4 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         Assert.Equal(expectedSummary, summary);
     }
 
-    // ── Prefijos SI en tiempo y datos ────────────────────────────────────────
-    // Todos los prefijos SI de 's' y 'B' deben producir descomposición natural.
-    // Los prefijos de tiempo menores que ms se expresan en ms (último paso de la cadena);
-    // los mayores que s se descomponen en componentes naturales (días, horas, minutos...).
-    // Los datos por encima de TB se expresan en TB porque la cadena llega hasta TB.
-
-    public static TheoryData<string, string> SIPrefixedTimeCases => new() {
-        // ── Prefijos sub-ms: resultado en ms (último escalón de la cadena) ────
-        { "1 ys", "1 ys / 1 yoctosecond -> 1e-21 ms / 1e-21 milliseconds" },
-        { "1 zs", "1 zs / 1 zeptosecond -> 1e-18 ms / 1e-18 milliseconds" },
-        { "1 as", "1 as / 1 attosecond -> 1e-15 ms / 1e-15 milliseconds"  },
-        { "1 fs", "1 fs / 1 femtosecond -> 1e-12 ms / 1e-12 milliseconds" },
-        { "1 ps", "1 ps / 1 picosecond -> 1e-9 ms / 1e-9 milliseconds"    },
-        { "1 ns", "1 ns / 1 nanosecond -> 1e-6 ms / 1e-6 milliseconds"    },
-        { "1 us", "1 us / 1 microsecond -> 0.001 ms / 0.001 milliseconds" },
-        // ── Prefijos supra-s: descomposición natural ─────────────────────────
-        { "1 ks", "1 ks / 1 kilosecond -> 16 min 40 s / 16 minutes 40 seconds"                                                    },
-        { "1 Ms", "1 Ms / 1 megasecond -> 11 day 13 h 46 min 40 s / 11 days 13 hours 46 minutes 40 seconds"                      },
-        { "1 Gs", "1 Gs / 1 gigasecond -> 31 year 251 day 7 h 46.67 min / 31 years 251 days 7 hours 46.67 minutes"               },
-        { "1 Ts", "1 Ts / 1 terasecond -> 31688 year 32 day 1 h 46.67 min / 31688 years 32 days 1 hour 46.67 minutes"           },
-        { "1 Ps", "1 Ps / 1 petasecond -> 31688087 year 297 day / 31688087 years 297 days"                                      },
-        { "1 Es", "1 Es / 1 exasecond -> 31688087814 year / 31688087814 years"                                                   },
-        { "1 Zs", "1 Zs / 1 zettasecond -> 31688087814028 year / 31688087814028 years"                                          },
-        { "1 Ys", "1 Ys / 1 yottasecond -> 31688087814028948 year / 31688087814028948 years"                                    },
-    };
-
-    [Theory]
-    [MemberData(nameof(SIPrefixedTimeCases))]
-    public void SIPrefixed_TimeUnits_Decompose(string query, string expectedSummary) {
-        var item = GetConversionItem(query);
-        var summary = $"{Fmt(item.FromShort, item.FromLong)} -> {Fmt(item.ToShort, item.ToLong)}";
-        Assert.Equal(expectedSummary, summary);
-    }
-
-    public static TheoryData<string, string> SIPrefixedDataCases => new() {
-        // ── PB, EB, ZB, YB: la cadena best_unit llega hasta TB, se expresan en TB ──
-        // fromLong es null porque math.js no puede derivar el nombre largo de estos símbolos
-        { "1 PB", "1 PB -> 1000 TB / 1000 terabytes"          },
-        { "1 EB", "1 EB -> 1000000 TB / 1000000 terabytes"     },
-        { "1 ZB", "1 ZB -> 1000000000 TB / 1000000000 terabytes" },
-        { "1 YB", "1 YB -> 1000000000000 TB / 1000000000000 terabytes" },
-    };
-
-    [Theory]
-    [MemberData(nameof(SIPrefixedDataCases))]
-    public void SIPrefixed_DataUnits_BestUnit(string query, string expectedSummary) {
-        var item = GetConversionItem(query);
-        var summary = $"{Fmt(item.FromShort, item.FromLong)} -> {Fmt(item.ToShort, item.ToLong)}";
-        Assert.Equal(expectedSummary, summary);
-    }
-
-    [Theory]
-    [MemberData(nameof(FromPrefixNormalizationCases))]
-    public void FromUnit_AutoNormalizesToBestSIPrefix(string query, string expectedFromShort, string expectedFromLongSuffix) {
-        var item = GetConversionItem(query);
-        Assert.Equal(expectedFromShort, item.FromShort);
-        if (!string.IsNullOrEmpty(expectedFromLongSuffix))
-            Assert.EndsWith(expectedFromLongSuffix, item.FromLong);
-        else
-            Assert.Null(item.FromLong);
-    }
-
-    [Fact]
-    public void PROBE_GenerateSIPrefixData() {
-        var units = new (string Unit, string[] Prefixes)[] {
-            ("m",   ["y","z","a","f","p","n","u","m","c","d","k","M","G","T","P","E","Z","Y"]),
-            ("g",   ["y","z","a","f","p","n","u","m","k","M","G","T","P","E","Z","Y"]),
-            ("W",   ["y","z","a","f","p","n","u","m","k","M","G","T","P","E","Z","Y"]),
-            ("J",   ["y","z","a","f","p","n","u","m","k","M","G","T","P","E","Z","Y"]),
-            ("N",   ["y","z","a","f","p","n","u","m","k","M","G","T","P","E","Z","Y"]),
-            ("L",   ["y","z","a","f","p","n","u","m","k","M","G","T","P","E","Z","Y"]),
-            ("rad", ["y","z","a","f","p","n","u","m","k","M","G","T","P","E","Z","Y"]),
-            ("Hz",  ["m","k","M","G","T","P","E","Z","Y"]),
-            ("t",   ["y","z","a","f","p","n","u","m","k","M","G","T","P","E","Z","Y"]),
-            ("s",   ["y","z","a","f","p","n","u","m","k","M","G","T","P","E","Z","Y"]),
-            ("B",   ["k","M","G","T","P","E","Z","Y"]),
-        };
-        var sb = new System.Text.StringBuilder();
-        string Try(string q) {
-            try {
-                var item = GetConversionItem(q);
-                return $"{Fmt(item.FromShort, item.FromLong)} -> {Fmt(item.ToShort, item.ToLong)}";
-            } catch (Exception ex) { return $"FAIL: {ex.Message.Split('\n')[0]}"; }
-        }
-        foreach (var (unit, prefixes) in units) {
-            sb.AppendLine($"\n    // ── {unit} ──");
-            sb.AppendLine($"    {{ \"1 {unit}\", \"{Try($"1 {unit}")}\" }},");
-            foreach (var p in prefixes)
-                sb.AppendLine($"    {{ \"1 {p}{unit}\", \"{Try($"1 {p}{unit}")}\" }},");
-        }
-        Assert.Fail(sb.ToString());
-    }
 }
