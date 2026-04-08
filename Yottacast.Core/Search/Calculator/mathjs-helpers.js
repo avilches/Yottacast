@@ -43,6 +43,13 @@ var _unitOverrides = {
 // Cargado desde ambiguityOverrides en unit-config.json vía loadAliasData().
 var _ambiguityOverrides = {};
 
+// Overrides forzados para canónicos exactos: cuando el usuario escribe exactamente un símbolo
+// canónico válido pero queremos que se resuelva a otro preferido con aviso de ambigüedad.
+// A diferencia de _ambiguityOverrides (clave en minúsculas), aquí la clave es case-sensitive
+// para poder distinguir "mS" (millisiemens) de "Ms" (megasegundo).
+// Cargado desde forceAmbiguous en unit-config.json vía loadAliasData().
+var _forceAmbiguous = {};
+
 // Set of blocked unit symbols (lowercase). Populated by loadAliasData().
 var _blockedUnits = new Set();
 
@@ -137,6 +144,13 @@ function loadAliasData(data) {
             _ambiguityOverrides[k.toLowerCase()] = data.ambiguityOverrides[k];
         });
     }
+    // Populate force-ambiguous overrides: exact-case keys for canonical symbols that should
+    // still show ambiguity and resolve to a different preferred canonical.
+    if (data.forceAmbiguous) {
+        Object.keys(data.forceAmbiguous).forEach(function(k) {
+            _forceAmbiguous[k] = data.forceAmbiguous[k];
+        });
+    }
     // Populate explicit long names for units not derivable via LONG prefix group (e.g. time units)
     if (data.normalizeUnits) {
         data.normalizeUnits.forEach(function(u) { _normalizeUnits.add(u); });
@@ -189,15 +203,34 @@ function resolveUnitToken(name) {
     }
     const lower = name.toLowerCase();
 
-    const candidates = _unitAmbiguousMap[lower];
-    if (candidates) {
+    const candidates = _unitAmbiguousMap[lower]
+        ? _unitAmbiguousMap[lower].filter(function(c) { return !_blockedUnits.has(c.symbol.toLowerCase()); })
+        : null;
+    if (candidates && candidates.length > 0) {
         // Todos los candidatos comparten el mismo long name (sinónimos) → normalizar al primero
         // Este check va primero para que "l" y "L" (ambos litro) se normalicen siempre a "L"
         if (candidates.every(function(c) { return c.longName === candidates[0].longName; }))
             return { resolved: candidates[0].symbol, ambiguous: false };
-        // Input ya es exactamente uno de los canónicos → sin ambigüedad
-        if (candidates.some(function(c) { return c.symbol === name; }))
+        // Input ya es exactamente uno de los canónicos.
+        // Caso normal → sin ambigüedad. Caso forceAmbiguous → se resuelve al preferred con aviso.
+        // forceAmbiguous es case-sensitive para distinguir "mS" (millisiemens) de "Ms" (megasegundo).
+        if (candidates.some(function(c) { return c.symbol === name; })) {
+            var forcePreferred = _forceAmbiguous[name];
+            if (forcePreferred !== undefined) {
+                var forceIdx = -1;
+                for (var fi = 0; fi < candidates.length; fi++) {
+                    if (candidates[fi].symbol === forcePreferred) { forceIdx = fi; break; }
+                }
+                if (forceIdx >= 0) {
+                    var forceReordered = [candidates[forceIdx]];
+                    for (var fj = 0; fj < candidates.length; fj++) {
+                        if (fj !== forceIdx) forceReordered.push(candidates[fj]);
+                    }
+                    return { resolved: forcePreferred, ambiguous: true, candidates: forceReordered };
+                }
+            }
             return { resolved: name, ambiguous: false };
+        }
         // Override configurado: resolver al símbolo preferido y marcar como ambiguo con candidatos
         // reordenados (preferred primero) para que BuildHints muestre las alternativas al usuario.
         var preferred = _ambiguityOverrides[lower];
@@ -500,14 +533,45 @@ function formatMaxDec(value, maxDec) {
 //   'best_unit'  — single component: largest unit where value >= 1 (e.g. 1500 MB → 1.5 GB)
 //   default      — decompose into up to 3 components (e.g. 38000 s → 10 h 33 min 20 s)
 // Only produces an interesting result when the result unit differs from the input unit.
+// Returns true if the given unit is handled by any normalize chain — either because it is
+// listed as a step in the chain (fast path) or because it is dimensionally compatible with
+// the chain's base unit (covers SI-prefixed variants like Ms, ks, Ts, PB, EB…).
+// Units with an explicit defaultTarget (e.g. decade→year, week→day) are excluded from the
+// dimensional fallback: they already have a meaningful conversion that should take precedence.
+function isNormalizableUnit(unit) {
+    var keys = Object.keys(_normalizeChains);
+    for (var i = 0; i < keys.length; i++) {
+        var cfg = _normalizeChains[keys[i]];
+        for (var j = 0; j < cfg.chain.length; j++) {
+            if (cfg.chain[j].unit === unit) return true;
+        }
+    }
+    // Dimensional fallback: only for units without an explicit defaultTarget
+    if (_defaultUnitTargets[unit] !== undefined) return false;
+    for (var di = 0; di < keys.length; di++) {
+        try { math.evaluate('1 ' + unit + ' to ' + _normalizeChains[keys[di]].baseUnit); return true; } catch(e) {}
+    }
+    return false;
+}
+
 function computeNormalization(valueStr, unit) {
-    // Find the chain for this unit
+    // Find the chain for this unit: first check if it is a listed step, then fall back to
+    // dimensional matching so that SI-prefixed variants (Ms, ks, Ts, PB, EB…) are covered.
     var chainKey = null;
-    Object.keys(_normalizeChains).forEach(function(key) {
-        _normalizeChains[key].chain.forEach(function(step) {
-            if (step.unit === unit) chainKey = key;
+    var chainKeys = Object.keys(_normalizeChains);
+    for (var ci = 0; ci < chainKeys.length && !chainKey; ci++) {
+        _normalizeChains[chainKeys[ci]].chain.forEach(function(step) {
+            if (step.unit === unit) chainKey = chainKeys[ci];
         });
-    });
+    }
+    if (!chainKey) {
+        for (var di = 0; di < chainKeys.length && !chainKey; di++) {
+            try {
+                math.evaluate('1 ' + unit + ' to ' + _normalizeChains[chainKeys[di]].baseUnit);
+                chainKey = chainKeys[di];
+            } catch(e) {}
+        }
+    }
     if (!chainKey) return null;
 
     var chainConfig = _normalizeChains[chainKey];

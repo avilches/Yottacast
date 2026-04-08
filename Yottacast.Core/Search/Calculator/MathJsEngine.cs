@@ -168,7 +168,7 @@ public sealed class MathJsEngine : IDisposable {
         // Normalize intercept: decompose into natural multi-unit representation when interesting
         if (normalized.Kind == ExprKind.UnitEntry
             && normalized.FromUnit != null
-            && _normalizeUnits.Contains(normalized.FromUnit)) {
+            && IsNormalizableUnit(normalized.FromUnit)) {
             var normResult = TryNormalize(normalized, hints);
             if (normResult != null) return normResult;
         }
@@ -376,6 +376,12 @@ public sealed class MathJsEngine : IDisposable {
     }
 
     private record NormComponent(string Value, string Unit, string Display, string LongName);
+
+    private bool IsNormalizableUnit(string unit) {
+        if (_normalizeUnits.Contains(unit)) return true;
+        var result = _engine!.Evaluate($"isNormalizableUnit('{Escape(unit)}')").ToString();
+        return result == "true";
+    }
 
     private List<NormComponent>? ComputeNormalization(string value, string unit) {
         var json = _engine!.Evaluate(

@@ -26,11 +26,10 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         // ── Temperatura ──────────────────────────────────────────────────────
         // aliases c/f vs. C/F mayúscula
         { "10c",      "10 °C / 10 celsius -> 50 °F / 50 fahrenheit"                               },
-        // 10C is coulomb
+        { "10C",      "10 °C / 10 celsius -> 50 °F / 50 fahrenheit"                               },
         { "10ºc",     "10 °C / 10 celsius -> 50 °F / 50 fahrenheit"                               },
         { "10ºC",     "10 °C / 10 celsius -> 50 °F / 50 fahrenheit"                               },
         { "10f",      "10 °F / 10 fahrenheit -> -12.22 °C / -12.22 celsius"                       },
-        // 10F is Faraday
         { "10ºf",      "10 °F / 10 fahrenheit -> -12.22 °C / -12.22 celsius"                      },
         { "10ºF",      "10 °F / 10 fahrenheit -> -12.22 °C / -12.22 celsius"                      },
         { "10 degc",  "10 °C / 10 celsius -> 50 °F / 50 fahrenheit"                               },
@@ -38,37 +37,48 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "10 DEGC",  "10 °C / 10 celsius -> 50 °F / 50 fahrenheit"                               },
         { "10 degf",  "10 °F / 10 fahrenheit -> -12.22 °C / -12.22 celsius"                       },
         { "10 DEGF",  "10 °F / 10 fahrenheit -> -12.22 °C / -12.22 celsius"                       },
-        // ── Electricidad/magnetismo ──────────────────────────────────────────
-        // C y F son aliases de degC/degF (tokenAlias); 10c y 10C → celsius, 10f y 10F → fahrenheit
-        { "10C",      "10 °C / 10 celsius -> 50 °F / 50 fahrenheit"                               },
-        { "10F",      "10 °F / 10 fahrenheit -> -12.22 °C / -12.22 celsius"                       },
+        // ── Electricidad ────────────────────────────────────────────────────
         { "10w",      "10 W / 10 watts -> 0.01 kW / 0.01 kilowatts"                               },
         { "10W",      "10 W / 10 watts -> 0.01 kW / 0.01 kilowatts"                               },
         { "10watts",  "10 W / 10 watts -> 0.01 kW / 0.01 kilowatts"                               },
+        { "10Watts",  "10 W / 10 watts -> 0.01 kW / 0.01 kilowatts"                               },
         // ── Tiempo ──────────────────────────────────────────────────────────
-        // h ≠ H, a ≠ A
+        { "10ms",          "10 ms / 10 milliseconds -> 0.01 s / 0.01 seconds"                          },
+        { "10millisecond", "10 ms / 10 milliseconds -> 0.01 s / 0.01 seconds"                          },
+        { "10milliseconds","10 ms / 10 milliseconds -> 0.01 s / 0.01 seconds"                          },
+        { "10000 ms",      "10000 ms / 10000 milliseconds -> 10 s / 10 seconds"                        },
+        // forceAmbiguous: mS (millisiemens) y MS (megasiemens) se redirigen a ms (milliseconds)
+        { "10 mS",         "10 ms / 10 milliseconds -> 0.01 s / 0.01 seconds"                          },
+        { "10 MS",         "10 ms / 10 milliseconds -> 0.01 s / 0.01 seconds"                          },
         { "10h",           "10 h / 10 hours -> 600 min / 600 minutes"                                  },
+        { "10H",           "10 h / 10 hours -> 600 min / 600 minutes"                                  },
         { "10hour",        "10 h / 10 hours -> 600 min / 600 minutes"                                  },
+        { "10Hour",        "10 h / 10 hours -> 600 min / 600 minutes"                                  },
         { "10hours",       "10 h / 10 hours -> 600 min / 600 minutes"                                  },
+        { "10Hours",       "10 h / 10 hours -> 600 min / 600 minutes"                                  },
         { "10 d",          "10 day / 10 days -> 240 h / 240 hours"                                     },
+        { "10 D",          "10 day / 10 days -> 240 h / 240 hours"                                     },
         { "10 day",        "10 day / 10 days -> 240 h / 240 hours"                                     },
         { "10 days",       "10 day / 10 days -> 240 h / 240 hours"                                     },
         { "10 min",        "10 min / 10 minutes -> 600 s / 600 seconds"                                },
         { "10s",           "10 s / 10 seconds -> 10000 ms / 10000 milliseconds"                        },
         { "10second",      "10 s / 10 seconds -> 10000 ms / 10000 milliseconds"                        },
         { "10seconds",     "10 s / 10 seconds -> 10000 ms / 10000 milliseconds"                        },
-        { "10ms",          "10 ms / 10 milliseconds -> 0.01 s / 0.01 seconds"                          },
-        { "10millisecond", "10 ms / 10 milliseconds -> 0.01 s / 0.01 seconds"                          },
-        { "10milliseconds","10 ms / 10 milliseconds -> 0.01 s / 0.01 seconds"                          },
-        { "10000 ms",      "10000 ms / 10000 milliseconds -> 10 s / 10 seconds"                        },
-        { "10Ms",          "10 Ms / 10 megaseconds -> 2777.78 h / 2777.78 hours"                      },
+        { "10Ms",          "10 Ms / 10 megaseconds -> 115 day 17 h 46 min 40 s / 115 days 17 hours 46 minutes 40 seconds" },
         // ── Normalize: descomposición en múltiples unidades ──────────────────
         { "38000s",        "38000 s / 38000 seconds -> 10 h 33 min 20 s / 10 hours 33 minutes 20 seconds" },
         { "48h",           "48 h / 48 hours -> 2 day / 2 days"                                             },
         { "49h",           "49 h / 49 hours -> 2 day 1 h / 2 days 1 hour"                                 },
         { "2500ms",        "2500 ms / 2500 milliseconds -> 2 s 500 ms / 2 seconds 500 milliseconds"        },
-        { "10megasecond",  "10 Ms / 10 megaseconds -> 2777.78 h / 2777.78 hours"                      },
-        { "10megaseconds", "10 Ms / 10 megaseconds -> 2777.78 h / 2777.78 hours"                      },
+        { "10megasecond",  "10 Ms / 10 megaseconds -> 115 day 17 h 46 min 40 s / 115 days 17 hours 46 minutes 40 seconds" },
+        { "10megaseconds", "10 Ms / 10 megaseconds -> 115 day 17 h 46 min 40 s / 115 days 17 hours 46 minutes 40 seconds" },
+        // ── defaultPairs: fallback dimensional para prefijos exóticos no en defaultTargets ────────────
+        // Unidades canónicas (kg, m…) usan defaultTargets. Las variantes con prefijo exótico
+        // caen a defaultPairs: findDefaultTarget devuelve pair[0] (base SI) para cualquier unidad
+        // dimensionalmente compatible que no sea exactamente pair[0] ni pair[1].
+        { "10 Mm",    "10 Mm / 10 megameters -> 1e+7 m / 1e+7 meters"                             },
+        { "10 Gg",    "10 Gg / 10 gigagrams -> 1e+7 kg / 1e+7 kilograms"                          },
+        { "10 Gt",    "10 Gt / 10 gigatonnes -> 1e+13 kg / 1e+13 kilograms"                       },
         // ── Masa ────────────────────────────────────────────────────────────
         { "10t",      "10 t / 10 tonnes -> 22046.23 lb / 22046.23 pounds"                          },
         { "10tonnes", "10 t / 10 tonnes -> 22046.23 lb / 22046.23 pounds"                          },
@@ -194,9 +204,16 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "10 km/h",     "10 km / h / 10 kilometers per hour -> 6.21 mi / h / 6.21 miles per hour"   },
         { "60 mi/h",     "60 mi / h / 60 miles per hour -> 96.56 km / h / 96.56 kilometers per hour" },
         { "10 m/s",      "10 m / s / 10 meters per second -> 36 km / h / 36 kilometers per hour"     },
-        // ── RPM ↔ Hz ─────────────────────────────────────────────────────────
+        // ── RPM ↔ Hz, y Hz prefijados ────────────────────────────────────────
         { "3000 rpm",    "3000 rpm / 3000 revolutions per minute -> 50 Hz / 50 hertz"                },
         { "50 Hz",       "50 Hz / 50 hertz -> 3000 rpm / 3000 revolutions per minute"                },
+        { "10 hz",       "10 Hz / 10 hertz -> 600 rpm / 600 revolutions per minute"                  },  // alias lowercase
+        // Prefijos Hz: cadena kHz→Hz→rpm, MHz→kHz, GHz→MHz, THz→GHz
+        { "10 kHz",      "10 kHz / 10 kilohertz -> 10000 Hz / 10000 hertz"                           },
+        { "10 MHz",      "10 MHz / 10 megahertz -> 10000 kHz / 10000 kilohertz"                      },
+        { "10 GHz",      "10 GHz / 10 gigahertz -> 10000 MHz / 10000 megahertz"                      },
+        { "10 THz",      "10 THz / 10 terahertz -> 10000 GHz / 10000 gigahertz"                      },
+        { "10 Thz",      "10 THz / 10 terahertz -> 10000 GHz / 10000 gigahertz"                      },  // casing alternativo: Thz → THz
         // ── mph / kmh aliases ────────────────────────────────────────────────
         { "60 mph",      "60 mph / 60 miles per hour -> 96.56 kmh / 96.56 kilometers per hour"       },
         { "100 kmh",     "100 kmh / 100 kilometers per hour -> 62.14 mph / 62.14 miles per hour"     },
@@ -220,6 +237,13 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "10 kB/s",     "10 kB / s / 10 kilobytes per second -> 0.08 Mbps / 0.08 megabits per second" },
         { "100 MB/s",    "100 MB / s / 100 megabytes per second -> 800 Mbps / 800 megabits per second" },
         { "10 GB/s",     "10 GB / s / 10 gigabytes per second -> 80 Gbps / 80 gigabits per second"  },
+        // ── Números grandes (normalizeUnits): from preservado en notación científica ─
+        // math.js usa notación científica para |x| >= 1e5 (e.g. 1e6 → "1e+6").
+        // El from queda en la unidad original; TryNormalize descompone el to.
+        { "1000000 s",  "1e+6 s / 1e+6 seconds -> 11 day 13 h 46 min 40 s / 11 days 13 hours 46 minutes 40 seconds" },
+        { "1000000 ms", "1e+6 ms / 1e+6 milliseconds -> 16 min 40 s / 16 minutes 40 seconds"                        },
+        { "1000000 B",  "1e+6 B / 1e+6 bytes -> 1 MB / 1 megabyte"                                                  },
+        { "1000000 kB", "1e+6 kB / 1e+6 kilobytes -> 1 GB / 1 gigabyte"                                             },
     };
 
     [Theory]
@@ -243,7 +267,8 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "10 hours",       "10 h / 10 hours -> 600 min / 600 minutes"                  },
         { "10 seconds",     "10 s / 10 seconds -> 10000 ms / 10000 milliseconds"        },
         { "10 milliseconds","10 ms / 10 milliseconds -> 0.01 s / 0.01 seconds"          },
-        { "10 minutes",     "10 min / 10 minutes -> 600 s / 600 seconds"                },
+        { "10 minutes",     "10 min / 10 minutes " +
+                            "-> 600 s / 600 seconds"                },
         { "10 days",        "10 day / 10 days -> 240 h / 240 hours"                     },
         { "10 weeks",       "10 week / 10 weeks -> 70 day / 70 days"                    },
         { "10 years",       "10 year / 10 years -> 3652.5 day / 3652.5 days"          },
@@ -377,14 +402,26 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         // ── Potencia ─────────────────────────────────────────────────────────
         { "1 horsepower",  "1 hp / 1 horsepower -> 0.746 kW / 0.746 kilowatts" },
         { "1 horsepowers", "1 hp / 1 horsepower -> 0.746 kW / 0.746 kilowatts" },
-        // ── Smoke test 0.01 — detección de errores de redondeo y formato ─────
-        // Nota: el sistema normaliza el "from" al prefijo SI más conveniente
-        // (0.01 V → 10 mV, 0.01 s → 10 ms, 0.01 km → 10 m, etc.)
+        // ── Smoke test 0.01 y 0.00001 — escala SI y comportamiento de normalizeUnits ─
+        // Unidades SI estándar: math.js auto-simplifica cuando el coeficiente cae fuera
+        //   del rango [0.1, 1000]:
+        //   coeff < 0.1 → simplifica hacia abajo (0.01 km → 10 m; 0.01 mm → 10 µm)
+        //   coeff > 1000 → simplifica hacia arriba (2000 m → 2 km; 1000000 m → 1 Mm)
+        //   coeff ∈ [0.1, 1000] → sin cambio (0.1 m → 0.1 m; 1000 m → 1000 m)
+        // normalizeUnits (tiempo, datos): TryNormalize fuerza "to origUnit" para fijar el from.
+        //   Si el resultado difiere de la unidad origen, el from queda PRESERVADO (0.01 s → from "0.01 s").
+        //   Si TryNormalize falla (e.g. 0.01 ms → cadena devuelve misma unidad ms, isInteresting=false),
+        //   cae al path regular y math.js sí auto-simplifica (0.01 ms → from "10 µs").
         // ── Temperatura ───────────────────────────────────────────────────────
         { "0.01c",      "10 mdegC / 10 millicelsius -> 32.02 °F / 32.02 fahrenheit"      },
         { "0.01f",      "10 mdegF / 10 millifahrenheit -> -17.77 °C / -17.77 celsius"    },
         // La parte decimal es tan pequeña que se absorbe en el redondeo a 2 decimales → "32"
         { "0.00001c",   "10 udegC / 10 microcelsius -> 32 °F / 32 fahrenheit"            },
+        // 0.00001 = 1e-5: dos pasos SI de simplificación (m→mm→µm; g→mg→µg)
+        { "0.00001 m",  "10 um / 10 micrometers -> 3.280839895e-5 ft / 3.280839895e-5 feet"     },
+        { "0.00001 g",  "10 ug / 10 micrograms -> 3.527396195e-7 oz / 3.527396195e-7 ounces"    },
+        // normalizeUnits (s): from preservado en notación científica; 1e-5 s = 0.01 ms
+        { "0.00001 s",  "1e-5 s / 1e-5 seconds -> 0.01 ms / 0.01 milliseconds"                  },
         // ── Electricidad ──────────────────────────────────────────────────────
         { "0.01W",      "10 mW / 10 milliwatts -> 1e-5 kW / 1e-5 kilowatts"             },
         // C y F son aliases de degC/degF
@@ -396,7 +433,8 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "0.01 min",   "0.01 min / 0.01 minutes -> 600 ms / 600 milliseconds"           },
         { "0.01s",      "0.01 s / 0.01 seconds -> 10 ms / 10 milliseconds"              },
         { "0.01ms",     "10 us / 10 microseconds -> 1e-5 s / 1e-5 seconds"               },
-        { "0.01Ms",     "10 ks / 10 kiloseconds -> 2.78 h / 2.78 hours"                  },
+        { "0.001ms",    "1 us / 1 microsecond -> 1e-6 s / 1e-6 seconds"                },
+        { "0.01Ms",     "0.01 Ms / 0.01 megaseconds -> 2 h 46 min 40 s / 2 hours 46 minutes 40 seconds" },
         // ── Masa ──────────────────────────────────────────────────────────────
         { "0.01t",      "10 mt / 10 millitonnes -> 22.05 lb / 22.05 pounds"              },
         { "0.01 g",     "10 mg / 10 milligrams -> 3.527396195e-4 oz / 3.527396195e-4 ounces" },
@@ -473,39 +511,94 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
 
     // ── Normalización de prefijo SI en el "from" ─────────────────────────────
     // math.js (vía math.format) reformatea el valor de entrada al prefijo SI
-    // más conveniente cuando el coeficiente es < 1 en la unidad original.
-    // Solo ocurre hacia ABAJO (0.001 V → 1 mV); no ocurre hacia ARRIBA
-    // (1000 m permanece como 1000 m, no se convierte a 1 km).
+    // más conveniente. La simplificación ocurre en AMBAS direcciones:
+    //   Hacia ABAJO cuando coeff < 0.1: 0.001 m → 1 mm, 0.00001 m → 10 µm.
+    //   Para valores "medios" (coeff ∈ [0.1, 1000]): sin cambio (0.1 m → 0.1 m; 1000 m → 1000 m).
+    //   Hacia ARRIBA cuando coeff > 1000: 2000 m → 2 km, 1000000 m → 1 Mm.
     // Las unidades imperiales y no-SI (oz, ft, atm, psi, hp, acre…) NO se
     // normalizan nunca — conservan el valor tal como lo escribió el usuario.
-    // EXCEPCIÓN — unidades en normalizeUnits (tiempo, datos): el intercept de
-    // normalize preserva la entrada del usuario en el from (0.001 s → from: "0.001 s",
-    // to: "1 ms"), en lugar de que math.js elija el prefijo óptimo.
-    // Ref: math.format() → unit.simplify() en math.js.
+    // EXCEPCIÓN — normalizeUnits (tiempo, datos): TryNormalize fuerza la evaluación
+    // "... to origUnit", fijando la unidad origen y preservando el from SIEMPRE QUE
+    // computeNormalization encuentre una descomposición con unidad distinta (isInteresting).
+    //   0.001 s → from "0.001 s" (TryNormalize éxito: to "1 ms", isInteresting=true)
+    //   0.01 ms → from "10 µs"   (TryNormalize falla: computeNorm devuelve misma
+    //                              unidad ms, isInteresting=false → fallthrough → math.js simplifica)
+    // Ref: math.format() → unit.simplify() en math.js; TryNormalize en MathJsEngine.cs.
 
     public static TheoryData<string, string, string> FromPrefixNormalizationCases => new() {
         // query              from esperado               long suffix (o "" si null)
-        // ── SI estándar: normaliza hacia abajo cuando coeff < 1 ──────────────
+        // ── SI estándar (un paso): normaliza hacia abajo cuando coeff < 0.1 ───
         { "0.001 m",    "1 mm",         "millimeter"     },
         { "0.001 g",    "1 mg",         "milligram"      },
         { "0.001 J",    "1 mJ",         "millijoule"     },
         { "0.001 W",    "1 mW",         "milliwatt"      },
+        { "0.001 N",    "1 mN",         "millinewton"    },
         { "0.001 Pa",   "1 mPa",        ""               },  // Pa no tiene longName en LONG prefix group
-        // ── SI: NO normaliza hacia arriba cuando coeff >= 1 ──────────────────
-        { "1000 m",     "1000 m",       "meters"         },
+        // ── SI prefijado (k*): simplifica kX → X base cuando coeff < 0.1 ────
+        { "0.001 km",   "1 m",          "meter"          },  // 0.001 × 1000 m = 1 m
+        { "0.001 kg",   "1 g",          "gram"           },  // 0.001 × 1000 g = 1 g
+        { "0.001 kJ",   "1 J",          "joule"          },  // 0.001 kJ = 1 J
+        { "0.001 kW",   "1 W",          "watt"           },  // 0.001 kW = 1 W
+        // ── SI (doble paso): 0.00001 = 1e-5 → dos niveles de simplificación ──
+        { "0.00001 m",  "10 um",        "micrometers"    },  // 1e-5 m → µm (valor=10 → plural)
+        { "0.00001 g",  "10 ug",        "micrograms"     },
+        { "0.00001 W",  "10 uW",        "microwatts"     },
+        { "0.00001 N",  "10 uN",        "micronewtons"   },
+        // ── Frontera inferior exacta del umbral: 0.1 no simplifica, 0.09 sí ──
+        { "0.1 m",      "0.1 m",        "meters"         },  // coeff=0.1 → en el límite, sin cambio
+        { "0.09 m",     "90 mm",        "millimeters"    },  // coeff=0.09 < 0.1 → simplifica (valor=90 → plural)
+        // ── SI: no simplifica en el rango "medio" (coeff ∈ [0.1, 1000]) ───────
+        { "1000 m",     "1000 m",       "meters"         },  // coeff=1000 → en el límite, sin cambio
         { "1000 g",     "1000 g",       "grams"          },
         { "1000 W",     "1000 W",       "watts"          },
-        // ── Tiempo/datos (normalizeUnits): from preservado, to viene del normalize ──
-        // El intercept de normalize usa EvalJs("... to origUnit") para fijar la unidad,
-        // por lo que el from ya no sufre la auto-norm de math.js.
-        { "0.001 s",    "0.001 s",      "seconds"        },  // to: 1 ms (via normalize)
-        // ── No-SI / imperial: nunca normaliza ────────────────────────────────
+        // ── Frontera superior exacta del umbral: 1000 no simplifica, 1100 sí ─
+        { "1100 m",     "1.1 km",       "kilometers"     },  // coeff=1100 > 1000 → simplifica (valor=1.1 → plural)
+        { "2000 m",     "2 km",         "kilometers"     },  // coeff=2000 > 1000 → sube a km (valor=2 → plural)
+        // ── SI (muy grande): simplificación upward hasta prefijo mega ─────────
+        // Aplica a TODAS las familias SI — no solo m/g/W
+        { "1000000 m",  "1 Mm",         "megameter"      },  // longitud
+        { "1000000 g",  "1 Mg",         "megagram"       },  // masa
+        { "1000000 W",  "1 MW",         "megawatt"       },  // potencia
+        { "1000000 J",  "1 MJ",         "megajoule"      },  // energía
+        { "1000000 N",  "1 MN",         "meganewton"     },  // fuerza
+        // ── Cascade T→P: 10000 × cualquier unidad T = 10 × esa unidad en P ──
+        // Documenta que la regla [0.1, 1000] aplica en TODOS los niveles de prefijo
+        { "10000 TW",   "10 PW",        "petawatts"      },  // potencia
+        { "10000 TJ",   "10 PJ",        "petajoules"     },  // energía
+        { "10000 TN",   "10 PN",        "petanewtons"    },  // fuerza
+        { "10000 THz",  "10 PHz",       "petahertz"      },  // frecuencia (hertz no pluraliza)
+        // ── L (litro): LONG prefix en math.js → usa ortografía "litre" (británico) ─
+        { "0.001 L",    "1 mL",         "millilitre"     },  // downward (valor=1 → singular)
+        { "1000000 L",  "1 ML",         "megalitre"      },  // upward (valor=1 → singular)
+        { "10000 TL",   "10 PL",        "petalitres"     },  // T→P cascade (valor=10 → plural)
+        // ── rad (radián): LONG prefix en math.js → nombre largo derivable ──
+        { "0.001 rad",   "1 mrad",      "milliradian"    },  // downward (valor=1 → singular)
+        { "1000000 rad", "1 Mrad",      "megaradian"     },  // upward (valor=1 → singular)
+        { "10000 Trad",  "10 Prad",     "petaradians"    },  // T→P cascade (valor=10 → plural)
+        // ── normalizeUnits: TryNormalize preserva el from cuando isInteresting ─
+        { "0.001 s",    "0.001 s",      "seconds"        },  // to: 1 ms
+        // ── normalizeUnits (ms): TryNormalize falla → fallthrough → math.js simplifica ─
+        { "0.01 ms",    "10 us",        "microseconds"   },  // isInteresting=false → 10 µs (valor=10 → plural)
+        { "0.001 ms",   "1 us",         "microsecond"    },  // valor=1 → singular
+        // ── normalizeUnits (datos): bytes no se simplifican hacia abajo ────────
+        { "0.01 B",     "0.01 B",       "bytes"          },  // TryNormalize falla; math.js no simplifica B (valor≠1 → plural)
+        // ── normalizeUnits (grande): TryNormalize fuerza "to origUnit" → from preservado ─
+        // (sin upward simplification aunque coeff sea 1e6, porque EvalJs fija la unidad)
+        { "1000000 s",  "1e+6 s",       "seconds"        },  // → 11 day 13 h 46 min 40 s
+        { "1000000 ms", "1e+6 ms",      "milliseconds"   },  // → 16 min 40 s
+        { "1000000 B",  "1e+6 B",       "bytes"          },  // → 1 MB
+        // ── No-SI / imperial: nunca normaliza en ninguna dirección ──────────
+        // Hacia abajo: valores pequeños se conservan tal como los escribió el usuario
         { "0.001 ft",   "0.001 ft",     "feet"           },
         { "0.001 oz",   "0.001 oz",     "ounces"         },
         { "0.001 atm",  "0.001 atm",    "atmospheres"    },
         { "0.001 psi",  "0.001 psi",    ""               },  // psi no tiene longName
         { "0.001 hp",   "0.001 hp",     "horsepowers"    },
         { "0.001 acre", "0.001 acre",   "acres"          },
+        // Hacia arriba: valores muy grandes tampoco se simplican (a diferencia de SI)
+        // math.js formatea el número en notación científica pero NO cambia la unidad
+        { "1000000 ft", "1e+6 ft",      "feet"           },  // SI daría 1 Mft; imperial queda en ft
+        { "1000000 oz", "1e+6 oz",      "ounces"         },
     };
 
     // ── Velocidad compuesta — nuevas unidades ────────────────────────────────
@@ -542,6 +635,57 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         Assert.Equal(expectedSummary, summary);
     }
 
+    // ── Prefijos SI en tiempo y datos ────────────────────────────────────────
+    // Todos los prefijos SI de 's' y 'B' deben producir descomposición natural.
+    // Los prefijos de tiempo menores que ms se expresan en ms (último paso de la cadena);
+    // los mayores que s se descomponen en componentes naturales (días, horas, minutos...).
+    // Los datos por encima de TB se expresan en TB porque la cadena llega hasta TB.
+
+    public static TheoryData<string, string> SIPrefixedTimeCases => new() {
+        // ── Prefijos sub-ms: resultado en ms (último escalón de la cadena) ────
+        { "1 ys", "1 ys / 1 yoctosecond -> 1e-21 ms / 1e-21 milliseconds" },
+        { "1 zs", "1 zs / 1 zeptosecond -> 1e-18 ms / 1e-18 milliseconds" },
+        { "1 as", "1 as / 1 attosecond -> 1e-15 ms / 1e-15 milliseconds"  },
+        { "1 fs", "1 fs / 1 femtosecond -> 1e-12 ms / 1e-12 milliseconds" },
+        { "1 ps", "1 ps / 1 picosecond -> 1e-9 ms / 1e-9 milliseconds"    },
+        { "1 ns", "1 ns / 1 nanosecond -> 1e-6 ms / 1e-6 milliseconds"    },
+        { "1 us", "1 us / 1 microsecond -> 0.001 ms / 0.001 milliseconds" },
+        // ── Prefijos supra-s: descomposición natural ─────────────────────────
+        { "1 ks", "1 ks / 1 kilosecond -> 16 min 40 s / 16 minutes 40 seconds"                                                    },
+        { "1 Ms", "1 Ms / 1 megasecond -> 11 day 13 h 46 min 40 s / 11 days 13 hours 46 minutes 40 seconds"                      },
+        { "1 Gs", "1 Gs / 1 gigasecond -> 31 year 251 day 7 h 46.67 min / 31 years 251 days 7 hours 46.67 minutes"               },
+        { "1 Ts", "1 Ts / 1 terasecond -> 31688 year 32 day 1 h 46.67 min / 31688 years 32 days 1 hour 46.67 minutes"           },
+        { "1 Ps", "1 Ps / 1 petasecond -> 31688087 year 297 day / 31688087 years 297 days"                                      },
+        { "1 Es", "1 Es / 1 exasecond -> 31688087814 year / 31688087814 years"                                                   },
+        { "1 Zs", "1 Zs / 1 zettasecond -> 31688087814028 year / 31688087814028 years"                                          },
+        { "1 Ys", "1 Ys / 1 yottasecond -> 31688087814028948 year / 31688087814028948 years"                                    },
+    };
+
+    [Theory]
+    [MemberData(nameof(SIPrefixedTimeCases))]
+    public void SIPrefixed_TimeUnits_Decompose(string query, string expectedSummary) {
+        var item = GetConversionItem(query);
+        var summary = $"{Fmt(item.FromShort, item.FromLong)} -> {Fmt(item.ToShort, item.ToLong)}";
+        Assert.Equal(expectedSummary, summary);
+    }
+
+    public static TheoryData<string, string> SIPrefixedDataCases => new() {
+        // ── PB, EB, ZB, YB: la cadena best_unit llega hasta TB, se expresan en TB ──
+        // fromLong es null porque math.js no puede derivar el nombre largo de estos símbolos
+        { "1 PB", "1 PB -> 1000 TB / 1000 terabytes"          },
+        { "1 EB", "1 EB -> 1000000 TB / 1000000 terabytes"     },
+        { "1 ZB", "1 ZB -> 1000000000 TB / 1000000000 terabytes" },
+        { "1 YB", "1 YB -> 1000000000000 TB / 1000000000000 terabytes" },
+    };
+
+    [Theory]
+    [MemberData(nameof(SIPrefixedDataCases))]
+    public void SIPrefixed_DataUnits_BestUnit(string query, string expectedSummary) {
+        var item = GetConversionItem(query);
+        var summary = $"{Fmt(item.FromShort, item.FromLong)} -> {Fmt(item.ToShort, item.ToLong)}";
+        Assert.Equal(expectedSummary, summary);
+    }
+
     [Theory]
     [MemberData(nameof(FromPrefixNormalizationCases))]
     public void FromUnit_AutoNormalizesToBestSIPrefix(string query, string expectedFromShort, string expectedFromLongSuffix) {
@@ -551,5 +695,36 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
             Assert.EndsWith(expectedFromLongSuffix, item.FromLong);
         else
             Assert.Null(item.FromLong);
+    }
+
+    [Fact]
+    public void PROBE_GenerateSIPrefixData() {
+        var units = new (string Unit, string[] Prefixes)[] {
+            ("m",   ["y","z","a","f","p","n","u","m","c","d","k","M","G","T","P","E","Z","Y"]),
+            ("g",   ["y","z","a","f","p","n","u","m","k","M","G","T","P","E","Z","Y"]),
+            ("W",   ["y","z","a","f","p","n","u","m","k","M","G","T","P","E","Z","Y"]),
+            ("J",   ["y","z","a","f","p","n","u","m","k","M","G","T","P","E","Z","Y"]),
+            ("N",   ["y","z","a","f","p","n","u","m","k","M","G","T","P","E","Z","Y"]),
+            ("L",   ["y","z","a","f","p","n","u","m","k","M","G","T","P","E","Z","Y"]),
+            ("rad", ["y","z","a","f","p","n","u","m","k","M","G","T","P","E","Z","Y"]),
+            ("Hz",  ["m","k","M","G","T","P","E","Z","Y"]),
+            ("t",   ["y","z","a","f","p","n","u","m","k","M","G","T","P","E","Z","Y"]),
+            ("s",   ["y","z","a","f","p","n","u","m","k","M","G","T","P","E","Z","Y"]),
+            ("B",   ["k","M","G","T","P","E","Z","Y"]),
+        };
+        var sb = new System.Text.StringBuilder();
+        string Try(string q) {
+            try {
+                var item = GetConversionItem(q);
+                return $"{Fmt(item.FromShort, item.FromLong)} -> {Fmt(item.ToShort, item.ToLong)}";
+            } catch (Exception ex) { return $"FAIL: {ex.Message.Split('\n')[0]}"; }
+        }
+        foreach (var (unit, prefixes) in units) {
+            sb.AppendLine($"\n    // ── {unit} ──");
+            sb.AppendLine($"    {{ \"1 {unit}\", \"{Try($"1 {unit}")}\" }},");
+            foreach (var p in prefixes)
+                sb.AppendLine($"    {{ \"1 {p}{unit}\", \"{Try($"1 {p}{unit}")}\" }},");
+        }
+        Assert.Fail(sb.ToString());
     }
 }

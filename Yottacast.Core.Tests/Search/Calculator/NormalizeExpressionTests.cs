@@ -127,6 +127,38 @@ public class NormalizeExpressionTests(MathJsEngineFixture fixture) {
     }
 
     [Fact]
+    public void ForceAmbiguous_mS_ResolvesToMs_WithHint() {
+        // "mS" is an exact canonical (millisiemens) but forceAmbiguous remaps it to "ms" (milliseconds)
+        var r = Normalize("10 mS");
+        Assert.NotNull(r);
+        Assert.Single(r.Ambiguities);
+        Assert.Equal("mS", r.Ambiguities[0].Input);
+        Assert.Equal("ms", r.Ambiguities[0].Candidates[0].Symbol);   // resolved: milliseconds
+        Assert.Contains(r.Ambiguities[0].Candidates, c => c.Symbol == "mS"); // alternative: millisiemens
+        Assert.Contains("ms", r.Expr);  // expression uses ms
+    }
+
+    [Fact]
+    public void ForceAmbiguous_MS_ResolvesToMs_WithHint() {
+        // "MS" is an exact canonical (megasiemens) but forceAmbiguous remaps it to "ms"
+        var r = Normalize("10 MS");
+        Assert.NotNull(r);
+        Assert.Single(r.Ambiguities);
+        Assert.Equal("MS", r.Ambiguities[0].Input);
+        Assert.Equal("ms", r.Ambiguities[0].Candidates[0].Symbol);
+        Assert.Contains(r.Ambiguities[0].Candidates, c => c.Symbol == "MS"); // alternative: megasiemens
+    }
+
+    [Fact]
+    public void ExactCanonical_Ms_IsNotForceAmbiguous() {
+        // "Ms" is an exact canonical (megasecond) and is NOT in forceAmbiguous → no ambiguity
+        var r = Normalize("10 Ms");
+        Assert.NotNull(r);
+        Assert.Empty(r.Ambiguities);
+        Assert.Contains("Ms", r.Expr);
+    }
+
+    [Fact]
     public void LowercaseLitre_IsUnitEntry_WithGallonTarget() {
         // "l" y "L" son sinónimos de litre; debe normalizarse a "L" y buscar el par gallon
         var r = Normalize("1 l");
@@ -134,6 +166,50 @@ public class NormalizeExpressionTests(MathJsEngineFixture fixture) {
         Assert.Equal(ExprKind.UnitEntry, r.Kind);
         Assert.Contains("gallon", r.Expr);   // no debe convertir l→L (trivial)
         Assert.Empty(r.Ambiguities);
+    }
+
+    // ── Hz casing ────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Hz_WithDefaultTarget_IsUnitEntry() {
+        // Hz tiene defaultTarget "rpm"; debe detectarse como unit_entry
+        var r = Normalize("10 Hz");
+        Assert.NotNull(r);
+        Assert.Equal(ExprKind.UnitEntry, r.Kind);
+        Assert.Equal("Hz", r.FromUnit);
+        Assert.Equal("rpm", r.ToUnit);
+    }
+
+    [Fact]
+    public void THz_CapitalH_And_LowercaseH_NormalizeIdentically() {
+        // Documenta que "THz" (H mayúscula) y "Thz" (h minúscula) producen el mismo resultado.
+        // Si uno falla y el otro no, hay un problema de resolución de casing en resolveUnitToken.
+        var r1 = Normalize("10 THz");
+        var r2 = Normalize("10 Thz");
+        Assert.NotNull(r1);
+        Assert.NotNull(r2);
+        Assert.Equal(ExprKind.UnitEntry, r1!.Kind);
+        Assert.Equal(ExprKind.UnitEntry, r2!.Kind);
+        Assert.Equal("THz", r1.FromUnit);
+        Assert.Equal("THz", r2.FromUnit);
+        Assert.Equal(r1.Expr, r2.Expr);   // misma expresión normalizada
+    }
+
+    [Fact]
+    public void PrefixedHz_HaveDefaultTargets_IsUnitEntry() {
+        // kHz, MHz, GHz, THz — todos deben tener defaultTarget y resultar en UnitEntry
+        foreach (var (input, expectedFrom, expectedTo) in new[] {
+            ("10 kHz", "kHz", "Hz"),
+            ("10 MHz", "MHz", "kHz"),
+            ("10 GHz", "GHz", "MHz"),
+            ("10 THz", "THz", "GHz"),
+        }) {
+            var r = Normalize(input);
+            Assert.NotNull(r);
+            Assert.Equal(ExprKind.UnitEntry, r!.Kind);
+            Assert.Equal(expectedFrom, r.FromUnit);
+            Assert.Equal(expectedTo,   r.ToUnit);
+        }
     }
 
 }

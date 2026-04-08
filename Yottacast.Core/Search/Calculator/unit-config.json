@@ -101,7 +101,9 @@
     "hectares":     "hectare",
     "acres":        "acre",
     "kmph":         "kmh",
-    "kph":          "kmh"
+    "kph":          "kmh",
+    "H":            "h",
+    "D":            "day"
   },
   "evalSafeAliases": {
     "min": "minute"
@@ -206,6 +208,9 @@
     "sqin": "sqft",  "sqyd": "m2",  "sqmi": "km2",
     "hectare": "acre", "acre": "hectare",
     "rpm": "Hz",      "Hz": "rpm",
+    "mHz": "Hz",
+    "kHz": "Hz",      "MHz": "kHz",   "GHz": "MHz",   "THz": "GHz",
+    "PHz": "THz",     "EHz": "PHz",   "ZHz": "EHz",   "YHz": "ZHz",
     "kmh": "mph",     "mph": "kmh",
     "bps":  "B / s",   "B / s":  "kbps",
     "kbps": "kB / s",  "kB / s": "Mbps",
@@ -234,6 +239,10 @@
     ["B",      "kB"],
     ["rad",    "deg"]
   ],
+  "forceAmbiguous": {
+    "mS": "ms",
+    "MS": "ms"
+  },
   "ambiguityOverrides": {
     "mm": "mm",    "pm": "pm",    "zm": "zm",    "ym": "ym",
     "mm2": "mm2",  "pm2": "pm2",  "zm2": "zm2",  "ym2": "ym2",

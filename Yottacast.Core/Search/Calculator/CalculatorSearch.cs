@@ -92,7 +92,7 @@ public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard) :
         if (Math.Abs(d) == 1.0) return name;
         if (name == "foot")  return "feet";
         if (name == "inch")  return "inches";
-        if (name == "hertz") return "hertz";
+        if (name.EndsWith("hertz")) return name;   // hertz, kilohertz, megahertz, … no pluralizan
         // "X per Y" compound names: pluralize first word only (e.g. "kilometer per hour" → "kilometers per hour")
         var perIdx = name.IndexOf(" per ", StringComparison.Ordinal);
         if (perIdx > 0) {

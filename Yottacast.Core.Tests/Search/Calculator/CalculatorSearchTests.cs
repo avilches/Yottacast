@@ -338,6 +338,8 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
     }
 
     // "10 gt" → sin override: Gt (gigatonne) con hint en formato "Maybe you meant GT (gigatesla)?"
+    // Gt no está en defaultTargets — necesita el par dimensional ["kg","lb"] en defaultPairs para
+    // producir un ConversionResultItemViewModel en lugar de un ResultItemViewModel de calculadora.
     [Fact]
     public void AmbiguousUnit_WithoutOverride_ShowsMaybeYouMeantHint() {
         var item = Assert.IsType<ConversionResultItemViewModel>(SearchResult(BuildSearch(out _), "10 gt"));
@@ -352,6 +354,36 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
     public void UnambiguousUnit_InConversion_NoAmbiguityHint() {
         var item = Assert.IsType<ConversionResultItemViewModel>(SearchResult(BuildSearch(out _), "10 kg"));
         Assert.Null(item.AmbiguityHint);
+    }
+
+    // ── defaultPairs: fallback dimensional para unidades exóticas no en defaultTargets ──────────
+    // Las unidades comunes (m, ft, kg, lb…) tienen entradas directas en defaultTargets.
+    // defaultPairs cubre el resto por matching dimensional: cualquier unidad con la misma
+    // dimensión física que el primer elemento del par recibe el target del par.
+    // Si se eliminan estos pares de defaultPairs, las unidades de abajo pasan a kind=calculation
+    // y el resultado es ResultItemViewModel en lugar de ConversionResultItemViewModel.
+
+    // Longitud: Mm (megámetro) no está en defaultTargets → target "m" vía par ["m","ft"]
+    // Para unidades exóticas, findDefaultTarget devuelve pair[0] (la base SI del par), no pair[1].
+    [Fact]
+    public void DefaultPairs_MegameterUsesLengthDimensionalFallback() {
+        var item = Assert.IsType<ConversionResultItemViewModel>(SearchResult(BuildSearch(out _), "10 Mm"));
+        Assert.Contains("m", item.ToShort);   // target = "m" (pair[0]), no "ft"
+    }
+
+    // Masa: Gg (gigagramo) no está en defaultTargets → target "kg" vía par ["kg","lb"]
+    [Fact]
+    public void DefaultPairs_GigagramUsesMassDimensionalFallback() {
+        var item = Assert.IsType<ConversionResultItemViewModel>(SearchResult(BuildSearch(out _), "10 Gg"));
+        Assert.Contains("kg", item.ToShort);  // target = "kg" (pair[0]), no "lb"
+    }
+
+    // Masa: Gt (gigatonne) no está en defaultTargets → target "kg" vía par ["kg","lb"]
+    // (mismo mecanismo que Gg; verifica que la cobertura dimensional incluye alias de masa como tonne)
+    [Fact]
+    public void DefaultPairs_GigatonneUsesMassDimensionalFallback() {
+        var item = Assert.IsType<ConversionResultItemViewModel>(SearchResult(BuildSearch(out _), "10 Gt"));
+        Assert.Contains("kg", item.ToShort);  // target = "kg" (pair[0]), no "lb"
     }
 }
 
