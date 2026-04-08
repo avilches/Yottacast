@@ -190,15 +190,22 @@ El intercept usa `EvalJs("... to origUnit")` en lugar de `EvalJs("...")`. Esto f
 
 **Divisas**: soportadas vía `ICurrencyRateProvider`. Las tasas se registran dinámicamente en el engine con `registerCurrency()` en cada llamada a `Evaluate()`, actualizándose si la tasa ha cambiado. Los códigos de divisa (ej. `USD`, `EUR`) se normalizan a mayúsculas en el AST. Al escribir una sola divisa (ej. `10 USD`), se convierte al par por defecto definido en `_defaultCurrencyPair` en `mathjs-helpers.js` (`['EUR', 'USD']`).
 
-**`ConversionResultItemViewModel`** (`Yottacast.Core/ViewModels/ConversionResultItemViewModel.cs`): resultado de conversión con cuatro campos:
-- `FromShort` / `ToShort`: valor + unidad en formato corto (ej. `"10 km"`, `"6.213711922 mile"`)
-- `FromLong` / `ToLong`: forma larga con pluralización (ej. `"10 kilometers"`, `"6.213711922 miles"`); `null` si no añade información sobre la forma corta
+**`ConversionResultItemViewModel`** (`Yottacast.Core/ViewModels/ConversionResultItemViewModel.cs`): resultado de conversión con tres pares de campos (from original, from normalizado, to), navegación de celdas y `INotifyPropertyChanged`:
+
+- `FromShort` / `FromLong`: from tal como lo escribió el usuario, bien formateado (ej. `"0.001 V"` / `"0.001 volts"`). `FromLong` es `null` si no añade información.
+- `NormFromShort` / `NormFromLong`: from auto-simplificado por math.js (ej. `"1 mV"` / `"1 millivolt"`); `null` si no hubo simplificación.
+- `ToShort` / `ToLong`: destino de la conversión (ej. `"6.213711922 mile"` / `"6.213711922 miles"`). `ToLong` es `null` si no añade información.
+- `FromWasNormalized`: `true` cuando `NormFrom*` está presente — activa la navegación ←/→ y los highlights de celda.
+- `SelectedCell` (`ConversionCell` enum: `To`, `NormFrom`, `OrigFrom`): celda con el foco actual; por defecto `To`. Al cambiar, dispara `PropertyChanged` para las tres propiedades `Is*Highlighted`.
+- `MoveCellLeft()` / `MoveCellRight()`: desplazan la selección y devuelven `true` si el movimiento fue consumido, `false` si ya estaban en la celda extrema (lo que permite que el TextBox mueva el cursor de texto).
+
+**Display en la UI**: cuando `FromWasNormalized = false`, el resultado muestra dos celdas (`[From] → [To]`). Cuando `FromWasNormalized = true`, muestra tres celdas (`[From original] → [From normalizado] → [To]`); la celda NormFrom y la segunda flecha tienen `IsVisible` enlazado a `FromWasNormalized` y se colapsan automáticamente cuando no hay simplificación.
 
 **Normalización del FROM**: hay varios mecanismos que pueden cambiar la unidad mostrada en FROM:
 
-1. **Auto-simplificación SI de math.js** — para unidades SI simples con coeficiente < 1, math.js reescribe al prefijo más conveniente (`0.001 V` → `1 mV`). Solo ocurre hacia abajo; `1000 m` permanece como `1000 m`. Las imperiales y no-SI nunca se simplifican.
+1. **Auto-simplificación SI de math.js** — para unidades SI simples con coeficiente < 1, math.js reescribe al prefijo más conveniente (`0.001 V` → `1 mV`). Solo ocurre hacia abajo; `1000 m` permanece como `1000 m`. Las imperiales y no-SI nunca se simplifican. Cuando ocurre, `FromValue`/`FromUnit` preservan el original del usuario y `NormFromValue`/`NormFromUnit` almacenan la forma simplificada; `FromWasNormalized = true`.
 2. **Forzado `to {fromUnit}` para compuestos** — en `EvaluateSimple` e `EvaluateComplex`, si `fromUnit` contiene ` / `, se evalúa el LHS forzando la unidad (`EvalJs("10 km/h to km / h")`). Esto evita que math.js auto-simplifique a una unidad custom registrada de la misma dimensión (ej. `kmh` o `mph`). El usuario ve la unidad exactamente como la escribió.
-3. **`TryNormalize` (tiempo/datos)** — previene la auto-simplificación SI forzando la unidad original con `to origUnit`.
+3. **`TryNormalize` (tiempo/datos)** — previene la auto-simplificación SI forzando la unidad original con `to origUnit`. `FromWasNormalized` siempre es `false` para estas unidades.
 
 **`ISearchHintProvider` / `LastHint`**: `CalculatorSearch` implementa `ISearchHintProvider`. Para errores `UnknownSymbol` e `IncompatibleUnits`, `LastHint` se establece con un mensaje legible para el usuario. Para otros errores (sintaxis, etc.) no se muestra hint.
 
@@ -210,7 +217,7 @@ El intercept usa `EvalJs("... to origUnit")` en lugar de `EvalJs("...")`. Esto f
 
 **`Start()` es no-op**: a diferencia de otras instant sources, `CalculatorSearch.Start()` no inicia ningún proceso. `WhenReady()` delega directamente en `engine.WhenReady()`.
 
-**Activación**: al activar un resultado se copia al portapapeles — el resultado aritmético (`RawValue`) para calculadora, o el valor de destino en formato corto (`toShort`) para conversiones.
+**Activación**: al activar un resultado se copia al portapapeles — el resultado aritmético (`RawValue`) para calculadora. Para conversiones, se copia la celda seleccionada: `OrigFrom` copia `fromShort`, `NormFrom` copia `normFromShort` (o `toShort` si el normalizado no está disponible), `To` copia `toShort`. La celda por defecto es `To`, de modo que sin navegar, Enter copia el destino como antes.
 
 **El parámetro `limit` se ignora**: `CalculatorSearch.Search()` acepta `limit` por contrato de `IInstantSearchSource` pero nunca lo usa. La fuente devuelve como máximo un elemento.
 

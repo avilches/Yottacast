@@ -74,8 +74,8 @@ public class EmojiSearch(ClipboardService clipboard, string cacheDir, EmojiDataL
             Score    = 3.5,
             PasteAfterActivate = true,
             OnActivate = () => clipboard.CopyText(grid.Cells[grid.SelectedEmojiIndex].Char),
-            OnLeft  = () => grid.SelectPrevious(),
-            OnRight = () => grid.SelectNext(),
+            OnLeft  = () => { grid.SelectPrevious(); return true; },
+            OnRight = () => { grid.SelectNext(); return true; },
             OnUp    = () => grid.SelectUp(),
             OnDown  = () => grid.SelectDown(),
         };

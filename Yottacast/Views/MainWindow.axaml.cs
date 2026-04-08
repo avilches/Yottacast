@@ -35,13 +35,11 @@ public partial class MainWindow : Window {
 
         switch (e.Key) {
             case Key.Left when vm.SelectedResult?.OnLeft is { } onLeft:
-                onLeft();
-                e.Handled = true;
+                e.Handled = onLeft();
                 break;
 
             case Key.Right when vm.SelectedResult?.OnRight is { } onRight:
-                onRight();
-                e.Handled = true;
+                e.Handled = onRight();
                 break;
 
             case Key.Up when vm.SelectedResult?.OnUp is { } onUp:

@@ -87,6 +87,10 @@
         <Style Selector="Border.emoji-selected">
             <Setter Property="Background" Value="{DynamicResource Theme.ItemSelectionIconBackground}"/>
         </Style>
+        <!-- Conversion cell selection highlight -->
+        <Style Selector="Border.conv-cell-selected">
+            <Setter Property="Background" Value="{DynamicResource Theme.ItemSelectionIconBackground}"/>
+        </Style>
     </Window.Styles>
 
     <Border Margin="28"
@@ -242,37 +246,63 @@
                                            VerticalAlignment="Center"/>
                             </Border>
 
-                            <!-- Two columns: from → to -->
-                            <Grid Grid.Column="1" ColumnDefinitions="*,Auto,*" VerticalAlignment="Center">
-                                <!-- From -->
-                                <StackPanel Grid.Column="0" Orientation="Vertical" Spacing="2">
-                                    <TextBlock Text="{Binding FromShort}"
-                                               Foreground="{DynamicResource Theme.ItemTitle}"
-                                               FontSize="{DynamicResource Theme.FontSizeTitle}"
-                                               FontWeight="Medium"/>
-                                    <TextBlock Text="{Binding FromLong}"
-                                               Foreground="{DynamicResource Theme.ItemSubtitle}"
-                                               FontSize="{DynamicResource Theme.FontSizeSubtitle}"
-                                               IsVisible="{Binding FromLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                                </StackPanel>
-                                <!-- Arrow -->
-                                <TextBlock Grid.Column="1"
+                            <!-- From → [NormFrom →] To  (NormFrom only when math.js simplified the from) -->
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <!-- From (original — the value as the user typed it) -->
+                                <Border CornerRadius="6" Padding="6,3"
+                                        Classes.conv-cell-selected="{Binding IsOrigFromHighlighted}">
+                                    <StackPanel Orientation="Vertical" Spacing="2">
+                                        <TextBlock Text="{Binding FromShort}"
+                                                   Foreground="{DynamicResource Theme.ItemTitle}"
+                                                   FontSize="{DynamicResource Theme.FontSizeTitle}"
+                                                   FontWeight="Medium"/>
+                                        <TextBlock Text="{Binding FromLong}"
+                                                   Foreground="{DynamicResource Theme.ItemSubtitle}"
+                                                   FontSize="{DynamicResource Theme.FontSizeSubtitle}"
+                                                   IsVisible="{Binding FromLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                    </StackPanel>
+                                </Border>
+                                <!-- Arrow 1 (always visible) -->
+                                <TextBlock Text="→"
+                                           Foreground="{DynamicResource Theme.ItemSubtitle}"
+                                           VerticalAlignment="Center"
+                                           Margin="8,0"/>
+                                <!-- NormFrom (only when math.js changed the from unit) -->
+                                <Border IsVisible="{Binding FromWasNormalized}"
+                                        CornerRadius="6" Padding="6,3"
+                                        Classes.conv-cell-selected="{Binding IsNormFromHighlighted}">
+                                    <StackPanel Orientation="Vertical" Spacing="2">
+                                        <TextBlock Text="{Binding NormFromShort}"
+                                                   Foreground="{DynamicResource Theme.ItemTitle}"
+                                                   FontSize="{DynamicResource Theme.FontSizeTitle}"
+                                                   FontWeight="Medium"/>
+                                        <TextBlock Text="{Binding NormFromLong}"
+                                                   Foreground="{DynamicResource Theme.ItemSubtitle}"
+                                                   FontSize="{DynamicResource Theme.FontSizeSubtitle}"
+                                                   IsVisible="{Binding NormFromLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                    </StackPanel>
+                                </Border>
+                                <!-- Arrow 2 (only when NormFrom is shown) -->
+                                <TextBlock IsVisible="{Binding FromWasNormalized}"
                                            Text="→"
                                            Foreground="{DynamicResource Theme.ItemSubtitle}"
                                            VerticalAlignment="Center"
                                            Margin="8,0"/>
                                 <!-- To -->
-                                <StackPanel Grid.Column="2" Orientation="Vertical" Spacing="2">
-                                    <TextBlock Text="{Binding ToShort}"
-                                               Foreground="{DynamicResource Theme.ItemTitle}"
-                                               FontSize="{DynamicResource Theme.FontSizeTitle}"
-                                               FontWeight="Medium"/>
-                                    <TextBlock Text="{Binding ToLong}"
-                                               Foreground="{DynamicResource Theme.ItemSubtitle}"
-                                               FontSize="{DynamicResource Theme.FontSizeSubtitle}"
-                                               IsVisible="{Binding ToLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                                </StackPanel>
-                            </Grid>
+                                <Border CornerRadius="6" Padding="6,3"
+                                        Classes.conv-cell-selected="{Binding IsToHighlighted}">
+                                    <StackPanel Orientation="Vertical" Spacing="2">
+                                        <TextBlock Text="{Binding ToShort}"
+                                                   Foreground="{DynamicResource Theme.ItemTitle}"
+                                                   FontSize="{DynamicResource Theme.FontSizeTitle}"
+                                                   FontWeight="Medium"/>
+                                        <TextBlock Text="{Binding ToLong}"
+                                                   Foreground="{DynamicResource Theme.ItemSubtitle}"
+                                                   FontSize="{DynamicResource Theme.FontSizeSubtitle}"
+                                                   IsVisible="{Binding ToLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
 
                             <!-- Category -->
                             <TextBlock Grid.Column="2"

@@ -33,18 +33,39 @@ public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard) :
                     ? (r.ToUnitLong is not null && r.ToUnitLong != toShort ? r.ToUnitLong : null)
                     : LongForm(r.ToValue, r.ToUnitLong, r.ToUnit);
                 var ambiguityHint = BuildHints(r.AmbiguityHints);
-                var captured      = toShort;
-                return [new ConversionResultItemViewModel {
-                    Icon          = "📐",
-                    Category      = "Converter",
-                    Score         = 4,
-                    FromShort     = fromShort,
-                    FromLong      = fromLong,
-                    ToShort       = toShort,
-                    ToLong        = toLong,
-                    AmbiguityHint = string.IsNullOrEmpty(ambiguityHint) ? null : ambiguityHint,
-                    OnActivate    = () => clipboard.CopyText(captured),
-                }];
+
+                string? normFromShort = null, normFromLong = null;
+                if (r.NormFromUnit != null && r.NormFromValue != null) {
+                    var normFromUnit = engine.DisplayUnit(r.NormFromUnit);
+                    normFromShort = $"{r.NormFromValue} {normFromUnit}".Trim();
+                    normFromLong  = LongForm(r.NormFromValue, r.NormFromUnitLong, r.NormFromUnit);
+                }
+
+                var capturedOrig = fromShort;
+                var capturedNorm = normFromShort;
+                var capturedTo   = toShort;
+                ConversionResultItemViewModel vm = null!;
+                vm = new ConversionResultItemViewModel {
+                    Icon              = "📐",
+                    Category          = "Converter",
+                    Score             = 4,
+                    FromShort         = fromShort,
+                    FromLong          = fromLong,
+                    NormFromShort     = normFromShort,
+                    NormFromLong      = normFromLong,
+                    ToShort           = toShort,
+                    ToLong            = toLong,
+                    AmbiguityHint     = string.IsNullOrEmpty(ambiguityHint) ? null : ambiguityHint,
+                    FromWasNormalized = r.FromWasNormalized,
+                    OnLeft  = r.FromWasNormalized ? () => vm.MoveCellLeft()  : null,
+                    OnRight = r.FromWasNormalized ? () => vm.MoveCellRight() : null,
+                    OnActivate = () => clipboard.CopyText(vm.SelectedCell switch {
+                        ConversionCell.OrigFrom => capturedOrig,
+                        ConversionCell.NormFrom => capturedNorm ?? capturedTo,
+                        _                       => capturedTo,
+                    }),
+                };
+                return [vm];
             }
             case CalcResult r when r.RawValue != q: {
                 var subtitle = BuildSubtitle(r.NormalizedQuery, r.AmbiguityHints);

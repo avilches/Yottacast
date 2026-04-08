@@ -11,8 +11,11 @@ public abstract class BaseResultItemViewModel {
     /// When non-null, the item captures LEFT/RIGHT/UP/DOWN arrow keys while selected.
     /// The Window's tunnel handler calls these instead of letting the TextBox move its cursor.
     /// </summary>
-    public Action? OnLeft  { get; init; }
-    public Action? OnRight { get; init; }
+    /// <summary>
+    /// Returns true if the key was consumed (prevents TextBox cursor movement), false to fall through.
+    /// </summary>
+    public Func<bool>? OnLeft  { get; init; }
+    public Func<bool>? OnRight { get; init; }
     /// <summary>
     /// Returns true if the key was consumed, false to let the window fall through to list navigation.
     /// </summary>

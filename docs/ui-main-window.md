@@ -57,7 +57,7 @@ Al pulsar Enter, el handler en `MainWindow.OnKeyDown` ejecuta `OnActivate()`, va
 
 ## Captura de flechas izquierda/derecha en fase tunnel
 
-`MainWindow` registra `OnTunnelKeyDown` con `RoutingStrategies.Tunnel`, lo que lo ejecuta *antes* de que el `TextBox` procese los movimientos del cursor. Si el ítem seleccionado tiene `OnLeft`/`OnRight`, el evento se marca como `Handled = true` y el TextBox no mueve el cursor. Las teclas Up/Down también pasan por aquí; si el ítem devuelve `false`, la ventana las procesa como navegación de lista en la fase de burbuja.
+`MainWindow` registra `OnTunnelKeyDown` con `RoutingStrategies.Tunnel`, lo que lo ejecuta *antes* de que el `TextBox` procese los movimientos del cursor. `OnLeft` y `OnRight` en `BaseResultItemViewModel` son `Func<bool>?` — si el handler devuelve `true`, el evento se marca como `Handled = true` y el TextBox no mueve el cursor; si devuelve `false`, el evento no se consume y el TextBox procesa el movimiento de cursor normalmente (útil para celdas en el extremo de la navegación). Las teclas Up/Down también pasan por aquí; si el ítem devuelve `false`, la ventana las procesa como navegación de lista en la fase de burbuja.
 
 ## SearchSourceLimit
 

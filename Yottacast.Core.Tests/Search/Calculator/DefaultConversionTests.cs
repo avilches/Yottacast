@@ -20,6 +20,19 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
     // Formats both short and long forms: "10 km / 10 kilometers" or just "10 B" when long is null.
     private static string Fmt(string s, string? l) => l is null ? s : $"{s} / {l}";
 
+    // Formats the full conversion summary including the norm-from cell when math.js changed the unit.
+    // Without normalization: "10 h / 10 hours -> 600 min / 600 minutes"
+    // With normalization:    "0.01 g / 0.01 grams > 10 mg / 10 milligrams -> 3.5e-4 oz / ..."
+    private static string FmtFull(ConversionResultItemViewModel item) {
+        var from = Fmt(item.FromShort, item.FromLong);
+        var to   = Fmt(item.ToShort, item.ToLong);
+        if (item.NormFromShort is not null) {
+            var normFrom = Fmt(item.NormFromShort, item.NormFromLong);
+            return $"{from} > {normFrom} -> {to}";
+        }
+        return $"{from} -> {to}";
+    }
+
     // ── Casos de conversión por defecto ──────────────────────────────────────
 
     public static TheoryData<string, string> DefaultConversionCases => new() {
@@ -30,8 +43,8 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "10ºc",     "10 °C / 10 celsius -> 50 °F / 50 fahrenheit"                               },
         { "10ºC",     "10 °C / 10 celsius -> 50 °F / 50 fahrenheit"                               },
         { "10f",      "10 °F / 10 fahrenheit -> -12.22 °C / -12.22 celsius"                       },
-        { "10ºf",      "10 °F / 10 fahrenheit -> -12.22 °C / -12.22 celsius"                      },
-        { "10ºF",      "10 °F / 10 fahrenheit -> -12.22 °C / -12.22 celsius"                      },
+        { "10ºf",     "10 °F / 10 fahrenheit -> -12.22 °C / -12.22 celsius"                      },
+        { "10ºF",     "10 °F / 10 fahrenheit -> -12.22 °C / -12.22 celsius"                      },
         { "10 degc",  "10 °C / 10 celsius -> 50 °F / 50 fahrenheit"                               },
         { "10 degC",  "10 °C / 10 celsius -> 50 °F / 50 fahrenheit"                               },
         { "10 DEGC",  "10 °C / 10 celsius -> 50 °F / 50 fahrenheit"                               },
@@ -150,7 +163,7 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "10 horsepowers", "10 hp / 10 horsepowers -> 7.46 kW / 7.46 kilowatts"                      },
         { "10 kW",          "10 kW / 10 kilowatts -> 13.41 hp / 13.41 horsepowers"                    },
         { "1 kW",           "1 kW / 1 kilowatt -> 1.34 hp / 1.34 horsepowers"                         },
-        { "0.01 kW",        "10 W / 10 watts -> 0.0134 hp / 0.0134 horsepowers"           },
+        { "0.01 kW",        "0.01 kW / 0.01 kilowatts > 10 W / 10 watts -> 0.0134 hp / 0.0134 horsepowers" },
         // ── Datos ───────────────────────────────────────────────────────────
         { "10 B",      "10 B / 10 bytes -> 0.01 kB / 0.01 kilobytes"                             },
         { "10000 B",   "10000 B / 10000 bytes -> 10 kB / 10 kilobytes"                          },
@@ -250,8 +263,7 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
     [MemberData(nameof(DefaultConversionCases))]
     public void DefaultConversion_Summary(string query, string expectedSummary) {
         var item = GetConversionItem(query);
-        var summary = $"{Fmt(item.FromShort, item.FromLong)} -> {Fmt(item.ToShort, item.ToLong)}";
-        Assert.Equal(expectedSummary, summary);
+        Assert.Equal(expectedSummary, FmtFull(item));
     }
 
     // ── Alias y formas canónicas ─────────────────────────────────────────────
@@ -413,63 +425,63 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         //   Si TryNormalize falla (e.g. 0.01 ms → cadena devuelve misma unidad ms, isInteresting=false),
         //   cae al path regular y math.js sí auto-simplifica (0.01 ms → from "10 µs").
         // ── Temperatura ───────────────────────────────────────────────────────
-        { "0.01c",      "10 mdegC / 10 millicelsius -> 32.02 °F / 32.02 fahrenheit"      },
-        { "0.01f",      "10 mdegF / 10 millifahrenheit -> -17.77 °C / -17.77 celsius"    },
+        { "0.01c",      "0.01 °C / 0.01 celsius > 10 mdegC / 10 millicelsius -> 32.02 °F / 32.02 fahrenheit"    },
+        { "0.01f",      "0.01 °F / 0.01 fahrenheit > 10 mdegF / 10 millifahrenheit -> -17.77 °C / -17.77 celsius" },
         // La parte decimal es tan pequeña que se absorbe en el redondeo a 2 decimales → "32"
-        { "0.00001c",   "10 udegC / 10 microcelsius -> 32 °F / 32 fahrenheit"            },
+        { "0.00001c",   "1e-5 °C / 1e-5 celsius > 10 udegC / 10 microcelsius -> 32 °F / 32 fahrenheit" },
         // 0.00001 = 1e-5: dos pasos SI de simplificación (m→mm→µm; g→mg→µg)
-        { "0.00001 m",  "10 um / 10 micrometers -> 3.280839895e-5 ft / 3.280839895e-5 feet"     },
-        { "0.00001 g",  "10 ug / 10 micrograms -> 3.527396195e-7 oz / 3.527396195e-7 ounces"    },
+        { "0.00001 m",  "1e-5 m / 1e-5 meters > 10 um / 10 micrometers -> 3.280839895e-5 ft / 3.280839895e-5 feet"  },
+        { "0.00001 g",  "1e-5 g / 1e-5 grams > 10 ug / 10 micrograms -> 3.527396195e-7 oz / 3.527396195e-7 ounces" },
         // normalizeUnits (s): from preservado en notación científica; 1e-5 s = 0.01 ms
         { "0.00001 s",  "1e-5 s / 1e-5 seconds -> 0.01 ms / 0.01 milliseconds"                  },
         // ── Electricidad ──────────────────────────────────────────────────────
-        { "0.01W",      "10 mW / 10 milliwatts -> 1e-5 kW / 1e-5 kilowatts"             },
+        { "0.01W",      "0.01 W / 0.01 watts > 10 mW / 10 milliwatts -> 1e-5 kW / 1e-5 kilowatts" },
         // C y F son aliases de degC/degF
-        { "0.01C",      "10 mdegC / 10 millicelsius -> 32.02 °F / 32.02 fahrenheit"     },
-        { "0.01F",      "10 mdegF / 10 millifahrenheit -> -17.77 °C / -17.77 celsius"   },
+        { "0.01C",      "0.01 °C / 0.01 celsius > 10 mdegC / 10 millicelsius -> 32.02 °F / 32.02 fahrenheit" },
+        { "0.01F",      "0.01 °F / 0.01 fahrenheit > 10 mdegF / 10 millifahrenheit -> -17.77 °C / -17.77 celsius" },
         // ── Tiempo ────────────────────────────────────────────────────────────
         { "0.01h",      "0.01 h / 0.01 hours -> 36 s / 36 seconds"                        },
         { "0.01 day",   "0.01 day / 0.01 days -> 14 min 24 s / 14 minutes 24 seconds"    },
         { "0.01 min",   "0.01 min / 0.01 minutes -> 600 ms / 600 milliseconds"           },
         { "0.01s",      "0.01 s / 0.01 seconds -> 10 ms / 10 milliseconds"              },
-        { "0.01ms",     "10 us / 10 microseconds -> 1e-5 s / 1e-5 seconds"               },
-        { "0.001ms",    "1 us / 1 microsecond -> 1e-6 s / 1e-6 seconds"                },
+        { "0.01ms",     "0.01 ms / 0.01 milliseconds > 10 us / 10 microseconds -> 1e-5 s / 1e-5 seconds" },
+        { "0.001ms",    "0.001 ms / 0.001 milliseconds > 1 us / 1 microsecond -> 1e-6 s / 1e-6 seconds" },
         { "0.01Ms",     "0.01 Ms / 0.01 megaseconds -> 2 h 46 min 40 s / 2 hours 46 minutes 40 seconds" },
         // ── Masa ──────────────────────────────────────────────────────────────
-        { "0.01t",      "10 mt / 10 millitonnes -> 22.05 lb / 22.05 pounds"              },
-        { "0.01 g",     "10 mg / 10 milligrams -> 3.527396195e-4 oz / 3.527396195e-4 ounces" },
+        { "0.01t",      "0.01 t / 0.01 tonnes > 10 mt / 10 millitonnes -> 22.05 lb / 22.05 pounds" },
+        { "0.01 g",     "0.01 g / 0.01 grams > 10 mg / 10 milligrams -> 3.527396195e-4 oz / 3.527396195e-4 ounces" },
         { "0.01 oz",    "0.01 oz / 0.01 ounces -> 0.283 g / 0.283 grams"  },
         { "0.01 lb",    "0.01 lb / 0.01 pounds -> 0.00454 kg / 0.00454 kilograms" },
         // ── Longitud ──────────────────────────────────────────────────────────
-        { "0.01 m",     "10 mm / 10 millimeters -> 0.0328 ft / 0.0328 feet" },
-        { "0.01 km",    "10 m / 10 meters -> 0.00621 mile / 0.00621 miles" },
-        { "0.01 cm",    "100 um / 100 micrometers -> 0.00394 in / 0.00394 inches" },
-        { "0.01 mm",    "10 um / 10 micrometers -> 3.937007874e-4 in / 3.937007874e-4 inches" },
+        { "0.01 m",     "0.01 m / 0.01 meters > 10 mm / 10 millimeters -> 0.0328 ft / 0.0328 feet" },
+        { "0.01 km",    "0.01 km / 0.01 kilometers > 10 m / 10 meters -> 0.00621 mile / 0.00621 miles" },
+        { "0.01 cm",    "0.01 cm / 0.01 centimeters > 100 um / 100 micrometers -> 0.00394 in / 0.00394 inches" },
+        { "0.01 mm",    "0.01 mm / 0.01 millimeters > 10 um / 10 micrometers -> 3.937007874e-4 in / 3.937007874e-4 inches" },
         { "0.01 ft",    "0.01 ft / 0.01 feet -> 0.00305 m / 0.00305 meters"            },
         { "0.01 in",    "0.01 in / 0.01 inches -> 0.0254 cm / 0.0254 centimeters"        },
         { "0.01 yard",  "0.01 yard / 0.01 yards -> 0.00914 m / 0.00914 meters"         },
         { "0.01 mi",    "0.01 mi / 0.01 miles -> 0.0161 km / 0.0161 kilometers"  },
         // ── Volumen ───────────────────────────────────────────────────────────
-        { "0.01 l",     "10 mL / 10 millilitres -> 0.00264 gallon / 0.00264 gallons" },
+        { "0.01 l",     "0.01 L / 0.01 litres > 10 mL / 10 millilitres -> 0.00264 gallon / 0.00264 gallons" },
         { "0.01 gal",   "0.01 gallon / 0.01 gallons -> 0.0379 L / 0.0379 litres" },
         // ── Presión ───────────────────────────────────────────────────────────
-        { "0.01 Pa",    "10 mPa -> 1.450377377e-6 psi"                                   },
-        { "0.01 bar",   "10 mbar -> 0.145 psi"                                    },
+        { "0.01 Pa",    "0.01 Pa / 0.01 pascals > 10 mPa -> 1.450377377e-6 psi"          },
+        { "0.01 bar",   "0.01 bar / 0.01 bars > 10 mbar -> 0.145 psi"                    },
         { "0.01 atm",   "0.01 atm / 0.01 atmospheres -> 0.0101 bar / 0.0101 bars"  },
         { "0.01 psi",   "0.01 psi -> 6.894757293e-4 bar / 6.894757293e-4 bars"           },
         { "0.01 torr",  "0.01 torr -> 0.01 mmHg"                                         },
         { "0.01 mmHg",  "0.01 mmHg -> 0.00133 kPa"                                   },
         // ── Fuerza ────────────────────────────────────────────────────────────
-        { "0.01 N",     "10 mN / 10 millinewtons -> 0.00225 lbf / 0.00225 pound-forces" },
+        { "0.01 N",     "0.01 N / 0.01 newtons > 10 mN / 10 millinewtons -> 0.00225 lbf / 0.00225 pound-forces" },
         { "0.01 lbf",   "0.01 lbf / 0.01 pound-forces -> 0.0445 N / 0.0445 newtons" },
         { "0.01 kgf",   "0.01 kgf / 0.01 kilogram-forces -> 0.0981 N / 0.0981 newtons" },
-        { "0.01 dyn",   "10 mdyn / 10 millidynes -> 1e-4 mN / 1e-4 millinewtons"        },
+        { "0.01 dyn",   "0.01 dyn / 0.01 dynes > 10 mdyn / 10 millidynes -> 1e-4 mN / 1e-4 millinewtons" },
         // ── Energía ───────────────────────────────────────────────────────────
-        { "0.01 J",     "10 mJ / 10 millijoules -> 1e-5 kJ / 1e-5 kilojoules"             },
-        { "0.01 kJ",    "10 J / 10 joules -> 0.00278 Wh"                                },
-        { "0.01 Wh",    "10 mWh -> 0.036 kJ / 0.036 kilojoules"                         },
-        { "0.01 eV",    "10 meV / 10 millielectronvolts -> 1.602176565e-21 J / 1.602176565e-21 joules" },
-        { "0.01 erg",   "10 merg -> 1e-9 J / 1e-9 joules"                               },
+        { "0.01 J",     "0.01 J / 0.01 joules > 10 mJ / 10 millijoules -> 1e-5 kJ / 1e-5 kilojoules" },
+        { "0.01 kJ",    "0.01 kJ / 0.01 kilojoules > 10 J / 10 joules -> 0.00278 Wh"   },
+        { "0.01 Wh",    "0.01 Wh > 10 mWh -> 0.036 kJ / 0.036 kilojoules"               },
+        { "0.01 eV",    "0.01 eV / 0.01 electronvolts > 10 meV / 10 millielectronvolts -> 1.602176565e-21 J / 1.602176565e-21 joules" },
+        { "0.01 erg",   "0.01 erg > 10 merg -> 1e-9 J / 1e-9 joules"                    },
         // ── Potencia ──────────────────────────────────────────────────────────
         { "0.01 hp",    "0.01 hp / 0.01 horsepowers -> 0.00746 kW / 0.00746 kilowatts" },
         // ── Datos ─────────────────────────────────────────────────────────────
@@ -490,12 +502,12 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "0.01 tsp",    "0.01 teaspoon / 0.01 teaspoons -> 0.05 mL / 0.05 millilitres" },
         { "0.01 cc",     "0.01 cc / 0.01 cubic centimeters -> 0.01 mL / 0.01 millilitres" },
         // ── Ángulo ────────────────────────────────────────────────────────────
-        { "0.01 rad",   "10 mrad / 10 milliradians -> 0.573 deg / 0.573 degrees" },
-        { "0.01 deg",   "10 mdeg / 10 millidegrees -> 1.745329252e-4 rad / 1.745329252e-4 radians" },
-        { "0.01 grad",  "10 mgrad / 10 milligradians -> 0.009 deg / 0.009 degrees"       },
+        { "0.01 rad",   "0.01 rad / 0.01 radians > 10 mrad / 10 milliradians -> 0.573 deg / 0.573 degrees" },
+        { "0.01 deg",   "0.01 deg / 0.01 degrees > 10 mdeg / 10 millidegrees -> 1.745329252e-4 rad / 1.745329252e-4 radians" },
+        { "0.01 grad",  "0.01 grad / 0.01 gradians > 10 mgrad / 10 milligradians -> 0.009 deg / 0.009 degrees"       },
         { "0.01 arcmin","0.01 arcmin / 0.01 arcminutes -> 0.6 arcsec / 0.6 arcseconds"  },
         // ── Área ──────────────────────────────────────────────────────────────
-        { "0.01 m2",    "10000 mm2 -> 0.108 sqft"                                 },
+        { "0.01 m2",    "0.01 m2 > 10000 mm2 -> 0.108 sqft"                       },
         { "0.01 sqft",  "0.01 sqft -> 9.290304e-4 m2"                                    },
         { "0.01 ha",    "0.01 ha / 0.01 hectares -> 0.0247 acre / 0.0247 acres" },
         { "0.01 acre",  "0.01 acre / 0.01 acres -> 0.00405 ha / 0.00405 hectares"  },
@@ -505,8 +517,7 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
     [MemberData(nameof(UnitAliasCases))]
     public void UnitAlias_NormalizesToCanonical(string query, string expectedSummary) {
         var item = GetConversionItem(query);
-        var summary = $"{Fmt(item.FromShort, item.FromLong)} -> {Fmt(item.ToShort, item.ToLong)}";
-        Assert.Equal(expectedSummary, summary);
+        Assert.Equal(expectedSummary, FmtFull(item));
     }
 
     // ── Prefijos SI: cobertura completa por unidad ───────────────────────────
@@ -531,7 +542,7 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
 
     private void AssertSummary(string query, string expected) {
         var item = GetConversionItem(query);
-        Assert.Equal(expected, $"{Fmt(item.FromShort, item.FromLong)} -> {Fmt(item.ToShort, item.ToLong)}");
+        Assert.Equal(expected, FmtFull(item));
     }
 
     // ── metro ────────────────────────────────────────────────────────────────

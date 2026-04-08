@@ -185,21 +185,42 @@ public sealed class MathJsEngine : IDisposable {
         var lhsExpr = toIdx >= 0 ? normalized.Expr[..toIdx] : normalized.Expr;
 
         // For compound units (e.g. "km / h"), math.js may auto-simplify the result to a custom
-        // unit (e.g. "mph"). Force LHS/RHS display in the original compound units.
-        bool isCompound = normalized.Kind == ExprKind.UnitEntry
-                          && normalized.FromUnit?.Contains('/') == true;
-        var lhsResult = isCompound
+        // unit (e.g. "mph"). Always force the LHS to the user's original unit to get the original from.
+        var isCompound = normalized.Kind == ExprKind.UnitEntry
+                         && normalized.FromUnit?.Contains('/') == true;
+
+        // Original from: force the user's unit — preserves the magnitude as written (e.g. "0.001 V")
+        var origLhsResult = normalized.FromUnit != null
             ? EvalJs($"{lhsExpr} to {normalized.FromUnit}")
             : EvalJs(lhsExpr);
-        var (fromValue, fromUnit) = lhsResult != null
-            ? SplitValueUnit(lhsResult)
+        var (fromValue, fromUnit) = origLhsResult != null
+            ? SplitValueUnit(origLhsResult)
             : ("", normalized.FromUnit ?? "");
+
+        // Normalized from: let math.js choose the unit (e.g. "1 mV"). Only differs for non-compound
+        // SI units when the coefficient is < 1. Null when the result would be the same as the original.
+        string? normFromValue = null, normFromUnit = null;
+        if (!isCompound && normalized.FromUnit != null) {
+            var normLhsResult = EvalJs(lhsExpr);
+            if (normLhsResult != null) {
+                var (nfv, nfu) = SplitValueUnit(normLhsResult);
+                if (nfu != fromUnit) {
+                    normFromValue = nfv;
+                    normFromUnit = nfu;
+                }
+            }
+        }
 
         var (toValue, toUnit) = SplitValueUnit(result);
         if (isCompound) toUnit = normalized.ToUnit ?? toUnit;
         return new ConversionResult(fromValue, fromUnit, toValue, toUnit,
-            FromUnitLong: GetUnitLongName(fromUnit),
-            ToUnitLong:   GetUnitLongName(toUnit)) {
+            FromUnitLong:    GetUnitLongName(fromUnit),
+            ToUnitLong:      GetUnitLongName(toUnit),
+            IsExplicitConversion: normalized.Kind == ExprKind.SimpleConversion,
+            FromWasNormalized:    normFromUnit != null,
+            NormFromValue:        normFromValue,
+            NormFromUnit:         normFromUnit,
+            NormFromUnitLong:     normFromUnit != null ? GetUnitLongName(normFromUnit) : null) {
             NormalizedQuery = normalized.Expr,
             AmbiguityHints = hints
         };
@@ -209,19 +230,39 @@ public sealed class MathJsEngine : IDisposable {
         // For compound FROM units (e.g. "mi / s"), force display in the declared unit to prevent
         // math.js from auto-simplifying to a custom unit (e.g. "kmh") registered in the same dimension.
         bool isCompoundLeft = normalized.FromUnit?.Contains('/') == true;
-        var leftEvalExpr = isCompoundLeft
-            ? $"{normalized.LeftExpr!} to {normalized.FromUnit}"
-            : normalized.LeftExpr!;
-        var leftResult = EvalJs(leftEvalExpr);
-        var (fromValue, fromUnit) = leftResult != null
-            ? SplitValueUnit(leftResult)
+
+        // Original from: force the user's unit to preserve the magnitude as written
+        var origLeftResult = normalized.FromUnit != null
+            ? EvalJs($"{normalized.LeftExpr!} to {normalized.FromUnit}")
+            : EvalJs(normalized.LeftExpr!);
+        var (fromValue, fromUnit) = origLeftResult != null
+            ? SplitValueUnit(origLeftResult)
             : ("", normalized.FromUnit ?? "");
+
+        // Normalized from: let math.js choose (only differs for non-compound SI with coefficient < 1)
+        string? normFromValue = null, normFromUnit = null;
+        if (!isCompoundLeft && normalized.FromUnit != null) {
+            var normLeftResult = EvalJs(normalized.LeftExpr!);
+            if (normLeftResult != null) {
+                var (nfv, nfu) = SplitValueUnit(normLeftResult);
+                if (nfu != fromUnit) {
+                    normFromValue = nfv;
+                    normFromUnit = nfu;
+                }
+            }
+        }
+
         var fullResult = EvalJs(normalized.Expr);
         if (fullResult == null) return new ErrorResult() { NormalizedQuery = normalized.Expr, AmbiguityHints = hints };
         var (toValue, toUnit) = SplitValueUnit(fullResult);
         return new ConversionResult(fromValue, fromUnit, toValue, toUnit,
-            FromUnitLong: GetUnitLongName(fromUnit),
-            ToUnitLong:   GetUnitLongName(toUnit)) {
+            FromUnitLong:    GetUnitLongName(fromUnit),
+            ToUnitLong:      GetUnitLongName(toUnit),
+            IsExplicitConversion: true,
+            FromWasNormalized:    normFromUnit != null,
+            NormFromValue:        normFromValue,
+            NormFromUnit:         normFromUnit,
+            NormFromUnitLong:     normFromUnit != null ? GetUnitLongName(normFromUnit) : null) {
             NormalizedQuery = normalized.Expr,
             AmbiguityHints = hints
         };
@@ -433,7 +474,10 @@ public sealed class MathJsEngine : IDisposable {
         if (components.Count == 1) {
             return new ConversionResult(fromValue, fromUnit, components[0].Value, components[0].Unit,
                 FromUnitLong: GetUnitLongName(fromUnit),
-                ToUnitLong:   GetUnitLongName(components[0].Unit)) {
+                ToUnitLong:   GetUnitLongName(components[0].Unit),
+                IsExplicitConversion: false,
+                FromWasNormalized: false,
+                NormFromValue: null, NormFromUnit: null, NormFromUnitLong: null) {
                 NormalizedQuery = normalized.Expr,
                 AmbiguityHints = hints
             };
@@ -444,7 +488,10 @@ public sealed class MathJsEngine : IDisposable {
         var toLong  = FormatNormalizedLong(components);
         return new ConversionResult(fromValue, fromUnit, toShort, "",
             FromUnitLong: GetUnitLongName(fromUnit),
-            ToUnitLong:   toLong != toShort ? toLong : null) {
+            ToUnitLong:   toLong != toShort ? toLong : null,
+            IsExplicitConversion: false,
+            FromWasNormalized: false,
+            NormFromValue: null, NormFromUnit: null, NormFromUnitLong: null) {
             NormalizedQuery = normalized.Expr,
             AmbiguityHints = hints
         };
