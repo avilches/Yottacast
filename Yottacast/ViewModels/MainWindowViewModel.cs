@@ -151,10 +151,10 @@ public partial class MainWindowViewModel(
             (x is ResultItemViewModel r && r.Category is "Calculator"));
         if (calcResult != null && !_userNavigated) {
             SelectedResult = calcResult;
+        } else if (_userNavigated && previousSelected != null && merged.Contains(previousSelected)) {
+            SelectedResult = previousSelected;
         } else {
-            SelectedResult = previousSelected != null && merged.Contains(previousSelected)
-                ? previousSelected
-                : Results.FirstOrDefault();
+            SelectedResult = Results.FirstOrDefault();
         }
     }
 
