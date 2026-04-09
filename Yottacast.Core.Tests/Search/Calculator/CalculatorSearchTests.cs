@@ -203,9 +203,11 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
 
     // ── Error items ───────────────────────────────────────────────────────────
 
-    // Truly unknown unit in a math-like expression → UnknownSymbol hint
+    // Unknown unit/symbol: intentionally no hint is surfaced. BuildErrorHint knows how to format
+    // UnknownSymbol, but CalculatorSearch.Search only propagates IncompatibleUnits to LastHint —
+    // an "unknown symbol" hint would add noise on non-math queries ("safari to km") without value.
     [Fact]
-    public void UnknownUnit_InMathContext_ShowsErrorItem() {
+    public void UnknownUnit_InMathContext_ReturnsEmptyWithoutHint() {
         var search = BuildSearch(out _);
         Assert.Empty(search.Search("1 XYZUNIT to g", 5));
         Assert.Null(search.LastHint);

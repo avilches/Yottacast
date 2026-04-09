@@ -234,15 +234,15 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         // ── Velocidad compuesta normalizada (unidades no estándar) ──────────────
         // Unidades con entrada directa en defaultTargets — FROM queda como el usuario escribió
         { "2 mi/s",          "2 mi / s / 2 miles per second -> 3.22 km / s / 3.22 kilometers per second"                    },
-        { "60 mi/min",       "60 mi / minute / 60 miles per minute -> 96.56 km / minute / 96.56 kilometers per minute"      },
+        { "60 mi/min",       "60 mi / min / 60 miles per minute -> 96.56 km / min / 96.56 kilometers per minute"            },
         { "5 ft/s",          "5 ft / s / 5 feet per second -> 1.52 m / s / 1.52 meters per second"                          },
-        { "5 ft/min",        "5 ft / minute / 5 feet per minute -> 1.52 m / minute / 1.52 meters per minute"                },
-        { "100 km/min",      "100 km / minute / 100 kilometers per minute -> 3728.23 mi / h / 3728.23 miles per hour"       },
+        { "5 ft/min",        "5 ft / min / 5 feet per minute -> 1.52 m / min / 1.52 meters per minute"                      },
+        { "100 km/min",      "100 km / min / 100 kilometers per minute -> 3728.23 mi / h / 3728.23 miles per hour"          },
         // Unidades no estándar — FROM queda tal como lo escribió el usuario, TO a mi/h vía par dimensional
-        { "2000000 mm/min",  "2e+6 mm / minute / 2e+6 millimeters per minute -> 74.56 mi / h / 74.56 miles per hour"          },
-        { "10 mm/s",         "10 mm / s / 10 millimeters per second -> 0.0224 mi / h / 0.0224 miles per hour"                 },
-        { "50 cm/s",         "50 cm / s / 50 centimeters per second -> 1.12 mi / h / 1.12 miles per hour"                     },
-        { "10 Mm/min",       "10 Mm / minute / 10 megameters per minute -> 3.728227153e+5 mi / h / 3.728227153e+5 miles per hour" },
+        { "2000000 mm/min",  "2e+6 mm / min / 2e+6 millimeters per minute -> 74.56 mi / h / 74.56 miles per hour"           },
+        { "10 mm/s",         "10 mm / s / 10 millimeters per second -> 0.0224 mi / h / 0.0224 miles per hour"               },
+        { "50 cm/s",         "50 cm / s / 50 centimeters per second -> 1.12 mi / h / 1.12 miles per hour"                   },
+        { "10 Mm/min",       "10 Mm / min / 10 megameters per minute -> 3.728227153e+5 mi / h / 3.728227153e+5 miles per hour" },
         // ── Tasas de datos (bit/s ↔ byte/s) ─────────────────────────────────────
         { "1 Gbps",      "1 Gbps / 1 gigabit per second -> 125 MB / s / 125 megabytes per second"    },
         { "100 Mbps",    "100 Mbps / 100 megabits per second -> 12.5 MB / s / 12.5 megabytes per second" },
@@ -279,69 +279,37 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         { "10 hours",       "10 h / 10 hours -> 600 min / 600 minutes"                  },
         { "10 seconds",     "10 s / 10 seconds -> 10000 ms / 10000 milliseconds"        },
         { "10 milliseconds","10 ms / 10 milliseconds -> 0.01 s / 0.01 seconds"          },
-        { "10 minutes",     "10 min / 10 minutes " +
-                            "-> 600 s / 600 seconds"                },
-        { "10 days",        "10 day / 10 days -> 240 h / 240 hours"                     },
+        { "10 minutes",     "10 min / 10 minutes -> 600 s / 600 seconds"                },
         { "10 weeks",       "10 week / 10 weeks -> 70 day / 70 days"                    },
-        { "10 years",       "10 year / 10 years -> 3652.5 day / 3652.5 days"          },
+        { "10 years",       "10 year / 10 years -> 3652.5 day / 3652.5 days"            },
         // Tiempo — capitalización variada
         { "10 Hour",        "10 h / 10 hours -> 600 min / 600 minutes"                  },
         { "10 Hours",       "10 h / 10 hours -> 600 min / 600 minutes"                  },
         { "10 HOURS",       "10 h / 10 hours -> 600 min / 600 minutes"                  },
         // ── Temperatura — formas largas y capitalización ─────────────────────
         { "100 celsius",    "100 °C / 100 celsius -> 212 °F / 212 fahrenheit"           },
-        { "100 fahrenheit", "100 °F / 100 fahrenheit -> 37.78 °C / 37.78 celsius"        },
+        { "100 fahrenheit", "100 °F / 100 fahrenheit -> 37.78 °C / 37.78 celsius"       },
         { "100 Celsius",    "100 °C / 100 celsius -> 212 °F / 212 fahrenheit"           },
-        { "100 FAHRENHEIT", "100 °F / 100 fahrenheit -> 37.78 °C / 37.78 celsius"        },
-        // ── Longitud — formas largas y plurales ──────────────────────────────
+        { "100 FAHRENHEIT", "100 °F / 100 fahrenheit -> 37.78 °C / 37.78 celsius"       },
+        // ── Longitud — formas singulares largas no cubiertas en DefaultConversionCases ─
         { "10 foot",        "10 ft / 10 feet -> 3.05 m / 3.05 meters"                   },
-        { "10 feet",        "10 ft / 10 feet -> 3.05 m / 3.05 meters"                   },
-        { "10 inch",        "10 in / 10 inches -> 25.4 cm / 25.4 centimeters"           },
-        { "10 inches",      "10 in / 10 inches -> 25.4 cm / 25.4 centimeters"           },
-        { "10 mile",        "10 mi / 10 miles -> 16.09 km / 16.09 kilometers"           },
-        { "10 miles",       "10 mi / 10 miles -> 16.09 km / 16.09 kilometers"           },
-        { "10 yards",       "10 yard / 10 yards -> 9.14 m / 9.14 meters"                },
-        // ── Masa — formas largas y plurales ──────────────────────────────────
+        // ── Masa — formas singulares largas ──────────────────────────────────
         { "10 ounce",       "10 oz / 10 ounces -> 283.5 g / 283.5 grams"                },
-        { "10 ounces",      "10 oz / 10 ounces -> 283.5 g / 283.5 grams"                },
-        { "10 pound",       "10 lb / 10 pounds -> 4.54 kg / 4.54 kilograms"             },
-        { "10 pounds",      "10 lb / 10 pounds -> 4.54 kg / 4.54 kilograms"             },
         // ── Volumen — formas largas y plurales ───────────────────────────────
         { "10 liter",       "10 L / 10 litres -> 2.64 gallon / 2.64 gallons"            },
         { "10 litre",       "10 L / 10 litres -> 2.64 gallon / 2.64 gallons"            },
         { "10 liters",      "10 L / 10 litres -> 2.64 gallon / 2.64 gallons"            },
         { "10 litres",      "10 L / 10 litres -> 2.64 gallon / 2.64 gallons"            },
-        { "10 gallons",     "10 gallon / 10 gallons -> 37.85 L / 37.85 litres"          },
-        // ── Área — tokenAlias ha→hectare ─────────────────────────────────────
-        { "10 hectare",     "10 ha / 10 hectares -> 24.71 acre / 24.71 acres"           },
-        { "10 hectares",    "10 ha / 10 hectares -> 24.71 acre / 24.71 acres"           },
-        // ── Potencia — formas largas ──────────────────────────────────────────
-        { "10 horsepower",  "10 hp / 10 horsepowers -> 7.46 kW / 7.46 kilowatts"       },
-        { "10 horsepowers", "10 hp / 10 horsepowers -> 7.46 kW / 7.46 kilowatts"       },
-        // ── Masa — formas largas y plurales ──────────────────────────────────
-        { "10 gram",        "10 g / 10 grams -> 0.353 oz / 0.353 ounces"    },
-        { "10 tonne",       "10 t / 10 tonnes -> 22046.23 lb / 22046.23 pounds"            },
+        // ── Masa — formas largas singulares ──────────────────────────────────
+        { "10 gram",        "10 g / 10 grams -> 0.353 oz / 0.353 ounces"                },
+        { "10 tonne",       "10 t / 10 tonnes -> 22046.23 lb / 22046.23 pounds"         },
         // ── Electricidad — formas largas ──────────────────────────────────────
-        { "10 watt",        "10 W / 10 watts -> 0.01 kW / 0.01 kilowatts"                },
+        { "10 watt",        "10 W / 10 watts -> 0.01 kW / 0.01 kilowatts"               },
         // ── Presión — formas largas ───────────────────────────────────────────
-        { "10 pascal",      "10 Pa / 10 pascals -> 0.00145 psi"                    },
-        { "10 atmosphere",  "10 atm / 10 atmospheres -> 10.13 bar / 10.13 bars"           },
-        // ── Longitud — formas largas ──────────────────────────────────────────
-        { "10 meter",       "10 m / 10 meters -> 32.81 ft / 32.81 feet"                   },
-        { "10 meters",      "10 m / 10 meters -> 32.81 ft / 32.81 feet"                   },
-        { "10 kilometer",   "10 km / 10 kilometers -> 6.21 mile / 6.21 miles"             },
-        { "10 kilometers",  "10 km / 10 kilometers -> 6.21 mile / 6.21 miles"             },
-        { "10 centimeter",  "10 cm / 10 centimeters -> 3.94 in / 3.94 inches"             },
-        { "10 centimeters", "10 cm / 10 centimeters -> 3.94 in / 3.94 inches"             },
-        { "10 millimeter",  "10 mm / 10 millimeters -> 0.394 in / 0.394 inches" },
-        { "10 millimeters", "10 mm / 10 millimeters -> 0.394 in / 0.394 inches" },
-        // ── Volumen — formas largas ───────────────────────────────────────────
-        { "10 gal",         "10 gallon / 10 gallons -> 37.85 L / 37.85 litres"            },
-        // ── Fuerza — formas largas y poundforce ──────────────────────────────
-        { "10 newton",      "10 N / 10 newtons -> 2.25 lbf / 2.25 pound-forces"          },
-        { "10 newtons",     "10 N / 10 newtons -> 2.25 lbf / 2.25 pound-forces"          },
-        { "10poundforce",   "10 lbf / 10 pound-forces -> 44.48 N / 44.48 newtons"        },
-        { "10 poundforces", "10 lbf / 10 pound-forces -> 44.48 N / 44.48 newtons"        },
+        { "10 pascal",      "10 Pa / 10 pascals -> 0.00145 psi"                         },
+        // ── Fuerza — poundforce long form ────────────────────────────────────
+        { "10poundforce",   "10 lbf / 10 pound-forces -> 44.48 N / 44.48 newtons"       },
+        { "10 poundforces", "10 lbf / 10 pound-forces -> 44.48 N / 44.48 newtons"       },
         // ── Datos — formas largas y plurales ─────────────────────────────────
         { "10 byte",        "10 B / 10 bytes -> 0.01 kB / 0.01 kilobytes"                },
         { "10 bytes",       "10 B / 10 bytes -> 0.01 kB / 0.01 kilobytes"                },
@@ -848,4 +816,58 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         Assert.Equal(expectedSummary, summary);
     }
 
+    // ── forceAmbiguous: emite AmbiguityHint aun resolviendo al símbolo forzado ──
+    // "mS" = millisiemens en math.js, pero forceAmbiguous lo redirige a ms (milliseconds)
+    // y además marca la resolución como ambigua para avisar al usuario del conflicto.
+    // Ver unit-config.json: "forceAmbiguous": { "mS": "ms", "MS": "ms" }.
+    [Fact]
+    public void ForceAmbiguous_mS_ResolvesToMilliseconds_WithAmbiguityHint() {
+        var item = GetConversionItem("10 mS");
+        Assert.Equal("10 ms", item.FromShort);
+        Assert.NotNull(item.AmbiguityHint);
+        Assert.Contains("Maybe you meant", item.AmbiguityHint);
+    }
+
+    // ── ambiguityOverrides: resuelve al símbolo canónico preferido ──────────────
+    // A diferencia de forceAmbiguous, ambiguityOverrides resuelve la ambigüedad a un
+    // único símbolo "canónico" preferido. Aun así emite AmbiguityHint porque sigue
+    // habiendo alternativas que el usuario podría haber querido.
+    // "10 pa" → Pa (pascal) vía override; con hint de PA/pA como alternativas.
+    [Fact]
+    public void AmbiguityOverride_pa_ResolvesToPascal() {
+        var item = GetConversionItem("10 pa");
+        Assert.Equal("10 Pa", item.FromShort);
+        Assert.NotNull(item.AmbiguityHint);
+    }
+
+    // "10 mhz" → MHz (megahertz) vía override; alternativa mHz (millihertz) en hint
+    [Fact]
+    public void AmbiguityOverride_mhz_ResolvesToMegahertz() {
+        var item = GetConversionItem("10 mhz");
+        Assert.Equal("10 MHz", item.FromShort);
+        Assert.NotNull(item.AmbiguityHint);
+        Assert.Contains("mHz", item.AmbiguityHint);
+    }
+
+    // ── minute: display short "min" (displayNames) ──────────────────────────────
+    // Para "1 minute" (singular), el FromShort se acorta a "min" vía displayNames,
+    // pero el FromLong puede quedar null cuando math.js no deriva un nombre largo
+    // distinto del símbolo del usuario. El ToShort/ToLong se derivan normalmente.
+    [Fact]
+    public void Minute_Singular_ShortForm() {
+        var item = GetConversionItem("1 minute");
+        Assert.Equal("1 min", item.FromShort);
+        Assert.Equal("60 s", item.ToShort);
+        Assert.Equal("60 seconds", item.ToLong);
+    }
+
+    // ── complex_conversion con LHS aritmético ──────────────────────────────────
+    // Expresiones como "10 m + 5 cm to ft" tienen LHS aritmético (no "número * símbolo"),
+    // por lo que NormFromUnit queda null y el summary no muestra celda intermedia.
+    [Fact]
+    public void ComplexConversion_ArithmeticLhs_ToFeet() {
+        var item = GetConversionItem("10 m + 5 cm to ft");
+        Assert.Contains("ft", item.ToShort);
+        Assert.Null(item.NormFromShort); // LHS aritmético no produce norm-from cell
+    }
 }

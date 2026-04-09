@@ -43,17 +43,16 @@ public sealed class MathJsEngine : IDisposable {
 
     private IReadOnlyDictionary<string, string> _inputAliases = new Dictionary<string, string>();
     private IReadOnlyDictionary<string, string> _displayNames = new Dictionary<string, string>();
-    private HashSet<string> _normalizeUnits = [];
 
+    /// <summary>
+    /// Only the fields C# needs directly are deserialized here; the rest of the JSON
+    /// (tokenAliases, evalSafeAliases, longNames, defaultTargets, defaultPairs, forceAmbiguous,
+    /// ambiguityOverrides, normalizeUnits, blocked) is forwarded to JS via
+    /// <c>loadAliasData(_aliasJson)</c>, where it's consumed inside <c>mathjs-helpers.js</c>.
+    /// </summary>
     private record UnitConfig(
-        [property: JsonPropertyName("inputAliases")]        Dictionary<string, string>  InputAliases,
-        [property: JsonPropertyName("tokenAliases")]        Dictionary<string, string>  TokenAliases,
-        [property: JsonPropertyName("ambiguityOverrides")]  Dictionary<string, string>? AmbiguityOverrides,
-        [property: JsonPropertyName("displayNames")]        Dictionary<string, string>  DisplayNames,
-        [property: JsonPropertyName("longNames")]           Dictionary<string, string>? LongNames,
-        [property: JsonPropertyName("defaultTargets")]      Dictionary<string, string>  DefaultTargets,
-        [property: JsonPropertyName("blocked")]             List<string>                Blocked,
-        [property: JsonPropertyName("normalizeUnits")]      List<string>?               NormalizeUnits);
+        [property: JsonPropertyName("inputAliases")] Dictionary<string, string> InputAliases,
+        [property: JsonPropertyName("displayNames")] Dictionary<string, string> DisplayNames);
 
     public MathJsEngine(ICurrencyRateProvider currencyRates, FormatConfig? formatConfig = null) {
         _currencyRates = currencyRates;
@@ -81,9 +80,6 @@ public sealed class MathJsEngine : IDisposable {
         var aliasData = JsonSerializer.Deserialize<UnitConfig>(aliasJson)!;
         _inputAliases = aliasData.InputAliases;
         _displayNames = aliasData.DisplayNames;
-        _normalizeUnits = new HashSet<string>(
-            aliasData.NormalizeUnits ?? [],
-            StringComparer.OrdinalIgnoreCase);
         engine.SetValue("_aliasJson", aliasJson);
         engine.Execute("loadAliasData(JSON.parse(_aliasJson));");
 
@@ -348,9 +344,19 @@ public sealed class MathJsEngine : IDisposable {
         }
     }
 
-    /// <summary>Returns the display-friendly name for a unit symbol (e.g. "degC" → "°C").</summary>
-    public string DisplayUnit(string unit) =>
-        _displayNames.TryGetValue(unit, out var display) ? display : unit;
+    /// <summary>
+    /// Returns the display-friendly name for a unit symbol (e.g. "degC" → "°C", "minute" → "min").
+    /// For compound units ("mi / minute") the lookup is applied to each component so the user sees
+    /// "mi / min" instead of "mi / minute".
+    /// </summary>
+    public string DisplayUnit(string unit) {
+        var slashIdx = unit.IndexOf(" / ", StringComparison.Ordinal);
+        if (slashIdx < 0)
+            return _displayNames.TryGetValue(unit, out var display) ? display : unit;
+        var num = unit[..slashIdx];
+        var den = unit[(slashIdx + 3)..];
+        return $"{DisplayUnit(num)} / {DisplayUnit(den)}";
+    }
 
     private NormalizedExpression? NormalizeExpressionCore(string expression, string knownCsv) {
         // Apply special-char input aliases (e.g., "°c" → "degC") before parsing
@@ -418,11 +424,8 @@ public sealed class MathJsEngine : IDisposable {
 
     private record NormComponent(string Value, string Unit, string Display, string LongName);
 
-    private bool IsNormalizableUnit(string unit) {
-        if (_normalizeUnits.Contains(unit)) return true;
-        var result = _engine!.Evaluate($"isNormalizableUnit('{Escape(unit)}')").ToString();
-        return result == "true";
-    }
+    private bool IsNormalizableUnit(string unit) =>
+        _engine!.Evaluate($"isNormalizableUnit('{Escape(unit)}')").ToString() == "true";
 
     private List<NormComponent>? ComputeNormalization(string value, string unit) {
         var json = _engine!.Evaluate(
@@ -445,16 +448,7 @@ public sealed class MathJsEngine : IDisposable {
         string.Join(" ", components.Select(c => $"{c.Value} {c.Display}"));
 
     private static string FormatNormalizedLong(List<NormComponent> components) =>
-        string.Join(" ", components.Select(c => $"{c.Value} {PluralizeName(c.LongName, c.Value)}"));
-
-    private static string PluralizeName(string name, string valueStr) {
-        if (!double.TryParse(valueStr, System.Globalization.NumberStyles.Float,
-                System.Globalization.CultureInfo.InvariantCulture, out var d)) return name;
-        if (Math.Abs(d) == 1.0) return name;
-        if (name == "foot")  return "feet";
-        if (name == "inch")  return "inches";
-        return name.EndsWith('s') || name.EndsWith("heit") ? name : name + "s";
-    }
+        string.Join(" ", components.Select(c => $"{c.Value} {UnitPluralizer.Pluralize(c.LongName, c.Value)}"));
 
     private ConversionResult? TryNormalize(NormalizedExpression normalized, IReadOnlyList<AmbiguityHint>? hints) {
         var toIdx = normalized.Expr.LastIndexOf(" to ", StringComparison.Ordinal);

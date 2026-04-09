@@ -1,4 +1,3 @@
-using System.Globalization;
 using Yottacast.Core.Services;
 using Yottacast.Core.ViewModels;
 
@@ -107,30 +106,9 @@ public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard) :
         return string.Join("  ", parts);
     }
 
-    private static string Pluralize(string name, string valueStr) {
-        if (!double.TryParse(valueStr, NumberStyles.Float, CultureInfo.InvariantCulture, out var d))
-            return name;
-        if (Math.Abs(d) == 1.0) return name;
-        if (name == "foot")  return "feet";
-        if (name == "inch")  return "inches";
-        if (name.EndsWith("hertz")) return name;   // hertz, kilohertz, megahertz, … no pluralizan
-        // "X per Y" compound names: pluralize first word only (e.g. "kilometer per hour" → "kilometers per hour")
-        var perIdx = name.IndexOf(" per ", StringComparison.Ordinal);
-        if (perIdx > 0) {
-            var first = name[..perIdx];
-            var pluralFirst = first switch {
-                "foot" => "feet",
-                "inch" => "inches",
-                _      => first.EndsWith('s') ? first : first + "s"
-            };
-            return pluralFirst + name[perIdx..];
-        }
-        return name.EndsWith('s') || name.EndsWith("heit") ? name : name + "s";
-    }
-
     private static string? LongForm(string value, string? unitLong, string unitShort) {
         if (unitLong == null) return null;
-        var s = $"{value} {Pluralize(unitLong, value)}";
+        var s = $"{value} {UnitPluralizer.Pluralize(unitLong, value)}";
         var shortForm = $"{value} {unitShort}".Trim();
         return s == shortForm ? null : s;
     }
