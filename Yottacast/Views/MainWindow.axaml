@@ -3,6 +3,7 @@
         xmlns:vm="using:Yottacast.ViewModels"
         xmlns:conv="using:Avalonia.Data.Converters"
         xmlns:viewModels="clr-namespace:Yottacast.Core.ViewModels;assembly=Yottacast.Core"
+        xmlns:results="using:Yottacast.Views.Results"
         x:Class="Yottacast.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="Yottacast"
@@ -191,136 +192,12 @@
                 <ListBox.DataTemplates>
                     <!-- Template for emoji grid (more specific type first) -->
                     <DataTemplate x:DataType="viewModels:EmojiGridResultViewModel">
-                        <StackPanel Orientation="Vertical" Margin="4,8,4,8">
-                            <ItemsControl ItemsSource="{Binding Cells}">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <UniformGrid Columns="8"/>
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="viewModels:EmojiCellViewModel">
-                                        <Border Width="40" Height="40" CornerRadius="8" Margin="2"
-                                                Classes.emoji-selected="{Binding IsSelected}">
-                                            <TextBlock Text="{Binding Char}" FontSize="22"
-                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                            <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Margin="0,6,0,0" Spacing="2">
-                                <TextBlock Text="{Binding SelectedEmoji.Name}"
-                                           Foreground="{DynamicResource Theme.ItemTitle}"
-                                           FontSize="{DynamicResource Theme.FontSizeTitle}"
-                                           FontWeight="Medium"
-                                           HorizontalAlignment="Center"/>
-                                <TextBlock Text="{Binding SelectedEmoji.Category}"
-                                           Foreground="{DynamicResource Theme.ItemCategory}"
-                                           FontSize="{DynamicResource Theme.FontSizeSmall}"
-                                           HorizontalAlignment="Center"/>
-                                <TextBlock Text="{Binding SelectedEmoji.KeywordsText}"
-                                           Foreground="{DynamicResource Theme.ItemSubtitle}"
-                                           FontSize="{DynamicResource Theme.FontSizeSmall}"
-                                           HorizontalAlignment="Center"
-                                           TextWrapping="Wrap"
-                                           MaxWidth="400"/>
-                            </StackPanel>
-                        </StackPanel>
+                        <results:EmojiGridResultView/>
                     </DataTemplate>
 
                     <!-- Conversion template (two-column from → to layout) -->
                     <DataTemplate x:DataType="viewModels:ConversionResultItemViewModel">
-                        <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" MinHeight="44">
-
-                            <!-- Icon box -->
-                            <Border Grid.Column="0"
-                                    Classes="icon-box"
-                                    Width="36" Height="36"
-                                    CornerRadius="{DynamicResource Theme.CornerRadiusIcon}"
-                                    Background="{DynamicResource Theme.ItemIconBackground}"
-                                    VerticalAlignment="Center"
-                                    Margin="0,0,12,0">
-                                <TextBlock Text="{Binding Icon}"
-                                           FontSize="17"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"/>
-                            </Border>
-
-                            <!-- From → [NormFrom →] To  (NormFrom only when math.js simplified the from) -->
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                <!-- From (original — the value as the user typed it) -->
-                                <Border CornerRadius="6" Padding="6,3"
-                                        Classes.conv-cell-selected="{Binding IsOrigFromHighlighted}">
-                                    <StackPanel Orientation="Vertical" Spacing="2">
-                                        <TextBlock Text="{Binding FromShort}"
-                                                   Foreground="{DynamicResource Theme.ItemTitle}"
-                                                   FontSize="{DynamicResource Theme.FontSizeTitle}"
-                                                   FontWeight="Medium"/>
-                                        <TextBlock Text="{Binding FromLong}"
-                                                   Foreground="{DynamicResource Theme.ItemSubtitle}"
-                                                   FontSize="{DynamicResource Theme.FontSizeSubtitle}"
-                                                   IsVisible="{Binding FromLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                                    </StackPanel>
-                                </Border>
-                                <!-- Arrow 1 (always visible) -->
-                                <TextBlock Text="→"
-                                           Foreground="{DynamicResource Theme.ItemSubtitle}"
-                                           VerticalAlignment="Center"
-                                           Margin="8,0"/>
-                                <!-- NormFrom (only when math.js changed the from unit) -->
-                                <Border IsVisible="{Binding FromWasNormalized}"
-                                        CornerRadius="6" Padding="6,3"
-                                        Classes.conv-cell-selected="{Binding IsNormFromHighlighted}">
-                                    <StackPanel Orientation="Vertical" Spacing="2">
-                                        <TextBlock Text="{Binding NormFromShort}"
-                                                   Foreground="{DynamicResource Theme.ItemTitle}"
-                                                   FontSize="{DynamicResource Theme.FontSizeTitle}"
-                                                   FontWeight="Medium"/>
-                                        <TextBlock Text="{Binding NormFromLong}"
-                                                   Foreground="{DynamicResource Theme.ItemSubtitle}"
-                                                   FontSize="{DynamicResource Theme.FontSizeSubtitle}"
-                                                   IsVisible="{Binding NormFromLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                                    </StackPanel>
-                                </Border>
-                                <!-- Arrow 2 (only when NormFrom is shown) -->
-                                <TextBlock IsVisible="{Binding FromWasNormalized}"
-                                           Text="→"
-                                           Foreground="{DynamicResource Theme.ItemSubtitle}"
-                                           VerticalAlignment="Center"
-                                           Margin="8,0"/>
-                                <!-- To -->
-                                <Border CornerRadius="6" Padding="6,3"
-                                        Classes.conv-cell-selected="{Binding IsToHighlighted}">
-                                    <StackPanel Orientation="Vertical" Spacing="2">
-                                        <TextBlock Text="{Binding ToShort}"
-                                                   Foreground="{DynamicResource Theme.ItemTitle}"
-                                                   FontSize="{DynamicResource Theme.FontSizeTitle}"
-                                                   FontWeight="Medium"/>
-                                        <TextBlock Text="{Binding ToLong}"
-                                                   Foreground="{DynamicResource Theme.ItemSubtitle}"
-                                                   FontSize="{DynamicResource Theme.FontSizeSubtitle}"
-                                                   IsVisible="{Binding ToLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                                    </StackPanel>
-                                </Border>
-                            </StackPanel>
-
-                            <!-- Category -->
-                            <TextBlock Grid.Column="2"
-                                       Text="{Binding Category}"
-                                       Foreground="{DynamicResource Theme.ItemCategory}"
-                                       FontSize="{DynamicResource Theme.FontSizeSmall}"
-                                       VerticalAlignment="Center"
-                                       Margin="12,0,0,0"/>
-
-                            <!-- Ambiguity hint row -->
-                            <TextBlock Grid.Row="1" Grid.Column="1"
-                                       Text="{Binding AmbiguityHint}"
-                                       Foreground="{DynamicResource Theme.ItemSubtitle}"
-                                       FontSize="{DynamicResource Theme.FontSizeSubtitle}"
-                                       IsVisible="{Binding AmbiguityHint, Converter={x:Static ObjectConverters.IsNotNull}}"
-                                       Margin="0,2,0,4"/>
-
-                        </Grid>
+                        <results:ConversionResultItemView/>
                     </DataTemplate>
 
                     <!-- Standard template (apps, files, etc.) -->
