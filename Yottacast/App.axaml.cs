@@ -142,6 +142,7 @@ public partial class App : Application {
 
         services.AddSingleton<ThemeService>();
         services.AddSingleton<AppIconCache>();
+        services.AddSingleton<FileIconCache>();
         services.AddSingleton<ApplicationSearch>();
         services.AddSingleton<BrowserDiscovery>();
         services.AddSingleton<TerminalDiscovery>();

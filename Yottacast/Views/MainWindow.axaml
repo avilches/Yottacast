@@ -86,9 +86,6 @@
         <Style Selector="ListBoxItem:selected TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource Theme.ItemSelectionText}"/>
         </Style>
-        <Style Selector="ListBoxItem:selected Border.icon-box">
-            <Setter Property="Background" Value="{DynamicResource Theme.ItemSelectionIconBackground}"/>
-        </Style>
         <!-- Emoji cell selection highlight -->
         <Style Selector="Border.emoji-selected">
             <Setter Property="Background" Value="{DynamicResource Theme.ItemSelectionIconBackground}"/>
@@ -204,15 +201,17 @@
                             <!-- Icon box -->
                             <Border Grid.Column="0"
                                     Classes="icon-box"
-                                    Width="36" Height="36"
+                                    Width="40" Height="40"
                                     CornerRadius="{DynamicResource Theme.CornerRadiusIcon}"
-                                    Background="{DynamicResource Theme.ItemIconBackground}"
+                                    ClipToBounds="True"
                                     VerticalAlignment="Center"
                                     Margin="0,0,12,0">
                                 <Panel>
                                     <Image IsVisible="{Binding IconBytes, Converter={x:Static ObjectConverters.IsNotNull}}"
                                            Source="{Binding IconBytes, Converter={StaticResource PathToAppIcon}}"
-                                           Width="28" Height="28"
+                                           Width="40" Height="40"
+                                           Stretch="UniformToFill"
+                                           RenderOptions.BitmapInterpolationMode="HighQuality"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center"/>
                                     <TextBlock IsVisible="{Binding IconBytes, Converter={x:Static ObjectConverters.IsNull}}"

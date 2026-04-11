@@ -16,7 +16,7 @@ Evento `AppAdded` notifica cuando se detecta una app nueva (disponible para susc
 
 **Cambio de AppDirectories en settings** ⚠️ TODO: `ReloadAppDirectories()` no está implementado. `SettingsWindowViewModel` gestiona `AppDirectories` con un `ObservableCollection` y un `CollectionChanged` que llama `Save()`, pero los cambios no recargan el caché de `ApplicationSearch`. Para implementarlo correctamente habría que hacer `Stop()` + `Start()` limpiando el caché.
 
-**Gotcha: Lazy icon en AppInfo** — `AppInfo` usa `Lazy<T>` para diferir la lectura de `Info.plist` hasta el primer acceso al icono, evitando parsear cientos de plists al arranque.
+**`AppInfo`** es un record simple con `Name` y `Path`. La carga de iconos ya no vive en `AppInfo` sino en `AppIconCache`.
 
 **Guard de arranque idempotente** — `Start()` comprueba `_started` antes de lanzar el escaneo; llamadas repetidas son no-op. `Stop()` resetea `_started = false`, haciendo el ciclo `Stop()` + `Start()` válido para un reinicio limpio, aunque actualmente ningún código lo ejecuta. ⚠️ `_started` es un `bool` plano sin sincronización — llamadas concurrentes a `Start()` podrían crear una race condition.
 
@@ -118,15 +118,29 @@ Ver `docs/search-files.md` para la documentación de `FileSearch` y los backends
 
 **`Stop()`** limpia el caché, cancela el CTS de background, elimina todos los watchers y resetea `_readyTcs`. Esto permite un reinicio limpio llamando de nuevo a `Start()`, aunque actualmente ningún código lo hace.
 
-**`AddApp()`** solo dispara el evento `AppAdded` si la clave no existía previamente en el caché (`isNew`). Las reescrituras (update de una app ya conocida) no disparan el evento.
+**`AddApp()`** registra la app en el diccionario, llama `iconCache.PreloadAsync(path)` (fire-and-forget) y dispara `AppAdded` solo si la clave no existía previamente (`isNew`). Las reescrituras no disparan el evento.
 
-**Scoring en `Search()`**: el score es el devuelto por `NameMatcher.Score` sin ninguna transformación adicional. La categoría es `"Applications"` y el icono es `"📱"`.
+**Scoring en `Search()`**: el score es el devuelto por `NameMatcher.Score` sin ninguna transformación adicional. La categoría es `"Applications"`. El icono fallback es `"📱"`; si `AppIconCache` ya tiene los bytes del icono en memoria, se asignan a `IconBytes` y la UI muestra la imagen real en su lugar.
 
 ## Iconos de apps
 
-**macOS**: `GetAppIconPath` lee `Contents/Info.plist` como texto (búsqueda de string, no parse XML), extrae el valor de `CFBundleIconFile`, añade `.icns` si no tiene extensión y verifica que el archivo exista en `Contents/Resources/`. Si cualquier paso falla, devuelve `null`.
+Los iconos se gestionan en dos capas: carga (plataforma + caché) y renderizado (UI).
 
-**Windows y Linux**: `GetAppIconPath` devuelve siempre `null` — los iconos de apps no están implementados en estas plataformas.
+**`AppIconCache`** (ver `Yottacast.Core/Services/AppIconCache.cs`) es un servicio singleton con caché de dos niveles:
+
+- **Memoria**: `ConcurrentDictionary<string, byte[]?>` indexado por la ruta del bundle (`.app`). `Get(appPath)` es O(1) y se llama en cada `Search()`.
+- **Disco**: `~/.cache/yottacast/app-icons/{sha1(appPath)}_{mtime_unix}.png`. El sufijo de mtime invalida la entrada automáticamente cuando la app se actualiza. Los archivos huérfanos de versiones anteriores no se limpian activamente.
+
+`PreloadAsync(appPath)` se llama (fire-and-forget) desde `AddApp()` cada vez que se descubre una app — durante el escaneo inicial y desde los watchers. Comprueba disco primero; si falla, llama a `platform.GetAppIconBytes`. Ignora llamadas duplicadas para la misma ruta.
+
+Cuando un icono termina de cargarse con bytes no nulos, `AppIconCache` dispara `IconLoaded`. `ApplicationSearch` expone este evento; `MainWindowViewModel` se suscribe en `Initialize()` y re-ejecuta `SearchInstant` en el hilo UI para refrescar los resultados visibles con el icono recién disponible.
+
+**`PlatformProvider.GetAppIconBytes`** — virtual, devuelve `null` por defecto:
+
+- **macOS**: usa `NSWorkspace.iconForFile:` vía P/Invoke a `libobjc.dylib`. Tras obtener el `NSImage`, llama `setSize: 128×128` para forzar la representación de alta resolución, extrae `TIFFRepresentation`, convierte a PNG vía `NSBitmapImageRep` y devuelve los bytes. Ver `MacOsPlatformProvider.GetAppIconBytes`.
+- **Windows y Linux**: no implementado, devuelve `null`.
+
+**Renderizado**: el converter `PathToAppIconConverter` (en `Yottacast/Converters/`) recibe `byte[]?` de `ResultItemViewModel.IconBytes` y devuelve un `Bitmap` de Avalonia usando `ConditionalWeakTable<byte[], Bitmap>` como caché, de modo que los bitmaps se liberan junto con los bytes que los originaron. En el DataTemplate de `ResultItemViewModel` se muestra la `Image` cuando `IconBytes != null` y el emoji fallback cuando es `null`.
 
 ## RandomSearch
 

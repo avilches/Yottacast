@@ -16,7 +16,8 @@ public class UserDocumentSearchTests {
         var platform = new FakePlatformProvider(files);
         var settings = UserSettings.Load(platform);
         var fileSearch = new FileSearch(platform);
-        return new UserDocumentSearch(settings, fileSearch, NullLogger<UserDocumentSearch>.Instance);
+        var fileIconCache = new FileIconCache(platform, NullLogger<FileIconCache>.Instance);
+        return new UserDocumentSearch(settings, fileSearch, fileIconCache, NullLogger<UserDocumentSearch>.Instance);
     }
 
     /// <summary>Collects all snapshots and returns the last one (final state).</summary>

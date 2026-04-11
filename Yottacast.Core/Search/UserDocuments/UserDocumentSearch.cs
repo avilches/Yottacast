@@ -16,6 +16,7 @@ namespace Yottacast.Core.Search.UserDocuments;
 public class UserDocumentSearch(
     UserSettings settings,
     FileSearch fileSearch,
+    FileIconCache fileIconCache,
     ILogger<UserDocumentSearch> logger,
     int timeoutMs = 20_000) : IDeferredSearchSource {
 
@@ -68,8 +69,10 @@ public class UserDocumentSearch(
                                     score = 0.5;
                             }
                         }
+                        fileIconCache.PreloadAsync(r.Path);
                         buffer.Add(new ResultItemViewModel {
-                            Icon = "📁",
+                            Icon = GetFileIcon(Path.GetExtension(r.Name)),
+                            IconBytes = fileIconCache.Get(r.Path),
                             Title = r.Name,
                             Subtitle = r.Path,
                             Category = "Files",
@@ -79,6 +82,7 @@ public class UserDocumentSearch(
                         var now = Environment.TickCount64;
                         if (now - lastSnapshot >= SnapshotIntervalMs) {
                             lastSnapshot = now;
+                            RefreshIconBytes(buffer);
                             channel.Writer.TryWrite(
                                 buffer.OrderByDescending(x => x.Score).Take(limit).ToList());
                         }
@@ -93,12 +97,36 @@ public class UserDocumentSearch(
             }
 
             cts.Dispose();
-            if (buffer.Count > 0)
+            if (buffer.Count > 0) {
+                RefreshIconBytes(buffer);
                 channel.Writer.TryWrite(buffer.OrderByDescending(x => x.Score).Take(limit).ToList());
+            }
             channel.Writer.TryComplete();
         }, CancellationToken.None);
 
         await foreach (var snapshot in channel.Reader.ReadAllAsync(ct).ConfigureAwait(false))
             yield return snapshot;
     }
+
+    private void RefreshIconBytes(List<ResultItemViewModel> buffer) {
+        foreach (var item in buffer)
+            item.IconBytes ??= fileIconCache.Get(item.Subtitle);
+    }
+
+    private static string GetFileIcon(string extension) => extension.ToLowerInvariant() switch {
+        ".pdf" => "📄",
+        ".doc" or ".docx" or ".odt" => "📝",
+        ".xls" or ".xlsx" or ".ods" or ".csv" => "📊",
+        ".ppt" or ".pptx" or ".odp" => "📑",
+        ".jpg" or ".jpeg" or ".png" or ".gif" or ".webp" or ".svg" or ".heic" or ".tiff" or ".bmp" => "🖼️",
+        ".mp4" or ".mov" or ".avi" or ".mkv" or ".m4v" or ".wmv" => "🎬",
+        ".mp3" or ".m4a" or ".wav" or ".flac" or ".aac" or ".ogg" => "🎵",
+        ".zip" or ".rar" or ".7z" or ".tar" or ".gz" or ".bz2" => "🗜️",
+        ".txt" or ".md" or ".rtf" => "📄",
+        ".cs" or ".js" or ".ts" or ".py" or ".java" or ".swift" or ".go" or ".rs" or ".cpp" or ".c" or ".h" => "💻",
+        ".html" or ".htm" or ".css" or ".xml" or ".json" or ".yaml" or ".yml" => "🌐",
+        ".dmg" or ".pkg" or ".iso" => "💿",
+        ".sh" or ".bash" or ".zsh" or ".command" => "⚙️",
+        _ => "📁"
+    };
 }

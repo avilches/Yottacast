@@ -232,6 +232,8 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
 
     // ── Icon ──────────────────────────────────────────────────────────────────
 
+    public override byte[]? GetFileIconBytes(string filePath) => GetAppIconBytes(filePath);
+
     public override byte[]? GetAppIconBytes(string appPath) {
         var name = Path.GetFileNameWithoutExtension(appPath);
         try {
@@ -245,7 +247,26 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
                 var nsImage = ObjcMsgSendArg(workspace, SelRegisterName("iconForFile:"), cfPath);
                 if (nsImage == IntPtr.Zero) { logger.LogWarning("Icon [{App}]: iconForFile: returned zero", name); return null; }
 
-                var tiffData = ObjcMsgSend(nsImage, SelRegisterName("TIFFRepresentation"));
+                // Draw into a new NSImage at exact targetSize×targetSize points (lockFocus pattern from
+                // Quicksilver's prepareImageForIcon:). AppKit picks the best available .icns representation.
+                // On Retina (2×) produces 128×128 pixels — more than enough for 28×28 logical display.
+                // Avoids the inconsistency of TIFFRepresentation returning all reps (16×16 to 1024×1024)
+                // and imageRepWithData: picking any one of them unpredictably.
+                const int targetSize = 64;
+                var alloc = ObjcMsgSend(ObjcGetClass("NSImage"), SelRegisterName("alloc"));
+                if (alloc == IntPtr.Zero) { logger.LogWarning("Icon [{App}]: NSImage alloc returned zero", name); return null; }
+
+                var scaledImage = ObjcMsgSendSizeReturn(alloc, SelRegisterName("initWithSize:"),
+                    new NSSize { Width = targetSize, Height = targetSize });
+                if (scaledImage == IntPtr.Zero) { logger.LogWarning("Icon [{App}]: NSImage initWithSize: returned zero", name); return null; }
+
+                ObjcMsgSend(scaledImage, SelRegisterName("lockFocus"));
+                ObjcMsgSendRectVoid(nsImage, SelRegisterName("drawInRect:"),
+                    new NSRect { X = 0, Y = 0, Width = targetSize, Height = targetSize });
+                ObjcMsgSend(scaledImage, SelRegisterName("unlockFocus"));
+
+                var tiffData = ObjcMsgSend(scaledImage, SelRegisterName("TIFFRepresentation"));
+                CfRelease(scaledImage);
                 if (tiffData == IntPtr.Zero) { logger.LogWarning("Icon [{App}]: TIFFRepresentation returned zero", name); return null; }
 
                 var bitmapRep = ObjcMsgSendArg(ObjcGetClass("NSBitmapImageRep"),
@@ -294,6 +315,21 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
 
     [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
     private static extern nint ObjcMsgSendNint(IntPtr receiver, IntPtr selector);
+
+    [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
+    private static extern void ObjcMsgSendSize(IntPtr receiver, IntPtr selector, NSSize size);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NSSize { public double Width; public double Height; }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NSRect { public double X; public double Y; public double Width; public double Height; }
+
+    [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
+    private static extern IntPtr ObjcMsgSendSizeReturn(IntPtr receiver, IntPtr selector, NSSize size);
+
+    [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
+    private static extern void ObjcMsgSendRectVoid(IntPtr receiver, IntPtr selector, NSRect rect);
 
     [DllImport("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation",
         EntryPoint = "CFStringCreateWithCString")]

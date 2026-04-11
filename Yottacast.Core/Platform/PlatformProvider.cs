@@ -37,6 +37,7 @@ public abstract class PlatformProvider {
     public abstract string[] GetTerminalPaths(string name);
 
     public virtual byte[]? GetAppIconBytes(string appPath) => null;
+    public virtual byte[]? GetFileIconBytes(string filePath) => null;
 
     public static string ExpandPath(string path) {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
