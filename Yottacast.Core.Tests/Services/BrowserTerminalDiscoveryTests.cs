@@ -56,7 +56,8 @@ public class BrowserTerminalDiscoveryTests : IDisposable {
         // Use a FakePlatformProvider whose ScanAppsAsync calls addApp for each app.
         var fakePlatform = new ScanningFakePlatform(apps);
         var settings = UserSettings.Load(fakePlatform);
-        var appSearch = new ApplicationSearch(settings, fakePlatform, NullLogger<ApplicationSearch>.Instance);
+        var iconCache = new AppIconCache(fakePlatform, NullLogger<AppIconCache>.Instance);
+        var appSearch = new ApplicationSearch(settings, fakePlatform, iconCache, NullLogger<ApplicationSearch>.Instance);
         appSearch.Start();
         // Wait for the (synchronous fake) scan to complete.
         appSearch.WhenReady().GetAwaiter().GetResult();

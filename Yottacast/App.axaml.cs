@@ -141,6 +141,7 @@ public partial class App : Application {
             sp.GetRequiredService<ILogger<UserSettings>>()));
 
         services.AddSingleton<ThemeService>();
+        services.AddSingleton<AppIconCache>();
         services.AddSingleton<ApplicationSearch>();
         services.AddSingleton<BrowserDiscovery>();
         services.AddSingleton<TerminalDiscovery>();

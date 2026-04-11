@@ -56,8 +56,8 @@ public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard) :
                     ToLong            = toLong,
                     AmbiguityHint     = string.IsNullOrEmpty(ambiguityHint) ? null : ambiguityHint,
                     FromWasNormalized = r.FromWasNormalized,
-                    OnLeft  = r.FromWasNormalized ? () => vm.MoveCellLeft()  : null,
-                    OnRight = r.FromWasNormalized ? () => vm.MoveCellRight() : null,
+                    OnLeft  = () => vm.MoveCellLeft(),
+                    OnRight = () => vm.MoveCellRight(),
                     OnActivate = () => clipboard.CopyText(vm.SelectedCell switch {
                         ConversionCell.OrigFrom => capturedOrig,
                         ConversionCell.NormFrom => capturedNorm ?? capturedTo,
@@ -73,7 +73,7 @@ public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard) :
                     Icon = "🧮",
                     Title = r.RawValue,
                     Subtitle = subtitle,
-                    Category = "Calculator",
+                    Category = "",
                     Score = 4,
                     OnActivate = () => clipboard.CopyText(captured),
                 }];

@@ -124,5 +124,4 @@ public sealed class LinuxPlatformProvider(ProcessRunner runner, ILogger<LinuxPla
 
     // ── Icon ──────────────────────────────────────────────────────────────────
 
-    public override string? GetAppIconPath(string appPath) => null;
 }

@@ -31,7 +31,8 @@ public class ApplicationSearchTests {
     private static ApplicationSearch BuildSearch(params string[] appPaths) {
         var platform = new FakePlatformProviderWithApps(appPaths);
         var settings = UserSettings.Load(platform);
-        return new ApplicationSearch(settings, platform, NullLogger<ApplicationSearch>.Instance);
+        var iconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
+        return new ApplicationSearch(settings, platform, iconCache, NullLogger<ApplicationSearch>.Instance);
     }
 
     private static async Task StartAndWaitAsync(ApplicationSearch search) {

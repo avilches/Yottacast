@@ -36,7 +36,7 @@ public abstract class PlatformProvider {
     public abstract void ExecuteCommand(string command, string terminalName);
     public abstract string[] GetTerminalPaths(string name);
 
-    public abstract string? GetAppIconPath(string appPath);
+    public virtual byte[]? GetAppIconBytes(string appPath) => null;
 
     public static string ExpandPath(string path) {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);

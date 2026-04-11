@@ -43,5 +43,4 @@ internal class FakePlatformProvider(IReadOnlyList<FileResult> files) : PlatformP
     public override void ExecuteCommand(string command, string terminalName) { }
     public override string[] GetTerminalPaths(string name) => [];
 
-    public override string? GetAppIconPath(string appPath) => null;
 }

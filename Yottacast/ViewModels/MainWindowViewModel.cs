@@ -4,9 +4,11 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Yottacast.Core.Search;
+using Yottacast.Core.Search.Application;
 using Yottacast.Core.Services;
 using Yottacast.Core.ViewModels;
 using Yottacast.Services;
@@ -16,6 +18,7 @@ namespace Yottacast.ViewModels;
 public partial class MainWindowViewModel(
     UserSettings settings,
     GlobalSearch globalSearch,
+    ApplicationSearch appSearch,
     BrowserDiscovery browserDiscovery,
     UpdateChecker updateChecker)
     : ViewModelBase {
@@ -29,6 +32,8 @@ public partial class MainWindowViewModel(
     [ObservableProperty] private bool _showNoResults;
 
     [ObservableProperty] private bool _isSearching;
+
+    [ObservableProperty] private bool _isAltPressed;
 
     [ObservableProperty] private bool _updateAvailable;
     [ObservableProperty] private string _updateBannerText = "";
@@ -49,6 +54,17 @@ public partial class MainWindowViewModel(
 
     public void Initialize() {
         _ = CheckForUpdateAsync();
+        appSearch.IconLoaded += OnIconLoaded;
+    }
+
+    private void OnIconLoaded() {
+        if (string.IsNullOrEmpty(SearchText)) return;
+        Dispatcher.UIThread.Post(() => {
+            var (items, hint) = globalSearch.SearchInstant(SearchText, limit: SearchSourceLimit);
+            _instantSnapshot = items;
+            SearchHint = hint;
+            RefreshResults();
+        });
     }
 
     private async Task CheckForUpdateAsync() {

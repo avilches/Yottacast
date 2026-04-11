@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using Yottacast.Core.Search.UserDocuments;
@@ -231,30 +232,76 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
 
     // ── Icon ──────────────────────────────────────────────────────────────────
 
-    public override string? GetAppIconPath(string appPath) {
+    public override byte[]? GetAppIconBytes(string appPath) {
+        var name = Path.GetFileNameWithoutExtension(appPath);
         try {
-            var plist = Path.Combine(appPath, "Contents", "Info.plist");
-            if (!File.Exists(plist)) return null;
+            var workspace = ObjcMsgSend(ObjcGetClass("NSWorkspace"), SelRegisterName("sharedWorkspace"));
+            if (workspace == IntPtr.Zero) { logger.LogWarning("Icon [{App}]: NSWorkspace.sharedWorkspace returned zero", name); return null; }
 
-            var content = File.ReadAllText(plist);
-            var keyIdx = content.IndexOf("<key>CFBundleIconFile</key>", StringComparison.Ordinal);
-            if (keyIdx < 0) return null;
+            var cfPath = CfStringCreateWithCString(IntPtr.Zero, appPath, 0x08000100);
+            if (cfPath == IntPtr.Zero) { logger.LogWarning("Icon [{App}]: CFStringCreateWithCString returned zero", name); return null; }
 
-            var stringStart = content.IndexOf("<string>", keyIdx, StringComparison.Ordinal);
-            if (stringStart < 0) return null;
-            var stringEnd = content.IndexOf("</string>", stringStart + 8, StringComparison.Ordinal);
-            if (stringEnd < 0) return null;
+            try {
+                var nsImage = ObjcMsgSendArg(workspace, SelRegisterName("iconForFile:"), cfPath);
+                if (nsImage == IntPtr.Zero) { logger.LogWarning("Icon [{App}]: iconForFile: returned zero", name); return null; }
 
-            var iconFile = content[(stringStart + 8)..stringEnd].Trim();
-            if (!iconFile.EndsWith(".icns", StringComparison.OrdinalIgnoreCase))
-                iconFile += ".icns";
+                var tiffData = ObjcMsgSend(nsImage, SelRegisterName("TIFFRepresentation"));
+                if (tiffData == IntPtr.Zero) { logger.LogWarning("Icon [{App}]: TIFFRepresentation returned zero", name); return null; }
 
-            var iconPath = Path.Combine(appPath, "Contents", "Resources", iconFile);
-            return File.Exists(iconPath) ? iconPath : null;
-        } catch {
+                var bitmapRep = ObjcMsgSendArg(ObjcGetClass("NSBitmapImageRep"),
+                    SelRegisterName("imageRepWithData:"), tiffData);
+                if (bitmapRep == IntPtr.Zero) { logger.LogWarning("Icon [{App}]: imageRepWithData: returned zero", name); return null; }
+
+                var emptyDict = ObjcMsgSend(ObjcGetClass("NSDictionary"), SelRegisterName("dictionary"));
+                // NSBitmapImageFileTypePNG = 4
+                var pngData = ObjcMsgSendRepresentation(bitmapRep,
+                    SelRegisterName("representationUsingType:properties:"), 4, emptyDict);
+                if (pngData == IntPtr.Zero) { logger.LogWarning("Icon [{App}]: representationUsingType:properties: returned zero", name); return null; }
+
+                var length = (int)ObjcMsgSendNint(pngData, SelRegisterName("length"));
+                if (length <= 0) { logger.LogWarning("Icon [{App}]: NSData.length={Length}", name, length); return null; }
+
+                var bytesPtr = ObjcMsgSend(pngData, SelRegisterName("bytes"));
+                if (bytesPtr == IntPtr.Zero) { logger.LogWarning("Icon [{App}]: NSData.bytes returned zero", name); return null; }
+
+                var bytes = new byte[length];
+                Marshal.Copy(bytesPtr, bytes, 0, length);
+                logger.LogDebug("Icon [{App}]: OK {Bytes} bytes", name, bytes.Length);
+                return bytes;
+            } finally {
+                CfRelease(cfPath);
+            }
+        } catch (Exception ex) {
+            logger.LogWarning(ex, "Icon [{App}]: exception", name);
             return null;
         }
     }
+
+    [DllImport("libobjc.dylib", EntryPoint = "objc_getClass")]
+    private static extern IntPtr ObjcGetClass(string name);
+
+    [DllImport("libobjc.dylib", EntryPoint = "sel_registerName")]
+    private static extern IntPtr SelRegisterName(string name);
+
+    [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
+    private static extern IntPtr ObjcMsgSend(IntPtr receiver, IntPtr selector);
+
+    [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
+    private static extern IntPtr ObjcMsgSendArg(IntPtr receiver, IntPtr selector, IntPtr arg);
+
+    [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
+    private static extern IntPtr ObjcMsgSendRepresentation(IntPtr receiver, IntPtr selector, int fileType, IntPtr props);
+
+    [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
+    private static extern nint ObjcMsgSendNint(IntPtr receiver, IntPtr selector);
+
+    [DllImport("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation",
+        EntryPoint = "CFStringCreateWithCString")]
+    private static extern IntPtr CfStringCreateWithCString(IntPtr allocator, string str, uint encoding);
+
+    [DllImport("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation",
+        EntryPoint = "CFRelease")]
+    private static extern void CfRelease(IntPtr cf);
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 

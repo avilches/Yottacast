@@ -63,7 +63,6 @@ public class UserSettingsTests : IDisposable {
         public override void ExecuteCommand(string command, string terminalName) { }
         public override string[] GetTerminalPaths(string name) => [];
 
-        public override string? GetAppIconPath(string appPath) => null;
     }
 
     /// <summary>
@@ -103,7 +102,6 @@ public class UserSettingsTests : IDisposable {
         public override string[] GetTerminalPaths(string name) =>
             _terminalPaths.TryGetValue(name, out var p) ? p : [];
 
-        public override string? GetAppIconPath(string appPath) => null;
     }
 
     /// <summary>Minimal platform whose only configurable behaviour is IsSystemDarkMode.</summary>
@@ -123,7 +121,6 @@ public class UserSettingsTests : IDisposable {
         public override IReadOnlyDictionary<string, string[]> TerminalFallbackPaths => new Dictionary<string, string[]>();
         public override void ExecuteCommand(string command, string terminalName) { }
         public override string[] GetTerminalPaths(string name) => [];
-        public override string? GetAppIconPath(string appPath) => null;
     }
 
     // ── Helper: create a real temp file representing an installed app ──────────

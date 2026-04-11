@@ -25,7 +25,16 @@ public partial class MainWindow : Window {
             SearchBox.IsEnabled = isVisible;
             if (isVisible) {
                 SearchBox.Focus();
+            } else if (DataContext is MainWindowViewModel vm) {
+                vm.IsAltPressed = false;
             }
+        }
+    }
+
+    protected override void OnKeyUp(KeyEventArgs e) {
+        base.OnKeyUp(e);
+        if (e.Key is Key.LeftAlt or Key.RightAlt) {
+            if (DataContext is MainWindowViewModel vm) vm.IsAltPressed = false;
         }
     }
 
@@ -70,6 +79,11 @@ public partial class MainWindow : Window {
             // Consume ALT+Space so macOS doesn't produce a beep for the unhandled key
             case Key.Space when e.KeyModifiers.HasFlag(KeyModifiers.Alt):
                 e.Handled = true;
+                break;
+
+            case Key.LeftAlt:
+            case Key.RightAlt:
+                vm.IsAltPressed = true;
                 break;
 
             case Key.Escape:

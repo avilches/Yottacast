@@ -46,15 +46,18 @@ public class ConversionResultItemViewModel : BaseResultItemViewModel, INotifyPro
         }
     }
 
-    public bool IsOrigFromHighlighted => FromWasNormalized && SelectedCell == ConversionCell.OrigFrom;
+    public bool IsOrigFromHighlighted => SelectedCell == ConversionCell.OrigFrom;
     public bool IsNormFromHighlighted => FromWasNormalized && SelectedCell == ConversionCell.NormFrom;
-    public bool IsToHighlighted       => FromWasNormalized && SelectedCell == ConversionCell.To;
+    public bool IsToHighlighted       => SelectedCell == ConversionCell.To;
 
     /// <summary>Move selection one cell to the left. Returns true if consumed, false if already at leftmost.</summary>
     public bool MoveCellLeft() {
         switch (SelectedCell) {
-            case ConversionCell.To:
+            case ConversionCell.To when FromWasNormalized:
                 SelectedCell = ConversionCell.NormFrom;
+                return true;
+            case ConversionCell.To:
+                SelectedCell = ConversionCell.OrigFrom;
                 return true;
             case ConversionCell.NormFrom:
                 SelectedCell = ConversionCell.OrigFrom;
@@ -70,8 +73,11 @@ public class ConversionResultItemViewModel : BaseResultItemViewModel, INotifyPro
             case ConversionCell.NormFrom:
                 SelectedCell = ConversionCell.To;
                 return true;
-            case ConversionCell.OrigFrom:
+            case ConversionCell.OrigFrom when FromWasNormalized:
                 SelectedCell = ConversionCell.NormFrom;
+                return true;
+            case ConversionCell.OrigFrom:
+                SelectedCell = ConversionCell.To;
                 return true;
             default:
                 return false;  // already at To — let TextBox cursor move

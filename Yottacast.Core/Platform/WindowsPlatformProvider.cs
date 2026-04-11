@@ -189,5 +189,4 @@ public sealed class WindowsPlatformProvider(ProcessRunner runner, ILogger<Window
 
     // ── Icon ──────────────────────────────────────────────────────────────────
 
-    public override string? GetAppIconPath(string appPath) => null;
 }

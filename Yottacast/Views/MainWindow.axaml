@@ -1,11 +1,12 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Yottacast.ViewModels"
-        xmlns:conv="using:Avalonia.Data.Converters"
+        xmlns:conv="using:Yottacast.Converters"
         xmlns:viewModels="clr-namespace:Yottacast.Core.ViewModels;assembly=Yottacast.Core"
         xmlns:results="using:Yottacast.Views.Results"
         x:Class="Yottacast.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
+        x:Name="RootWindow"
         Title="Yottacast"
         Width="{DynamicResource Theme.WindowWidth}"
         SizeToContent="Height"
@@ -15,6 +16,10 @@
         Background="Transparent"
         CanResize="False"
         ShowInTaskbar="False">
+
+    <Window.Resources>
+        <conv:PathToAppIconConverter x:Key="PathToAppIcon"/>
+    </Window.Resources>
 
     <Window.Styles>
         <!-- Strip all default TextBox chrome -->
@@ -101,20 +106,12 @@
 
             <!-- ── Search row + hint ── -->
             <StackPanel DockPanel.Dock="Top">
-                <Grid ColumnDefinitions="Auto,*,Auto"
+                <Grid ColumnDefinitions="*,Auto"
                       Margin="18,0"
                       Height="64">
 
-                    <!-- Magnifier icon -->
-                    <PathIcon Grid.Column="0"
-                              Width="19" Height="19"
-                              Margin="0,0,12,0"
-                              Foreground="{DynamicResource Theme.Icon}"
-                              VerticalAlignment="Center"
-                              Data="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-
                     <!-- Search input -->
-                    <TextBox Grid.Column="1"
+                    <TextBox Grid.Column="0"
                              x:Name="SearchBox"
                              Text="{Binding SearchText}"
                              Watermark="Search for apps, files, commands…"
@@ -127,7 +124,7 @@
                              SelectionBrush="{DynamicResource Theme.SearchSelection}"/>
 
                     <!-- Right side: spinner while searching, ESC badge when idle and empty -->
-                    <Panel Grid.Column="2" VerticalAlignment="Center">
+                    <Panel Grid.Column="1" VerticalAlignment="Center">
 
                         <!-- ESC badge (visible only when text is empty and not searching) -->
                         <Border Background="{DynamicResource Theme.EscBadgeBackground}"
@@ -152,7 +149,7 @@
                 <TextBlock Text="{Binding SearchHint}"
                            Foreground="#FF3B30"
                            FontSize="{DynamicResource Theme.FontSizeSmall}"
-                           Margin="49,0,18,8"
+                           Margin="18,0,18,8"
                            TextTrimming="CharacterEllipsis"
                            IsVisible="{Binding SearchHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
             </StackPanel>
@@ -212,10 +209,18 @@
                                     Background="{DynamicResource Theme.ItemIconBackground}"
                                     VerticalAlignment="Center"
                                     Margin="0,0,12,0">
-                                <TextBlock Text="{Binding Icon}"
-                                           FontSize="17"
+                                <Panel>
+                                    <Image IsVisible="{Binding IconBytes, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                           Source="{Binding IconBytes, Converter={StaticResource PathToAppIcon}}"
+                                           Width="28" Height="28"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center"/>
+                                    <TextBlock IsVisible="{Binding IconBytes, Converter={x:Static ObjectConverters.IsNull}}"
+                                               Text="{Binding Icon}"
+                                               FontSize="17"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"/>
+                                </Panel>
                             </Border>
 
                             <!-- Title + subtitle -->
@@ -233,21 +238,26 @@
                                            TextTrimming="CharacterEllipsis"/>
                             </StackPanel>
 
-                            <!-- Category + shortcut -->
+                            <!-- Category (normal) / Score (alt-debug) + shortcut -->
                             <StackPanel Grid.Column="2"
                                         Orientation="Horizontal"
                                         VerticalAlignment="Center"
                                         Spacing="8"
                                         Margin="12,0,0,0">
-                                <TextBlock Text="{Binding Category}"
+                                <!-- Normal mode: category label -->
+                                <TextBlock x:CompileBindings="False"
+                                           Text="{Binding Category}"
                                            Foreground="{DynamicResource Theme.ItemCategory}"
                                            FontSize="{DynamicResource Theme.FontSizeSmall}"
-                                           VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding Score, StringFormat={}{0:F2}}"
+                                           VerticalAlignment="Center"
+                                           IsVisible="{Binding !DataContext.IsAltPressed, ElementName=RootWindow}"/>
+                                <!-- Alt debug mode: score -->
+                                <TextBlock x:CompileBindings="False"
+                                           Text="{Binding Score, StringFormat={}{0:F2}}"
                                            Foreground="{DynamicResource Theme.ItemCategory}"
                                            FontSize="{DynamicResource Theme.FontSizeSmall}"
-                                           Opacity="0.6"
-                                           VerticalAlignment="Center"/>
+                                           VerticalAlignment="Center"
+                                           IsVisible="{Binding DataContext.IsAltPressed, ElementName=RootWindow}"/>
                                 <Border Background="{DynamicResource Theme.ItemShortcutBackground}"
                                         CornerRadius="{DynamicResource Theme.CornerRadiusShortcut}"
                                         Padding="7,3"

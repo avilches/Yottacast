@@ -16,7 +16,11 @@ namespace Yottacast.Core.Search.Application;
 /// Call <see cref="Start"/> to begin scanning. Call <see cref="Stop"/> to cancel it.
 /// BrowserDiscovery and TerminalDiscovery query this store instead of hitting the filesystem themselves.
 /// </summary>
-public sealed class ApplicationSearch(UserSettings settings, PlatformProvider platform, ILogger<ApplicationSearch> logger)
+public sealed class ApplicationSearch(
+    UserSettings settings,
+    PlatformProvider platform,
+    AppIconCache iconCache,
+    ILogger<ApplicationSearch> logger)
     : IInstantSearchSource, IDisposable {
     private readonly ConcurrentDictionary<string, AppInfo> _apps =
         new(StringComparer.OrdinalIgnoreCase);
@@ -24,6 +28,12 @@ public sealed class ApplicationSearch(UserSettings settings, PlatformProvider pl
     private bool _started;
 
     public event Action<AppInfo>? AppAdded;
+
+    /// <summary>Fired when any app icon finishes loading — subscribers should re-run Search to pick up the new icon.</summary>
+    public event Action? IconLoaded {
+        add    => iconCache.IconLoaded += value;
+        remove => iconCache.IconLoaded -= value;
+    }
 
     private CancellationTokenSource _liveCts = new();
     private readonly List<FileSystemWatcher> _watchers = [];
@@ -61,6 +71,7 @@ public sealed class ApplicationSearch(UserSettings settings, PlatformProvider pl
             .Take(limit)
             .Select(x => new ResultItemViewModel {
                 Icon = "📱",
+                IconBytes = iconCache.Get(x.app.Path),
                 Title = x.app.Name,
                 Subtitle = x.app.Path,
                 Category = "Applications",
@@ -96,8 +107,9 @@ public sealed class ApplicationSearch(UserSettings settings, PlatformProvider pl
         var name = Path.GetFileNameWithoutExtension(path);
         if (string.IsNullOrEmpty(name)) return;
         var isNew = !_apps.ContainsKey(name);
-        var app = new AppInfo(name, path, platform.GetAppIconPath);
+        var app = new AppInfo(name, path);
         _apps[name] = app;
+        iconCache.PreloadAsync(path);
         if (isNew) AppAdded?.Invoke(app);
     }
 
