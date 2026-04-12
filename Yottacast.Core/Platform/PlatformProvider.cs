@@ -38,6 +38,8 @@ public abstract class PlatformProvider {
 
     public virtual byte[]? GetAppIconBytes(string appPath) => null;
     public virtual byte[]? GetFileIconBytes(string filePath) => null;
+    public virtual string? GetDefaultAppPath(string filePath) => null;
+    public virtual bool AreIconsSame(string path1, string path2) => false;
 
     public static string ExpandPath(string path) {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);

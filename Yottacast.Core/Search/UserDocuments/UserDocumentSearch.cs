@@ -1,6 +1,8 @@
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
+using Yottacast.Core.Platform;
 using Yottacast.Core.Services;
 using Yottacast.Core.ViewModels;
 
@@ -17,8 +19,13 @@ public class UserDocumentSearch(
     UserSettings settings,
     FileSearch fileSearch,
     FileIconCache fileIconCache,
+    PlatformProvider platform,
     ILogger<UserDocumentSearch> logger,
     int timeoutMs = 20_000) : IDeferredSearchSource {
+
+    // Badge icon cache: keyed by lowercase extension; null means "no default app found"
+    private readonly ConcurrentDictionary<string, byte[]?> _badgeByExtension = new();
+    private readonly ConcurrentDictionary<string, byte> _badgePreloading = new();
 
     public void Start() { }
     public Task WhenReady() => Task.CompletedTask;
@@ -70,13 +77,18 @@ public class UserDocumentSearch(
                             }
                         }
                         fileIconCache.PreloadAsync(r.Path);
+                        PreloadBadgeIconAsync(r.Path);
+                        var path = r.Path;
+                        var ext = Path.GetExtension(r.Name).ToLowerInvariant();
                         buffer.Add(new ResultItemViewModel {
                             Icon = GetFileIcon(Path.GetExtension(r.Name)),
                             IconBytes = fileIconCache.Get(r.Path),
+                            BadgeIconBytes = _badgeByExtension.TryGetValue(ext, out var badge) ? badge : null,
                             Title = r.Name,
                             Subtitle = r.Path,
                             Category = "Files",
                             Score = score,
+                            OnActivate = () => platform.LaunchApp(path),
                         });
 
                         var now = Environment.TickCount64;
@@ -100,6 +112,19 @@ public class UserDocumentSearch(
             if (buffer.Count > 0) {
                 RefreshIconBytes(buffer);
                 channel.Writer.TryWrite(buffer.OrderByDescending(x => x.Score).Take(limit).ToList());
+
+                // Keep emitting snapshots until all icons are loaded or the caller cancels (~3s max)
+                for (var i = 0; i < 10 && !ct.IsCancellationRequested; i++) {
+                    await Task.Delay(300).ConfigureAwait(false);
+                    if (ct.IsCancellationRequested) break;
+                    var missingBefore = buffer.Count(x => x.IconBytes == null);
+                    if (missingBefore == 0) break;
+                    RefreshIconBytes(buffer);
+                    var missingAfter = buffer.Count(x => x.IconBytes == null);
+                    if (missingAfter < missingBefore)
+                        channel.Writer.TryWrite(buffer.OrderByDescending(x => x.Score).Take(limit).ToList());
+                    if (missingAfter == 0) break;
+                }
             }
             channel.Writer.TryComplete();
         }, CancellationToken.None);
@@ -109,8 +134,46 @@ public class UserDocumentSearch(
     }
 
     private void RefreshIconBytes(List<ResultItemViewModel> buffer) {
-        foreach (var item in buffer)
+        foreach (var item in buffer) {
             item.IconBytes ??= fileIconCache.Get(item.Subtitle);
+            if (item.BadgeIconBytes == null) {
+                var ext = Path.GetExtension(item.Subtitle).ToLowerInvariant();
+                if (_badgeByExtension.TryGetValue(ext, out var badge))
+                    item.BadgeIconBytes = badge;
+            }
+        }
+    }
+
+    private void PreloadBadgeIconAsync(string filePath) {
+        var ext = Path.GetExtension(filePath).ToLowerInvariant();
+        if (string.IsNullOrEmpty(ext)) return;
+        if (_badgeByExtension.ContainsKey(ext)) return;
+        if (!_badgePreloading.TryAdd(ext, 0)) return;
+        Task.Run(() => {
+            var appPath = platform.GetDefaultAppPath(filePath);
+            logger.LogDebug("Badge [{Ext}] appPath={App}", ext, appPath ?? "(null)");
+            if (appPath == null) { _badgeByExtension[ext] = null; return; }
+
+            // Same path: the file IS the app (e.g. .app bundles)
+            if (string.Equals(Path.GetFullPath(appPath), Path.GetFullPath(filePath),
+                    StringComparison.OrdinalIgnoreCase)) {
+                logger.LogDebug("Badge [{Ext}] suppressed: same path", ext);
+                _badgeByExtension[ext] = null;
+                return;
+            }
+
+            // Same icon: macOS uses the app icon as the document icon for this file type
+            // (e.g. .cs → Rider, .java → IntelliJ). Compare raw TIFF data before normalization.
+            if (platform.AreIconsSame(filePath, appPath)) {
+                logger.LogDebug("Badge [{Ext}] suppressed: same icon (TIFF)", ext);
+                _badgeByExtension[ext] = null;
+                return;
+            }
+
+            var badgeBytes = platform.GetAppIconBytes(appPath);
+            logger.LogDebug("Badge [{Ext}] loaded {N} bytes", ext, badgeBytes?.Length ?? -1);
+            _badgeByExtension[ext] = badgeBytes;
+        });
     }
 
     private static string GetFileIcon(string extension) => extension.ToLowerInvariant() switch {

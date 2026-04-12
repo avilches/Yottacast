@@ -232,6 +232,144 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
 
     // ── Icon ──────────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Returns true when the file's icon IS provided by the same app bundle as the default app —
+    /// meaning the badge would show the same logo that's already visible in the large icon.
+    /// Detection: check if the app's Info.plist registers a custom document-type icon for the
+    /// file's extension (CFBundleDocumentTypes entry with CFBundleTypeIconFile + matching extension).
+    /// </summary>
+    public override bool AreIconsSame(string filePath, string appPath) {
+        try {
+            var ext = Path.GetExtension(filePath).TrimStart('.').ToLowerInvariant();
+            if (string.IsNullOrEmpty(ext)) return false;
+
+            var infoPlistPath = Path.Combine(appPath, "Contents", "Info.plist");
+            if (!File.Exists(infoPlistPath)) return false;
+
+            var cfPlistPath = CfStringCreateWithCString(IntPtr.Zero, infoPlistPath, 0x08000100);
+            if (cfPlistPath == IntPtr.Zero) return false;
+            try {
+                // NSDictionary handles both XML and binary plist formats
+                var plist = ObjcMsgSendArg(ObjcGetClass("NSDictionary"),
+                    SelRegisterName("dictionaryWithContentsOfFile:"), cfPlistPath);
+                if (plist == IntPtr.Zero) return false;
+
+                var docTypesKey = CfStringCreateWithCString(IntPtr.Zero, "CFBundleDocumentTypes", 0x08000100);
+                var iconFileKey = CfStringCreateWithCString(IntPtr.Zero, "CFBundleTypeIconFile", 0x08000100);
+                var extListKey  = CfStringCreateWithCString(IntPtr.Zero, "CFBundleTypeExtensions", 0x08000100);
+                var cfExt       = CfStringCreateWithCString(IntPtr.Zero, ext, 0x08000100);
+                try {
+                    var docTypes = ObjcMsgSendArg(plist, SelRegisterName("objectForKey:"), docTypesKey);
+                    if (docTypes == IntPtr.Zero) return false;
+
+                    var count = (int)ObjcMsgSendNint(docTypes, SelRegisterName("count"));
+                    for (var i = 0; i < count; i++) {
+                        var entry = ObjcMsgSendArgNint(docTypes, SelRegisterName("objectAtIndex:"), i);
+                        if (entry == IntPtr.Zero) continue;
+
+                        // Only suppress badge when the app registered its OWN icon for this type
+                        var iconFile = ObjcMsgSendArg(entry, SelRegisterName("objectForKey:"), iconFileKey);
+                        if (iconFile == IntPtr.Zero) continue;
+
+                        var exts = ObjcMsgSendArg(entry, SelRegisterName("objectForKey:"), extListKey);
+                        if (exts == IntPtr.Zero) continue;
+
+                        if (ObjcMsgSendArgByte(exts, SelRegisterName("containsObject:"), cfExt) != 0) {
+                            logger.LogDebug("AreIconsSame [{File}] [{App}] → true (.{Ext} has CFBundleTypeIconFile)",
+                                Path.GetFileName(filePath), Path.GetFileName(appPath), ext);
+                            return true;
+                        }
+                    }
+                } finally {
+                    CfRelease(docTypesKey); CfRelease(iconFileKey);
+                    CfRelease(extListKey);  CfRelease(cfExt);
+                }
+            } finally {
+                CfRelease(cfPlistPath);
+            }
+            return false;
+        } catch (Exception ex) {
+            logger.LogWarning(ex, "AreIconsSame exception");
+            return false;
+        }
+    }
+
+    private double PixelMeanAbsDiff(IntPtr tiff1, IntPtr tiff2) {
+        var rep1 = ObjcMsgSendArg(ObjcGetClass("NSBitmapImageRep"), SelRegisterName("imageRepWithData:"), tiff1);
+        var rep2 = ObjcMsgSendArg(ObjcGetClass("NSBitmapImageRep"), SelRegisterName("imageRepWithData:"), tiff2);
+        if (rep1 == IntPtr.Zero || rep2 == IntPtr.Zero) return double.MaxValue;
+
+        var bpr = (int)ObjcMsgSendNint(rep1, SelRegisterName("bytesPerRow"));
+        var h   = (int)ObjcMsgSendNint(rep1, SelRegisterName("pixelsHigh"));
+        var bpr2 = (int)ObjcMsgSendNint(rep2, SelRegisterName("bytesPerRow"));
+        var h2   = (int)ObjcMsgSendNint(rep2, SelRegisterName("pixelsHigh"));
+        if (bpr != bpr2 || h != h2) return double.MaxValue;
+
+        var total = bpr * h;
+        var ptr1 = ObjcMsgSend(rep1, SelRegisterName("bitmapData"));
+        var ptr2 = ObjcMsgSend(rep2, SelRegisterName("bitmapData"));
+        if (ptr1 == IntPtr.Zero || ptr2 == IntPtr.Zero) return double.MaxValue;
+
+        var b1 = new byte[total];
+        var b2 = new byte[total];
+        Marshal.Copy(ptr1, b1, 0, total);
+        Marshal.Copy(ptr2, b2, 0, total);
+
+        long diff = 0;
+        for (var i = 0; i < total; i++)
+            diff += Math.Abs(b1[i] - b2[i]);
+        return (double)diff / total;
+    }
+
+    private static IntPtr RenderToTiff(IntPtr nsImage, int size) {
+        var alloc = ObjcMsgSend(ObjcGetClass("NSImage"), SelRegisterName("alloc"));
+        if (alloc == IntPtr.Zero) return IntPtr.Zero;
+        var small = ObjcMsgSendSizeReturn(alloc, SelRegisterName("initWithSize:"),
+            new NSSize { Width = size, Height = size });
+        if (small == IntPtr.Zero) return IntPtr.Zero;
+        ObjcMsgSend(small, SelRegisterName("lockFocus"));
+        // Composite onto white so alpha differences don't affect pixel comparison
+        var white = ObjcMsgSend(ObjcGetClass("NSColor"), SelRegisterName("whiteColor"));
+        ObjcMsgSend(white, SelRegisterName("setFill"));
+        NSRectFill(new NSRect { X = 0, Y = 0, Width = size, Height = size });
+        ObjcMsgSendRectVoid(nsImage, SelRegisterName("drawInRect:"),
+            new NSRect { X = 0, Y = 0, Width = size, Height = size });
+        ObjcMsgSend(small, SelRegisterName("unlockFocus"));
+        var tiff = ObjcMsgSend(small, SelRegisterName("TIFFRepresentation"));
+        CfRelease(small);
+        return tiff;
+    }
+
+    public override string? GetDefaultAppPath(string filePath) {
+        try {
+            var cfPath = CfStringCreateWithCString(IntPtr.Zero, filePath, 0x08000100);
+            if (cfPath == IntPtr.Zero) return null;
+            try {
+                var fileUrl = ObjcMsgSendArg(ObjcGetClass("NSURL"), SelRegisterName("fileURLWithPath:"), cfPath);
+                if (fileUrl == IntPtr.Zero) return null;
+
+                var workspace = ObjcMsgSend(ObjcGetClass("NSWorkspace"), SelRegisterName("sharedWorkspace"));
+                if (workspace == IntPtr.Zero) return null;
+
+                var appUrl = ObjcMsgSendArg(workspace, SelRegisterName("URLForApplicationToOpenURL:"), fileUrl);
+                if (appUrl == IntPtr.Zero) return null;
+
+                var pathStr = ObjcMsgSend(appUrl, SelRegisterName("path"));
+                if (pathStr == IntPtr.Zero) return null;
+
+                var utf8Ptr = ObjcMsgSend(pathStr, SelRegisterName("UTF8String"));
+                if (utf8Ptr == IntPtr.Zero) return null;
+
+                return Marshal.PtrToStringUTF8(utf8Ptr);
+            } finally {
+                CfRelease(cfPath);
+            }
+        } catch (Exception ex) {
+            logger.LogWarning(ex, "GetDefaultAppPath [{File}]: exception", filePath);
+            return null;
+        }
+    }
+
     public override byte[]? GetFileIconBytes(string filePath) => GetAppIconBytes(filePath);
 
     public override byte[]? GetAppIconBytes(string appPath) {
@@ -330,6 +468,15 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
 
     [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
     private static extern void ObjcMsgSendRectVoid(IntPtr receiver, IntPtr selector, NSRect rect);
+
+    [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
+    private static extern byte ObjcMsgSendArgByte(IntPtr receiver, IntPtr selector, IntPtr arg);
+
+    [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
+    private static extern IntPtr ObjcMsgSendArgNint(IntPtr receiver, IntPtr selector, nint index);
+
+    [DllImport("/System/Library/Frameworks/AppKit.framework/AppKit")]
+    private static extern void NSRectFill(NSRect rect);
 
     [DllImport("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation",
         EntryPoint = "CFStringCreateWithCString")]

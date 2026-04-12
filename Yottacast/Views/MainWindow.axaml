@@ -199,29 +199,49 @@
                     <DataTemplate x:DataType="viewModels:ResultItemViewModel">
                         <Grid ColumnDefinitions="Auto,*,Auto" MinHeight="44">
 
-                            <!-- Icon box -->
-                            <Border Grid.Column="0"
-                                    Classes="icon-box"
-                                    Width="40" Height="40"
-                                    CornerRadius="{DynamicResource Theme.CornerRadiusIcon}"
-                                    ClipToBounds="True"
-                                    VerticalAlignment="Center"
-                                    Margin="0,0,12,0">
-                                <Panel>
-                                    <Image IsVisible="{Binding IconBytes, Converter={x:Static ObjectConverters.IsNotNull}}"
-                                           Source="{Binding IconBytes, Converter={StaticResource PathToAppIcon}}"
-                                           Width="40" Height="40"
-                                           Stretch="UniformToFill"
-                                           RenderOptions.BitmapInterpolationMode="HighQuality"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"/>
-                                    <TextBlock IsVisible="{Binding IconBytes, Converter={x:Static ObjectConverters.IsNull}}"
-                                               Text="{Binding Icon}"
-                                               FontSize="17"
+                            <!-- Icon box (with optional badge overlay) -->
+                            <Grid Grid.Column="0"
+                                  Width="40" Height="40"
+                                  VerticalAlignment="Center"
+                                  Margin="0,0,12,0">
+
+                                <Border Classes="icon-box"
+                                        CornerRadius="{DynamicResource Theme.CornerRadiusIcon}"
+                                        ClipToBounds="True">
+                                    <Panel>
+                                        <Image IsVisible="{Binding IconBytes, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                               Source="{Binding IconBytes, Converter={StaticResource PathToAppIcon}}"
+                                               Width="40" Height="40"
+                                               Stretch="UniformToFill"
+                                               RenderOptions.BitmapInterpolationMode="HighQuality"
                                                HorizontalAlignment="Center"
                                                VerticalAlignment="Center"/>
-                                </Panel>
-                            </Border>
+                                        <TextBlock IsVisible="{Binding IconBytes, Converter={x:Static ObjectConverters.IsNull}}"
+                                                   Text="{Binding Icon}"
+                                                   FontSize="17"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"/>
+                                    </Panel>
+                                </Border>
+
+                                <!-- Default-app badge: bottom-right corner, 7px overflow + 2px ring -->
+                                <Border Width="18" Height="18"
+                                        CornerRadius="5"
+                                        Background="{DynamicResource Theme.Background}"
+                                        HorizontalAlignment="Right"
+                                        VerticalAlignment="Bottom"
+                                        Margin="0,0,-7,-7"
+                                        IsVisible="{Binding BadgeIconBytes, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                    <Border Width="14" Height="14"
+                                            CornerRadius="4"
+                                            ClipToBounds="True">
+                                        <Image Source="{Binding BadgeIconBytes, Converter={StaticResource PathToAppIcon}}"
+                                               Width="14" Height="14"
+                                               Stretch="UniformToFill"
+                                               RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                                    </Border>
+                                </Border>
+                            </Grid>
 
                             <!-- Title + subtitle -->
                             <StackPanel Grid.Column="1"
