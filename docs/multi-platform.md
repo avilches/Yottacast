@@ -11,7 +11,9 @@ Responsabilidades:
 - `SearchFilesAsync()` — búsqueda de archivos (mdfind / Windows Search / locate)
 - `KnownBrowserNames` / `BrowserFallbackPaths` / `GetBrowserPaths()` / `OpenUrl()` — datos y lanzador de browsers
 - `KnownTerminalNames` / `TerminalFallbackPaths` / `GetTerminalPaths()` / `ExecuteCommand()` — datos y lanzador de terminales
-- `GetAppIconPath()` — icono de app (macOS: parsea Info.plist; otros: null)
+- `GetAppIconBytes(appPath)` / `GetFileIconBytes(filePath)` — icono en PNG (macOS: NSWorkspace + lockFocus; otros: null)
+- `GetDefaultAppPath(filePath)` — ruta del `.app` que abriría el fichero (macOS: NSWorkspace `URLForApplicationToOpenURL:`; otros: null)
+- `AreIconsSame(filePath, appPath)` — true si el icono del fichero es visualmente el mismo que el de la app (macOS: Info.plist semántico; otros: false)
 - `ExpandPath(path)` — método estático. Convierte `$HOME` o `~` solos en el directorio home; `$HOME/...` o `~/...` en home + sufijo. Cualquier otra ruta se devuelve sin modificar.
 
 **macOS — `BrowserFallbackPaths` y `TerminalFallbackPaths`**: ambos devuelven diccionarios vacíos. El descubrimiento de browsers y terminales en macOS se apoya en `ApplicationSearch`/Spotlight, no en rutas hardcoded. En Windows sí están poblados con rutas conocidas.
@@ -88,6 +90,16 @@ Flujo interno:
 Acepta `Func<string, bool> onLine` — retorna `false` para parar antes del EOF. Redirige stdout al pipe del proceso. Siempre llama `Kill(entireProcessTree: true)` en el bloque `finally` (garantiza limpieza tanto en cancelación como en early exit por `false`; si el proceso ya terminó es un no-op).
 
 Registrado en DI como singleton. `WindowsPlatformProvider` y `LinuxPlatformProvider` lo reciben por inyección de constructor; `MacOsPlatformProvider` no lo necesita porque lanza procesos directamente vía `System.Diagnostics.Process` y `SpotlightInterop`.
+
+### Iconos de app y fichero en macOS
+
+**`GetAppIconBytes` / `GetFileIconBytes`**: obtienen el icono PNG de un path (app o fichero) usando `NSWorkspace iconForFile:` vía Objective-C P/Invoke. Renderizan la imagen a 64×64 puntos con el patrón `lockFocus` / `drawInRect:` / `unlockFocus` y la serializan a PNG vía `NSBitmapImageRep representationUsingType:properties:` (tipo 4 = PNG). En Retina el resultado son 128×128 píxeles físicos. Ver `GetAppIconBytes` en `MacOsPlatformProvider.cs` para los detalles de cada paso.
+
+**`GetDefaultAppPath`**: crea un `NSURL fileURLWithPath:` para el fichero y llama `NSWorkspace URLForApplicationToOpenURL:`. Devuelve `nil` si el sistema no tiene ninguna app registrada para esa extensión.
+
+**`AreIconsSame`**: compara semánticamente, no por píxeles. Lee `Contents/Info.plist` del bundle via `NSDictionary dictionaryWithContentsOfFile:` (soporta tanto XML como plist binario). Itera `CFBundleDocumentTypes`; retorna `true` si alguna entrada tiene `CFBundleTypeIconFile` y su `CFBundleTypeExtensions` incluye la extensión del fichero. Esto indica que la app registró un icono propio para ese tipo de documento, por lo que el icono del fichero ya lleva implícito el logo de la app (badging sería redundante).
+
+**Gotcha — comparación de píxeles no es fiable para iconos en macOS**: macOS genera representaciones TIFF diferentes para el icono de un fichero (obtenido via `iconForFile:` sobre el fichero) y el icono de la app (mismo método sobre el `.app`), incluso cuando visualmente son idénticos. Comparar bytes, TIFF o píxeles renderizados produce falsos negativos. La única aproximación fiable es semántica: leer el `Info.plist`.
 
 **Gotcha — Raw string literals con variables PowerShell**: usar `$$"""..."""` en lugar de `$"""..."""` cuando el contenido tiene `$var`. Con `$$`, interpolación C# pasa a `{{expr}}` y los `$` sueltos son literales.
 

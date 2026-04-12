@@ -69,7 +69,22 @@ Ejemplo: `"xls calc mis"` → `"mis calculos.xls"`: segmentos `["mis","calculos"
 
 **Coincidencia con extensión**: en modo single-token, si la query coincide exactamente con la extensión del fichero (p.ej. query `"pdf"` vs `"report.pdf"`), la comparación `extension == queryLower` usa el valor devuelto por `Path.GetExtension(nameLower)` — que incluye el punto (`.pdf`). Por eso la query `"pdf"` sin punto no hace match; se necesitaría `".pdf"` para igualar la extensión. Sin embargo, sí se obtiene score `1.0` para query `"pdf"` si el stem o nombre completo coinciden exactamente.
 
-**ViewModel construido**: `UserDocumentSearch` construye `ResultItemViewModel` con `Icon = "📁"`, `Category = "Files"`, `Title = r.Name` y `Subtitle = r.Path`.
+**ViewModel construido**: `UserDocumentSearch` construye `ResultItemViewModel` con `Icon` (emoji según extensión), `Category = "Files"`, `Title = r.Name`, `Subtitle = r.Path`, `OnActivate = () => platform.LaunchApp(path)`, e `IconBytes`/`BadgeIconBytes` tomados del caché en el momento de construcción (pueden ser `null` si aún no han cargado; `RefreshIconBytes` los rellena en los snapshots siguientes).
+
+## Badge de aplicación predeterminada
+
+Cada `ResultItemViewModel` de fichero puede mostrar un badge (18×18px) en la esquina inferior derecha del icono con el logo de la app que lo abrirá. El badge se obtiene de `_badgeByExtension`, un `ConcurrentDictionary<string, byte[]?>` indexado por extensión en minúsculas (e.g. `".pdf"`). `null` significa "sin badge" (suprimido explícitamente); si la clave no existe aún, el badge no se muestra hasta que la precarga termine.
+
+**Precarga (`PreloadBadgeIconAsync`)**: se lanza en `Task.Run` por cada fichero nuevo, pero solo una vez por extensión (doble guarda: `ContainsKey` + `TryAdd` en `_badgePreloading`). Pasos:
+1. Llama `platform.GetDefaultAppPath(filePath)` para obtener la ruta del `.app` que abriría el fichero.
+2. Si `appPath == null` → `_badgeByExtension[ext] = null` (sin app predeterminada conocida).
+3. Si `Path.GetFullPath(appPath) == Path.GetFullPath(filePath)` (OrdinalIgnoreCase) → `null` (el fichero es en sí mismo la app, p.ej. un `.app` bundle).
+4. Si `platform.AreIconsSame(filePath, appPath)` → `null` (la app registra su propio icono para ese tipo; el badge sería redundante con el icono principal).
+5. Si pasa todos los checks → `platform.GetAppIconBytes(appPath)` y se almacena el PNG resultante.
+
+**Supresión de badge redundante (`AreIconsSame` en macOS)**: lee `Contents/Info.plist` del bundle de la app (funciona con plists XML y binarios vía `NSDictionary dictionaryWithContentsOfFile:`). Itera `CFBundleDocumentTypes`; si alguna entrada tiene `CFBundleTypeIconFile` definido y `CFBundleTypeExtensions` contiene la extensión del fichero, devuelve `true` — la app registró un icono propio para ese tipo, por lo que el icono del fichero ya lleva implícito el logo de la app.
+
+**Recarga diferida de iconos**: `RefreshIconBytes` rellena `IconBytes` y `BadgeIconBytes` nulos en el buffer con lo que haya cargado desde el último snapshot. Los iconos que no estén listos al emitir el snapshot final simplemente no se muestran en esa búsqueda; en búsquedas posteriores ya están en caché y aparecen desde el primer snapshot. Esto solo ocurre en la primera búsqueda de cada extensión, mientras `fileIconCache` y `_badgeByExtension` están fríos.
 
 **Logging en `UserDocumentSearch`**: al iniciar emite `LogDebug` con query, timeout y carpetas; al completar emite `LogInformation` con query y total de resultados acumulados. Al cancelar, el `LogInformation` distingue si fue el caller (`ct.IsCancellationRequested`) o el timeout interno (`cts.IsCancellationRequested && !ct.IsCancellationRequested`) quien originó la cancelación.
 

@@ -112,19 +112,6 @@ public class UserDocumentSearch(
             if (buffer.Count > 0) {
                 RefreshIconBytes(buffer);
                 channel.Writer.TryWrite(buffer.OrderByDescending(x => x.Score).Take(limit).ToList());
-
-                // Keep emitting snapshots until all icons are loaded or the caller cancels (~3s max)
-                for (var i = 0; i < 10 && !ct.IsCancellationRequested; i++) {
-                    await Task.Delay(300).ConfigureAwait(false);
-                    if (ct.IsCancellationRequested) break;
-                    var missingBefore = buffer.Count(x => x.IconBytes == null);
-                    if (missingBefore == 0) break;
-                    RefreshIconBytes(buffer);
-                    var missingAfter = buffer.Count(x => x.IconBytes == null);
-                    if (missingAfter < missingBefore)
-                        channel.Writer.TryWrite(buffer.OrderByDescending(x => x.Score).Take(limit).ToList());
-                    if (missingAfter == 0) break;
-                }
             }
             channel.Writer.TryComplete();
         }, CancellationToken.None);
