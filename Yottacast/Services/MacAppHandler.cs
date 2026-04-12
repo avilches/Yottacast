@@ -33,6 +33,12 @@ internal sealed class MacAppHandler : AppHandler {
 
     public override (KeyModifiers Modifiers, Key Key) CloseWindowShortcut => (KeyModifiers.Meta, Key.W);
 
+    public override void HideCursor() =>
+        ObjcMsgSendBool(ObjcGetClass("NSCursor"), SelRegisterName("setHiddenUntilMouseMoves:"), true);
+
+    public override void ShowCursor() =>
+        ObjcMsgSendBool(ObjcGetClass("NSCursor"), SelRegisterName("setHiddenUntilMouseMoves:"), false);
+
     // Waits for the previous app to take focus, then posts a Cmd+V keyboard event via CGEvent.
     // kCGHIDEventTap=0, kCGEventFlagMaskCommand=0x100000, keyCode for 'v'=0x09
     public override async Task SimulatePasteAsync() {
@@ -66,6 +72,9 @@ internal sealed class MacAppHandler : AppHandler {
 
     [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
     private static extern void ObjcMsgSendActivate(IntPtr receiver, IntPtr selector, ulong options);
+
+    [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
+    private static extern void ObjcMsgSendBool(IntPtr receiver, IntPtr selector, bool value);
 
     [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
     private static extern void ObjcMsgSendObject(IntPtr receiver, IntPtr selector, IntPtr obj);

@@ -25,4 +25,10 @@ internal abstract class AppHandler {
     /// Called after OnHide() when a result with PasteAfterActivate=true is confirmed.
     /// </summary>
     public virtual Task SimulatePasteAsync() => Task.CompletedTask;
+
+    /// <summary>Hides the system mouse cursor.</summary>
+    public virtual void HideCursor() { }
+
+    /// <summary>Restores the system mouse cursor.</summary>
+    public virtual void ShowCursor() { }
 }

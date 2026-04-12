@@ -20,6 +20,12 @@ internal sealed class WindowsAppHandler : AppHandler {
         keybd_event(VK_CONTROL, 0, 2, 0); // KEYEVENTF_KEYUP
     }
 
+    public override void HideCursor() => ShowCursorWin(false);
+    public override void ShowCursor() => ShowCursorWin(true);
+
     [DllImport("user32.dll")]
     private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, nuint dwExtraInfo);
+
+    [DllImport("user32.dll")]
+    private static extern int ShowCursorWin(bool show);
 }

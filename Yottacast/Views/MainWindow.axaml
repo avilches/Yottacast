@@ -74,13 +74,13 @@
             <Setter Property="Cursor" Value="Hand"/>
         </Style>
         <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource Theme.ItemHover}"/>
+            <Setter Property="Background" Value="Transparent"/>
         </Style>
         <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource Theme.ItemSelection}"/>
         </Style>
         <Style Selector="ListBoxItem:selected:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource Theme.ItemSelectionHover}"/>
+            <Setter Property="Background" Value="{DynamicResource Theme.ItemSelection}"/>
         </Style>
         <!-- Keep text visible on selection -->
         <Style Selector="ListBoxItem:selected TextBlock">
@@ -176,6 +176,7 @@
 
             <!-- ── Results list ── -->
             <ListBox DockPanel.Dock="Top"
+                     x:Name="ResultsList"
                      ItemsSource="{Binding Results}"
                      SelectedItem="{Binding SelectedResult}"
                      MaxHeight="416"
