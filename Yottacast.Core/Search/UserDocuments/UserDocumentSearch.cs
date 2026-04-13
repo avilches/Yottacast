@@ -68,15 +68,18 @@ public class UserDocumentSearch(
                                 if (queryTokens.All(t => nameSegments.Any(s => s.StartsWith(t))))
                                     score = 0.75;
                             } else {
-                                if (nameLower == queryLower || filename == queryLower || extension == queryLower)
-                                    score = 1;
+                                if (filename == queryLower && !string.IsNullOrEmpty(extension))
+                                    score = 1;   // stem exacto con extensión propia (ej. "report.pdf" → "report")
+                                else if (extension == $".{queryLower}")
+                                    score = 0.9; // coincidencia de extensión (ej. "photo.png" → "png")
+                                else if (nameLower == queryLower)
+                                    score = 0.85; // nombre completo exacto sin extensión (ej. carpeta "png")
                                 else if (nameLower.StartsWith(queryLower, StringComparison.Ordinal) || filename.StartsWith(queryLower, StringComparison.Ordinal))
                                     score = 0.75;
                                 else if (nameLower.EndsWith(queryLower, StringComparison.Ordinal))
                                     score = 0.5;
                             }
                         }
-                        fileIconCache.PreloadAsync(r.Path);
                         PreloadBadgeIconAsync(r.Path);
                         var path = r.Path;
                         var ext = Path.GetExtension(r.Name).ToLowerInvariant();
@@ -94,9 +97,11 @@ public class UserDocumentSearch(
                         var now = Environment.TickCount64;
                         if (now - lastSnapshot >= SnapshotIntervalMs) {
                             lastSnapshot = now;
+                            var topItems = buffer.OrderByDescending(x => x.Score).Take(limit).ToList();
+                            foreach (var item in topItems)
+                                fileIconCache.PreloadAsync(item.Subtitle);
                             RefreshIconBytes(buffer);
-                            channel.Writer.TryWrite(
-                                buffer.OrderByDescending(x => x.Score).Take(limit).ToList());
+                            channel.Writer.TryWrite(topItems);
                         }
                     },
                     maxResults: int.MaxValue,
@@ -110,8 +115,11 @@ public class UserDocumentSearch(
 
             cts.Dispose();
             if (buffer.Count > 0) {
+                var finalItems = buffer.OrderByDescending(x => x.Score).Take(limit).ToList();
+                foreach (var item in finalItems)
+                    fileIconCache.PreloadAsync(item.Subtitle);
                 RefreshIconBytes(buffer);
-                channel.Writer.TryWrite(buffer.OrderByDescending(x => x.Score).Take(limit).ToList());
+                channel.Writer.TryWrite(finalItems);
             }
             channel.Writer.TryComplete();
         }, CancellationToken.None);

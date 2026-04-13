@@ -67,7 +67,7 @@ Para **queries sin wildcard**, distingue dos modos:
 
 Ejemplo: `"xls calc mis"` → `"mis calculos.xls"`: segmentos `["mis","calculos","xls"]`; "mis"→"mis"✓, "calc"→"calculos"✓, "xls"→"xls"✓ → score prefijo.
 
-**Coincidencia con extensión**: en modo single-token, si la query coincide exactamente con la extensión del fichero (p.ej. query `"pdf"` vs `"report.pdf"`), la comparación `extension == queryLower` usa el valor devuelto por `Path.GetExtension(nameLower)` — que incluye el punto (`.pdf`). Por eso la query `"pdf"` sin punto no hace match; se necesitaría `".pdf"` para igualar la extensión. Sin embargo, sí se obtiene score `1.0` para query `"pdf"` si el stem o nombre completo coinciden exactamente.
+**Coincidencia con extensión**: en modo single-token, si la query coincide con la extensión del fichero (p.ej. query `"pdf"` vs `"report.pdf"`), la comparación construye el punto implícitamente (`extension == $".{queryLower}"`). El score resultante es `0.9` — por debajo del exact match (`1.0`) pero por encima de StartsWith (`0.75`), de manera que ficheros con esa extensión aparecen antes que carpetas o ficheros cuyo nombre empieza por el mismo término.
 
 **ViewModel construido**: `UserDocumentSearch` construye `ResultItemViewModel` con `Icon` (emoji según extensión), `Category = "Files"`, `Title = r.Name`, `Subtitle = r.Path`, `OnActivate = () => platform.LaunchApp(path)`, e `IconBytes`/`BadgeIconBytes` tomados del caché en el momento de construcción (pueden ser `null` si aún no han cargado; `RefreshIconBytes` los rellena en los snapshots siguientes).
 
