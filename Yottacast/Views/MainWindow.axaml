@@ -118,7 +118,15 @@
                              VerticalContentAlignment="Center"
                              Foreground="{DynamicResource Theme.SearchText}"
                              CaretBrush="{DynamicResource Theme.SearchCaret}"
-                             SelectionBrush="{DynamicResource Theme.SearchSelection}"/>
+                             SelectionBrush="{DynamicResource Theme.SearchSelection}">
+                        <!-- Override Fluent theme resources so background stays transparent in all states -->
+                        <TextBox.Resources>
+                            <SolidColorBrush x:Key="TextControlBackground" Color="Transparent"/>
+                            <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="Transparent"/>
+                            <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="Transparent"/>
+                            <SolidColorBrush x:Key="TextControlBackgroundDisabled" Color="Transparent"/>
+                        </TextBox.Resources>
+                    </TextBox>
 
                     <!-- Right side: spinner while searching, ESC badge when idle and empty -->
                     <Panel Grid.Column="1" VerticalAlignment="Center">
@@ -188,6 +196,11 @@
                     <!-- Template for emoji grid (more specific type first) -->
                     <DataTemplate x:DataType="viewModels:EmojiGridResultViewModel">
                         <results:EmojiGridResultView/>
+                    </DataTemplate>
+
+                    <!-- Calculator template (title + subtitle, no icon/category) -->
+                    <DataTemplate x:DataType="viewModels:CalculatorResultItemViewModel">
+                        <results:CalculatorResultItemView/>
                     </DataTemplate>
 
                     <!-- Conversion template (two-column from → to layout) -->

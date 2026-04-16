@@ -34,6 +34,15 @@ public sealed class AppIconCache(PlatformProvider platform, ILogger<AppIconCache
         _ = Task.Run(() => Load(appPath));
     }
 
+    /// <summary>
+    /// Invalidates the memory cache entry and re-queues the icon for loading.
+    /// Used when an app bundle is updated after initial detection (e.g. still being copied).
+    /// </summary>
+    public void Reload(string appPath) {
+        _memory.TryRemove(appPath, out _);
+        _ = Task.Run(() => Load(appPath));
+    }
+
     private void Load(string appPath) {
         // Guard against duplicate concurrent loads for the same path
         if (_memory.ContainsKey(appPath)) return;

@@ -74,10 +74,11 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
         foreach (var dir in dirs.Where(Directory.Exists)) {
             var watcher = new FileSystemWatcher(dir) {
                 Filter = "*.app",
-                NotifyFilter = NotifyFilters.DirectoryName,
+                NotifyFilter = NotifyFilters.DirectoryName | NotifyFilters.LastWrite,
                 EnableRaisingEvents = true,
             };
             watcher.Created += (_, e) => onAdded(e.FullPath);
+            watcher.Changed += (_, e) => onAdded(e.FullPath);
             watcher.Deleted += (_, e) => onRemoved(e.FullPath);
             watchers.Add(watcher);
         }

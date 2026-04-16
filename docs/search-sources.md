@@ -12,7 +12,7 @@ Inyecta `UserSettings` para leer `AppDirectories`.
 - **Windows**: `ScanAppsAsync` escanea `AppDirectories` buscando `.exe`; `CreateAppWatchers` en `*.exe`.
 - **Linux**: `ScanAppsAsync` escanea `AppDirectories` buscando `.desktop`; `CreateAppWatchers` en `*.desktop`.
 
-Evento `AppAdded` notifica cuando se detecta una app nueva (disponible para suscriptores externos; actualmente ningún componente lo consume).
+Evento `AppAdded` notifica cuando se detecta una app nueva post-scan. `MainWindowViewModel` se suscribe tras `WhenReady()` para mostrar las apps recién instaladas mientras Yottacast está en ejecución (ver `ui-main-window.md`).
 
 **Cambio de AppDirectories en settings** ⚠️ TODO: `ReloadAppDirectories()` no está implementado. `SettingsWindowViewModel` gestiona `AppDirectories` con un `ObservableCollection` y un `CollectionChanged` que llama `Save()`, pero los cambios no recargan el caché de `ApplicationSearch`. Para implementarlo correctamente habría que hacer `Stop()` + `Start()` limpiando el caché.
 
@@ -37,11 +37,13 @@ Evento `AppAdded` notifica cuando se detecta una app nueva (disponible para susc
 
 Clase: `Yottacast.Core.Search.WebSearch.WebSearchSource` (implementa `IInstantSearchSource`)
 
-Genera resultados para abrir búsquedas web en el navegador configurado. Sustituye al anterior `MakeGoogleItem` del ViewModel — ahora es una source normal registrada en el contenedor DI.
+Genera resultados para abrir búsquedas web en el navegador configurado.
 
-**Motores predefinidos** — definidos como lista estática en `WebSearchDefaults.Engines` (`WebSearchEngine.cs`): Google, Bing, DuckDuckGo, Amazon, YouTube, GitHub, Wikipedia, Stack Overflow. Cada motor tiene `Id`, `Name`, `QueryUrl` (con `{0}` como placeholder) y `IconResource` (nombre del embedded resource PNG).
+**Motores predefinidos** — definidos como lista estática en `WebSearchDefaults.Engines` (`WebSearchEngine.cs`). Cada motor tiene `Id`, `Name`, `QueryUrl` (con `{0}` como placeholder) y `IconResource` (nombre del embedded resource PNG). Ver `WebSearchDefaults` para la lista completa.
 
-**Configuración por motor** — almacenada en `UserSettings.WebSearchEngines` (`List<WebSearchEngineSettings>`). Cada entrada tiene `Id`, `Enabled`, `Mode` y `Prefix`. El modo y prefijo por defecto están en `WebSearchDefaults.DefaultSettingsFor(id)`.
+**Configuración por motor** — almacenada en `UserSettings.WebSearchEngines` (`List<WebSearchEngineSettings>`). Cada entrada tiene `Id`, `Enabled`, `Mode`, `Prefix` y `QueryUrl?`. Los valores por defecto de cada campo están en `WebSearchDefaults.DefaultSettingsFor(id)`.
+
+**URL de búsqueda**: `WebSearchSource` usa `userConfig.QueryUrl` si el usuario lo ha personalizado explícitamente; en caso contrario usa el `QueryUrl` del engine por defecto. Esto permite actualizar las URLs por defecto entre versiones sin sobreescribir las personalizaciones del usuario.
 
 **Modos de activación**:
 - `ShowAlways` — el motor aparece siempre (para cualquier query no vacía). Score: 3.0.
@@ -110,7 +112,7 @@ La coordinación interna usa un `Channel<(int sourceIndex, snapshot)>` y `Task.W
 
 ## Flujo de búsqueda en MainWindowViewModel
 
-`OnSearchTextChanged` cancela la búsqueda anterior (CTS) y arranca `SearchAsync`. Si el texto está vacío, limpia sin buscar.
+`OnSearchTextChanged` cancela la búsqueda anterior (CTS) y arranca `SearchAsync`. Si el texto está vacío, limpia los snapshots y llama `ShowPendingApps()`. Si el texto es no vacío, limpia `_pendingAppInfos` permanentemente (las apps recién instaladas desaparecen en cuanto el usuario empieza a buscar).
 
 `SearchAsync` opera en dos fases:
 
@@ -139,9 +141,9 @@ Ver `docs/search-files.md` para la documentación de `FileSearch` y los backends
 
 **`Stop()`** limpia el caché, cancela el CTS de background, elimina todos los watchers y resetea `_readyTcs`. Esto permite un reinicio limpio llamando de nuevo a `Start()`, aunque actualmente ningún código lo hace.
 
-**`AddApp()`** registra la app en el diccionario, llama `iconCache.PreloadAsync(path)` (fire-and-forget) y dispara `AppAdded` solo si la clave no existía previamente (`isNew`). Las reescrituras no disparan el evento.
+**`AddApp()`** registra la app en el diccionario. Para apps nuevas (`isNew`): llama `iconCache.PreloadAsync(path)` y dispara `AppAdded`. Para apps ya conocidas (re-detección por watcher, p.ej. el bundle acababa de estar incompleto al primer evento): llama `iconCache.Reload(path)` para forzar recarga del icono, y no dispara `AppAdded`.
 
-**Scoring en `Search()`**: el score es el devuelto por `NameMatcher.Score` sin ninguna transformación adicional. La categoría es `"Applications"`. El icono fallback es `"📱"`; si `AppIconCache` ya tiene los bytes del icono en memoria, se asignan a `IconBytes` y la UI muestra la imagen real en su lugar.
+**`CreateResultItem(AppInfo, double score = 1.0)`**: factory que construye un `ResultItemViewModel` para una app. Usado internamente por `Search()` (con el score de `NameMatcher`) y externamente por `MainWindowViewModel` para mostrar apps recién instaladas. La categoría es `"Applications"`, el icono fallback es `"📱"`; si `AppIconCache` ya tiene los bytes del icono en memoria, se asignan a `IconBytes`.
 
 ## Iconos de apps
 
@@ -152,7 +154,9 @@ Los iconos se gestionan en dos capas: carga (plataforma + caché) y renderizado 
 - **Memoria**: `ConcurrentDictionary<string, byte[]?>` indexado por la ruta del bundle (`.app`). `Get(appPath)` es O(1) y se llama en cada `Search()`.
 - **Disco**: `~/.cache/yottacast/app-icons/{sha1(appPath)}_{mtime_unix}.png`. El sufijo de mtime invalida la entrada automáticamente cuando la app se actualiza. Los archivos huérfanos de versiones anteriores no se limpian activamente.
 
-`PreloadAsync(appPath)` se llama (fire-and-forget) desde `AddApp()` cada vez que se descubre una app — durante el escaneo inicial y desde los watchers. Comprueba disco primero; si falla, llama a `platform.GetAppIconBytes`. Ignora llamadas duplicadas para la misma ruta.
+`PreloadAsync(appPath)` se llama (fire-and-forget) desde `AddApp()` para apps nuevas. Comprueba disco primero; si falla, llama a `platform.GetAppIconBytes`. Ignora llamadas duplicadas para la misma ruta (comprueba `ContainsKey` antes de lanzar el Task).
+
+`Reload(appPath)` — invalida la entrada en memoria (`TryRemove`) y relanza la carga. Usado cuando una app ya conocida es re-detectada por el watcher (p.ej. el bundle seguía copiándose cuando se disparó el evento `Created` inicial). Puede producir cargas concurrentes si el watcher dispara muchos eventos `Changed` seguidos; la última escritura gana.
 
 Cuando un icono termina de cargarse con bytes no nulos, `AppIconCache` dispara `IconLoaded`. `ApplicationSearch` expone este evento; `MainWindowViewModel` se suscribe en `Initialize()` y re-ejecuta `SearchInstant` en el hilo UI para refrescar los resultados visibles con el icono recién disponible.
 

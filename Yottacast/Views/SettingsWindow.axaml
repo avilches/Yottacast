@@ -6,7 +6,7 @@
         x:Class="Yottacast.Views.SettingsWindow"
         x:DataType="vm:SettingsWindowViewModel"
         Title="Yottacast Settings"
-        Width="700" Height="520"
+        Width="700" Height="620"
         SizeToContent="Manual"
         CanResize="False"
         WindowStartupLocation="CenterScreen"
@@ -114,6 +114,77 @@
             <Setter Property="Margin"       Value="0,0,0,20"/>
         </Style>
 
+        <!-- Engine table: column header -->
+        <Style Selector="TextBlock.table-col-header">
+            <Setter Property="Foreground"  Value="{DynamicResource Theme.ItemCategory}"/>
+            <Setter Property="FontSize"    Value="{DynamicResource Theme.FontSizeSmall}"/>
+            <Setter Property="FontWeight"  Value="SemiBold"/>
+            <Setter Property="Margin"      Value="0,0,0,4"/>
+        </Style>
+
+        <!-- Engine alias TextBlock (display state) -->
+        <Style Selector="TextBlock.engine-alias-label">
+            <Setter Property="Foreground"        Value="{DynamicResource Theme.ItemTitle}"/>
+            <Setter Property="FontSize"          Value="{DynamicResource Theme.FontSizeTitle}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Padding"           Value="4,2"/>
+            <Setter Property="Cursor"            Value="Arrow"/>
+        </Style>
+
+        <!-- Engine alias TextBox (edit state — visible only while editing) -->
+        <Style Selector="TextBox.engine-alias-edit">
+            <Setter Property="Background"      Value="{DynamicResource Theme.WindowBackground}"/>
+            <Setter Property="BorderBrush"     Value="{DynamicResource Theme.ItemSelection}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding"         Value="4,2"/>
+            <Setter Property="CornerRadius"    Value="3"/>
+            <Setter Property="FontSize"        Value="{DynamicResource Theme.FontSizeTitle}"/>
+            <Setter Property="Foreground"      Value="{DynamicResource Theme.ItemTitle}"/>
+            <Setter Property="CaretBrush"      Value="{DynamicResource Theme.SearchCaret}"/>
+        </Style>
+
+        <!-- Engine custom URL TextBox -->
+        <Style Selector="TextBox.engine-url">
+            <Setter Property="Background"    Value="Transparent"/>
+            <Setter Property="BorderBrush"   Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding"       Value="4,2"/>
+            <Setter Property="CornerRadius"  Value="3"/>
+            <Setter Property="FontSize"      Value="10"/>
+            <Setter Property="Foreground"    Value="{DynamicResource Theme.ItemSubtitle}"/>
+            <Setter Property="CaretBrush"    Value="{DynamicResource Theme.SearchCaret}"/>
+        </Style>
+        <Style Selector="TextBox.engine-url:pointerover">
+            <Setter Property="BorderBrush" Value="{DynamicResource Theme.Divider}"/>
+        </Style>
+        <Style Selector="TextBox.engine-url:focus">
+            <Setter Property="BorderBrush" Value="{DynamicResource Theme.ItemSelection}"/>
+            <Setter Property="Background"  Value="{DynamicResource Theme.WindowBackground}"/>
+            <Setter Property="Foreground"  Value="{DynamicResource Theme.ItemTitle}"/>
+        </Style>
+
+        <!-- Mode toggle button -->
+        <Style Selector="Button.mode-toggle">
+            <Setter Property="Background"      Value="{DynamicResource Theme.ItemIconBackground}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding"         Value="6,3"/>
+            <Setter Property="CornerRadius"    Value="4"/>
+            <Setter Property="Cursor"          Value="Hand"/>
+            <Setter Property="FontSize"        Value="{DynamicResource Theme.FontSizeSmall}"/>
+            <Setter Property="Foreground"      Value="{DynamicResource Theme.ItemSubtitle}"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="MinWidth"        Value="52"/>
+        </Style>
+        <Style Selector="Button.mode-toggle /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource Theme.ItemIconBackground}"/>
+        </Style>
+        <Style Selector="Button.mode-toggle:pointerover">
+            <Setter Property="Foreground" Value="{DynamicResource Theme.ItemTitle}"/>
+        </Style>
+        <Style Selector="Button.mode-toggle:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource Theme.ItemHover}"/>
+        </Style>
+
     </Window.Styles>
 
     <Grid ColumnDefinitions="180,1,*">
@@ -139,9 +210,9 @@
                         Content="App Search"/>
 
                 <Button Classes="nav-item"
-                        Classes.nav-selected="{Binding IsInternetSearchSelected}"
-                        Command="{Binding SelectInternetSearchCommand}"
-                        Content="Internet Search"/>
+                        Classes.nav-selected="{Binding IsWebSearchSelected}"
+                        Command="{Binding SelectWebSearchCommand}"
+                        Content="Web Search"/>
 
                 <Button Classes="nav-item"
                         Classes.nav-selected="{Binding IsFileSearchSelected}"
@@ -247,15 +318,85 @@
                             Click="OnAddAppDirectoryClicked"/>
                 </StackPanel>
 
-                <!-- Internet Search -->
-                <StackPanel Spacing="20" IsVisible="{Binding IsInternetSearchSelected}">
-                    <TextBlock Classes="section-heading" Text="Internet Search"/>
+                <!-- Web Search -->
+                <StackPanel Spacing="16" IsVisible="{Binding IsWebSearchSelected}">
+                    <TextBlock Classes="section-heading" Text="Web Search"/>
 
                     <StackPanel Spacing="0">
                         <TextBlock Classes="label" Text="DEFAULT BROWSER"/>
                         <ComboBox ItemsSource="{Binding Browsers}"
                                   SelectedItem="{Binding SelectedBrowser}"
                                   PlaceholderText="No browsers found"/>
+                    </StackPanel>
+
+                    <!-- Engine table -->
+                    <StackPanel Spacing="0">
+                        <TextBlock Classes="label" Text="SEARCH ENGINES"/>
+
+                        <!-- Header row -->
+                        <Grid ColumnDefinitions="108,58,64,*,42" Margin="2,0,0,0">
+                            <TextBlock Grid.Column="0" Classes="table-col-header" Text="ENGINE"/>
+                            <TextBlock Grid.Column="1" Classes="table-col-header" Text="PREFIX"/>
+                            <TextBlock Grid.Column="2" Classes="table-col-header" Text="MODE" Margin="4,0,0,0"/>
+                            <TextBlock Grid.Column="3" Classes="table-col-header" Text="CUSTOM URL" Margin="8,0,0,0"/>
+                            <TextBlock Grid.Column="4" Classes="table-col-header" Text="ON"
+                                       HorizontalAlignment="Center"/>
+                        </Grid>
+
+                        <Rectangle Height="1" Fill="{DynamicResource Theme.Divider}" Margin="0,0,0,2"/>
+
+                        <!-- Engine rows -->
+                        <ItemsControl ItemsSource="{Binding WebSearchEngines}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:WebSearchEngineRowViewModel">
+                                    <Grid ColumnDefinitions="108,58,64,*,42" MinHeight="30">
+
+                                        <!-- Engine name -->
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding Name}"
+                                                   Foreground="{DynamicResource Theme.ItemTitle}"
+                                                   FontSize="{DynamicResource Theme.FontSizeTitle}"
+                                                   VerticalAlignment="Center"
+                                                   Padding="2,0,4,0"/>
+
+                                        <!-- Prefix alias — label until double-click -->
+                                        <Panel Grid.Column="1" Opacity="{Binding PrefixOpacity}">
+                                            <TextBlock Text="{Binding Prefix}"
+                                                       Classes="engine-alias-label"
+                                                       IsVisible="{Binding IsPrefixNotEditing}"
+                                                       DoubleTapped="OnPrefixDoubleTapped"/>
+                                            <TextBox Text="{Binding Prefix}"
+                                                     Classes="engine-alias-edit"
+                                                     IsVisible="{Binding IsPrefixEditing}"
+                                                     LostFocus="OnPrefixLostFocus"
+                                                     KeyDown="OnPrefixKeyDown"/>
+                                        </Panel>
+
+                                        <!-- Mode toggle -->
+                                        <Button Grid.Column="2"
+                                                Content="{Binding ModeLabel}"
+                                                Command="{Binding ToggleModeCommand}"
+                                                Classes="mode-toggle"
+                                                VerticalAlignment="Center"
+                                                Margin="4,0"/>
+
+                                        <!-- Custom query URL -->
+                                        <TextBox Grid.Column="3"
+                                                 Text="{Binding QueryUrl}"
+                                                 Watermark="{Binding QueryUrlWatermark}"
+                                                 Classes="engine-url"
+                                                 VerticalAlignment="Center"
+                                                 Margin="4,0"/>
+
+                                        <!-- Enabled -->
+                                        <CheckBox Grid.Column="4"
+                                                  IsChecked="{Binding Enabled}"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </StackPanel>
                 </StackPanel>
 

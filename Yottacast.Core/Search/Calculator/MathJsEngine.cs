@@ -347,7 +347,7 @@ public sealed class MathJsEngine : IDisposable {
     /// <summary>
     /// Returns the display-friendly name for a unit symbol (e.g. "degC" → "°C", "minute" → "min").
     /// For compound units ("mi / minute") the lookup is applied to each component so the user sees
-    /// "mi / min" instead of "mi / minute".
+    /// "mi/min" instead of "mi / minute".
     /// </summary>
     public string DisplayUnit(string unit) {
         var slashIdx = unit.IndexOf(" / ", StringComparison.Ordinal);
@@ -355,7 +355,7 @@ public sealed class MathJsEngine : IDisposable {
             return _displayNames.TryGetValue(unit, out var display) ? display : unit;
         var num = unit[..slashIdx];
         var den = unit[(slashIdx + 3)..];
-        return $"{DisplayUnit(num)} / {DisplayUnit(den)}";
+        return $"{DisplayUnit(num)}/{DisplayUnit(den)}";
     }
 
     private NormalizedExpression? NormalizeExpressionCore(string expression, string knownCsv) {

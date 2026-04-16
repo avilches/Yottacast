@@ -386,6 +386,10 @@ function normalizeExpression(expression, knownCurrenciesCsv) {
         }
     } else if (root.type === 'OperatorNode' && root.implicit === true &&
                root.args.length === 2 && root.args[1].type === 'SymbolNode') {
+        // Reject when LHS is a bare unit symbol (e.g. "day km" from "d km") — not a valid entry
+        if (root.args[0].type === 'SymbolNode' && resolveUnitToken(root.args[0].name) !== null) {
+            return null;
+        }
         var unitName = root.args[1].name;
         var defaultTarget = findDefaultTarget(unitName, knownCurrencies);
         if (defaultTarget !== null) {

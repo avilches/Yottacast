@@ -8,10 +8,11 @@ namespace Yottacast.Core.Tests.Search.Calculator;
 //
 // Each TheoryData<string, string> block is rewritten to align:
 //   - the query column (key)
-//   - the "from" cell, sub-aligned by short/long on " / "
+
+//   - the "from" cell, sub-aligned by short/long on " | "
 //   - the optional "norm" cell (when any row in the block has " > NORM "), same sub-align
 //   - the "to" cell, sub-aligned the same way
-// Cells without a long form (no " / ") leave the long sub-column blank with spaces.
+// Cells without a long form (no " | ") leave the long sub-column blank with spaces.
 // Rows in a mixed block without a norm cell get spaces where " > NORM " would be.
 //
 // At assert time CalculatorSearch tests collapse runs of spaces, so the visual padding
@@ -82,7 +83,7 @@ internal static class TheoryDataAligner {
         string Comment);
 
     private static (string Short, string Long) SplitSlash(string cell) {
-        var idx = cell.IndexOf(" / ", StringComparison.Ordinal);
+        var idx = cell.IndexOf(" | ", StringComparison.Ordinal);
         return idx < 0 ? (cell, "") : (cell[..idx], cell[(idx + 3)..]);
     }
 
@@ -140,7 +141,7 @@ internal static class TheoryDataAligner {
             var sp = s.PadRight(sw);
             if (!hasLong) return sp;
             return l.Length > 0
-                ? $"{sp} / {l.PadRight(lw)}"
+                ? $"{sp} | {l.PadRight(lw)}"
                 : $"{sp}   {string.Empty.PadRight(lw)}";
         }
 

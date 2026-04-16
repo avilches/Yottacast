@@ -133,16 +133,16 @@ Las docs están en `docs/`. Léelas antes de trabajar en cualquier área:
 
 Diseño general y fuentes de busqueda:
 - `docs/app-design.md`
-- `docs/search-sources.md`
-- `docs/search-calculator.md`
-- `docs/search-emoji.md`
+- Buscador de ficheros, documentos `docs/search-sources.md`
+- Calculadora y conversiones: `docs/search-calculator.md`
+- Selector de emojis: `docs/search-emoji.md`
 - `docs/search-scoring.md`
 - `docs/search-files.md`
 
 Internals:
-- `docs/app-paths.md`
+- Todas las rutas y ficheros deben ir aqui: `docs/app-paths.md`
 - `docs/release-workflow.md`
-- `docs/multi-platform.md`
+- Todo lo que tenga que ver con Mac vs Linux vs Window se explica aqui `docs/multi-platform.md`
 - `docs/logging.md`
 
 Settings

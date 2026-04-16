@@ -69,11 +69,11 @@ public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard) :
             case CalcResult r when r.RawValue != q: {
                 var subtitle = BuildSubtitle(r.NormalizedQuery, r.AmbiguityHints);
                 var captured = r.RawValue;
-                return [new ResultItemViewModel {
+                return [new CalculatorResultItemViewModel {
                     Icon = "🧮",
                     Title = r.RawValue,
                     Subtitle = subtitle,
-                    Category = "",
+                    Category = "Calculator",
                     Score = 4,
                     OnActivate = () => clipboard.CopyText(captured),
                 }];

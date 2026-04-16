@@ -1,0 +1,19 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:viewModels="clr-namespace:Yottacast.Core.ViewModels;assembly=Yottacast.Core"
+             x:Class="Yottacast.Views.Results.CalculatorResultItemView"
+             x:DataType="viewModels:CalculatorResultItemViewModel">
+    <StackPanel Orientation="Vertical"
+                VerticalAlignment="Center"
+                Spacing="2"
+                MinHeight="44">
+        <TextBlock Text="{Binding Title}"
+                   Foreground="{DynamicResource Theme.ItemTitle}"
+                   FontSize="{DynamicResource Theme.FontSizeTitle}"
+                   FontWeight="Medium"/>
+        <TextBlock Text="{Binding Subtitle}"
+                   Foreground="{DynamicResource Theme.ItemSubtitle}"
+                   FontSize="{DynamicResource Theme.FontSizeSubtitle}"
+                   TextTrimming="CharacterEllipsis"/>
+    </StackPanel>
+</UserControl>

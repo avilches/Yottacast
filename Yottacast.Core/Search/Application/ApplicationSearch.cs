@@ -63,21 +63,23 @@ public sealed class ApplicationSearch(
         return Task.CompletedTask;
     }
 
+    public ResultItemViewModel CreateResultItem(AppInfo app, double score = 1.0) => new() {
+        Icon = "📱",
+        IconBytes = iconCache.Get(app.Path),
+        Title = app.Name,
+        Subtitle = app.Path,
+        Category = "Applications",
+        Score = score,
+        OnActivate = () => platform.LaunchApp(app.Path),
+    };
+
     public IReadOnlyList<BaseResultItemViewModel> Search(string query, int limit) {
         var results = _apps.Values
             .Select(a => (app: a, score: NameMatcher.Score(a.Name, query)))
             .Where(x => x.score > 0)
             .OrderByDescending(x => x.score)
             .Take(limit)
-            .Select(x => new ResultItemViewModel {
-                Icon = "📱",
-                IconBytes = iconCache.Get(x.app.Path),
-                Title = x.app.Name,
-                Subtitle = x.app.Path,
-                Category = "Applications",
-                Score = x.score,
-                OnActivate = () => platform.LaunchApp(x.app.Path),
-            })
+            .Select(x => CreateResultItem(x.app, x.score))
             .ToList();
         logger.LogDebug("AppSearch query=\"{Query}\" cache={CacheCount} results={ResultCount} ready={Ready}",
             query, _apps.Count, results.Count, _readyTcs.Task.IsCompleted);
@@ -109,8 +111,13 @@ public sealed class ApplicationSearch(
         var isNew = !_apps.ContainsKey(name);
         var app = new AppInfo(name, path);
         _apps[name] = app;
-        iconCache.PreloadAsync(path);
-        if (isNew) AppAdded?.Invoke(app);
+        if (isNew) {
+            iconCache.PreloadAsync(path);
+            AppAdded?.Invoke(app);
+        } else {
+            // Bundle may have changed (e.g. still being copied when first detected) — force icon reload
+            iconCache.Reload(path);
+        }
     }
 
     private void RemoveApp(string path) {

@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using System.Linq;
 using System.Threading.Tasks;
 using Yottacast.ViewModels;
 
@@ -23,6 +24,37 @@ public partial class SettingsWindow : Window {
         if (DataContext is SettingsWindowViewModel { IsCapturingHotkey: true } vm)
             vm.CancelHotkeyCapture();
         base.OnPointerPressed(e);
+    }
+
+    // ── Engine prefix inline editing ──────────────────────────────────────────
+    private void OnPrefixDoubleTapped(object? sender, TappedEventArgs e) {
+        if (sender is not TextBlock { DataContext: WebSearchEngineRowViewModel vm } tb) return;
+        if (!vm.IsPrefixEnabled) return;
+
+        vm.IsPrefixEditing = true;
+
+        // Focus the TextBox sibling after Avalonia updates IsVisible in the next layout pass
+        if (tb.Parent is Panel panel) {
+            var textBox = panel.Children.OfType<TextBox>().FirstOrDefault();
+            if (textBox != null)
+                Avalonia.Threading.Dispatcher.UIThread.Post(() => {
+                    textBox.Focus();
+                    textBox.SelectAll();
+                });
+        }
+    }
+
+    private void OnPrefixLostFocus(object? sender, RoutedEventArgs e) {
+        if (sender is TextBox { DataContext: WebSearchEngineRowViewModel vm })
+            vm.IsPrefixEditing = false;
+    }
+
+    private void OnPrefixKeyDown(object? sender, KeyEventArgs e) {
+        if (e.Key is Key.Enter or Key.Escape &&
+            sender is TextBox { DataContext: WebSearchEngineRowViewModel vm }) {
+            vm.IsPrefixEditing = false;
+            e.Handled = true;
+        }
     }
 
     // ── Folder picker ─────────────────────────────────────────────────────────

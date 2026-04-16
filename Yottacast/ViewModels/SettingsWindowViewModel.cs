@@ -6,13 +6,14 @@ using Avalonia.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Yottacast.Core.Platform;
+using Yottacast.Core.Search.WebSearch;
 using Yottacast.Core.Services;
 using Yottacast.Services;
 
 namespace Yottacast.ViewModels;
 
 public enum SettingsSection {
-    General, AppSearch, InternetSearch, FileSearch, Calculator, Clipboard, Emoji
+    General, AppSearch, WebSearch, FileSearch, Calculator, Clipboard, Emoji
 }
 
 public partial class SettingsWindowViewModel : ViewModelBase {
@@ -20,28 +21,28 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsGeneralSelected))]
     [NotifyPropertyChangedFor(nameof(IsAppSearchSelected))]
-    [NotifyPropertyChangedFor(nameof(IsInternetSearchSelected))]
+    [NotifyPropertyChangedFor(nameof(IsWebSearchSelected))]
     [NotifyPropertyChangedFor(nameof(IsFileSearchSelected))]
     [NotifyPropertyChangedFor(nameof(IsCalculatorSelected))]
     [NotifyPropertyChangedFor(nameof(IsClipboardSelected))]
     [NotifyPropertyChangedFor(nameof(IsEmojiSelected))]
     private SettingsSection _selectedSection = SettingsSection.General;
 
-    public bool IsGeneralSelected        => SelectedSection == SettingsSection.General;
-    public bool IsAppSearchSelected      => SelectedSection == SettingsSection.AppSearch;
-    public bool IsInternetSearchSelected => SelectedSection == SettingsSection.InternetSearch;
-    public bool IsFileSearchSelected     => SelectedSection == SettingsSection.FileSearch;
-    public bool IsCalculatorSelected     => SelectedSection == SettingsSection.Calculator;
-    public bool IsClipboardSelected      => SelectedSection == SettingsSection.Clipboard;
-    public bool IsEmojiSelected          => SelectedSection == SettingsSection.Emoji;
+    public bool IsGeneralSelected   => SelectedSection == SettingsSection.General;
+    public bool IsAppSearchSelected => SelectedSection == SettingsSection.AppSearch;
+    public bool IsWebSearchSelected => SelectedSection == SettingsSection.WebSearch;
+    public bool IsFileSearchSelected => SelectedSection == SettingsSection.FileSearch;
+    public bool IsCalculatorSelected => SelectedSection == SettingsSection.Calculator;
+    public bool IsClipboardSelected  => SelectedSection == SettingsSection.Clipboard;
+    public bool IsEmojiSelected      => SelectedSection == SettingsSection.Emoji;
 
-    [RelayCommand] private void SelectGeneral()        => SelectedSection = SettingsSection.General;
-    [RelayCommand] private void SelectAppSearch()      => SelectedSection = SettingsSection.AppSearch;
-    [RelayCommand] private void SelectInternetSearch() => SelectedSection = SettingsSection.InternetSearch;
-    [RelayCommand] private void SelectFileSearch()     => SelectedSection = SettingsSection.FileSearch;
-    [RelayCommand] private void SelectCalculator()     => SelectedSection = SettingsSection.Calculator;
-    [RelayCommand] private void SelectClipboard()      => SelectedSection = SettingsSection.Clipboard;
-    [RelayCommand] private void SelectEmoji()          => SelectedSection = SettingsSection.Emoji;
+    [RelayCommand] private void SelectGeneral()   => SelectedSection = SettingsSection.General;
+    [RelayCommand] private void SelectAppSearch() => SelectedSection = SettingsSection.AppSearch;
+    [RelayCommand] private void SelectWebSearch() => SelectedSection = SettingsSection.WebSearch;
+    [RelayCommand] private void SelectFileSearch() => SelectedSection = SettingsSection.FileSearch;
+    [RelayCommand] private void SelectCalculator() => SelectedSection = SettingsSection.Calculator;
+    [RelayCommand] private void SelectClipboard()  => SelectedSection = SettingsSection.Clipboard;
+    [RelayCommand] private void SelectEmoji()      => SelectedSection = SettingsSection.Emoji;
 
     // ── General section ──────────────────────────────────────────────────────
     [ObservableProperty] private string? _selectedBrowser;
@@ -57,6 +58,9 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     // ── Folder lists ─────────────────────────────────────────────────────────
     public ObservableCollection<string> SearchFolders  { get; }
     public ObservableCollection<string> AppDirectories { get; }
+
+    // ── Web Search engines ───────────────────────────────────────────────────
+    public IReadOnlyList<WebSearchEngineRowViewModel> WebSearchEngines { get; }
 
     // ── Feature toggles ──────────────────────────────────────────────────────
     [ObservableProperty] private bool _enableCalculator;
@@ -101,6 +105,12 @@ public partial class SettingsWindowViewModel : ViewModelBase {
 
         SearchFolders.CollectionChanged  += (_, _) => { settings.SearchFolders  = SearchFolders.ToList();  settings.Save(); };
         AppDirectories.CollectionChanged += (_, _) => { settings.AppDirectories = AppDirectories.ToList(); settings.Save(); };
+
+        WebSearchEngines = WebSearchDefaults.Engines.Select(engine => {
+            var cfg = settings.WebSearchEngines.FirstOrDefault(s => s.Id == engine.Id)
+                      ?? WebSearchDefaults.DefaultSettingsFor(engine.Id);
+            return new WebSearchEngineRowViewModel(engine.Id, engine.Name, engine.QueryUrl, cfg, settings);
+        }).ToList();
     }
 
     // ── Folder mutators (called from code-behind) ─────────────────────────────

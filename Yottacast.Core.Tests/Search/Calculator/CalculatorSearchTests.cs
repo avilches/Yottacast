@@ -20,12 +20,12 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
         return Assert.Single(results);
     }
 
-    private static ResultItemViewModel StandardResult(CalculatorSearch search, string query) =>
-        Assert.IsType<ResultItemViewModel>(SearchResult(search, query));
+    private static CalculatorResultItemViewModel StandardResult(CalculatorSearch search, string query) =>
+        Assert.IsType<CalculatorResultItemViewModel>(SearchResult(search, query));
 
     private static string ValueOf(BaseResultItemViewModel item) => item switch {
         ConversionResultItemViewModel c => c.ToShort,
-        ResultItemViewModel r => r.Title,
+        CalculatorResultItemViewModel r => r.Title,
         _ => throw new InvalidOperationException($"Unknown type: {item.GetType()}")
     };
 
@@ -105,6 +105,12 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
         { "safari"          },   // plain text
         { "hello world"     },   // no digits or operators
         { "2"               },   // digit only, trivially equal → discarded
+        { "d km"            },   // unit × unit (d→day, km→km) — not a valid entry
+        { "d m"             },   // unit × unit (d→day, m→meter)
+        { "d f"             },   // unit × unit (d→day, f→degF)
+        { "d d"             },   // unit × unit (d→day, d→day)
+        { "m km"            },   // unit × unit (m→meter, km→km)
+        { "s kg"            },   // unit × unit (s→second, kg→kg)
     };
 
     [Theory]

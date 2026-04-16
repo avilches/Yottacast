@@ -23,6 +23,7 @@ Persiste en JSON. Todos los campos tienen defaults multiplataforma; nunca lanza 
 | `EnableClipboard` | bool | `true` |
 | `EnableEmoji` | bool | `true` |
 | `LastLaunchedVersion` | string | `""` |
+| `WebSearchEngines` | `List<WebSearchEngineSettings>` | generado desde `WebSearchDefaults` |
 
 Los tres toggles `EnableCalculator`, `EnableClipboard` y `EnableEmoji` están expuestos en el SettingsWindow y se persisten en el JSON, pero actualmente no tienen efecto funcional sobre los resultados de búsqueda — las fuentes correspondientes se registran siempre en DI con independencia de su valor. `LastLaunchedVersion` se usa para detectar actualizaciones y ejecutar migraciones; ver el paso `RunMigrations` en `docs/app-design.md`.
 
@@ -105,9 +106,25 @@ Ambas clases exponen dos métodos de resolución con propósitos distintos:
 
 La diferencia clave es que `Resolve` es el único safe para ser llamado antes de que `ApplicationSearch` haya terminado su escaneo.
 
+## WebSearchEngines
+
+`UserSettings.WebSearchEngines` almacena la configuración por motor de búsqueda web. Cada `WebSearchEngineSettings` tiene:
+
+| Campo | Tipo | Comportamiento |
+|---|---|---|
+| `Id` | string | Identificador del motor (e.g. `"google"`) |
+| `Enabled` | bool | Si el motor aparece en resultados |
+| `Mode` | `WebSearchMode` | `PrefixOnly` o `ShowAlways` (serializado como string en JSON; si el valor es inválido, usa `PrefixOnly`) |
+| `Prefix` | string | Alias de teclado que activa el motor (e.g. `"g"`) |
+| `QueryUrl` | `string?` | URL personalizada con placeholder `{0}`; `null` significa "usar URL por defecto del engine". Solo se persiste en JSON si el usuario la ha modificado explícitamente |
+
+El merge de engines al cargar preserva las personalizaciones del usuario y añade automáticamente los engines nuevos con sus defaults. Ver `WebSearchDefaults.DefaultSettingsFor()` para los valores por defecto de cada motor.
+
+La UI de edición (sección "Web Search" en Settings) permite: toggle Enabled, toggle Mode, editar Prefix por doble-clic, y editar CustomUrl directamente. Los cambios se guardan automáticamente al modificar cada campo.
+
 ## SettingsWindowViewModel — navegación por secciones
 
-`SettingsWindowViewModel` usa un enum `SettingsSection` para dividir el panel en secciones: `General`, `AppSearch`, `InternetSearch`, `FileSearch`, `Calculator`, `Clipboard`, `Emoji`. La sección activa se controla con `SelectedSection` y los comandos `SelectX()` generados por `[RelayCommand]`.
+`SettingsWindowViewModel` usa un enum `SettingsSection` para dividir el panel en secciones: `General`, `AppSearch`, `WebSearch`, `FileSearch`, `Calculator`, `Clipboard`, `Emoji`. La sección activa se controla con `SelectedSection` y los comandos `SelectX()` generados por `[RelayCommand]`.
 
 ## SettingsWindowViewModel — fallback adicional en la UI
 

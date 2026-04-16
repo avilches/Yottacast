@@ -48,17 +48,50 @@ public partial class MainWindowViewModel(
     private IReadOnlyList<BaseResultItemViewModel> _deferredSnapshot = [];
     private bool _userNavigated;
 
+    private readonly List<AppInfo> _pendingAppInfos = [];
+
     public void CancelDeferredSearch() => _deferredCts?.Cancel();
     public void NotifyUserNavigated() => _userNavigated = true;
 
     public void Initialize() {
         _ = CheckForUpdateAsync();
-        appSearch.IconLoaded += OnIconLoaded;
+        appSearch.IconLoaded += OnAppCacheChanged;
+        _ = StartTrackingNewAppsAsync();
     }
 
-    private void OnIconLoaded() {
-        if (string.IsNullOrEmpty(SearchText)) return;
+    private async Task StartTrackingNewAppsAsync() {
+        await appSearch.WhenReady();
+        appSearch.AppAdded += app => Dispatcher.UIThread.Post(() => OnNewAppInstalled(app));
+    }
+
+    private void OnNewAppInstalled(AppInfo app) {
+        if (string.IsNullOrEmpty(SearchText)) {
+            _pendingAppInfos.Add(app);
+            ShowPendingApps();
+        } else {
+            // Usuario buscando activamente — refrescar por si la nueva app coincide con la query
+            var (items, hint) = globalSearch.SearchInstant(SearchText, limit: SearchSourceLimit);
+            _instantSnapshot = items;
+            SearchHint = hint;
+            RefreshResults();
+        }
+    }
+
+    private void ShowPendingApps() {
+        Results.Clear();
+        foreach (var info in _pendingAppInfos)
+            Results.Add(appSearch.CreateResultItem(info));
+        HasResults = Results.Count > 0;
+        ShowNoResults = false;
+        SelectedResult = Results.FirstOrDefault();
+    }
+
+    private void OnAppCacheChanged() {
         Dispatcher.UIThread.Post(() => {
+            if (string.IsNullOrEmpty(SearchText)) {
+                if (_pendingAppInfos.Count > 0) ShowPendingApps();
+                return;
+            }
             var (items, hint) = globalSearch.SearchInstant(SearchText, limit: SearchSourceLimit);
             _instantSnapshot = items;
             SearchHint = hint;
@@ -90,13 +123,14 @@ public partial class MainWindowViewModel(
 
         if (string.IsNullOrWhiteSpace(value)) {
             IsSearching = false;
-            Results.Clear();
-            HasResults = false;
-            ShowNoResults = false;
+            _instantSnapshot = [];
+            _deferredSnapshot = [];
             SearchHint = null;
+            ShowPendingApps();
             return;
         }
 
+        _pendingAppInfos.Clear();
         _ = SearchAsync(value, _cts.Token);
     }
 

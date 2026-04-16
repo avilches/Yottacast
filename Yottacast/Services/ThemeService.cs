@@ -18,10 +18,12 @@ public sealed class ThemeService(ILogger<ThemeService> logger) {
 
     public IReadOnlyList<ThemeOption> AvailableThemes() {
         var themes = new List<ThemeOption>();
+        var seen   = new HashSet<string>();
         try {
             foreach (var file in Directory.GetFiles(ThemesFolder, "*.json").OrderBy(f => f)) {
                 var id = Path.GetFileNameWithoutExtension(file);
                 if (id == "settings") continue;
+                if (!seen.Add(id)) continue;
                 try {
                     var json = JsonNode.Parse(File.ReadAllText(file));
                     var displayName = json?["name"]?.GetValue<string>() ?? id;
