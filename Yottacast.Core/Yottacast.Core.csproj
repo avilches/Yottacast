@@ -55,6 +55,7 @@
     <EmbeddedResource Include="Search/Calculator/unit-config.json" />
     <EmbeddedResource Include="Search/Emoji/emoji-cache.json" Condition="Exists('Search/Emoji/emoji-cache.json')" />
     <EmbeddedResource Include="Search/Emoji/emoji-data.json" Condition="Exists('Search/Emoji/emoji-data.json')" />
+    <EmbeddedResource Include="Search/WebSearch/Icons/*.png" Condition="Exists('Search/WebSearch/Icons')" />
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
       <_Parameter1>Yottacast.Core.Tests</_Parameter1>
     </AssemblyAttribute>

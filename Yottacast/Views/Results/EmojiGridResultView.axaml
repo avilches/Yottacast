@@ -1,13 +1,14 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:viewModels="clr-namespace:Yottacast.Core.ViewModels;assembly=Yottacast.Core"
+             xmlns:core="clr-namespace:Yottacast.Core;assembly=Yottacast.Core"
              x:Class="Yottacast.Views.Results.EmojiGridResultView"
              x:DataType="viewModels:EmojiGridResultViewModel">
     <StackPanel Orientation="Vertical" Margin="4,8,4,8">
         <ItemsControl ItemsSource="{Binding Cells}">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
-                    <UniformGrid Columns="8"/>
+                    <UniformGrid Columns="{x:Static core:AppDefaults.EmojiColumns}"/>
                 </ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>

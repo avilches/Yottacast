@@ -8,17 +8,17 @@ namespace Yottacast.Core.Search.Emoji;
 /// <summary>
 /// Instant search source activated by queries starting with ':'.
 /// Typing ':' shows the emojis with the lowest Unicode sort_order; typing ':smile' filters by name/keyword.
-/// Emoji data is loaded from the embedded resource; a compact cache is written to cacheDir for fast startups.
+/// Emoji data is loaded from the embedded resource; a compact cache is written to disk for fast startups.
 /// Activating a result copies the emoji character to the clipboard.
 /// </summary>
-public class EmojiSearch(ClipboardService clipboard, string cacheDir, EmojiDataLoader dataLoader, ILogger<EmojiSearch> logger) : IInstantSearchSource {
+public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, EmojiDataLoader dataLoader, ILogger<EmojiSearch> logger) : IInstantSearchSource {
 
     private Task<IReadOnlyList<EmojiEntry>>? _loadTask;
     private volatile IReadOnlyList<EmojiEntry> _entries = [];
 
     public void Start() {
         _loadTask = Task.Run(async () => {
-            var entries = await dataLoader.LoadAsync(cacheDir);
+            var entries = await dataLoader.LoadAsync(emojiCachePath);
             _entries = entries;
             return entries;
         });
@@ -44,7 +44,7 @@ public class EmojiSearch(ClipboardService clipboard, string cacheDir, EmojiDataL
         _entries
             .Where(e => e.SortOrder > 0)
             .OrderBy(e => e.SortOrder)
-            .Take(20)
+            .Take(AppDefaults.EmojiDefaultLimit)
             .ToList();
 
     private IReadOnlyList<EmojiEntry> FilterEmojis(string term, int limit) =>

@@ -21,7 +21,7 @@ public class UserDocumentSearch(
     FileIconCache fileIconCache,
     PlatformProvider platform,
     ILogger<UserDocumentSearch> logger,
-    int timeoutMs = 20_000) : IDeferredSearchSource {
+    int timeoutMs = AppDefaults.FileSearchTimeoutMs) : IDeferredSearchSource {
 
     // Badge icon cache: keyed by lowercase extension; null means "no default app found"
     private readonly ConcurrentDictionary<string, byte[]?> _badgeByExtension = new();
@@ -34,9 +34,9 @@ public class UserDocumentSearch(
     public async IAsyncEnumerable<IReadOnlyList<BaseResultItemViewModel>> SearchAsync(
         string query, int limit, [EnumeratorCancellation] CancellationToken ct = default) {
 
-        if (query.Length < 2) yield break;
+        if (query.Length < AppDefaults.FileSearchMinQueryLength) yield break;
 
-        const int SnapshotIntervalMs = 200;
+        const int SnapshotIntervalMs = AppDefaults.FileSearchSnapshotIntervalMs;
 
         var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(timeoutMs);
@@ -84,9 +84,8 @@ public class UserDocumentSearch(
                         var path = r.Path;
                         var ext = Path.GetExtension(r.Name).ToLowerInvariant();
                         buffer.Add(new ResultItemViewModel {
-                            Icon = GetFileIcon(Path.GetExtension(r.Name)),
                             IconBytes = fileIconCache.Get(r.Path),
-                            BadgeIconBytes = _badgeByExtension.TryGetValue(ext, out var badge) ? badge : null,
+                            BadgeIconBytes = _badgeByExtension.GetValueOrDefault(ext),
                             Title = r.Name,
                             Subtitle = r.Path,
                             Category = "Files",
@@ -170,21 +169,4 @@ public class UserDocumentSearch(
             _badgeByExtension[ext] = badgeBytes;
         });
     }
-
-    private static string GetFileIcon(string extension) => extension.ToLowerInvariant() switch {
-        ".pdf" => "📄",
-        ".doc" or ".docx" or ".odt" => "📝",
-        ".xls" or ".xlsx" or ".ods" or ".csv" => "📊",
-        ".ppt" or ".pptx" or ".odp" => "📑",
-        ".jpg" or ".jpeg" or ".png" or ".gif" or ".webp" or ".svg" or ".heic" or ".tiff" or ".bmp" => "🖼️",
-        ".mp4" or ".mov" or ".avi" or ".mkv" or ".m4v" or ".wmv" => "🎬",
-        ".mp3" or ".m4a" or ".wav" or ".flac" or ".aac" or ".ogg" => "🎵",
-        ".zip" or ".rar" or ".7z" or ".tar" or ".gz" or ".bz2" => "🗜️",
-        ".txt" or ".md" or ".rtf" => "📄",
-        ".cs" or ".js" or ".ts" or ".py" or ".java" or ".swift" or ".go" or ".rs" or ".cpp" or ".c" or ".h" => "💻",
-        ".html" or ".htm" or ".css" or ".xml" or ".json" or ".yaml" or ".yml" => "🌐",
-        ".dmg" or ".pkg" or ".iso" => "💿",
-        ".sh" or ".bash" or ".zsh" or ".command" => "⚙️",
-        _ => "📁"
-    };
 }

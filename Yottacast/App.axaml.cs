@@ -14,12 +14,14 @@ using Microsoft.Extensions.Logging;
 using Serilog;
 using SharpHook;
 using SharpHook.Data;
+using Yottacast.Core;
 using Yottacast.Core.Platform;
 using Yottacast.Core.Search;
 using Yottacast.Core.Search.Application;
 using Yottacast.Core.Search.Calculator;
 using Yottacast.Core.Search.Emoji;
 using Yottacast.Core.Search.UserDocuments;
+using Yottacast.Core.Search.WebSearch;
 using Yottacast.Core.Services;
 using Yottacast.Services;
 using Yottacast.ViewModels;
@@ -154,16 +156,18 @@ public partial class App : Application {
         services.AddSingleton<EmojiDataLoader>();
         services.AddSingleton<EmojiSearch>(sp => new EmojiSearch(
             sp.GetRequiredService<ClipboardService>(),
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Yottacast"),
+            AppPaths.EmojiCacheFile,
             sp.GetRequiredService<EmojiDataLoader>(),
             sp.GetRequiredService<ILogger<EmojiSearch>>()));
 
         // Register IInstantSearchSource and IDeferredSearchSource implementations.
         services.AddSingleton<UserDocumentSearch>();
         services.AddSingleton<RandomSearch>();
+        services.AddSingleton<WebSearchSource>();
         services.AddSingleton<IInstantSearchSource>(sp => sp.GetRequiredService<ApplicationSearch>());
         services.AddSingleton<IInstantSearchSource>(sp => sp.GetRequiredService<CalculatorSearch>());
         services.AddSingleton<IInstantSearchSource>(sp => sp.GetRequiredService<EmojiSearch>());
+        services.AddSingleton<IInstantSearchSource>(sp => sp.GetRequiredService<WebSearchSource>());
         services.AddSingleton<IDeferredSearchSource>(sp => sp.GetRequiredService<UserDocumentSearch>());
         // services.AddSingleton<IDeferredSearchSource>(sp => sp.GetRequiredService<RandomSearch>());
 
@@ -177,11 +181,8 @@ public partial class App : Application {
     }
 
     private static string ComputeLogPath() {
-        var dir = OperatingSystem.IsMacOS()
-            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Logs", "Yottacast")
-            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Yottacast", "Logs");
-        Directory.CreateDirectory(dir);
-        return Path.Combine(dir, "yottacast-.log");
+        Directory.CreateDirectory(AppPaths.LogDir);
+        return AppPaths.LogFilePattern;
     }
 
     private static readonly Dictionary<string, KeyCode> KeyNameMap = BuildKeyNameMap();

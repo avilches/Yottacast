@@ -17,7 +17,7 @@ public class UpdateChecker {
 
     public UpdateChecker(ILogger<UpdateChecker> logger) {
         _logger = logger;
-        _http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+        _http = new HttpClient { Timeout = TimeSpan.FromSeconds(AppDefaults.UpdateCheckTimeoutSeconds) };
         CurrentVersion = System.Reflection.Assembly
             .GetExecutingAssembly()
             .GetName().Version?.ToString(3) ?? "0.0.0";

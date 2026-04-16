@@ -105,6 +105,8 @@ El **código** es la fuente de verdad de la implementación. `docs/` se ajusta a
 **Inyección de dependencias**: no usar clases `static` para lógica de negocio o servicios.
 Las clases estáticas no permiten inyectar `ILogger`, `IConfiguration` ni otros servicios, lo que imposibilita el logging y el testing. En su lugar, usar clases instanciables registradas en el contenedor DI. Los métodos `static` solo son aceptables para utilidades puras sin dependencias (helpers de conversión, parsers sin estado, etc.).
 
+**Centralización de constantes y rutas**: toda ruta de fichero o directorio que la app lee o escribe en runtime debe definirse en `AppPaths.cs`. Todo valor numérico o parámetro por defecto debe definirse en `AppDefaults.cs`. Nunca hardcodear rutas ni constantes en las clases que las consumen.
+
 **Documentación**: los ficheros en `docs/` explican diseño, arquitectura y relaciones entre componentes.
 No duplican constantes concretas, listas completas de rutas, puntuaciones numéricas, patrones regex ni otros
 detalles de implementación que ya son legibles en el código; en su lugar, señalan dónde viven esos detalles (p. ej. "ver `ClassName.Method`" o "definido en `File.cs`").
@@ -138,6 +140,7 @@ Diseño general y fuentes de busqueda:
 - `docs/search-files.md`
 
 Internals:
+- `docs/app-paths.md`
 - `docs/release-workflow.md`
 - `docs/multi-platform.md`
 - `docs/logging.md`

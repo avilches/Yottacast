@@ -16,9 +16,7 @@ namespace Yottacast.Core.Services;
 /// </summary>
 public sealed class AppIconCache(PlatformProvider platform, ILogger<AppIconCache> logger) {
     private readonly ConcurrentDictionary<string, byte[]?> _memory = new();
-    private readonly string _cacheDir = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-        ".cache", "yottacast", "app-icons");
+    private readonly string _cacheDir = AppPaths.AppIconCacheDir;
 
     /// <summary>Fired (on a thread-pool thread) when an icon finishes loading with non-null bytes.</summary>
     public event Action? IconLoaded;

@@ -17,13 +17,9 @@ internal record EmojiEntry(string Char, string Name, string[] Keywords, string C
 /// </summary>
 public class EmojiDataLoader(ILogger<EmojiDataLoader> logger) {
 
-    private const string CacheFileName = "emoji-cache.json";
-
     internal async Task<IReadOnlyList<EmojiEntry>> LoadAsync(
-        string cacheDir,
+        string cachePath,
         CancellationToken ct = default) {
-
-        var cachePath = Path.Combine(cacheDir, CacheFileName);
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
         if (File.Exists(cachePath)) {

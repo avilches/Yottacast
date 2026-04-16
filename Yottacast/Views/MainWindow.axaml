@@ -208,20 +208,13 @@
                                 <Border Classes="icon-box"
                                         CornerRadius="{DynamicResource Theme.CornerRadiusIcon}"
                                         ClipToBounds="True">
-                                    <Panel>
-                                        <Image IsVisible="{Binding IconBytes, Converter={x:Static ObjectConverters.IsNotNull}}"
-                                               Source="{Binding IconBytes, Converter={StaticResource PathToAppIcon}}"
-                                               Width="40" Height="40"
-                                               Stretch="UniformToFill"
-                                               RenderOptions.BitmapInterpolationMode="HighQuality"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Center"/>
-                                        <TextBlock IsVisible="{Binding IconBytes, Converter={x:Static ObjectConverters.IsNull}}"
-                                                   Text="{Binding Icon}"
-                                                   FontSize="17"
-                                                   HorizontalAlignment="Center"
-                                                   VerticalAlignment="Center"/>
-                                    </Panel>
+                                    <Image IsVisible="{Binding IconBytes, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                           Source="{Binding IconBytes, Converter={StaticResource PathToAppIcon}}"
+                                           Width="40" Height="40"
+                                           Stretch="UniformToFill"
+                                           RenderOptions.BitmapInterpolationMode="HighQuality"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
                                 </Border>
 
                                 <!-- Default-app badge: bottom-right corner, 7px overflow + 2px ring -->

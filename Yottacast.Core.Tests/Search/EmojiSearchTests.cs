@@ -12,8 +12,9 @@ public class EmojiSearchTests {
     private static async Task<EmojiSearch> BuildSearchWithCache(string compactJson) {
         var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(dir);
-        await File.WriteAllTextAsync(Path.Combine(dir, "emoji-cache.json"), compactJson);
-        var search = new EmojiSearch(new ClipboardService(NullLogger<ClipboardService>.Instance), dir, new EmojiDataLoader(NullLogger<EmojiDataLoader>.Instance), NullLogger<EmojiSearch>.Instance);
+        var cachePath = Path.Combine(dir, "emoji-cache.json");
+        await File.WriteAllTextAsync(cachePath, compactJson);
+        var search = new EmojiSearch(new ClipboardService(NullLogger<ClipboardService>.Instance), cachePath, new EmojiDataLoader(NullLogger<EmojiDataLoader>.Instance), NullLogger<EmojiSearch>.Instance);
         search.Start();
         await search.WhenReady();
         return search;
@@ -171,8 +172,9 @@ public class EmojiSearchTests {
         var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
         var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(dir);
-        await File.WriteAllTextAsync(Path.Combine(dir, "emoji-cache.json"), json);
-        var search = new EmojiSearch(clipboard, dir, new EmojiDataLoader(NullLogger<EmojiDataLoader>.Instance), NullLogger<EmojiSearch>.Instance);
+        var cachePath = Path.Combine(dir, "emoji-cache.json");
+        await File.WriteAllTextAsync(cachePath, json);
+        var search = new EmojiSearch(clipboard, cachePath, new EmojiDataLoader(NullLogger<EmojiDataLoader>.Instance), NullLogger<EmojiSearch>.Instance);
         search.Start();
         await search.WhenReady();
 
@@ -202,12 +204,13 @@ public class RealEmojiDataFixture : IAsyncLifetime, IDisposable {
 
     public async Task InitializeAsync() {
         Directory.CreateDirectory(_tempDir);
+        var cachePath = Path.Combine(_tempDir, "emoji-cache.json");
         var loader = new EmojiDataLoader(NullLogger<EmojiDataLoader>.Instance);
         // First call: loads from embedded resource and writes the cache.
-        await loader.LoadAsync(_tempDir);
+        await loader.LoadAsync(cachePath);
         // EmojiSearch then reads the cache on Start(), so data loads quickly.
         Search = new EmojiSearch(
-            new ClipboardService(NullLogger<ClipboardService>.Instance), _tempDir, loader,
+            new ClipboardService(NullLogger<ClipboardService>.Instance), cachePath, loader,
             NullLogger<EmojiSearch>.Instance);
         Search.Start();
         await Search.WhenReady();

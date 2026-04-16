@@ -33,6 +33,28 @@ Evento `AppAdded` notifica cuando se detecta una app nueva (disponible para susc
 | `Find(string name)` | Búsqueda exacta en el caché por clave de nombre (case-insensitive); devuelve `AppInfo?` |
 | `FindAll()` | Devuelve todas las apps en caché como `IReadOnlyList<AppInfo>` |
 
+## WebSearchSource
+
+Clase: `Yottacast.Core.Search.WebSearch.WebSearchSource` (implementa `IInstantSearchSource`)
+
+Genera resultados para abrir búsquedas web en el navegador configurado. Sustituye al anterior `MakeGoogleItem` del ViewModel — ahora es una source normal registrada en el contenedor DI.
+
+**Motores predefinidos** — definidos como lista estática en `WebSearchDefaults.Engines` (`WebSearchEngine.cs`): Google, Bing, DuckDuckGo, Amazon, YouTube, GitHub, Wikipedia, Stack Overflow. Cada motor tiene `Id`, `Name`, `QueryUrl` (con `{0}` como placeholder) y `IconResource` (nombre del embedded resource PNG).
+
+**Configuración por motor** — almacenada en `UserSettings.WebSearchEngines` (`List<WebSearchEngineSettings>`). Cada entrada tiene `Id`, `Enabled`, `Mode` y `Prefix`. El modo y prefijo por defecto están en `WebSearchDefaults.DefaultSettingsFor(id)`.
+
+**Modos de activación**:
+- `ShowAlways` — el motor aparece siempre (para cualquier query no vacía). Score: 3.0.
+- `PrefixOnly` — solo aparece si la query empieza por `"{prefix} "` (prefijo + espacio). La query de búsqueda es el texto tras el espacio. Score: 3.5 (intención explícita del usuario).
+
+Queries que empiezan por `:` (modo emoji) se ignoran completamente.
+
+**Título del resultado**: `"{EngineName}: {searchQuery}"`, p. ej. `"Google: hola"`.
+
+**Iconos** — los PNGs se embeben como `EmbeddedResource` en `Yottacast.Core` bajo `Search/WebSearch/Icons/{id}.png`. Se cargan en memoria al construir la clase. Si falta el PNG de un motor, `IconBytes` es `null` y el hueco del icono queda vacío sin error.
+
+**Merge de settings** — al cargar `UserSettings`, los engines presentes en `WebSearchDefaults.Engines` pero ausentes del fichero de settings se añaden con sus valores por defecto. Esto garantiza que engines añadidos en versiones futuras aparezcan automáticamente para usuarios existentes sin borrar sus personalizaciones.
+
 ## UserDocumentSearch
 
 Clase: `Yottacast.Core.Search.UserDocuments.UserDocumentSearch` (implementa `IDeferredSearchSource`)
@@ -93,10 +115,9 @@ La coordinación interna usa un `Channel<(int sourceIndex, snapshot)>` y `Task.W
 `SearchAsync` opera en dos fases:
 
 **Fase 1 — instant (sin delay)**:
-1. Construye el `_googleItem` (o `null` si la query es solo `:`).
-2. Llama `globalSearch.SearchInstant(query, limit: SearchSourceLimit)` — síncrono, en memoria.
-3. Llama `RefreshResults()` para actualizar la UI.
-4. Si la query empieza por `:` (modo emoji), se detiene aquí — las fuentes deferred no se lanzan.
+1. Llama `globalSearch.SearchInstant(query, limit: SearchSourceLimit)` — síncrono, en memoria. Incluye los resultados de `WebSearchSource`.
+2. Llama `RefreshResults()` para actualizar la UI.
+3. Si la query empieza por `:` (modo emoji), se detiene aquí — las fuentes deferred no se lanzan.
 
 **Fase 2 — deferred (debounce 250ms)**:
 5. Espera 250ms con `Task.Delay(250, ct)`. Si el usuario sigue escribiendo, la CTS se cancela y se sale aquí.
@@ -105,8 +126,8 @@ La coordinación interna usa un `Channel<(int sourceIndex, snapshot)>` y `Task.W
 8. Al terminar, si la búsqueda completó (no fue cancelada), actualiza `ShowNoResults`.
 
 **`RefreshResults()`** — merge y selección:
-- Combina `_googleItem` + `_instantSnapshot` + `_deferredSnapshot`, ordena por score, actualiza `Results`.
-- La lógica de selección visual (auto-selección de calculadora, preservación del ítem previo, score del Google item) está documentada en `ui-main-window.md`.
+- Combina `_instantSnapshot` + `_deferredSnapshot`, ordena por score, actualiza `Results`.
+- La lógica de selección visual (auto-selección de calculadora, preservación del ítem previo) está documentada en `ui-main-window.md`.
 
 **`SearchSourceLimit`**: cada source recibe un límite de 10 resultados. El merge global también aplica un límite de 10.
 

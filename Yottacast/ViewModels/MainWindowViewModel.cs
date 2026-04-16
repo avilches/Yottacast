@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Yottacast.Core;
 using Yottacast.Core.Search;
 using Yottacast.Core.Search.Application;
 using Yottacast.Core.Services;
@@ -19,7 +20,6 @@ public partial class MainWindowViewModel(
     UserSettings settings,
     GlobalSearch globalSearch,
     ApplicationSearch appSearch,
-    BrowserDiscovery browserDiscovery,
     UpdateChecker updateChecker)
     : ViewModelBase {
 
@@ -46,7 +46,6 @@ public partial class MainWindowViewModel(
 
     private IReadOnlyList<BaseResultItemViewModel> _instantSnapshot = [];
     private IReadOnlyList<BaseResultItemViewModel> _deferredSnapshot = [];
-    private ResultItemViewModel? _googleItem;
     private bool _userNavigated;
 
     public void CancelDeferredSearch() => _deferredCts?.Cancel();
@@ -82,10 +81,7 @@ public partial class MainWindowViewModel(
         // Placeholder: conectar a la URL de descarga en el siguiente plan
     }
 
-    /// <summary>
-    /// The amount of search per service
-    /// </summary>
-    private const int SearchSourceLimit = 10;
+    private const int SearchSourceLimit = AppDefaults.SearchSourceLimit;
 
     partial void OnSearchTextChanged(string value) {
         _cts?.Cancel();
@@ -107,9 +103,6 @@ public partial class MainWindowViewModel(
     private async Task SearchAsync(string query, CancellationToken ct) {
         _instantSnapshot = [];
         _deferredSnapshot = [];
-        _googleItem = query.StartsWith(':')
-            ? (query.Length > 1 ? MakeGoogleItem(query[1..].Trim()) : null)
-            : MakeGoogleItem(query);
         RefreshResults();
 
         // Phase 1: instant sources (in-memory cache) — no delay
@@ -124,7 +117,7 @@ public partial class MainWindowViewModel(
 
         // Phase 2: deferred sources (disk) — debounce 250ms before hitting disk
         try {
-            await Task.Delay(250, ct);
+            await Task.Delay(AppDefaults.SearchDebouncedMs, ct);
         } catch (OperationCanceledException) {
             return;
         }
@@ -150,8 +143,7 @@ public partial class MainWindowViewModel(
     }
 
     private void RefreshResults() {
-        var merged = (_googleItem != null ? new[] { (BaseResultItemViewModel)_googleItem } : Array.Empty<BaseResultItemViewModel>())
-            .Concat(_instantSnapshot)
+        var merged = _instantSnapshot
             .Concat(_deferredSnapshot)
             .OrderByDescending(x => x.Score)
             .ToList();
@@ -174,20 +166,4 @@ public partial class MainWindowViewModel(
         }
     }
 
-    private ResultItemViewModel MakeGoogleItem(string query) {
-        var capturedQuery = query;
-        return new ResultItemViewModel {
-            Icon = "🔍",
-            Score = 3,
-            Title = $"Search \"{capturedQuery}\" on Google",
-            Subtitle = "Open in browser",
-            Category = "Web",
-            OnActivate = () => {
-                var browser = settings.ActiveBrowser;
-                if (browser is null) return;
-                var url = $"https://www.google.com/search?q={Uri.EscapeDataString(capturedQuery)}";
-                browserDiscovery.OpenUrl(url, browser);
-            },
-        };
-    }
 }                                                                     

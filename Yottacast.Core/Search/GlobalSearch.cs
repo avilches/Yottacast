@@ -29,7 +29,6 @@ public class GlobalSearch(IEnumerable<IInstantSearchSource> instantSources, IEnu
         var items = _instantSources
             .SelectMany(s => s.Search(query, limit))
             .OrderByDescending(x => x.Score)
-            .Take(limit)
             .ToList();
         var hint = _instantSources.OfType<ISearchHintProvider>().Select(s => s.LastHint).FirstOrDefault(h => h != null);
         return (items, hint);

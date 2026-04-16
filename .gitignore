@@ -33,3 +33,6 @@ desktop.ini
 
 # Avalonia designer cache
 **/.avalonia/
+
+# Runtime user data (symlinks to local dirs)
+user-data/

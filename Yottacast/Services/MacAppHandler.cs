@@ -2,6 +2,7 @@ using System;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Avalonia.Input;
+using Yottacast.Core;
 
 namespace Yottacast.Services;
 
@@ -42,7 +43,7 @@ internal sealed class MacAppHandler : AppHandler {
     // Waits for the previous app to take focus, then posts a Cmd+V keyboard event via CGEvent.
     // kCGHIDEventTap=0, kCGEventFlagMaskCommand=0x100000, keyCode for 'v'=0x09
     public override async Task SimulatePasteAsync() {
-        await Task.Delay(150);
+        await Task.Delay(AppDefaults.PasteDelayMs);
         var vDown = CGEventCreateKeyboardEvent(IntPtr.Zero, 0x09, true);
         CGEventSetFlags(vDown, 0x100000);
         var vUp = CGEventCreateKeyboardEvent(IntPtr.Zero, 0x09, false);

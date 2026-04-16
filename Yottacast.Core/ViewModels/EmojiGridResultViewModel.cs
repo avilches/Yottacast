@@ -23,7 +23,7 @@ public class EmojiGridResultViewModel : ResultItemViewModel, INotifyPropertyChan
     public EmojiCellViewModel? SelectedEmoji =>
         Cells.Count > 0 ? Cells[SelectedEmojiIndex] : null;
 
-    public const int Columns = 8;
+    public const int Columns = AppDefaults.EmojiColumns;
 
     public void SelectNext()     => SelectedEmojiIndex = (SelectedEmojiIndex + 1)       % Cells.Count;
     public void SelectPrevious() => SelectedEmojiIndex = (SelectedEmojiIndex - 1 + Cells.Count) % Cells.Count;

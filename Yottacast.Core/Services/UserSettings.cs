@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using Yottacast.Core.Platform;
+using Yottacast.Core.Search.WebSearch;
 
 namespace Yottacast.Core.Services;
 
@@ -25,6 +26,7 @@ public class UserSettings {
     public bool EnableClipboard { get; set; } = true;
     public bool EnableEmoji { get; set; } = true;
     public string LastLaunchedVersion { get; set; } = "";
+    public List<WebSearchEngineSettings> WebSearchEngines { get; set; } = [];
 
     private string _hotkey = "Alt+Space";
     private HotkeyConfig? _parsedHotkey;
@@ -89,11 +91,19 @@ public class UserSettings {
         }
     }
 
-    private static readonly string DefaultSettingsPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "Yottacast", "settings.json");
+    private static readonly string DefaultSettingsPath = AppPaths.SettingsFile;
 
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+
+    private record WebSearchEngineSettingsData {
+        [JsonPropertyName("id")]      public string Id      { get; init; } = "";
+        [JsonPropertyName("enabled")] public bool Enabled   { get; init; } = true;
+        [JsonPropertyName("mode")]    public string Mode    { get; init; } = "";
+        [JsonPropertyName("prefix")]  public string Prefix  { get; init; } = "";
+        [JsonPropertyName("queryUrl")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? QueryUrl { get; init; }
+    }
 
     private record UserSettingsData {
         [JsonPropertyName("browser")] public string Browser { get; init; } = "";
@@ -106,6 +116,7 @@ public class UserSettings {
         [JsonPropertyName("enableClipboard")] public bool EnableClipboard { get; init; } = true;
         [JsonPropertyName("enableEmoji")] public bool EnableEmoji { get; init; } = true;
         [JsonPropertyName("lastLaunchedVersion")] public string LastLaunchedVersion { get; init; } = "";
+        [JsonPropertyName("webSearchEngines")] public List<WebSearchEngineSettingsData>? WebSearchEngines { get; init; }
     }
 
     public static UserSettings Load(PlatformProvider platform, ILogger<UserSettings>? logger = null, string? settingsPath = null) {
@@ -131,6 +142,7 @@ public class UserSettings {
                     EnableClipboard = data.EnableClipboard,
                     EnableEmoji = data.EnableEmoji,
                     LastLaunchedVersion = data.LastLaunchedVersion,
+                    WebSearchEngines = MergeWebSearchEngines(data.WebSearchEngines),
                 };
             }
         } catch (Exception ex) {
@@ -141,11 +153,38 @@ public class UserSettings {
         return settings;
     }
 
+    /// <summary>
+    /// Merges saved engine settings with the hardcoded defaults.
+    /// Engines present in the defaults but missing from saved settings are added with their defaults,
+    /// so newly added engines appear automatically for existing users.
+    /// </summary>
+    private static WebSearchMode ParseMode(string? mode) =>
+        Enum.TryParse<WebSearchMode>(mode, ignoreCase: true, out var result) ? result : WebSearchMode.PrefixOnly;
+
+    private static List<WebSearchEngineSettings> MergeWebSearchEngines(List<WebSearchEngineSettingsData>? saved) {
+        var savedById = (saved ?? [])
+            .Where(s => !string.IsNullOrEmpty(s.Id))
+            .ToDictionary(s => s.Id);
+
+        return WebSearchDefaults.Engines.Select(engine =>
+            savedById.TryGetValue(engine.Id, out var s)
+                ? new WebSearchEngineSettings {
+                    Id = s.Id,
+                    Enabled = s.Enabled,
+                    Mode = ParseMode(s.Mode),
+                    Prefix = s.Prefix,
+                    QueryUrl = string.IsNullOrEmpty(s.QueryUrl) ? null : s.QueryUrl,
+                }
+                : WebSearchDefaults.DefaultSettingsFor(engine.Id)
+        ).ToList();
+    }
+
     private static UserSettings CreateDefaultUserSettings(PlatformProvider platform, ILogger<UserSettings>? logger, string? settingsPath = null) {
         return new UserSettings(platform, logger, settingsPath) {
             Theme = platform.DefaultTheme(),
             SearchFolders = platform.DefaultSearchFolders(),
             AppDirectories = platform.DefaultAppDirectories(),
+            WebSearchEngines = MergeWebSearchEngines(null),
         };
     }
 
@@ -164,6 +203,15 @@ public class UserSettings {
                 EnableClipboard = EnableClipboard,
                 EnableEmoji = EnableEmoji,
                 LastLaunchedVersion = LastLaunchedVersion,
+                WebSearchEngines = WebSearchEngines
+                    .Select(s => new WebSearchEngineSettingsData {
+                        Id = s.Id,
+                        Enabled = s.Enabled,
+                        Mode = s.Mode.ToString(),
+                        Prefix = s.Prefix,
+                        QueryUrl = string.IsNullOrEmpty(s.QueryUrl) ? null : s.QueryUrl,
+                    })
+                    .ToList(),
             };
             File.WriteAllText(_settingsPath, JsonSerializer.Serialize(data, JsonOptions));
             _logger?.LogDebug("Settings saved to {Path}", _settingsPath);

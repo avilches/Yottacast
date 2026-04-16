@@ -159,9 +159,10 @@ public class EmojiDataLoaderTests {
         Directory.CreateDirectory(dir);
         try {
             var cacheJson = """[["😀","grinning face",["grinning"],"Smileys & Emotion",1]]""";
-            await File.WriteAllTextAsync(Path.Combine(dir, "emoji-cache.json"), cacheJson);
+            var cachePath = Path.Combine(dir, "emoji-cache.json");
+            await File.WriteAllTextAsync(cachePath, cacheJson);
 
-            var entries = await Loader().LoadAsync(dir);
+            var entries = await Loader().LoadAsync(cachePath);
 
             var entry = Assert.Single(entries);
             Assert.Equal("😀", entry.Char);
@@ -180,7 +181,7 @@ public class EmojiDataLoaderTests {
             await File.WriteAllTextAsync(cachePath, cacheJson);
             File.SetLastWriteTimeUtc(cachePath, DateTime.UtcNow - TimeSpan.FromDays(365));
 
-            var entries = await Loader().LoadAsync(dir);
+            var entries = await Loader().LoadAsync(cachePath);
 
             Assert.Single(entries); // loaded from cache, no TTL check
         } finally {
@@ -191,9 +192,10 @@ public class EmojiDataLoaderTests {
     [Fact]
     public async Task LoadAsync_FallsBackToEmbeddedResource_WhenNoCacheExists() {
         var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        var cachePath = Path.Combine(dir, "emoji-cache.json");
         // Do NOT create the directory — no cache can exist
         try {
-            var entries = await Loader().LoadAsync(dir);
+            var entries = await Loader().LoadAsync(cachePath);
 
             // The embedded resource has 1600+ emojis
             Assert.NotEmpty(entries);

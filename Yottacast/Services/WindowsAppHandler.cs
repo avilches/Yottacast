@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Avalonia.Input;
+using Yottacast.Core;
 
 namespace Yottacast.Services;
 
@@ -11,7 +12,7 @@ internal sealed class WindowsAppHandler : AppHandler {
     public override (KeyModifiers Modifiers, Key Key) CloseWindowShortcut => (KeyModifiers.Control, Key.F4);
 
     public override async Task SimulatePasteAsync() {
-        await Task.Delay(150);
+        await Task.Delay(AppDefaults.PasteDelayMs);
         const byte VK_CONTROL = 0x11;
         const byte VK_V = 0x56;
         keybd_event(VK_CONTROL, 0, 0, 0);
