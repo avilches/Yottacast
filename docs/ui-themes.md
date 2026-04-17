@@ -12,7 +12,7 @@ Los JSON se copian al output vía `CopyToOutputDirectory=PreserveNewest`.
 
 Available themes are the JSON files in `Yottacast/Themes/` (excluding `settings.json`).
 
-**`ThemeOption` record**: `AvailableThemes()` devuelve `IReadOnlyList<ThemeOption>` donde cada entrada tiene `Id` (nombre de fichero sin extensión) y `DisplayName` (campo `"name"` del JSON; si falta o el parse falla, usa el `Id` como fallback).
+**`ThemeOption` record**: `AvailableThemes()` devuelve `IReadOnlyList<ThemeOption>` donde cada entrada tiene `Id` (nombre de fichero sin extensión) y `DisplayName` (campo `"name"` del JSON; si falta o el parse falla, usa el `Id` como fallback). Los ficheros se procesan ordenados alfabéticamente; si dos ficheros producen el mismo `Id` (p.ej. copias de conflicto de iCloud como `dark-default 2.json`), solo el primero se incluye.
 
 **Campo `variant` en el JSON**: `Apply()` lee `json["variant"]` y asigna `app.RequestedThemeVariant` a `ThemeVariant.Light` si el valor es `"light"`, o `ThemeVariant.Dark` en cualquier otro caso.
 

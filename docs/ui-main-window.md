@@ -87,6 +87,22 @@ La ventana muestra un footer con el recuento de resultados (`Results.Count`) y l
 
 La plantilla estándar de ítem (`ResultItemViewModel`) muestra el `Score` formateado a dos decimales junto a la etiqueta de categoría, con opacidad reducida (0.6). La lista de resultados tiene una altura máxima de 416 px con scroll vertical automático y sin scroll horizontal.
 
+## Apps recién instaladas (pending apps)
+
+Cuando el sistema detecta una app nueva via `FileSystemWatcher` (después del scan inicial), `MainWindowViewModel` la almacena en `_pendingAppInfos: List<AppInfo>`.
+
+**`StartTrackingNewAppsAsync()`** — se suscribe a `appSearch.AppAdded` solo tras `appSearch.WhenReady()`, de modo que las apps del scan inicial no se tratan como "recién instaladas".
+
+**`ShowPendingApps()`** — reconstruye `Results` llamando `appSearch.CreateResultItem(info)` para cada `AppInfo` pendiente. Se reconstruyen los `ResultItemViewModel` en cada llamada para capturar el icono más reciente del caché (los iconos pueden no estar disponibles cuando llega el evento `AppAdded`).
+
+**Ciclo de vida de `_pendingAppInfos`**:
+- **App instalada con buscador vacío** → se añade a `_pendingAppInfos` y se muestra inmediatamente.
+- **App instalada con buscador con texto** → se refresca `SearchInstant` con la query actual; si la app coincide, aparece. No va a `_pendingAppInfos`.
+- **Usuario empieza a escribir** → `_pendingAppInfos.Clear()` — las apps pendientes se descartan permanentemente.
+- **Usuario borra el texto (vuelve a vacío)** → `ShowPendingApps()` muestra las apps que quedaban (si aún no se había escrito nada).
+- **Hide/Show de Yottacast** → `_pendingAppInfos` persiste en memoria; las apps siguen visibles al volver a abrir.
+- **Icono cargado** (`IconLoaded`) → si hay pendientes y el buscador está vacío, `ShowPendingApps()` reconstruye la lista para reflejar el icono recién disponible.
+
 ## Navegación interna del grid emoji — comportamiento en los bordes
 
 `EmojiGridResultViewModel.SelectDown()`/`SelectUp()` devuelven `false` si el movimiento saldría fuera del grid (primera o última fila), delegando la navegación al nivel de lista. `SelectNext()`/`SelectPrevious()` (flechas derecha/izquierda) siempre envuelven circularmente dentro de las celdas del grid.

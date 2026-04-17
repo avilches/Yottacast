@@ -28,7 +28,7 @@ Responsabilidades:
 
 ### Escaneo de apps por plataforma
 
-- **macOS**: delega en `SpotlightInterop.Query` con el predicado `kMDItemContentType == 'com.apple.application-bundle'`. El watcher observa `*.app` con `NotifyFilter = DirectoryName` (las apps son directorios).
+- **macOS**: delega en `SpotlightInterop.Query` con el predicado `kMDItemContentType == 'com.apple.application-bundle'`. El watcher observa `*.app` con `NotifyFilter = DirectoryName | LastWrite`: `Created`/`Deleted` detectan instalación/desinstalación; `Changed` detecta cuando el bundle termina de copiarse (el mtime del directorio cambia al añadir ficheros internos), permitiendo recargar el icono si el bundle estaba incompleto en el evento `Created` inicial.
 - **Windows**: recorre los subdirectorios de cada `dir` configurado, busca el `.exe` con el mismo nombre que la carpeta y, si no existe, coge el primer `.exe` encontrado. El watcher observa `*.exe` con `IncludeSubdirectories = true`.
 - **Linux**: enumera los ficheros `*.desktop` de los directorios configurados (sin subdirectorios). El watcher observa `*.desktop`.
 
