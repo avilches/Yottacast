@@ -1,138 +1,235 @@
 # Diseño general de la aplicación
 
-## Entrada: Program.cs
+Yottacast es un launcher de escritorio multiplataforma (macOS, Windows, Linux) construido con Avalonia. El usuario lo
+invoca con una hotkey global, escribe una búsqueda, y actúa sobre el resultado (abrir app, copiar emoji, calcular,
+buscar ficheros, etc.). La ventana se oculta tras cada acción y el proceso permanece residente en background.
 
-`Program.Main` está marcado con `[STAThread]` (requerido por Avalonia en Windows). Llama `BuildAvaloniaApp().StartWithClassicDesktopLifetime(args)`. `BuildAvaloniaApp()` está separado para que el diseñador de Avalonia pueda instanciar la app sin ejecutar `Main`.
+## Principios de diseño
 
-## Arranque (App.axaml.cs)
+- **Invisible hasta que se necesita**: no hay icono en el Dock/taskbar. La ventana aparece con la hotkey y desaparece al
+  activar un resultado o pulsar Escape.
+- **Instantánea al aparecer**: la ventana nunca se muestra vacía. El arranque bloquea la UI hasta que las fuentes de
+  datos rápidas (apps, emojis, calculadora) están cargadas en memoria.
+- **Búsqueda en dos fases**: las fuentes rápidas (en memoria) responden sin delay; las lentas (disco, red) se lanzan
+  tras un debounce y sus resultados se mezclan progresivamente.
+- **Multiplataforma con contrato común**: las diferencias de OS se encapsulan en un provider de plataforma y un handler
+  de UI; el resto del código no sabe en qué OS corre.
+- **Core sin dependencia de UI**: el proyecto `Yottacast.Core` no referencia Avalonia. Los servicios que necesitan
+  interactuar con la UI (portapapeles, foco) reciben callbacks inyectados.
 
-`App.OnFrameworkInitializationCompleted` es síncrono. Toda la inicialización de la aplicación ocurre dentro de este método, que Avalonia invoca desde `App.axaml.cs` tras arrancar el framework.
+## Ciclo de vida de la aplicación
 
-Orden de arranque en `OnFrameworkInitializationCompleted`:
+### Arranque
 
-1. `AppHandler.Instance.OnFrameworkInitializationCompleted()` — configuración OS-específica antes de nada (macOS: establece `NSApplicationActivationPolicyAccessory`)
-2. `BuildServices()` — construye el contenedor DI
-3. `ThemeService.Apply(userSettings.Theme)` — aplica el tema visual antes de que la ventana exista
-4. `RunMigrations(userSettings, updateChecker, logger)` — compara `LastLaunchedVersion` con `UpdateChecker.CurrentVersion`; si difieren, ejecuta migraciones, actualiza el campo y persiste. Es síncrono y bloquea el arranque intencionalmente: las migraciones deben completarse antes de que el resto del arranque consuma `UserSettings`.
-5. `DisableAvaloniaDataAnnotationValidation()` — elimina el plugin de validación de Avalonia para evitar conflictos con CommunityToolkit.Mvvm
-6. `mainWindowViewModel.Initialize()` — dispara `CheckForUpdateAsync()` como fire-and-forget; comprueba en background si hay versión nueva y actualiza `UpdateAvailable`/`UpdateBannerText` en el UI thread cuando llega la respuesta (ver `ui-main-window.md`)
-7. Creación de `MainWindow` con el ViewModel como `DataContext`
-8. `ClipboardService.Initialize(...)` — registra el callback de UI-thread para que Core pueda copiar al portapapeles sin depender de Avalonia
-9. `desktop.Exit +=` — registra el handler de cierre de la app que llama `globalSearch.Stop()`; `RegisterGlobalHotKey(desktop)` — registra el hook global de SharpHook
-10. `base.OnFrameworkInitializationCompleted()` — señala a Avalonia que la inicialización terminó
-11. `globalSearch.Start()` — fire-and-forget; inicia el ciclo de vida de todas las fuentes de búsqueda
-12. `ShowWhenInstantReadyAsync(globalSearch, desktop)` — fire-and-forget; bloquea internamente con `await globalSearch.WhenInstantReady()` hasta que todas las instant sources están listas, y solo entonces ejecuta `AppHandler.Instance.OnShow()`, `desktop.MainWindow.Show()` y `Activate()`
+El arranque es secuencial e intencionalmente bloqueante. La ventana no aparece hasta que todo está listo.
 
-La ventana no aparece hasta que las instant sources están listas. `CheckForUpdateAsync()` trabaja en background mientras se espera.
+**Orden requerido:**
 
-**Qué hace `globalSearch.Start()`** — delega en cada fuente (tanto `IInstantSearchSource` como `IDeferredSearchSource`):
+1. Configuración OS-específica antes de cualquier UI (ej: macOS debe declararse como app accessory para no aparecer en
+   el Dock).
+2. Construcción del contenedor de dependencias (DI), incluyendo logging.
+3. Aplicación del tema visual antes de que la ventana exista.
+4. Migraciones de settings: si la versión de la app cambió desde la última ejecución, se ejecutan migraciones síncronas
+   antes de que nadie consuma los settings.
+5. Inicialización del ViewModel principal, que lanza la comprobación de actualizaciones en background (no bloquea).
+6. Creación de la ventana principal.
+7. Registro del bridge de portapapeles (permite que Core copie sin depender de Avalonia).
+8. Registro de la hotkey global y del handler de cierre.
+9. Inicio de las fuentes de búsqueda (cada fuente carga sus datos de forma independiente).
+10. Espera a que todas las fuentes instantáneas estén listas, y solo entonces se muestra la ventana.
 
-- **`ApplicationSearch.Start()`** — la única con trabajo real. Llama `ScanAndWatchAsync()` como fire-and-forget, que:
-  1. `await platform.ScanAppsAsync(...)` — escaneo inicial (macOS: mdfind; Windows/Linux: scan de directorios)
-  2. Completa la task `WhenReady()` al terminar el scan
-  3. Instala `FileSystemWatcher`s vía `platform.CreateAppWatchers(...)`
-- El resto de fuentes (`UserDocumentSearch` y demás `IDeferredSearchSource`) tienen `Start()` como no-op: no tienen estado de arranque propio y se invocan bajo demanda en cada búsqueda. El método existe para mantener el contrato simétrico con `IInstantSearchSource`.
+**Invariantes del arranque:**
 
-**`WhenReady()`** — tanto `IInstantSearchSource` como `IDeferredSearchSource` exponen `Task WhenReady()`. `GlobalSearch.WhenReady()` hace `Task.WhenAll` sobre todas las fuentes (instant y deferred). Las fuentes sin arranque asíncrono devuelven `Task.CompletedTask`.
+- El usuario nunca ve la ventana sin apps en los resultados.
+- Las migraciones se completan antes de que cualquier componente lea los settings.
+- La comprobación de actualizaciones nunca bloquea la aparición de la ventana.
 
-**Consecuencia para búsquedas**: la UI no se muestra hasta que `WhenInstantReady()` complete, es decir, hasta que todas las instant sources (incluyendo `ApplicationSearch`) están listas. El usuario nunca ve la ventana sin apps en los resultados.
+> **Verificar en:** `App.axaml.cs` → `OnFrameworkInitializationCompleted` (orden de los 12 pasos),
+`GlobalSearch.Start()`, `ShowWhenInstantReadyAsync()`.
 
-**Consecuencia para Settings**: `App.OpenSettings()` es `async void` y hace `await applicationSearch.WhenReady()` antes de crear la `SettingsWindow`. Esto garantiza que `BrowserDiscovery.Discover()` y `TerminalDiscovery.Discover()` (llamados en el constructor del ViewModel) ya tienen el caché poblado. Si el caché ya está listo (usuario abre Settings tarde), el await es instantáneo. Si la ventana ya está visible (`IsVisible: true`), se activa sin crear nada nuevo. Si no está visible, crea siempre una nueva `SettingsWindow` con un nuevo `SettingsWindowViewModel` (transient).
+### Mostrar / Ocultar
 
-`UserSettings.Load(platform)` carga (o crea) el JSON y siempre hace `Save()` al final. La validación de Browser/Terminal no ocurre en el arranque; `UserSettings` se auto-repara en el momento de uso, cuando se accede a `ActiveBrowser` / `ActiveTerminal`.
+La ventana se controla exclusivamente via hotkey global + Escape/Enter. No hay forma de cerrarla desde el OS (el cierre
+nativo se intercepta y convierte en hide).
 
-## Servicios registrados en DI
+- **Hotkey global** (configurable por el usuario): si la ventana está visible y activa → se oculta; si no → se muestra y
+  activa.
+- **Al mostrar**: se captura cuál era la app en primer plano (para poder restaurarla después), se da foco al campo de
+  búsqueda.
+- **Al ocultar**: se restaura el foco a la app que tenía el usuario antes de invocar Yottacast.
+- **El campo de búsqueda se desactiva** mientras la ventana está oculta para evitar que reciba input de fondo.
 
-- `PlatformProvider` (singleton, instancia concreta elegida en `BuildServices()` con una única comprobación de OS)
-- `ProcessRunner` (singleton, envuelve la ejecución de procesos del sistema; lo usan `WindowsPlatformProvider` y `LinuxPlatformProvider`)
-- `UserSettings` (singleton, cargado con `UserSettings.Load(platform)`)
-- `ApplicationSearch` (singleton, `IInstantSearchSource`)
-- `CalculatorSearch` (singleton, `IInstantSearchSource`)
-- `EmojiSearch` (singleton, `IInstantSearchSource`; recibe la ruta de caché como `Path.Combine(SpecialFolder.ApplicationData, "Yottacast")`)
-- `UserDocumentSearch` (singleton, `IDeferredSearchSource`)
-- `RandomSearch` (singleton, registrado en DI pero comentado como `IDeferredSearchSource` — solo para tests de la pipeline de streaming)
-- `GlobalSearch` (singleton, recibe `IEnumerable<IInstantSearchSource>` + `IEnumerable<IDeferredSearchSource>`)
-- `UpdateChecker` (singleton)
-- `BrowserDiscovery`, `TerminalDiscovery`, `FileSearch`, `ClipboardService`, `MathJsEngine`, `EmojiDataLoader`, `ThemeService` (singleton)
-- `MainWindowViewModel`, `SettingsWindowViewModel` (transient)
+**Invariantes:**
+
+- La ventana nunca se destruye en runtime; solo se oculta y muestra.
+- El cierre nativo (Cmd+W, botón X, `performClose:` de macOS) siempre se convierte en hide.
+- La hotkey se suprime a nivel de OS para evitar que produzca pitidos o efectos en la app anterior.
+
+> **Verificar en:** `App.axaml.cs` → `RegisterGlobalHotKey` (supresión síncrona con `SimpleGlobalHook`), `MainWindow` →
+`OnClosing`, `AppHandler` → `OnShow`/`OnHide`.
+
+### Cierre de la aplicación
+
+Al cerrar la app (no la ventana), se detienen las fuentes de búsqueda (`globalSearch.Stop()`). No hay persistencia de
+estado en cierre; los settings se guardan en el momento en que cambian.
+
+## Búsqueda
+
+### Dos fases, dos tipos de fuente
+
+| Tipo                                   | Comportamiento                                                 | Ejemplos                                           |
+|----------------------------------------|----------------------------------------------------------------|----------------------------------------------------|
+| **Instant** (`IInstantSearchSource`)   | En memoria, síncrono, responde sin delay al escribir           | Apps instaladas, calculadora, emojis, búsqueda web |
+| **Deferred** (`IDeferredSearchSource`) | Acceso a disco/red, asíncrono, se lanza tras 250ms de debounce | Ficheros del usuario                               |
+
+Cada fuente produce un **snapshot completo** (los mejores N resultados ordenados), no ítems individuales. `GlobalSearch`
+mantiene un slot por fuente deferred y mezcla los snapshots en cada actualización.
+
+### Flujo de búsqueda
+
+1. El usuario escribe texto → se cancela cualquier búsqueda anterior.
+2. **Fase instant**: se ejecuta inmediatamente (sin delay). Todas las fuentes instant reciben la query y devuelven
+   resultados síncronamente.
+3. **Fase deferred**: tras 250ms de debounce, se lanzan las fuentes deferred en paralelo. A medida que cada fuente
+   responde, los resultados se mezclan con los de la fase instant.
+4. **Query vacía**: limpia los resultados sin buscar.
+5. **Modo emoji** (query empieza por `:`): solo se ejecuta la fase instant; la fase deferred se omite.
+
+**Invariantes:**
+
+- Un cambio de texto siempre cancela la búsqueda deferred anterior.
+- Los resultados instant aparecen sin latencia perceptible.
+- Las fuentes deferred nunca bloquean la respuesta instant.
+
+> **Verificar en:** `MainWindowViewModel` → `OnSearchTextChanged`, `GlobalSearch` → `SearchInstant`/
+`SearchDeferredAsync`. Detalle completo en `docs/search-sources.md`.
+
+### Readiness de fuentes
+
+Cada fuente expone un mecanismo de "estoy lista" (`WhenReady()`). Las fuentes sin arranque asíncrono se declaran listas
+inmediatamente. Las que necesitan cargar datos (ej: escaneo de apps) completan su readiness al terminar la carga
+inicial.
+
+- `GlobalSearch.WhenInstantReady()` espera solo a las fuentes instant → controla cuándo se muestra la ventana.
+- `GlobalSearch.WhenReady()` espera a todas → lo usa Settings para garantizar que los caches de descubrimiento de
+  browsers/terminales están poblados.
+
+> **Verificar en:** `GlobalSearch` → `WhenReady`/`WhenInstantReady`, `ApplicationSearch` → `ScanAndWatchAsync` (completa
+> readiness al terminar el scan y luego instala watchers).
+
+## Teclado
+
+### Hotkey global
+
+La hotkey es configurable en settings. La supresión de la tecla a nivel de OS requiere procesamiento síncrono en el hilo
+del hook (no se puede usar un pool de hilos asíncrono).
+
+### Atajos en la ventana principal
+
+| Tecla                         | Comportamiento                                                                                                                                                                      |
+|-------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Escape** (3 niveles)        | 1) Si hay búsqueda deferred en curso → cancela la búsqueda y limpia el texto. 2) Si hay texto → limpia el texto. 3) Si el texto está vacío → oculta la ventana.                     |
+| **Enter**                     | Activa el resultado seleccionado, limpia el texto y oculta la ventana. Si el resultado tiene `PasteAfterActivate`, además restaura el foco a la app anterior y simula Cmd+V/Ctrl+V. |
+| **Flechas arriba/abajo**      | Navegación circular por la lista de resultados (del último salta al primero y viceversa).                                                                                           |
+| **Flechas izquierda/derecha** | Capturadas por el resultado seleccionado si lo soporta (ej: grid de emojis). Si no, el TextBox las consume normalmente.                                                             |
+| **Cmd+,** (macOS)             | Abre la ventana de Settings.                                                                                                                                                        |
+| **Cmd+W / Ctrl+W / Ctrl+F4**  | Atajo de cierre de ventana (OS-específico). Se intercepta y convierte en hide.                                                                                                      |
+| **Alt+Space**                 | Se consume explícitamente para evitar pitidos de macOS.                                                                                                                             |
+
+**Invariantes:**
+
+- Escape siempre tiene una salida: nunca deja al usuario atrapado.
+- Las teclas de flecha en ítems tipo grid (emojis) se interceptan en fase tunnel, antes de que el TextBox las consuma.
+- La navegación por la lista de resultados desactiva la auto-selección de resultados de calculadora.
+
+> **Verificar en:** `MainWindow` → `OnKeyDown` (atajos, Escape, Enter), handler tunnel (flechas para grids).
+
+## Resultados
+
+Todos los resultados de búsqueda se representan como `ResultItemViewModel`, un tipo inmutable (`init`-only) que todas
+las fuentes producen y la UI consume.
+
+**Capacidades opcionales de un resultado:**
+
+- **Acción al activar** (`OnActivate`): qué hacer cuando el usuario pulsa Enter. Puede ser null si el ítem es solo
+  informativo.
+- **Pegar automáticamente** (`PasteAfterActivate`): tras activar, restaurar foco a la app anterior y simular paste.
+  Usado por emojis.
+- **Navegación interna** (`OnLeft/OnRight/OnUp/OnDown`): el resultado puede capturar teclas de flecha para navegación
+  interna (ej: grid de emojis). Si el resultado no consume la tecla, la ventana aplica la navegación estándar de lista.
+- **Atajo decorativo** (`Shortcut`): texto para mostrar un atajo en la UI. No genera lógica de teclado.
+
+**Grid de emojis** — caso especial: un resultado que contiene una cuadrícula de 8 columnas. La navegación horizontal
+wrappea (del último emoji salta al primero). La navegación vertical devuelve el control a la ventana cuando llega al
+borde, permitiendo al usuario salir del grid con las flechas.
+
+> **Verificar en:** `ResultItemViewModel`, `BaseResultItemViewModel`, `EmojiGridResultViewModel`, `EmojiCellViewModel` (
+> todos en `Yottacast.Core/ViewModels/`).
+
+## Arquitectura multiplataforma
+
+### Separación de responsabilidades
+
+| Capa               | Responsabilidad                                                                                                              |
+|--------------------|------------------------------------------------------------------------------------------------------------------------------|
+| `Yottacast.Core`   | Lógica de búsqueda, ViewModels, settings, scoring. Sin dependencia de Avalonia.                                              |
+| `Yottacast`        | UI (Avalonia), arranque, hotkey, integraciones OS.                                                                           |
+| `PlatformProvider` | Abstracción de operaciones OS: escaneo de apps, watchers, rutas de sistema.                                                  |
+| `AppHandler`       | Abstracción de interacciones OS con la UI: mostrar/ocultar ventana, capturar/restaurar foco, simular paste, atajo de cierre. |
+
+### Contrato de AppHandler por plataforma
+
+| Operación       | macOS                                                    | Windows                            | Linux                              |
+|-----------------|----------------------------------------------------------|------------------------------------|------------------------------------|
+| Arranque        | `NSApplicationActivationPolicyAccessory` (sin Dock icon) | —                                  | —                                  |
+| Captura de foco | Captura la app en primer plano                           | Captura la ventana en primer plano | Captura la ventana en primer plano |
+| Paste simulado  | `CGEvent` (Cmd+V)                                        | `keybd_event` (Ctrl+V)             | No implementado                    |
+| Atajo de cierre | Cmd+W                                                    | Ctrl+F4                            | Ctrl+W                             |
+
+> **Verificar en:** `AppHandler.cs`, `MacAppHandler.cs`, `WindowsAppHandler.cs`, `LinuxAppHandler.cs` (en
+`Yottacast/Services/`). Detalle completo en `docs/multi-platform.md`.
+
+### Portapapeles: bridge Core → UI
+
+`Yottacast.Core` no puede depender de Avalonia, pero necesita copiar al portapapeles. Se resuelve con un callback: al
+arrancar, la capa UI inyecta una función que encapsula la copia al portapapeles con el marshal al UI thread. Core
+simplemente llama `clipboardService.CopyText(text)`.
+
+> **Verificar en:** `ClipboardService` (en `Yottacast.Core/Services/`), inicialización en `App.axaml.cs`.
+
+## Settings y persistencia
+
+- Los settings se cargan desde un JSON al arranque y se guardan inmediatamente al cambiar (no al cerrar).
+- La validación de browser/terminal activos no ocurre en el arranque; se auto-repara en el momento de uso.
+- Las migraciones comparan la versión de la app con la última versión ejecutada y se ejecutan síncronamente antes de que
+  nadie consuma los settings.
+- La ventana de Settings solo se abre cuando el caché de apps está poblado, para que el descubrimiento de browsers y
+  terminales funcione correctamente.
+
+> **Verificar en:** `UserSettings` → `Load`/`Save`, `App.axaml.cs` → `RunMigrations`, `App.OpenSettings`. Detalle en
+`docs/user-settings.md`.
 
 ## Logging
 
-`BuildServices()` configura Serilog antes de construir el contenedor DI. El logger escribe en fichero con rotación diaria y retención de 7 días. La ruta del fichero es OS-específica: en macOS `~/Library/Logs/Yottacast/yottacast-.log`; en Windows/Linux `%LOCALAPPDATA%/Yottacast/Logs/yottacast-.log`. Serilog se inyecta en el contenedor DI mediante `AddLogging(b => b.AddSerilog(..., dispose: true))`, de modo que todos los servicios reciben `ILogger<T>` estándar de Microsoft y el backend puede cambiarse sin tocar el código de negocio.
+Fichero con rotación diaria y retención de 7 días. Ruta OS-específica. El backend es Serilog pero todos los servicios
+usan `ILogger<T>` estándar de Microsoft, desacoplando la implementación.
 
-## Hotkey global (RegisterGlobalHotKey)
+> **Verificar en:** `App.axaml.cs` → `BuildServices` (configuración Serilog), `AppPaths` (rutas de log). Detalle en
+`docs/logging.md`.
 
-`RegisterGlobalHotKey` crea un `SimpleGlobalHook` (no `TaskPoolGlobalHook`). La diferencia es crítica: `SimpleGlobalHook` invoca los handlers síncronamente en el hilo del hook, requisito para que `e.SuppressEvent = true` tenga efecto a nivel de OS. Con `TaskPoolGlobalHook`, el evento ya ha sido entregado al OS antes de que el handler pueda suprimirlo.
+## Servicios registrados en DI
 
-Al coincidir la hotkey (tecla + modificadores comparados contra `UserSettings.ParsedHotkey`), se hace `e.SuppressEvent = true` para evitar pitidos en Yottacast y en la app anterior. Luego se despacha al UI thread: si la ventana está visible y activa → `Hide()` + `OnHide()`; si no → `OnShow()` + `Show()` + `Activate()`.
+Todos los servicios se registran en `App.axaml.cs` → `BuildServices()`. La lista canónica está en el código; aquí se
+documenta la intención de cada grupo:
 
-El mapa `KeyNameToKeyCode` se construye una sola vez en tiempo de carga de clase (`BuildKeyNameMap()`): incluye Space/Enter/Tab/Backspace/Delete/Escape, A–Z, 0–9 y F1–F12. La comparación de nombres de tecla es case-insensitive.
+| Grupo             | Servicios                                                                                                                                     | Lifetime  | Propósito                  |
+|-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|-----------|----------------------------|
+| Plataforma        | `PlatformProvider`, `ProcessRunner`                                                                                                           | Singleton | Abstracción de OS          |
+| Config            | `UserSettings`                                                                                                                                | Singleton | Configuración persistente  |
+| Búsqueda instant  | `ApplicationSearch`, `CalculatorSearch`, `EmojiSearch`, `WebSearchSource`                                                                     | Singleton | Fuentes rápidas en memoria |
+| Búsqueda deferred | `UserDocumentSearch`                                                                                                                          | Singleton | Fuentes lentas (disco/red) |
+| Orquestación      | `GlobalSearch`                                                                                                                                | Singleton | Agrega y mezcla fuentes    |
+| Soporte           | `UpdateChecker`, `BrowserDiscovery`, `TerminalDiscovery`, `FileSearch`, `ClipboardService`, `MathJsEngine`, `EmojiDataLoader`, `ThemeService` | Singleton | Servicios auxiliares       |
+| ViewModels        | `MainWindowViewModel`, `SettingsWindowViewModel`                                                                                              | Transient | Estado de UI por ventana   |
 
-## ClipboardService — bridge UI/Core
-
-`ClipboardService.Initialize(callback)` recibe una función `Action<string>` que ya encapsula el marshal al UI thread. La implementación en `App.axaml.cs` captura `mainWindow` en un closure y delega en `TopLevel.GetTopLevel(mainWindow)?.Clipboard?.SetTextAsync(text)` dentro de `Dispatcher.UIThread.InvokeAsync`. Esto permite que código en `Yottacast.Core` (sin dependencia de Avalonia) copie al portapapeles simplemente llamando `clipboardService.CopyToClipboard(text)`.
-
-## Motor de búsqueda: GlobalSearch
-
-`GlobalSearch` agrega las fuentes registradas por DI en dos grupos: `IInstantSearchSource` (síncrono, caché en memoria) e `IDeferredSearchSource` (asíncrono, acceso a disco). Expone `SearchInstant` y `SearchDeferredAsync`. Ver `docs/search-sources.md` para el detalle del ciclo de vida, las interfaces y el mecanismo de merge por slots.
-
-## Debounce (MainWindowViewModel)
-
-`OnSearchTextChanged` cancela la búsqueda anterior, ejecuta la fase instant inmediatamente (sin delay) y lanza la fase deferred tras un debounce de 250 ms. La query vacía limpia sin buscar; las queries que empiezan por `:` (modo emoji) omiten la fase deferred. Ver `docs/search-sources.md` para el detalle del flujo completo y la lógica de `RefreshResults()`.
-
-## ResultItemViewModel — contrato de resultados
-
-`ResultItemViewModel` (en `Yottacast.Core.ViewModels`) es el tipo de dato que todas las fuentes producen y que la UI consume. Todos sus campos son `init`-only (inmutable tras construcción). Sus campos relevantes para el flujo de control:
-
-- `OnActivate` — acción a ejecutar al pulsar Enter. Es `null` si el ítem no tiene acción.
-- `PasteAfterActivate` — cuando es `true`, después de activar el ítem el launcher llama `AppHandler.Instance.OnHide()` y luego `SimulatePasteAsync()`. Permite que el resultado (p.ej. un emoji copiado) sea pegado automáticamente en la app anterior.
-- `OnLeft` / `OnRight` — capturan las teclas izquierda/derecha antes de que el `TextBox` las consuma (útil para navegar dentro de un ítem grid).
-- `OnUp` / `OnDown` — devuelven `bool`; si `true` el evento se considera consumido (el item lo procesó), si `false` la ventana cae al comportamiento estándar de navegación de lista.
-- `Shortcut` — texto opcional para mostrar un atajo de teclado en la UI (decorativo, no genera lógica de teclado por sí mismo).
-
-El enrutado de teclas de flecha ocurre en la fase tunnel de `MainWindow` para garantizar que los ítems de grid capturen las teclas antes que el `TextBox`.
-
-**`EmojiGridResultViewModel`** es una subclase de `ResultItemViewModel` que además implementa `INotifyPropertyChanged`. Añade una lista `Cells` de `EmojiCellViewModel` y gestiona `SelectedEmojiIndex`. La navegación dentro del grid siempre wrappea en horizontal (`SelectNext`/`SelectPrevious` con módulo) pero devuelve `false` en `SelectDown`/`SelectUp` cuando el índice resultante saldría del rango, permitiendo que la ventana no consuma el evento y el usuario pueda salir del grid. `Columns` es una constante `= 8`. Los callbacks `OnLeft`/`OnRight`/`OnUp`/`OnDown` del `ResultItemViewModel` base se conectan a estos métodos al construir el ítem en `EmojiSearch`.
-
-**`EmojiCellViewModel`** es la unidad mínima del grid: `Char`, `Name`, `Category`, `Keywords` (array) y `IsSelected` (mutable, con `INotifyPropertyChanged`). La propiedad `KeywordsText` devuelve los keywords unidos por coma para uso en bindings de tooltip o subtítulo.
-
-## Teclado y ciclo de vida de la ventana (MainWindow)
-
-**Foco del `SearchBox`**: el constructor de `MainWindow` suscribe `SearchBox.Focus()` al evento `Opened`. Además, `OnPropertyChanged` detecta cambios en `IsVisibleProperty`: cuando la ventana se hace visible, reactiva el `SearchBox` (`IsEnabled = true`) y le da el foco; cuando se oculta, lo desactiva (`IsEnabled = false`). Esto evita que el `TextBox` reciba input de fondo mientras la ventana está oculta.
-
-**Apertura de Settings**: `Key.OemComma` con modificador `Meta` (Cmd+, en macOS) invoca `App.OpenSettings()` desde el handler de teclado de `MainWindow`. El shortcut solo existe en `OnKeyDown`, no en el handler tunnel.
-
-**Alt+Space consumido**: la combinación Alt+Space se marca como `e.Handled = true` explícitamente para evitar que macOS produzca un pitido al recibir una tecla no manejada.
-
-**Escape — tres niveles**:
-1. Si `IsSearching == true` → cancela solo la fase deferred (`CancelDeferredSearch()`).
-2. Si `SearchText` no está vacío → limpia el texto.
-3. Si el texto ya está vacío → oculta la ventana.
-
-**Navegación de lista — circular**: `SelectNext(vm, delta)` calcula el índice como `(current + delta + Count) % Count`, de modo que la navegación wrapalea: flecha abajo desde el último ítem salta al primero y viceversa. Llama `vm.NotifyUserNavigated()` para desactivar la selección automática de resultados de calculadora.
-
-**Enter — activación**:
-1. Llama `SelectedResult.OnActivate()`.
-2. Limpia `SearchText` y oculta la ventana (`Hide()`).
-3. Si `result.PasteAfterActivate == true`, llama además `AppHandler.Instance.OnHide()` (restaura foco a la app anterior) y luego `SimulatePasteAsync()` (simula Cmd+V / Ctrl+V con un delay de 150 ms para dar tiempo al foco).
-
-**Cierre nativo bloqueado**: `OnClosing` siempre cancela el cierre (`e.Cancel = true`) y llama `Hide()`. La ventana nunca se destruye en runtime — es necesario para que el proceso permanezca vivo sin icono en el Dock/taskbar. Nota: en macOS, cuando `SettingsWindow` se cierra, el sistema puede enrutar un `performClose:` a `MainWindow`; este handler lo intercepta y lo convierte en hide.
-
-**`CloseWindowShortcut` en `MainWindow`**: antes de procesar cualquier otra tecla en `OnKeyDown`, se comprueba si coincide con `AppHandler.Instance.CloseWindowShortcut`; si es así, se oculta la ventana y se marca `e.Handled = true` sin llegar al `base.OnKeyDown`.
-
-
-## AppHandler — contrato OS-específico de UI
-
-`AppHandler` (en `Yottacast/Services/`) es una clase abstracta con un singleton estático `Instance` seleccionado en tiempo de carga según el OS. Expone:
-
-- `OnFrameworkInitializationCompleted()` — configuración OS al arrancar (macOS: `NSApplicationActivationPolicyAccessory`).
-- `OnShow()` — captura la app en primer plano y activa Yottacast.
-- `OnHide()` — restaura el foco a la app capturada en `OnShow()`.
-- `CloseWindowShortcut` — atajo de teclado para cerrar ventana: Cmd+W (macOS), Ctrl+F4 (Windows), Ctrl+W (Linux). Lo usa `MainWindow` para consumir el shortcut y ocultar en vez de cerrar.
-- `SimulatePasteAsync()` — espera 150 ms y sintetiza Cmd+V (macOS, vía CGEvent) o Ctrl+V (Windows, vía `keybd_event`). `LinuxAppHandler` no implementa el paste simulado (usa la implementación base que devuelve `Task.CompletedTask`).
-
-Los detalles de implementación por plataforma están en `docs/multi-platform.md`.
-
-## Arquitectura snapshot-por-fuente
-
-Tanto las fuentes instant como las deferred producen snapshots completos (los mejores N ordenados), no items individuales. `GlobalSearch` mantiene un slot por fuente deferred y emite la unión ordenada en cada actualización. Ver `docs/search-sources.md` para el detalle de interfaces y comportamiento por fuente.
+> **Verificar en:** `App.axaml.cs` → `BuildServices()`.

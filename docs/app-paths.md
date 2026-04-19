@@ -1,19 +1,96 @@
-# Rutas runtime y constantes centralizadas
+# Rutas y constantes de la aplicacion
 
-## AppPaths (rutas de disco)
+## Todas las rutas de disco estan centralizadas
 
-`Yottacast.Core/AppPaths.cs` es la fuente única de todas las rutas de fichero y directorio que la app lee o escribe en runtime. Cualquier componente que necesite una ruta de disco la obtiene de `AppPaths` en lugar de construirla localmente.
+La aplicacion nunca construye rutas de fichero de forma local. Cualquier componente que necesite leer o escribir en
+disco obtiene la ruta de una unica clase centralizada. Esto garantiza que:
 
-Define tres directorios base (`ConfigDir`, `LogDir`, `CacheDir`) y las rutas concretas derivadas de ellos (`SettingsFile`, `EmojiCacheFile`, `LogFilePattern`, `AppIconCacheDir`). Las rutas base usan `Environment.SpecialFolder` y siguen las convenciones de cada plataforma (macOS: `~/Library/...`, Windows: `%APPDATA%/...`).
+- No existen rutas duplicadas ni inconsistentes entre componentes.
+- Cambiar la ubicacion de un fichero requiere modificar un solo lugar.
+- Es posible auditar todas las rutas de I/O del sistema inspeccionando una sola clase.
 
-## AppDefaults (constantes numéricas)
+### Directorios base
 
-`Yottacast.Core/AppDefaults.cs` centraliza todos los valores por defecto y parámetros tunables: timeouts, límites de resultados, tamaños de grid, delays, etc. Cualquier constante numérica o string que controle comportamiento debe vivir aquí.
+| Directorio    | Proposito                           | macOS                                     | Windows                         |
+|---------------|-------------------------------------|-------------------------------------------|---------------------------------|
+| Configuracion | Ajustes de usuario y caches ligeras | `~/Library/Application Support/Yottacast` | `%APPDATA%/Yottacast`           |
+| Logs          | Ficheros de log rotados diariamente | `~/Library/Logs/Yottacast`                | `%LOCALAPPDATA%/Yottacast/Logs` |
+| Cache         | Datos regenerables (iconos de apps) | `~/.cache/yottacast`                      | `~/.cache/yottacast`            |
 
-## Convención
+### Ficheros concretos
 
-Al añadir una nueva ruta de disco, definirla en `AppPaths`. Al añadir una constante o valor por defecto, definirla en `AppDefaults`. Los consumidores referencian estas clases — nunca hardcodean valores.
+| Fichero     | Directorio base | Nombre             | Descripcion                                    |
+|-------------|-----------------|--------------------|------------------------------------------------|
+| Settings    | Configuracion   | `settings.json`    | Preferencias del usuario (JSON)                |
+| Emoji cache | Configuracion   | `emoji-cache.json` | Cache compacta de datos de emojis              |
+| Log pattern | Logs            | `yottacast-.log`   | Patron de Serilog para log diario              |
+| Icon cache  | Cache           | `app-icons/`       | Directorio con iconos de aplicaciones en disco |
 
-## user-data/ (acceso rápido para desarrollo)
+### Invariantes
 
-El directorio `user-data/` en la raíz del proyecto contiene symlinks a los directorios runtime de la máquina local. Está gitignored y sirve para inspeccionar rápidamente los ficheros que la app escribe durante la ejecución. Ver `user-data/README.md` para detalles. Si los links se pierden, ejecutar `user-data/create-links.sh`.
+- Ningun fichero `.cs` fuera de la clase centralizada usa `Environment.SpecialFolder` para construir rutas de datos de
+  la aplicacion. (Los `PlatformProvider` usan `SpecialFolder` para descubrir aplicaciones del sistema, lo cual es
+  correcto y no viola esta regla.)
+- Los directorios se crean bajo demanda: cada consumidor llama a `Directory.CreateDirectory` antes de escribir, por lo
+  que la app no falla si el directorio no existe aun.
+
+> **Verificar en:** `Yottacast.Core/AppPaths.cs` (definiciones), consumidores: `App.axaml.cs`, `AppIconCache.cs`,
+`UserSettings.cs`, `EmojiDataLoader.cs`.
+
+## Todos los valores por defecto estan centralizados
+
+Los parametros numericos y temporales que controlan el comportamiento de la aplicacion (timeouts, limites, delays) se
+definen en una unica clase de constantes. Esto permite:
+
+- Ajustar el comportamiento sin buscar valores dispersos por el codigo.
+- Promover cualquier constante a configuracion de usuario sin cambiar los puntos de consumo.
+
+### Parametros actuales
+
+| Categoria         | Parametro               | Valor         | Efecto                                                       |
+|-------------------|-------------------------|---------------|--------------------------------------------------------------|
+| Busqueda global   | Debounce                | 250 ms        | Espera antes de buscar tras dejar de teclear                 |
+| Busqueda global   | Query minimo (ficheros) | 2 caracteres  | No busca ficheros con menos caracteres                       |
+| Busqueda global   | Limite por fuente       | 10 resultados | Maximo de resultados que cada fuente devuelve                |
+| Busqueda ficheros | Timeout                 | 20 s          | Tiempo maximo para una consulta a Spotlight / Windows Search |
+| Busqueda ficheros | Intervalo de snapshot   | 200 ms        | Frecuencia minima de actualizacion progresiva de resultados  |
+| Emojis            | Limite por defecto      | 20            | Emojis mostrados cuando el filtro esta vacio (solo `:`)      |
+| Emojis            | Columnas del grid       | 8             | Columnas en la cuadricula del picker de emojis               |
+| UI                | Delay de pegado         | 150 ms        | Espera antes de simular Cmd+V / Ctrl+V tras seleccionar      |
+| Actualizaciones   | Timeout HTTP            | 10 s          | Timeout del request de comprobacion de version               |
+
+### Invariantes
+
+- Ningun componente usa numeros magicos para estos comportamientos; siempre referencia la clase central.
+- Los valores son `const`, lo que permite usarlos en contextos que requieren constantes de compilacion (como parametros
+  por defecto de metodos).
+
+> **Verificar en:** `Yottacast.Core/AppDefaults.cs` (definiciones), consumidores: `MainWindowViewModel.cs`,
+`MacAppHandler.cs`, `WindowsAppHandler.cs`, `UserDocumentSearch.cs`, `EmojiSearch.cs`, `EmojiGridResultViewModel.cs`,
+`UpdateChecker.cs`.
+
+## Convencion para nuevos elementos
+
+- Nueva ruta de disco: definirla en `AppPaths`.
+- Nueva constante o valor por defecto: definirla en `AppDefaults`.
+- Los consumidores nunca deben hardcodear valores que pertenezcan a estas categorias.
+
+## Acceso rapido a datos de runtime (desarrollo)
+
+El directorio `user-data/` en la raiz del proyecto contiene symlinks a los directorios runtime de la maquina local. Esta
+en `.gitignore` y no se sube al repositorio.
+
+| Symlink  | Destino (macOS)                           | Contenido                           |
+|----------|-------------------------------------------|-------------------------------------|
+| `config` | `~/Library/Application Support/Yottacast` | `settings.json`, `emoji-cache.json` |
+| `logs`   | `~/Library/Logs/Yottacast`                | Logs diarios (`yottacast-*.log`)    |
+| `cache`  | `~/.cache/yottacast`                      | `app-icons/` (cache de iconos)      |
+
+Si los symlinks se pierden, ejecutar:
+
+```bash
+./user-data/create-links.sh
+```
+
+> **Verificar en:** `user-data/create-links.sh` (creacion de links), `user-data/README.md` (documentacion local),
+`.gitignore` (exclusion).

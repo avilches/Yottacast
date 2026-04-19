@@ -1,125 +1,236 @@
-# Búsqueda de ficheros
+# Busqueda de ficheros
 
-## UserDocumentSearch
+## Proposito
 
-Clase: `Yottacast.Core.Search.UserDocuments.UserDocumentSearch` (implementa `IDeferredSearchSource`)
+Cuando el usuario escribe en el launcher, Yottacast busca ficheros del usuario en las carpetas configuradas (Downloads, Desktop, Documents, etc.) y muestra resultados progresivos ordenados por relevancia. El objetivo es encontrar ficheros rapidamente usando el indice nativo del sistema operativo, sin necesidad de recorrer el sistema de ficheros manualmente.
 
-Sin caché. Cada búsqueda llama a `FileSearch.SearchAsync` con `settings.ExpandedSearchFolders`.
-Si los directorios cambian en settings, la siguiente búsqueda los usará automáticamente.
+---
 
-`Start()`, `WhenReady()` y `Stop()` son no-ops (no hay estado que gestionar).
+## 1. Requisitos minimos de la query
 
-**Queries cortas**: hace `yield break` si `query.Length < 2` — la búsqueda de ficheros requiere al menos 2 caracteres. `FileSearch` y los `PlatformProvider` hacen early return (`Task.CompletedTask`) para queries vacías.
+La busqueda de ficheros no se ejecuta si la query tiene menos de 2 caracteres (`FileSearchMinQueryLength`). Para queries vacias o en blanco, la capa inferior (`FileSearch`) tambien hace early return sin invocar al sistema operativo.
 
-**Criterios de parada**: `SearchAsync` crea un `CancellationTokenSource` interno ligado al `ct` del caller.
-- **Timeout configurable** (por defecto `20_000ms`, parámetro `timeoutMs` del constructor): `cts.CancelAfter(timeoutMs)` detiene mdfind tras el tiempo configurado.
-- El `OperationCanceledException` se captura — se emite un snapshot final con lo que hay en el buffer.
-- No hay cap de líneas (`maxResults: int.MaxValue`): el timeout y el early exit son los únicos mecanismos de parada.
+**Invariante:** el usuario nunca vera resultados de ficheros si ha escrito menos de 2 caracteres.
 
-**Flujo completo**:
-```
-mdfind emite línea → onResult callback → puntúa → añade al buffer
-                   → cada SnapshotIntervalMs → snapshot parcial al channel
-cts.Token expira (timeoutMs) → OperationCanceledException → snapshot final → channel.Complete()
-MainWindowViewModel recibe snapshots → RefreshResults() en cada uno
-```
+> **Verificar en:** `UserDocumentSearch.SearchAsync` (guard `query.Length < AppDefaults.FileSearchMinQueryLength`), `FileSearch.SearchAsync` (guard `string.IsNullOrWhiteSpace`).
 
-**Snapshots progresivos**: `UserDocumentSearch` emite un snapshot cuando ha transcurrido suficiente tiempo desde el último (el intervalo está definido como constante local `SnapshotIntervalMs` dentro de `SearchAsync`) — throttling puramente por tiempo, no por número de resultados — y uno final al terminar o cancelar. Esto evita que queries con muchos resultados (p.ej. `"a"`) saturen la UI con decenas de actualizaciones por segundo.
+---
 
-**Tarea background bajo `CancellationToken.None`**: el `Task.Run` interno de `SearchAsync` se lanza con `CancellationToken.None`, no con el `ct` del caller. El token del caller solo se usa en el `ReadAllAsync` del consumer. Esto garantiza que la tarea siempre llegue a emitir el snapshot final y completar el channel aunque el caller cancele, evitando que el channel quede incompleto.
+## 2. Carpetas de busqueda
 
-`FileResult` solo contiene `Name` y `Path` — no hay distinción entre fichero y directorio en los resultados.
+Las carpetas donde se busca son las configuradas en `UserSettings.ExpandedSearchFolders`. Cada plataforma define carpetas por defecto distintas:
 
-## FileSearch
+| Plataforma | Carpetas por defecto |
+|---|---|
+| macOS | Downloads, Desktop, Documents, Movies, Pictures, Dropbox, Music, Public, iCloud Drive, Library/Application Support, Library/Containers, Creative Cloud Files, Google Drive, OneDrive, Box, Mega, pCloud, Nextcloud, Adobe Creative Cloud, Amazon Drive |
+| Windows | Downloads, Desktop, Documents, Videos, Pictures |
+| Linux | Downloads, Desktop, Documents, Videos, Pictures |
 
-`FileSearch` es un thin wrapper sobre `PlatformProvider.SearchFilesAsync`. No tiene lógica propia más allá de hacer early return si la query es vacía.
+Si ninguna de las carpetas configuradas existe en disco:
+- **macOS**: se usa `$HOME` como fallback (no produce error, solo warning en log).
+- **Windows/Linux**: la busqueda se ejecuta sin filtro de carpetas explicito.
 
-## PlatformProvider — backends por plataforma
+**Invariante:** un cambio en las carpetas de settings se aplica automaticamente en la siguiente busqueda, sin reiniciar.
 
-**macOS — SpotlightInterop**:
-- `SpotlightInterop.Query` es **síncrono y bloqueante** — siempre se llama desde `Task.Run`.
-- Usa `MDQueryExecute` con `kMDQuerySynchronous` (flag `1`): espera a que el índice devuelva todos los resultados antes de retornar.
-- Los resultados se leen via `MDQueryGetResultAtIndex` + `MDItemCopyAttribute("kMDItemPath")`. `MDItemCopyAttribute` transfiere ownership (se hace `CFRelease`); `MDQueryGetResultAtIndex` no transfiere ownership.
-- Buffer de path de 4096 bytes; rutas más largas se truncarán silenciosamente.
-- La cancelación se comprueba en cada iteración de resultado (`ct.ThrowIfCancellationRequested()`).
+> **Verificar en:** `MacOsPlatformProvider.SearchFilesAsync` (fallback a `home`), `MacOsPlatformProvider.DefaultSearchFolders`, `WindowsPlatformProvider.DefaultSearchFolders`, `LinuxPlatformProvider.DefaultSearchFolders`.
 
-**macOS — predicado para file search**: para queries **sin wildcard**, construye un AND de `kMDItemFSName == '*token*'cd` por cada token (búsqueda de substring, case-insensitive y diacritic-insensitive). Para queries **con wildcard**, usa el patrón tal cual: `kMDItemFSName == 'pattern'cd`. Los `'` de la query se escapan con `\'`.
+---
 
-**macOS — scope de búsqueda**: si ninguna de las carpetas configuradas existe en el sistema de ficheros, el scope cae a `$HOME` (fallback, no error). Se loguean como warning las carpetas no existentes.
+## 3. Entrega progresiva de resultados (snapshots)
 
-**Windows — file search**: ejecuta un script PowerShell codificado en Base64 que abre una conexión OLE DB al `SystemIndex` (`Provider=Search.CollatorDSO`) y lanza una query SQL con `CONTAINS(System.FileName, 'token*')` por cada token y `System.ItemPathDisplay LIKE 'folder%'` para el scope. Los caracteres `'`, `"` y `*` se eliminan de la query para evitar inyección SQL. Usa `ProcessRunner` (redirige stdout, no PTY).
+Los resultados se entregan a la UI en snapshots parciales para que el usuario vea resultados tan pronto como estan disponibles, sin esperar a que termine la busqueda completa.
 
-**Linux — file search**: usa `plocate` si existe en `/usr/bin/plocate`, sino `locate`. Solo pasa el primer token al binario con pattern `*token*`; los tokens adicionales y el filtro de carpetas se aplican client-side en el callback. Usa `ProcessRunner`.
+- **Intervalo entre snapshots**: 200ms (`FileSearchSnapshotIntervalMs`). No se emite un nuevo snapshot hasta que hayan pasado al menos 200ms desde el anterior.
+- **Snapshot final**: siempre se emite al terminar o cancelarse la busqueda, con todos los resultados acumulados.
+- **Cada snapshot** contiene los mejores N resultados (segun `limit`) ordenados por score descendente.
 
-**`ProcessRunner`**: lee stdout línea a línea con `ReadLineAsync(ct)`. Al cancelar o al salir del bucle (porque `onLine` devolvió `false`), llama `proc.Kill(entireProcessTree: true)` para asegurar que ningún subproceso quede huérfano.
+**Invariante:** el usuario nunca ve mas de un snapshot cada 200ms durante una busqueda activa. Siempre recibe un snapshot final con el mejor estado conocido.
 
-## Scoring
+> **Verificar en:** `UserDocumentSearch.SearchAsync` (logica de `SnapshotIntervalMs`, snapshot final tras el try/catch).
 
-`UserDocumentSearch` aplica scoring client-side sobre el nombre del fichero devuelto por el OS. Ver `Search/UserDocuments/UserDocumentSearch.cs` para los valores exactos.
+---
 
-Para **queries con wildcard** (`*`), todos los resultados reciben un score base.
+## 4. Timeout y cancelacion
 
-Para **queries sin wildcard**, distingue dos modos:
+La busqueda tiene un timeout configurable (por defecto 20 segundos, `FileSearchTimeoutMs`). Hay dos vias de cancelacion:
 
-**Query de un token** (ej. `"report"`): el score varía según si el nombre es exactamente el query, empieza por él, termina en él, o simplemente lo contiene. `Stem = Path.GetFileNameWithoutExtension(name)`, por lo que `"report"` puntúa igual contra `"report.pdf"` que contra el nombre completo `"report"`.
+| Via | Causa | Comportamiento |
+|---|---|---|
+| Timeout interno | Han pasado 20s desde el inicio | Se emite snapshot final con resultados parciales |
+| Cancelacion del caller | El usuario cambia la query o cierra el launcher | El channel de lectura se interrumpe |
 
-**Query multi-token** (ej. `"xls calc mis"`): la plataforma pre-filtra con un predicado AND en Spotlight/Windows Search/locate, pero el callback `onResult` aplica un segundo filtro client-side: descarta cualquier resultado donde no todos los tokens estén contenidos en el nombre. El scoring de los resultados que pasan ese filtro depende de si todos los tokens son prefijo de algún segmento del nombre (split por espacios, guiones, guiones bajos, puntos) o solo aparecen como substring.
+No hay limite por numero de resultados (se pasa `int.MaxValue`): el timeout y la cancelacion del caller son los unicos mecanismos de parada.
 
-Ejemplo: `"xls calc mis"` → `"mis calculos.xls"`: segmentos `["mis","calculos","xls"]`; "mis"→"mis"✓, "calc"→"calculos"✓, "xls"→"xls"✓ → score prefijo.
+**Invariante:** una busqueda de ficheros nunca bloquea el proceso mas de 20 segundos (por defecto). El snapshot final siempre se emite, incluso si se cancela.
 
-**Coincidencia con extensión**: en modo single-token, si la query coincide con la extensión del fichero (p.ej. query `"pdf"` vs `"report.pdf"`), la comparación construye el punto implícitamente (`extension == $".{queryLower}"`). El score resultante es `0.9` — por debajo del exact match (`1.0`) pero por encima de StartsWith (`0.75`), de manera que ficheros con esa extensión aparecen antes que carpetas o ficheros cuyo nombre empieza por el mismo término.
+La tarea background se lanza con `CancellationToken.None` para garantizar que siempre llegue a emitir el snapshot final y completar el channel, incluso si el caller cancela.
 
-**ViewModel construido**: `UserDocumentSearch` construye `ResultItemViewModel` con `Icon` (emoji según extensión), `Category = "Files"`, `Title = r.Name`, `Subtitle = r.Path`, `OnActivate = () => platform.LaunchApp(path)`, e `IconBytes`/`BadgeIconBytes` tomados del caché en el momento de construcción (pueden ser `null` si aún no han cargado; `RefreshIconBytes` los rellena en los snapshots siguientes).
+> **Verificar en:** `UserDocumentSearch.SearchAsync` (creacion de `cts.CancelAfter(timeoutMs)`, `Task.Run(..., CancellationToken.None)`), `AppDefaults.FileSearchTimeoutMs`.
 
-## Badge de aplicación predeterminada
+---
 
-Cada `ResultItemViewModel` de fichero puede mostrar un badge (18×18px) en la esquina inferior derecha del icono con el logo de la app que lo abrirá. El badge se obtiene de `_badgeByExtension`, un `ConcurrentDictionary<string, byte[]?>` indexado por extensión en minúsculas (e.g. `".pdf"`). `null` significa "sin badge" (suprimido explícitamente); si la clave no existe aún, el badge no se muestra hasta que la precarga termine.
+## 5. Scoring y ordenacion
 
-**Precarga (`PreloadBadgeIconAsync`)**: se lanza en `Task.Run` por cada fichero nuevo, pero solo una vez por extensión (doble guarda: `ContainsKey` + `TryAdd` en `_badgePreloading`). Pasos:
-1. Llama `platform.GetDefaultAppPath(filePath)` para obtener la ruta del `.app` que abriría el fichero.
-2. Si `appPath == null` → `_badgeByExtension[ext] = null` (sin app predeterminada conocida).
-3. Si `Path.GetFullPath(appPath) == Path.GetFullPath(filePath)` (OrdinalIgnoreCase) → `null` (el fichero es en sí mismo la app, p.ej. un `.app` bundle).
-4. Si `platform.AreIconsSame(filePath, appPath)` → `null` (la app registra su propio icono para ese tipo; el badge sería redundante con el icono principal).
-5. Si pasa todos los checks → `platform.GetAppIconBytes(appPath)` y se almacena el PNG resultante.
+El scoring se aplica client-side sobre el nombre del fichero. El sistema operativo prefiltra, pero la puntuacion final la calcula Yottacast.
 
-**Supresión de badge redundante (`AreIconsSame` en macOS)**: lee `Contents/Info.plist` del bundle de la app (funciona con plists XML y binarios vía `NSDictionary dictionaryWithContentsOfFile:`). Itera `CFBundleDocumentTypes`; si alguna entrada tiene `CFBundleTypeIconFile` definido y `CFBundleTypeExtensions` contiene la extensión del fichero, devuelve `true` — la app registró un icono propio para ese tipo, por lo que el icono del fichero ya lleva implícito el logo de la app.
+### 5.1. Queries con wildcard (`*`)
 
-**Recarga diferida de iconos**: `RefreshIconBytes` rellena `IconBytes` y `BadgeIconBytes` nulos en el buffer con lo que haya cargado desde el último snapshot. Los iconos que no estén listos al emitir el snapshot final simplemente no se muestran en esa búsqueda; en búsquedas posteriores ya están en caché y aparecen desde el primer snapshot. Esto solo ocurre en la primera búsqueda de cada extensión, mientras `fileIconCache` y `_badgeByExtension` están fríos.
+Todos los resultados reciben un score base de 0.5. No se aplica scoring diferenciado.
 
-**Logging en `UserDocumentSearch`**: al iniciar emite `LogDebug` con query, timeout y carpetas; al completar emite `LogInformation` con query y total de resultados acumulados. Al cancelar, el `LogInformation` distingue si fue el caller (`ct.IsCancellationRequested`) o el timeout interno (`cts.IsCancellationRequested && !ct.IsCancellationRequested`) quien originó la cancelación.
+### 5.2. Query de un solo token
 
-## SpotlightInterop — detalles de inicialización y alcance
+Se compara contra el nombre completo y contra el stem (nombre sin extension):
 
-**`kCFTypeArrayCallBacks`**: no es una constante — es un símbolo exportado de CoreFoundation. Se carga en el constructor estático de `SpotlightInterop` vía `NativeLibrary.GetExport`, una sola vez para toda la vida del proceso.
+| Condicion | Score | Ejemplo (query `report`) |
+|---|---|---|
+| Stem exacto (fichero con extension) | 1.0 | `report.pdf` |
+| Coincidencia de extension (query = extension del fichero) | 0.9 | query `pdf` contra `report.pdf` |
+| Nombre completo exacto (sin extension o fichero = query) | 0.85 | carpeta `report` |
+| Empieza por la query (nombre o stem) | 0.75 | `report-final.pdf` |
+| Termina en la query | 0.5 | `mi-report` |
+| Contiene la query (otros casos) | 0.5 | `unreported.txt` |
 
-**Scope vacío o null**: si `scopes` es `null` o vacío, `MDQuerySetSearchScope` no se llama, y Spotlight usa su ámbito global por defecto. Este comportamiento difiere del fallback de `MacOsPlatformProvider.SearchFilesAsync`, que nunca llama a `SpotlightInterop.Query` sin scope — siempre inyecta al menos `$HOME` si todas las carpetas configuradas son inválidas.
+La comparacion de extension construye el punto implicitamente: `extension == $".{queryLower}"`.
 
-**`maxResults` en macOS**: el callback `onLine` dentro de `MacOsPlatformProvider.SearchFilesAsync` devuelve `false` cuando `count >= maxResults`, lo que hace que `SpotlightInterop.Query` salga del bucle de resultados antes de procesarlos todos. Como `UserDocumentSearch` pasa `int.MaxValue`, en la práctica el límite lo impone el timeout, no este contador.
+### 5.3. Query multi-token
 
-**Manejo de errores en `MacOsPlatformProvider.SearchFilesAsync`**: las excepciones que no son `OperationCanceledException` se capturan, se almacenan en `error` y se registran en `LogDebug` al terminar, pero no se re-lanzan. La búsqueda termina silenciosamente con los resultados parciales emitidos hasta ese momento.
+Ejemplo: `"xls calc mis"`.
 
-## Windows Search — detalles adicionales
+1. **Prefiltro del SO**: cada plataforma aplica un AND de todos los tokens en su indice nativo.
+2. **Filtro client-side**: se descarta cualquier resultado donde no todos los tokens esten contenidos en el nombre (comparacion case-insensitive).
+3. **Scoring**: se divide el nombre en segmentos (separados por espacio, guion, guion bajo, punto). Si todos los tokens son prefijo de algun segmento, score = 0.75. En caso contrario (substring), score = 0.5.
 
-**`CONTAINS` es prefijo, no substring**: `CONTAINS(System.FileName, 'token*')` ancla al inicio del token. A diferencia del predicado de Spotlight `'*token*'cd`, no hace búsqueda de substring arbitraria.
+Ejemplo: `"xls calc mis"` contra `"mis calculos.xls"` -- segmentos `["mis","calculos","xls"]`. Cada token es prefijo de un segmento, luego score = 0.75.
 
-**Sanitización y segunda comprobación de query vacía**: `WindowsPlatformProvider.SearchFilesAsync` elimina `'`, `"` y `*` de la query. Si el resultado tras la eliminación es una cadena vacía, retorna `Task.CompletedTask` sin lanzar PowerShell.
+**Invariante:** el orden de los tokens en la query no afecta al resultado ni al score.
 
-**PowerShell con `-NoProfile -NonInteractive -EncodedCommand`**: el script se codifica en Base64 (UTF-16LE) para evitar problemas de escaping en la línea de comandos. El cwd del proceso se establece en `$HOME`.
+> **Verificar en:** `UserDocumentSearch.SearchAsync` (callback `onResult`, logica de scoring), `UserDocumentSearchTests` (casos de test `SingleFileCases`, `MultiFileCases`, `MultiToken_OrderIndependent_SameTitleAndScore`).
 
-## Linux — detalles adicionales
+---
 
-**Sanitización de query**: Linux solo elimina `"` de la query (no `'` ni `*`), a diferencia de Windows.
+## 6. Construccion del resultado visible
 
-**`filteredOnLine` no consume el límite de `maxResults` en líneas filtradas**: cuando una línea no cumple el filtro de carpetas o de tokens extra, `filteredOnLine` devuelve `true` (continuar) sin llamar a `onLine`. El `-l maxResults` pasado a `plocate/locate` limita la salida del proceso OS, pero el número efectivo de resultados entregados a `UserDocumentSearch` puede ser menor.
+Cada resultado se presenta como un `ResultItemViewModel` con:
 
-## `ProcessRunner` — detalles adicionales
+| Campo | Valor |
+|---|---|
+| `Title` | Nombre del fichero |
+| `Subtitle` | Ruta completa |
+| `Category` | `"Files"` |
+| `Score` | Segun la tabla de scoring |
+| `IconBytes` | Icono del fichero obtenido de `FileIconCache` (puede ser `null` en el primer snapshot) |
+| `BadgeIconBytes` | Icono miniatura de la app predeterminada (puede ser `null`) |
+| `OnActivate` | Abre el fichero con la app predeterminada del SO |
 
-**`WaitForExitAsync(ct)` tras el bucle de stdout**: cuando el bucle termina porque `onLine` devolvió `false` (no por cancelación), `ProcessRunner` llama `WaitForExitAsync(ct)` con el token aún activo. Independientemente del resultado, `Kill(entireProcessTree: true)` se ejecuta siempre en el bloque `finally`.
+> **Verificar en:** `UserDocumentSearch.SearchAsync` (construccion de `ResultItemViewModel`).
 
-**Quoting de argumentos**: los argumentos con espacios se envuelven en comillas dobles con las comillas internas escapadas (`\"`). Los argumentos sin espacios se pasan literalmente.
+---
 
-**`ProcessResult`**: `RunAsync` devuelve `ProcessResult(Elapsed, ExitCode, Cancelled, Error)`. `IsSuccess` es `true` solo si `Error` es null, `Cancelled` es false y `ExitCode == 0`. `UserDocumentSearch` no usa este valor de retorno — los resultados llegan vía el callback `onLine`.
+## 7. Iconos de fichero
 
-## Tests
+Los iconos de fichero se cargan de forma asincrona en `FileIconCache`. Si el icono no esta listo cuando se emite un snapshot, se muestra sin icono y se rellena en snapshots posteriores via `RefreshIconBytes`. En busquedas posteriores el icono ya esta en cache y aparece desde el primer snapshot.
 
-`FakePlatformProvider` emite todos los `FileResult` que se le pasan al constructor ignorando la query y las carpetas de búsqueda. Esto permite que los tests de `UserDocumentSearch` verifiquen exclusivamente la lógica de scoring y filtrado client-side, sin depender del comportamiento del OS.
+**Invariante:** la ausencia de icono nunca retrasa la emision de resultados. Los iconos se rellenan progresivamente.
+
+> **Verificar en:** `FileIconCache` (metodos `Get`, `PreloadAsync`), `UserDocumentSearch.RefreshIconBytes`.
+
+---
+
+## 8. Badge de aplicacion predeterminada
+
+Cada resultado de fichero puede mostrar un badge (icono pequeno) en la esquina del icono principal, indicando que app lo abrira. El badge se cachea por extension (e.g. `.pdf`) y se precarga una sola vez por extension.
+
+### Reglas de supresion del badge
+
+El badge NO se muestra cuando se cumple alguna de estas condiciones:
+
+| Condicion | Motivo |
+|---|---|
+| No hay app predeterminada para el fichero | No hay nada que mostrar |
+| La ruta del fichero y la de la app son la misma | El fichero ES la app (p.ej. un `.app` bundle) |
+| La app registra un icono propio para ese tipo de fichero | El badge seria redundante con el icono principal |
+
+La deteccion de "icono propio" en macOS se hace leyendo `Info.plist` del bundle de la app: si `CFBundleDocumentTypes` contiene una entrada con `CFBundleTypeIconFile` definido y `CFBundleTypeExtensions` incluye la extension del fichero, se considera que la app ya aporta su logo al icono del fichero.
+
+**Invariante:** el usuario nunca ve un badge que sea identico al icono principal del fichero.
+
+> **Verificar en:** `UserDocumentSearch.PreloadBadgeIconAsync` (logica de supresion), `MacOsPlatformProvider.AreIconsSame` (lectura de `Info.plist`).
+
+---
+
+## 9. Backend de busqueda por plataforma
+
+Cada plataforma usa el indice nativo del SO. `FileSearch` es solo un intermediario que delega en `PlatformProvider.SearchFilesAsync`.
+
+### macOS -- Spotlight
+
+- Usa `MDQuery` (API de CoreServices) en modo sincrono (`kMDQuerySynchronous`).
+- Predicado para queries sin wildcard: AND de `kMDItemFSName == '*token*'cd` por cada token (substring, case y diacritic insensitive).
+- Predicado para queries con wildcard: `kMDItemFSName == 'pattern'cd` literal.
+- Los `'` en la query se escapan con `\'`.
+- Buffer de path de 4096 bytes; rutas mas largas se truncan silenciosamente.
+- La cancelacion se comprueba en cada resultado (`ct.ThrowIfCancellationRequested()`).
+- Los errores que no son cancelacion se capturan y registran en log, sin relanzarse. La busqueda termina silenciosamente con resultados parciales.
+
+> **Verificar en:** `MacOsPlatformProvider.SearchFilesAsync`, `SpotlightInterop.Query`.
+
+### Windows -- Windows Search Index
+
+- Ejecuta un script PowerShell codificado en Base64 (UTF-16LE) que consulta `SystemIndex` via OLE DB.
+- Usa `CONTAINS(System.FileName, 'token*')` por cada token (busqueda por prefijo, no substring).
+- Scope: `System.ItemPathDisplay LIKE 'folder%'` por cada carpeta.
+- Sanitizacion: se eliminan `'`, `"` y `*` de la query. Si queda vacia, no se lanza PowerShell.
+- Flags: `-NoProfile -NonInteractive -EncodedCommand`.
+
+> **Verificar en:** `WindowsPlatformProvider.SearchFilesAsync`.
+
+### Linux -- plocate/locate
+
+- Usa `/usr/bin/plocate` si existe; sino `/usr/bin/locate`.
+- Solo pasa el primer token al binario con patron `*token*` y flags `-b -l maxResults`.
+- Los tokens adicionales y el filtro de carpetas se aplican client-side en un callback intermedio.
+- Sanitizacion: solo se eliminan `"` de la query.
+- Las lineas que no pasan el filtro client-side no consumen el limite de `maxResults` del proceso OS, por lo que el numero efectivo de resultados entregados puede ser menor que `maxResults`.
+
+> **Verificar en:** `LinuxPlatformProvider.SearchFilesAsync`.
+
+---
+
+## 10. Ejecucion de procesos externos (ProcessRunner)
+
+`ProcessRunner` gestiona la ejecucion de procesos (PowerShell, plocate/locate) con lectura asincrona de stdout y stderr linea a linea.
+
+- Lee stdout y stderr en paralelo usando un `CancellationTokenSource` vinculado al token del caller.
+- Si un callback devuelve `false`, se cancela el token compartido, desbloqueando ambas lecturas.
+- Al terminar (por cualquier motivo), siempre llama `Kill(entireProcessTree: true)` y luego `WaitForExitAsync` para asegurar limpieza completa.
+- Los argumentos con espacios se envuelven en comillas dobles, escapando las comillas internas.
+
+**Invariante:** ningun subproceso lanzado por `ProcessRunner` queda huerfano; siempre se mata el arbol completo al finalizar.
+
+> **Verificar en:** `ProcessRunner.RunAsync`, `ProcessRunner.ExitProcess`.
+
+---
+
+## 11. Constantes configurables
+
+| Constante | Valor | Proposito |
+|---|---|---|
+| `FileSearchMinQueryLength` | 2 | Caracteres minimos para iniciar busqueda |
+| `FileSearchTimeoutMs` | 20,000 ms | Timeout maximo por busqueda |
+| `FileSearchSnapshotIntervalMs` | 200 ms | Intervalo minimo entre snapshots |
+| `SearchSourceLimit` | 10 | Maximo de resultados por fuente de busqueda |
+
+> **Verificar en:** `AppDefaults.cs`.
+
+---
+
+## 12. Tests
+
+Los tests de `UserDocumentSearch` usan un `FakePlatformProvider` que emite todos los `FileResult` de su constructor ignorando la query y las carpetas. Esto aisla la verificacion del scoring y filtrado client-side del comportamiento del SO.
+
+Los casos de test cubren:
+- Score exacto por tipo de coincidencia (stem exacto, prefijo, substring, multi-token).
+- Filtrado de resultados que no contienen todos los tokens.
+- Independencia del orden de los tokens en queries multi-token.
+
+> **Verificar en:** `UserDocumentSearchTests`, `FakePlatformProvider`.

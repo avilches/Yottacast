@@ -1,125 +1,195 @@
-# Release workflow: assets embebidos en el ensamblado
+# Release workflow: assets, versiones y actualizaciones
 
-Algunos assets pesados se gestionan fuera del control de versiones y se incorporan al binario en tiempo de compilación. El `.csproj` de `Yottacast.Core` tiene targets `BeforeBuild` que los descargan o copian si no están presentes; todos usan `Condition="!Exists(...)"` para ser idempotentes.
+Este documento describe los comportamientos y contratos del sistema de release de Yottacast: como se gestionan los
+assets embebidos, como se detectan cambios de version y como se comprueba si hay actualizaciones disponibles.
 
-## Assets y su origen
+---
 
-| Fichero | Cómo se obtiene | Cuándo regenerar |
-|---|---|---|
-| `Search/Calculator/math.min.js` | Descarga desde cdnjs en build | Borrar el fichero y recompilar |
-| `Search/Emoji/emoji-data.json` | Descarga desde iamcal/emoji-data en build | Borrar el fichero y recompilar |
-| `Search/Emoji/emoji-cache.json` | Copiado desde AppData en build (ver abajo) | Borrar el fichero y seguir el flujo de emoji |
+## 1. Assets embebidos: obtencion y ciclo de vida
 
-La URL de descarga de `math.min.js` tiene la versión de math.js **fijada en el target del `.csproj`**. Borrar el fichero y recompilar descargará esa misma versión fijada; para actualizar a una versión nueva de math.js hay que editar la URL del target `DownloadMathJs` antes de recompilar.
+Algunos assets pesados no se guardan en el repositorio. El sistema de build los descarga o copia automaticamente la
+primera vez, de forma idempotente (solo actua si el fichero no existe en el source tree).
 
-## Ciclo de vida del emoji cache
+### Contrato
 
-`emoji-cache.json` es una representación compacta de `emoji-data.json` (~100-150 KB vs ~1.25 MB) que permite un arranque instantáneo sin parsear el JSON raw. Se genera en runtime y se promueve al ensamblado mediante el flujo siguiente:
+- El desarrollador nunca necesita descargar manualmente ningun asset. El build se encarga.
+- Si un asset ya existe en el source tree, el build no lo sobreescribe.
+- Para forzar una actualizacion de cualquier asset, basta con borrar el fichero y recompilar.
 
-```
-1. dotnet run (primera vez)
-      └─ no hay embedded cache ni disco → parsea emoji-data.json → escribe AppData/.../emoji-cache.json
+### Assets gestionados
 
-2. dotnet build (tras haber ejecutado la app al menos una vez)
-      └─ target CopyEmojiCache: copia AppData/.../emoji-cache.json → Search/Emoji/emoji-cache.json
-                                 (solo si destino no existe)
-      └─ EmbeddedResource condicional: lo embute en el ensamblado
+| Asset                           | Origen                                                     | Version fijada en                                  | Proposito                              |
+|---------------------------------|------------------------------------------------------------|----------------------------------------------------|----------------------------------------|
+| `Search/Calculator/math.min.js` | CDN cdnjs (descarga HTTP en build)                         | URL del target `DownloadMathJs` en el `.csproj`    | Motor de calculo matematico (Jint)     |
+| `Search/Emoji/emoji-data.json`  | GitHub iamcal/emoji-data (descarga HTTP en build)          | URL del target `DownloadEmojiData` en el `.csproj` | Datos raw de emojis (~1.25 MB)         |
+| `Search/Emoji/emoji-cache.json` | Copia desde AppData local (generado por la app en runtime) | N/A (derivado de `emoji-data.json`)                | Cache compacto de emojis (~100-150 KB) |
 
-3. git add Search/Emoji/emoji-cache.json && git commit
-      └─ el repo queda con el cache; futuros clones lo tienen desde el primer build
+**Invariante**: la version de `math.min.js` esta fijada en la URL del target MSBuild. Recompilar siempre descarga la
+misma version. Para actualizar a una version nueva de math.js hay que editar la URL en el target `DownloadMathJs`.
 
-4. Arranque en producción
-      └─ EmojiDataLoader encuentra el embedded cache → carga directa, sin tocar disco
-```
+Todos los assets se declaran como `EmbeddedResource` condicionales: si el fichero no existe en el source tree, el item
+se omite y el build no falla.
 
-El target `CopyEmojiCache` resuelve la ruta de AppData por plataforma. Ver el `.csproj` para las rutas exactas.
+> **Verificar en:** `Yottacast.Core/Yottacast.Core.csproj` -- targets `DownloadMathJs`, `DownloadEmojiData`,
+`CopyEmojiCache` y bloque `<ItemGroup>` con `EmbeddedResource`.
 
-Tanto `emoji-cache.json` como `emoji-data.json` se declaran como `EmbeddedResource` condicionales en el `.csproj`; si el fichero no existe en el source tree, el ítem se omite y el build no falla.
+---
 
-### Cadena de carga en runtime (EmojiDataLoader)
+## 2. Cache de emojis: generacion, promocion y carga
 
-`EmojiDataLoader.LoadAsync` sigue una cadena de tres niveles de fallback, en orden de preferencia:
+El cache compacto de emojis permite un arranque rapido sin parsear el JSON raw completo en cada inicio.
 
-1. **Caché en disco** (`AppData/.../Yottacast/emoji-cache.json`) — si existe y es parseable, se usa directamente y se retorna sin tocar el ensamblado.
-2. **Caché embebida** (`Yottacast.Core.Search.Emoji.emoji-cache.json`) — si el disco falló o no existe, se intenta la versión embebida en el ensamblado.
-3. **JSON raw embebido** (`Yottacast.Core.Search.Emoji.emoji-data.json`) — último recurso: parsea el JSON completo, escribe el caché en disco y retorna.
+### Contrato de generacion
 
-Si todos los niveles fallan, `LoadAsync` retorna una lista vacía (sin excepción). Cada nivel registra tiempos de carga en los logs.
+1. La primera vez que se ejecuta la app sin cache disponible, se parsea `emoji-data.json` y se escribe el cache compacto
+   en disco (directorio AppData del usuario).
+2. En el siguiente build, el target `CopyEmojiCache` copia ese fichero al source tree (solo si no existe ya alli).
+3. Al commitear `emoji-cache.json`, futuros clones del repo lo tendran desde el primer build.
+4. En produccion, la app encuentra el cache embebido y lo carga directamente.
 
-La escritura del caché en disco es atómica: primero se escribe a `emoji-cache.json.tmp` y luego se mueve con `File.Move(overwrite: true)`, evitando ficheros corruptos si el proceso termina durante la escritura.
+**Invariante**: la escritura del cache en disco es atomica (se escribe a `.tmp` y se mueve con
+`File.Move(overwrite: true)`). Un proceso interrumpido nunca deja un cache corrupto.
 
-Durante el parseo del JSON raw, los emojis con el campo `obsoleted_by` relleno se descartan silenciosamente (se omiten versiones obsoletas/generizadas).
+**Invariante**: los emojis con el campo `obsoleted_by` relleno se descartan silenciosamente durante el parseo del JSON
+raw.
 
-El formato del caché compacto es un array JSON de arrays, donde cada entrada tiene la forma `[char, name, [keywords], category, sortOrder]`. Los métodos `ParseRawJson` y `ParseCompactCache` de `EmojiDataLoader` son `internal` y están expuestos a `Yottacast.Core.Tests` mediante `InternalsVisibleTo` en el `.csproj`, lo que permite testear directamente ambos parsers.
+### Cadena de carga en runtime
+
+La carga sigue una cadena de fallback estricta. Cada nivel se intenta solo si el anterior fallo o no existe. Si todos
+fallan, se retorna una lista vacia sin lanzar excepcion.
+
+| Prioridad | Fuente                                                                           | Condicion                                                            |
+|-----------|----------------------------------------------------------------------------------|----------------------------------------------------------------------|
+| 1         | Cache en disco (`AppPaths.EmojiCacheFile`)                                       | Existe y es parseable                                                |
+| 2         | Cache embebido en el ensamblado (`Yottacast.Core.Search.Emoji.emoji-cache.json`) | El disco fallo o no existe                                           |
+| 3         | JSON raw embebido (`Yottacast.Core.Search.Emoji.emoji-data.json`)                | Los dos anteriores fallaron; parsea, escribe cache a disco y retorna |
+
+**Invariante**: el usuario nunca ve un error si los datos de emojis no estan disponibles; la funcionalidad simplemente
+no muestra resultados.
+
+**Invariante**: cada nivel de la cadena registra tiempos de carga en los logs.
+
+### Formato del cache compacto
+
+Array JSON de arrays: `[char, name, [keywords], category, sortOrder]`. Los metodos `ParseRawJson` y `ParseCompactCache`
+son `internal` y estan expuestos a tests via `InternalsVisibleTo`.
 
 ### Regenerar el cache de emojis
 
-Si se actualiza `emoji-data.json` (borrándolo para que el target lo descargue de nuevo):
-
-1. Borrar `Search/Emoji/emoji-cache.json` del repo.
+1. Borrar `Search/Emoji/emoji-cache.json` del source tree (y opcionalmente `emoji-data.json` para forzar descarga de
+   datos nuevos).
 2. Ejecutar la app una vez para que genere el nuevo cache en AppData.
-3. Hacer build: el target lo copiará al source tree.
+3. Recompilar: el target `CopyEmojiCache` copiara el cache al source tree.
 4. Commitear el nuevo `emoji-cache.json`.
 
-## Versiones y actualizaciones
+> **Verificar en:** `Yottacast.Core/Search/Emoji/EmojiDataLoader.cs` -- metodo `LoadAsync` (cadena de fallback),
+`WriteCompactCache` (escritura atomica), `ParseRawJson` (filtro `obsoleted_by`). Rutas de AppData:
+`Yottacast.Core/AppPaths.cs` campo `EmojiCacheFile`. Target de copia: `Yottacast.Core/Yottacast.Core.csproj` target
+`CopyEmojiCache`.
 
-### Qué ocurre al arrancar
+---
 
-`UserSettings.Load` siempre llama a `Save()` al final de la carga, independientemente de si el fichero existía o fue creado de cero. Esto normaliza el JSON en disco (añade campos nuevos con sus defaults si faltaban) antes de que `RunMigrations` se ejecute.
+## 3. Arranque: migraciones y orden de inicializacion
 
-Al iniciar la app, `App.RunMigrations()` compara `UserSettings.LastLaunchedVersion` con
-`UpdateChecker.CurrentVersion` (leído del ensamblado en runtime vía
-`Assembly.GetExecutingAssembly().GetName().Version?.ToString(3)`, que produce la forma `Major.Minor.Patch`
-sin el componente de build). Si difieren:
+### Contrato de migraciones
 
-1. Se ejecuta el bloque de migraciones en `RunMigrations()` (`App.axaml.cs`).
-2. Se actualiza `LastLaunchedVersion` al valor actual y se persiste con `UserSettings.Save()`.
+Al arrancar, la app compara la version persistida del ultimo arranque (`UserSettings.LastLaunchedVersion`) con la
+version actual del ensamblado. Si difieren, se ejecuta el bloque de migraciones y se actualiza el valor persistido.
 
-En la primera instalación `LastLaunchedVersion` es `""`, por lo que las migraciones siempre
-se ejecutan al estrenar la app.
+**Invariante**: en la primera instalacion, `LastLaunchedVersion` es `""`, por lo que las migraciones siempre se
+ejecutan.
 
-El orden de arranque en `OnFrameworkInitializationCompleted` es relevante:
-`RunMigrations` termina de forma síncrona → `mainWindowViewModel.Initialize()` dispara
-`CheckForUpdateAsync()` como fire-and-forget → `globalSearch.Start()` inicia las sources →
-`ShowWhenInstantReadyAsync` espera a que las instant sources estén listas antes de mostrar la ventana.
-Las migraciones siempre se completan antes de que el update check y la búsqueda arranquen.
+**Invariante**: `UserSettings.Load` siempre llama a `Save()` al final, independientemente de si el fichero existia o fue
+creado. Esto normaliza el JSON en disco (anade campos nuevos con sus defaults si faltaban).
 
-A continuación, `MainWindowViewModel.Initialize()` dispara `CheckForUpdateAsync()` como
-fire-and-forget. Llama al endpoint `UpdateChecker.UpdateApiUrl` con timeout de 10 s. Si la respuesta
-contiene una versión mayor a la actual (comparación con `System.Version`, por lo que
-`1.10.0 > 1.9.0` funciona correctamente), se muestra el banner de actualización en la ventana
-principal. Si la llamada falla (sin red, endpoint no configurado, etc.) se registra un warning y
-no se muestra nada.
+**Invariante**: la version actual se obtiene del ensamblado en runtime via
+`Assembly.GetExecutingAssembly().GetName().Version?.ToString(3)`, produciendo la forma `Major.Minor.Patch` sin
+componente de build.
 
-### Subir de versión en desarrollo
+### Orden de arranque
 
-1. Editar `<Version>` en **ambos** `.csproj`, manteniéndolos sincronizados:
-   - `Yottacast.Core/Yottacast.Core.csproj`
-   - `Yottacast/Yottacast.csproj`
+El orden es determinista y cada paso depende del anterior:
 
-2. Si la nueva versión requiere limpiar o migrar datos del usuario, añadir el código necesario en
-   `RunMigrations()` dentro de `App.axaml.cs`. El bloque ya incluye un comentario que señala dónde añadirlo.
+| Paso | Que ocurre                                                                            | Bloqueante                                      |
+|------|---------------------------------------------------------------------------------------|-------------------------------------------------|
+| 1    | `RunMigrations` compara versiones y ejecuta migraciones si es necesario               | Si (sincrono)                                   |
+| 2    | `MainWindowViewModel.Initialize()` dispara `CheckForUpdateAsync` como fire-and-forget | No                                              |
+| 3    | `GlobalSearch.Start()` inicia todas las search sources                                | No                                              |
+| 4    | `ShowWhenInstantReadyAsync` espera a que las instant sources esten listas             | Si (la ventana no se muestra hasta que termine) |
 
-3. Ejecutar la app. En los logs aparecerá:
+**Invariante**: las migraciones siempre se completan antes de que la comprobacion de actualizaciones y la busqueda
+arranquen.
+
+**Invariante**: el usuario nunca ve la ventana principal hasta que todas las instant search sources estan listas.
+
+> **Verificar en:** `Yottacast/App.axaml.cs` -- metodo `OnFrameworkInitializationCompleted` (orden de llamadas),
+`RunMigrations` (logica de comparacion). `Yottacast.Core/Services/UserSettings.cs` -- metodo `Load` (llamada a `Save()`
+> al final).
+
+---
+
+## 4. Subir de version en desarrollo
+
+1. Editar `<Version>` en **ambos** `.csproj`, manteniendolos sincronizados:
+    - `Yottacast.Core/Yottacast.Core.csproj`
+    - `Yottacast/Yottacast.csproj`
+
+2. Si la nueva version requiere limpiar o migrar datos del usuario, anadir el codigo en `RunMigrations()` dentro de
+   `App.axaml.cs`.
+
+3. Ejecutar la app. En los logs aparecera:
    ```
-   Version changed: '1.0.0' → '1.1.0' — running migrations
+   Version changed: '1.0.0' -> '1.1.0' -- running migrations
    ```
    En sucesivos arranques el mensaje no vuelve a aparecer.
 
-4. Commitear el cambio de versión. El campo `lastLaunchedVersion` en el JSON de settings de cada
-   usuario se actualiza automáticamente en el próximo arranque; no hay que tocar el fichero a mano.
+4. Commitear el cambio de version. El campo `lastLaunchedVersion` en el JSON de settings se actualiza automaticamente en
+   el proximo arranque.
 
-### Checker de actualizaciones
+**Invariante**: el desarrollador nunca necesita editar manualmente el fichero de settings del usuario.
 
-`UpdateChecker` (ver `Yottacast.Core/Services/UpdateChecker.cs`) llama una vez al arranque al
-endpoint definido en la constante privada `UpdateApiUrl`. Respuesta esperada: `{ "version": "1.2.0" }`. El endpoint
-es un placeholder; reemplazarlo con la URL real cuando esté disponible.
+> **Verificar en:** `Yottacast/App.axaml.cs` -- metodo `RunMigrations`. `Yottacast.Core/Yottacast.Core.csproj` y
+`Yottacast/Yottacast.csproj` -- campo `<Version>`.
 
-`UpdateChecker` expone tres propiedades: `CurrentVersion` (versión del ensamblado en ejecución),
-`LatestVersion` (versión del servidor, `null` hasta que `CheckAsync` complete con éxito), y
-`UpdateAvailable` (booleano derivado de la comparación). `HttpClient` se crea internamente con
-timeout de 10 s; no se reutiliza ni se inyecta desde fuera.
+---
+
+## 5. Comprobacion de actualizaciones
+
+### Contrato
+
+Al arrancar, la app comprueba una vez si existe una version mas reciente. Si la hay, muestra un banner en la ventana
+principal. Si la comprobacion falla (sin red, endpoint no disponible, etc.), no se muestra nada y se registra un
+warning.
+
+**Invariante**: el usuario nunca ve un error ni una interrupcion si la comprobacion falla.
+
+**Invariante**: la comparacion de versiones usa `System.Version`, por lo que `1.10.0 > 1.9.0` funciona correctamente.
+
+### Configuracion
+
+| Parametro                     | Valor actual                                              | Donde se define                                        |
+|-------------------------------|-----------------------------------------------------------|--------------------------------------------------------|
+| URL del endpoint              | `https://example.com/yottacast/latest.json` (placeholder) | Constante `UpdateApiUrl` en `UpdateChecker`            |
+| Timeout HTTP                  | 10 segundos                                               | Constante `UpdateCheckTimeoutSeconds` en `AppDefaults` |
+| Formato de respuesta esperado | `{ "version": "1.2.0" }`                                  | --                                                     |
+
+### Propiedades expuestas por UpdateChecker
+
+| Propiedad         | Tipo      | Descripcion                                                             |
+|-------------------|-----------|-------------------------------------------------------------------------|
+| `CurrentVersion`  | `string`  | Version del ensamblado en ejecucion                                     |
+| `LatestVersion`   | `string?` | Version del servidor (`null` hasta que `CheckAsync` complete con exito) |
+| `UpdateAvailable` | `bool`    | `true` si la version del servidor es mayor que la actual                |
+
+### Comportamiento del banner
 
 Cuando `UpdateAvailable` es `true`, `MainWindowViewModel` muestra un banner con el texto
-`"Yottacast {v} available — click to download"` y expone el comando `UpdateBannerClick`.
-El comando es actualmente un placeholder sin acción: la conexión a la URL de descarga está pendiente.
+`"Yottacast {v} available -- click to download"` y expone el comando `UpdateBannerClick`. El comando es actualmente un
+placeholder sin accion: la conexion a la URL de descarga esta pendiente.
+
+**Estado**: el endpoint de actualizaciones es un placeholder. Hay que reemplazar la URL antes de que esta funcionalidad
+sea operativa.
+
+> **Verificar en:** `Yottacast.Core/Services/UpdateChecker.cs` -- constante `UpdateApiUrl`, metodo `CheckAsync`,
+> propiedades. `Yottacast/ViewModels/MainWindowViewModel.cs` -- metodo `CheckForUpdateAsync`, comando `UpdateBannerClick`.
+`Yottacast.Core/AppDefaults.cs` -- constante `UpdateCheckTimeoutSeconds`.

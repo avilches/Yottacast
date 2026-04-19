@@ -1,44 +1,157 @@
-# Hotkeys
+# Hotkeys y atajos de teclado
 
-## Keyboard shortcuts (MainWindow)
+## 1. Atajo global para mostrar/ocultar el launcher
 
-- `ESC` con búsqueda en curso → para la búsqueda diferida y limpia el texto
-- `ESC` sin búsqueda en curso y texto no vacío → limpia el texto
-- `ESC` sin búsqueda y sin texto → oculta la ventana
-- `↑` / `↓` → navega resultados (wrapping circular: de último ítem vuelve al primero y viceversa)
-- `Enter` → activa resultado seleccionado, limpia el texto y oculta la ventana; si `result.PasteAfterActivate` es `true`, después llama `AppHandler.OnHide()` y `SimulatePasteAsync()`
-- `←` / `→` → interceptados en fase **tunnel** antes de llegar al TextBox; si el `SelectedResult` tiene `OnLeft`/`OnRight`, se invoca el handler del ítem y la tecla queda consumida
-- `⌘,` → abre SettingsWindow (si MainWindow está visible)
-- `ALT+Space` → global hotkey para mostrar/ocultar
-- `⌘W` (macOS) / `Ctrl+F4` (Windows) / `Ctrl+W` (Linux) → oculta la ventana en lugar de cerrarla (`CloseWindowShortcut`)
+La aplicacion define un unico atajo de teclado global (por defecto `ALT+Space`) que funciona desde cualquier aplicacion. Su comportamiento depende del estado de la ventana:
 
-**Tunnel handler para flechas**: `MainWindow` registra `OnTunnelKeyDown` con `RoutingStrategies.Tunnel`. Las teclas ←/→ se consumen aquí si el ítem tiene handler, impidiendo que el TextBox mueva el cursor. Las teclas ↑/↓ también pasan por tunnel: si el ítem devuelve `true` en `OnUp`/`OnDown`, la ventana no navega la lista; si devuelve `false`, el bubble handler de la ventana continúa con la navegación normal.
+| Estado de la ventana          | Accion                                           |
+|-------------------------------|--------------------------------------------------|
+| Visible **y** activa (en foco) | Se oculta y devuelve el foco a la app anterior   |
+| Visible pero sin foco         | Se trae al frente y se activa                    |
+| Oculta                        | Se muestra y se activa                           |
 
-**ALT+Space consumido en bubble phase**: además de la supresión a nivel OS vía `e.SuppressEvent`, `MainWindow.OnKeyDown` también marca `e.Handled = true` al detectar `Key.Space + Alt`. Esto evita que macOS emita un beep cuando la supresión no está disponible (p.ej. sin permiso de Accesibilidad).
+Invariantes:
 
-**`NotifyUserNavigated` y selección automática**: al navegar con ↑/↓, `SelectNext` llama `vm.NotifyUserNavigated()` que activa el flag `_userNavigated`. Mientras este flag está activo, `RefreshResults` no fuerza la selección al resultado de tipo Calculator/Converter; en su lugar preserva el ítem seleccionado anteriormente o selecciona el primero de la lista. El flag se resetea a `false` con cada cambio de `SearchText`.
+- El atajo global nunca llega a otras aplicaciones: se suprime a nivel de sistema operativo. En macOS esto requiere permiso de Accesibilidad; sin el, la supresion se ignora silenciosamente.
+- Como mecanismo de respaldo, la ventana principal tambien marca `e.Handled = true` al detectar `Space + Alt` en su handler de teclado, evitando que macOS emita un beep cuando la supresion a nivel OS no esta disponible.
+- El hook global usa `SimpleGlobalHook` (sincrono). Esto es deliberado: `TaskPoolGlobalHook` ejecuta handlers en otros threads donde `e.SuppressEvent = true` no tiene efecto.
 
-**`OnClosing` — cancel siempre**: `MainWindow.OnClosing` cancela cualquier intento de cierre nativo (`e.Cancel = true`) y llama `Hide()`. Esto cubre tanto el atajo `CloseWindowShortcut` como los cierres originados por macOS al cerrar SettingsWindow.
+La combinacion de teclas configurable se almacena como `HotkeyConfig` (record con flags `Alt`, `Ctrl`, `Shift`, `Meta` y `KeyName`). La comparacion contra el evento del hook usa un diccionario estatico `KeyNameMap` que cubre A-Z, 0-9, F1-F12 y teclas especiales (Space, Enter, Tab, Backspace, Delete, Escape). Cualquier tecla no incluida en el mapa se trata como `KeyCode.VcUndefined` y nunca coincidira.
 
-**SearchBox habilitado según visibilidad**: el handler de `IsVisibleProperty` en `MainWindow` desactiva `SearchBox.IsEnabled` cuando la ventana se oculta y lo reactiva con foco cuando vuelve a mostrarse.
+> **Verificar en:** `App.axaml.cs` (`RegisterGlobalHotKey`, `BuildKeyNameMap`), `UserSettings.ParsedHotkey`, `HotkeyConfig` en `Yottacast.Core/Platform/HotkeyConfig.cs`
 
-**Gotcha — Window hide vs close**: `Hide()` en Escape (no `Close()`); `Show()` + `Activate()` restaura. Al ocultar la ventana el estado del ViewModel se preserva intacto: texto, resultados y búsquedas en curso continúan; al volver a mostrarla el usuario ve exactamente lo que había. El SettingsWindow evita duplicados: si ya está visible (`IsVisible: true`) lo activa sin crear nada; si no está visible, crea siempre una nueva instancia de `SettingsWindow` con un `SettingsWindowViewModel` (transient) nuevo.
+---
 
-**Gotcha — ALT+Space toggle con foco**: ALT+Space oculta la ventana solo si está visible **y activa** (`window.IsVisible && window.IsActive`). Si está visible pero sin foco (tapada por otra ventana), la trae al frente (`Show()` + `Activate()`) en lugar de ocultarla.
+## 2. Comportamiento de la tecla Escape (ventana principal)
 
-## Global hotkey — implementación
+Escape tiene tres niveles de accion, evaluados en este orden de prioridad:
 
-La hotkey global se registra en `App.RegisterGlobalHotKey()` usando `SharpHook.SimpleGlobalHook`. Se usa `SimpleGlobalHook` (síncrono) deliberadamente: `TaskPoolGlobalHook` ejecuta los handlers en otros threads donde `e.SuppressEvent = true` no tiene efecto.
+| Condicion                                        | Accion                                                   |
+|--------------------------------------------------|----------------------------------------------------------|
+| Hay una busqueda diferida en curso (`IsSearching`) | Cancela la busqueda diferida y limpia el texto           |
+| El campo de texto no esta vacio                   | Limpia el texto                                          |
+| El campo de texto esta vacio y no hay busqueda    | Oculta la ventana                                        |
 
-`e.SuppressEvent = true` se activa cuando la combinación coincide, impidiendo que el evento llegue a cualquier otra app (ni a Yottacast ni a la app en foco). En macOS requiere permiso de Accesibilidad; sin él se ignora silenciosamente sin error.
+Invariantes:
 
-La comparación de teclas usa `KeyNameMap`, un diccionario estático construido en `BuildKeyNameMap()` que cubre A–Z, 0–9, F1–F12 y teclas especiales (Space, Enter, Tab, Backspace, Delete, Escape). Cualquier nombre de tecla no incluido mapea a `KeyCode.VcUndefined`.
+- Escape nunca cierra la aplicacion, solo oculta la ventana.
+- Al ocultar con Escape, el estado del ViewModel se preserva intacto (resultados, busquedas pendientes). Al volver a mostrar la ventana, el usuario ve el estado tal como lo dejo.
 
-## Hotkey capture en Settings
+> **Verificar en:** `MainWindow.axaml.cs` (`OnKeyDown`, case `Key.Escape`)
 
-El flujo de captura de hotkey es:
+---
 
-1. Click sobre el área del hotkey → `SettingsWindow.OnHotkeyAreaPointerPressed()` → `vm.StartHotkeyCapture()` (`IsCapturingHotkey = true`). El evento se marca `Handled` para no propagar.
-2. `HotkeyDisplayText` (propiedad derivada) muestra `"Press keys…"` mientras `IsCapturingHotkey` es `true`.
-3. Click fuera del área → `SettingsWindow.OnPointerPressed()` detecta `IsCapturingHotkey: true` y llama `CancelHotkeyCapture()`, restaurando `HotkeyText` al valor guardado.
-4. Al pulsar una tecla durante la captura: si es solo un modificador, se ignora; si es ESC, se cancela; cualquier otra combinación crea un `HotkeyConfig`, lo serializa, lo guarda en `UserSettings` y baja `IsCapturingHotkey`.
+## 3. Navegacion de resultados con flechas
+
+### Flechas arriba/abajo
+
+Las teclas arriba y abajo navegan la lista de resultados con wrapping circular: del ultimo item se vuelve al primero y viceversa.
+
+Invariantes:
+
+- La navegacion se procesa en la fase **bubble** del evento de teclado.
+- Antes de que el bubble handler actue, la fase **tunnel** consulta al item seleccionado: si este tiene un handler `OnUp`/`OnDown` y devuelve `true`, la tecla se consume ahi y la navegacion de lista no ocurre. Si devuelve `false`, el flujo continua normalmente.
+- Al navegar con flechas se activa un flag `_userNavigated` que impide que `RefreshResults` fuerce la seleccion automatica al resultado de tipo Calculator/Converter. Mientras este flag esta activo, se preserva el item previamente seleccionado (si aun existe en la lista) o se selecciona el primero.
+- El flag `_userNavigated` se resetea a `false` cada vez que cambia `SearchText`.
+
+### Flechas izquierda/derecha
+
+Las teclas izquierda y derecha se interceptan en la fase **tunnel** antes de que lleguen al TextBox. Si el item seleccionado tiene un handler `OnLeft`/`OnRight`, se invoca y, si devuelve `true`, la tecla queda consumida (el cursor del TextBox no se mueve). Si no hay handler o devuelve `false`, el TextBox procesa la tecla normalmente.
+
+> **Verificar en:** `MainWindow.axaml.cs` (`OnTunnelKeyDown`, `OnKeyDown`, `SelectNext`), `MainWindowViewModel.cs` (`NotifyUserNavigated`, `RefreshResults`, `OnSearchTextChanged`), `BaseResultItemViewModel` (`OnLeft`, `OnRight`, `OnUp`, `OnDown`)
+
+---
+
+## 4. Activacion de un resultado (Enter y click)
+
+Al pulsar Enter o hacer click/tap sobre un resultado seleccionado:
+
+1. Se ejecuta `OnActivate` del item.
+2. Se limpia el texto de busqueda.
+3. Se oculta la ventana.
+4. Si el item tiene `PasteAfterActivate = true`, ademas se devuelve el foco a la app anterior (`AppHandler.OnHide`) y se simula un pegado (`SimulatePasteAsync`, que envia Cmd+V en macOS o Ctrl+V en Windows).
+
+Invariantes:
+
+- Si el item no tiene `OnActivate`, no ocurre ninguna accion.
+- `PasteAfterActivate` solo lo usan items de tipo emoji. Tras copiar el emoji al portapapeles, el launcher se oculta y lo pega automaticamente en la app destino.
+
+> **Verificar en:** `MainWindow.axaml.cs` (`OnKeyDown` case `Key.Return`, `OnResultsTapped`), `BaseResultItemViewModel.PasteAfterActivate`, `EmojiSearch` en `Yottacast.Core/Search/Emoji/EmojiSearch.cs`
+
+---
+
+## 5. Atajo para cerrar la ventana
+
+Cada plataforma define un atajo para "cerrar ventana":
+
+| Plataforma | Atajo       |
+|------------|-------------|
+| macOS      | Cmd+W       |
+| Windows    | Ctrl+F4     |
+| Linux      | Ctrl+W      |
+
+La ventana principal intercepta este atajo y lo redirige a `Hide()` en lugar de cerrar la aplicacion. Ademas, `OnClosing` cancela siempre cualquier intento de cierre nativo (`e.Cancel = true`) y llama `Hide()`. Esto cubre tanto el atajo de teclado como cierres originados por el sistema operativo (por ejemplo, macOS envia `performClose:` a la MainWindow cuando se cierra la SettingsWindow).
+
+Invariantes:
+
+- La ventana principal nunca se destruye durante la vida de la aplicacion. Solo se oculta y se vuelve a mostrar.
+- `Hide()` preserva el estado completo; `Show()` + `Activate()` restaura la ventana con el ViewModel intacto.
+
+> **Verificar en:** `MainWindow.axaml.cs` (`OnKeyDown` primer bloque con `CloseWindowShortcut`, `OnClosing`), `AppHandler.cs` (`CloseWindowShortcut`), `MacAppHandler.cs`, `WindowsAppHandler.cs`, `LinuxAppHandler.cs`
+
+---
+
+## 6. Abrir preferencias (Cmd+,)
+
+Pulsar `Cmd+,` mientras la ventana principal esta visible abre la ventana de preferencias. Si la SettingsWindow ya esta visible, simplemente se activa (se trae al frente) sin crear una nueva instancia. Si no esta visible, se crea una nueva instancia de `SettingsWindow` con un `SettingsWindowViewModel` transient.
+
+> **Verificar en:** `MainWindow.axaml.cs` (`OnKeyDown` case `Key.OemComma`), `App.axaml.cs` (`OpenSettings`)
+
+---
+
+## 7. Control del SearchBox segun visibilidad
+
+Cuando la ventana principal se oculta, el SearchBox se desactiva (`IsEnabled = false`). Cuando se muestra de nuevo, se reactiva y recibe el foco automaticamente. Adicionalmente, al ocultar la ventana se desactiva el flag `IsAltPressed` del ViewModel para evitar estados residuales.
+
+> **Verificar en:** `MainWindow.axaml.cs` (`OnPropertyChanged` para `IsVisibleProperty`)
+
+---
+
+## 8. Ocultacion automatica del cursor del raton
+
+Mientras el usuario escribe, el cursor del raton se oculta automaticamente para no distraer. Se restaura cuando el usuario mueve el raton a una posicion diferente de la que tenia al ocultarse. El sistema rastrea la posicion en coordenadas de pantalla para distinguir movimientos reales de movimientos sinteticos causados por cambios de tamano de la ventana (cuando aparecen o desaparecen resultados).
+
+Invariantes:
+
+- Solo las teclas no-modificadoras ocultan el cursor.
+- Si el cursor esta oculto, los eventos de movimiento del raton sobre la lista de resultados no seleccionan items (se ignoran hasta que el cursor se restaure).
+
+> **Verificar en:** `MainWindow.axaml.cs` (`HideCursor`, `ShowCursor`, `TrackOrShowCursor`, `OnResultsPointerMoved`), `AppHandler.cs` (`HideCursor`, `ShowCursor`), `MacAppHandler.cs` (usa `NSCursor.setHiddenUntilMouseMoves`)
+
+---
+
+## 9. Captura de hotkey en preferencias
+
+El flujo para que el usuario cambie el atajo global desde la ventana de preferencias es:
+
+1. Click sobre el area del hotkey: inicia la captura (`IsCapturingHotkey = true`). El texto cambia a "Press keys...".
+2. Click fuera del area: cancela la captura y restaura el valor guardado.
+3. Pulsar una tecla durante la captura: si es solo un modificador (Alt, Ctrl, Shift, Meta), se ignora. Si es Escape, se cancela. Cualquier otra combinacion construye un `HotkeyConfig`, lo serializa, lo guarda en `UserSettings` y finaliza la captura.
+
+**Nota:** El metodo `ProcessKeyCapture` en `SettingsWindowViewModel` implementa la logica del paso 3, pero actualmente no esta conectado desde la vista (`SettingsWindow` no invoca este metodo en ningun handler de teclado). El paso 3 no esta funcional hasta que se conecte.
+
+> **Verificar en:** `SettingsWindow.axaml.cs` (`OnHotkeyAreaPointerPressed`, `OnPointerPressed`), `SettingsWindowViewModel.cs` (`StartHotkeyCapture`, `CancelHotkeyCapture`, `ProcessKeyCapture`)
+
+---
+
+## Resumen de atajos
+
+| Atajo                        | Contexto               | Accion                                    |
+|------------------------------|------------------------|-------------------------------------------|
+| ALT+Space (configurable)     | Global                 | Mostrar/ocultar el launcher               |
+| Escape                       | Ventana principal       | Cancelar busqueda / limpiar / ocultar     |
+| Flecha arriba / abajo        | Ventana principal       | Navegar resultados (circular)             |
+| Flecha izquierda / derecha   | Ventana principal       | Delegada al item si tiene handler         |
+| Enter                        | Ventana principal       | Activar resultado seleccionado            |
+| Cmd+, (macOS)                | Ventana principal       | Abrir preferencias                        |
+| Cmd+W / Ctrl+F4 / Ctrl+W    | Ventana principal       | Ocultar ventana (no cerrar)               |

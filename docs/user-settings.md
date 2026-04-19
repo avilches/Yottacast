@@ -1,175 +1,237 @@
-# UserSettings
+# Preferencias del usuario
 
-Clase: `Yottacast.Core.Services.UserSettings`
+Las preferencias del usuario controlan el comportamiento del launcher: que browser y terminal se usan, el atajo de teclado global, las carpetas donde buscar aplicaciones y archivos, los motores de busqueda web, y las fuentes opcionales (calculadora, clipboard, emoji). Se persisten en un fichero JSON que la aplicacion gestiona de forma autonoma.
 
-Persiste en JSON. Todos los campos tienen defaults multiplataforma; nunca lanza excepción.
+---
 
-## Ruta del fichero
+## 1. Almacenamiento y ciclo de vida
 
-- macOS: `~/Library/Application Support/Yottacast/settings.json` (usa `SpecialFolder.ApplicationData`)
-- Windows: `%APPDATA%\Yottacast\settings.json`
+El fichero de preferencias se crea automaticamente en la primera ejecucion y se reescribe en cada arranque. Si el fichero no existe, esta corrupto o contiene JSON invalido, la aplicacion crea valores por defecto sin mostrar error ni interrumpir el arranque.
 
-## Campos
+| Plataforma | Ruta del fichero |
+|---|---|
+| macOS | `~/Library/Application Support/Yottacast/settings.json` |
+| Windows | `%APPDATA%\Yottacast\settings.json` |
 
-| Campo | Tipo | Default |
+**Invariantes:**
+
+- El usuario nunca ve un error si el fichero de settings falta o es invalido; siempre se regenera con defaults.
+- El directorio padre se crea automaticamente si no existe.
+- Si la escritura a disco falla (permisos, disco lleno), los cambios se mantienen en memoria pero no se persisten hasta el siguiente guardado exitoso. No se propaga excepcion.
+- Solo existe una instancia de settings en toda la vida de la aplicacion (singleton). No hay recarga desde disco.
+- La unica via de creacion es el metodo de fabrica `Load()`; el constructor es privado.
+
+> **Verificar en:** `UserSettings.Load()`, `UserSettings.Save()`, constructor privado de `UserSettings` -- en `Yottacast.Core/Services/UserSettings.cs`. Rutas definidas en `AppPaths` -- en `Yottacast.Core/AppPaths.cs`. Registro DI singleton en `App.BuildServices()` -- en `Yottacast/App.axaml.cs`.
+
+---
+
+## 2. Preferencias disponibles
+
+| Preferencia | Valor por defecto | Descripcion |
 |---|---|---|
-| `Browser` | string | `""` (auto-selecciona el primero disponible) |
-| `Terminal` | string | `""` |
-| `Theme` | string | ver §Detección automática de tema |
-| `Hotkey` | string | `"Alt+Space"` |
-| `SearchFolders` | `List<string>` | `PlatformProvider.DefaultSearchFolders()` de cada plataforma |
-| `AppDirectories` | `List<string>` | `PlatformProvider.DefaultAppDirectories()` de cada plataforma |
-| `EnableCalculator` | bool | `true` |
-| `EnableClipboard` | bool | `true` |
-| `EnableEmoji` | bool | `true` |
-| `LastLaunchedVersion` | string | `""` |
-| `WebSearchEngines` | `List<WebSearchEngineSettings>` | generado desde `WebSearchDefaults` |
+| Browser | `""` (auto-selecciona el primero disponible) | Navegador preferido para abrir URLs |
+| Terminal | `""` (auto-selecciona el primero disponible) | Terminal preferido |
+| Theme | Deteccion automatica del SO | Tema visual (oscuro o claro) |
+| Hotkey | `Alt+Space` | Atajo global para mostrar/ocultar el launcher |
+| SearchFolders | Carpetas por defecto de la plataforma | Directorios donde buscar archivos del usuario |
+| AppDirectories | Directorios por defecto de la plataforma | Directorios donde buscar aplicaciones |
+| EnableCalculator | `true` | Toggle de la fuente calculadora |
+| EnableClipboard | `true` | Toggle de la fuente clipboard |
+| EnableEmoji | `true` | Toggle de la fuente emoji |
+| LastLaunchedVersion | `""` | Version del ultimo arranque (para migraciones) |
+| WebSearchEngines | Lista predeterminada de 20 motores | Configuracion por motor de busqueda web |
 
-Los tres toggles `EnableCalculator`, `EnableClipboard` y `EnableEmoji` están expuestos en el SettingsWindow y se persisten en el JSON, pero actualmente no tienen efecto funcional sobre los resultados de búsqueda — las fuentes correspondientes se registran siempre en DI con independencia de su valor. `LastLaunchedVersion` se usa para detectar actualizaciones y ejecutar migraciones; ver el paso `RunMigrations` en `docs/app-design.md`.
+**Nota sobre los toggles** (`EnableCalculator`, `EnableClipboard`, `EnableEmoji`): se exponen en la ventana de Settings y se persisten en el JSON, pero actualmente no tienen efecto funcional. Las fuentes de busqueda correspondientes se registran siempre en DI, independientemente del valor de estos toggles.
 
-**Browser/Terminal preferido**: el usuario elige entre los detectados por `BrowserDiscovery`/`TerminalDiscovery` (solo apps instaladas). Se muestra en `SettingsWindowViewModel`.
+> **Verificar en:** campos de `UserSettings` y `UserSettingsData` en `Yottacast.Core/Services/UserSettings.cs`. Registro incondicional de fuentes en `App.BuildServices()` -- en `Yottacast/App.axaml.cs`.
 
-**Hotkey**: combinación de teclas para mostrar/ocultar el launcher. El valor en memoria se parsea de forma lazy a un `HotkeyConfig` cacheado en `ParsedHotkey`; el cache se invalida cada vez que se asigna el setter de `Hotkey`. El campo se edita desde SettingsWindow: el usuario hace clic en el campo GLOBAL HOTKEY, pulsa la combinación deseada y se guarda automáticamente. ESC o clic fuera del campo cancela sin guardar. El cambio tiene efecto inmediato, sin reiniciar.
+---
 
-**Detección del browser predeterminado del sistema** ⚠️ TODO: no implementado. El default es `""` y se selecciona el primero de la lista de `BrowserDiscovery`.
+## 3. Aplicacion de defaults al cargar
 
-## HotkeyConfig
+Cuando se carga el fichero JSON, los defaults de plataforma se aplican de forma selectiva, no globalmente. El objetivo es respetar siempre lo que el usuario haya configurado, y solo rellenar lo que falte.
 
-`HotkeyConfig` (en `Yottacast.Core/Platform/HotkeyConfig.cs`) es un record inmutable con campos `bool Alt, Ctrl, Shift, Meta` y `string KeyName`. Se usa tanto para registrar la hotkey global en SharpHook como para mostrarla en la UI.
+| Campo | Cuando se aplica el default |
+|---|---|
+| Theme | Si el valor del JSON es `null` o `""` --> usa la deteccion automatica del SO |
+| Hotkey | Si el valor del JSON es `null` o `""` --> usa `"Alt+Space"` |
+| SearchFolders | Si la lista es `null` o vacia (0 elementos) --> usa los defaults de la plataforma |
+| AppDirectories | Si la lista es `null` o vacia (0 elementos) --> usa los defaults de la plataforma |
+| Browser / Terminal | Sin default en la carga; se cargan tal cual del JSON. La seleccion del primero disponible ocurre al acceder a `ActiveBrowser`/`ActiveTerminal` |
+| WebSearchEngines | Se fusionan con la lista predeterminada: se conservan las personalizaciones del usuario y se anaden automaticamente los motores nuevos |
 
-- **`Parse(string?)`** — parsea cadenas como `"Alt+Space"` o `"Ctrl+Shift+F1"`. Es case-insensitive y acepta alias: `Option`/`Options` → Alt; `Control` → Ctrl; `Cmd`/`Command`/`Win`/`Windows` → Meta. Si no hay ningún token que no sea modificador, devuelve `null`.
-- **`ToString()`** — produce la forma canónica con modificadores en orden fijo `Ctrl→Alt→Shift→Meta`, luego la tecla. Ejemplo: `"Ctrl+Alt+Space"`.
-- **`Default`** — `Alt+Space`.
-- **`UserSettings.ParsedHotkey`** — lazy-parsea `Hotkey` la primera vez que se accede y cachea el resultado; el setter de `Hotkey` invalida el caché poniendo `_parsedHotkey = null`. Si `Parse` devuelve `null` (hotkey inválida), `ParsedHotkey` devuelve `HotkeyConfig.Default`.
+**Invariante:** si el JSON contiene al menos un elemento en `SearchFolders` o `AppDirectories`, se respeta la lista tal cual, sin mezclar con defaults.
 
-## Flujo de captura de hotkey en SettingsWindow
+> **Verificar en:** `UserSettings.Load()` y `CreateDefaultUserSettings()` en `Yottacast.Core/Services/UserSettings.cs`. `PlatformProvider.DefaultTheme()` en `Yottacast.Core/Platform/PlatformProvider.cs`.
 
-El code-behind (`SettingsWindow.axaml.cs`) coordina dos handlers de puntero:
+---
 
-1. **`OnHotkeyAreaPointerPressed`** — se dispara al hacer clic sobre el área de hotkey; llama `StartHotkeyCapture()` y marca `e.Handled = true` para que el evento no burbujee al handler de ventana.
-2. **`OnPointerPressed` (override de ventana)** — cancela la captura si está activa y el clic no fue sobre el área de hotkey (porque ese caso ya consumió el evento con `Handled`).
-3. **`ProcessKeyCapture`** en el ViewModel — ignora pulsaciones de teclas modificadoras solas (Alt, Ctrl, Shift, Meta/Win); ESC cancela restaurando el valor guardado; cualquier otra tecla construye un `HotkeyConfig`, lo serializa y llama `Save()`.
+## 4. Expansion de rutas
 
-`HotkeyDisplayText` es la propiedad que muestra el texto en la UI: mientras `IsCapturingHotkey` es `true` muestra `"Press keys…"`, y en caso contrario muestra `HotkeyText`.
+Las rutas en `SearchFolders` y `AppDirectories` se almacenan en crudo en el JSON (con `$HOME`, `~`, o rutas absolutas). La expansion a rutas absolutas ocurre siempre en el momento de uso, nunca al cargar ni al guardar.
 
-## API de ciclo de vida
+| Entrada | Resultado |
+|---|---|
+| `$HOME` o `~` | Directorio home del usuario |
+| `$HOME/path` o `~/path` | Home + path |
+| Cualquier otro valor | Sin modificacion |
 
-`UserSettings.Load(platform, logger?)` carga el JSON (o crea defaults si no existe), y siempre llama `Save()` al final — el fichero se reescribe en cada arranque. `settings.Save()` puede llamarse manualmente; también se llama automáticamente al cambiar cada campo en SettingsWindow.
+Las propiedades `ExpandedSearchFolders` y `ExpandedAppDirectories` proporcionan las listas ya expandidas para uso directo por las fuentes de busqueda.
 
-`Load()` acepta un parámetro opcional `settingsPath` que sobreescribe la ruta por defecto; en tests se usa para apuntar a un fichero temporal sin tocar el fichero real del usuario. Ante cualquier excepción durante la carga (fichero no encontrado, JSON malformado), registra un mensaje de nivel `LogInformation` (no warning) y crea los defaults de plataforma, sin propagar la excepción. Si la deserialización devuelve `null`, también crea los defaults silenciosamente (sin log adicional, ya que la línea anterior habría logueado "Settings loaded from…").
+> **Verificar en:** `PlatformProvider.ExpandPath()` en `Yottacast.Core/Platform/PlatformProvider.cs`. Propiedades `ExpandedSearchFolders`/`ExpandedAppDirectories` en `Yottacast.Core/Services/UserSettings.cs`.
 
-### Condiciones de aplicación de defaults en Load()
+---
 
-Los defaults de plataforma se aplican de forma selectiva, no globalmente:
+## 5. Deteccion automatica de tema
 
-- **`Theme`**: usa `platform.DefaultTheme()` solo si el valor cargado del JSON es null o vacío (`""`).
-- **`SearchFolders`** y **`AppDirectories`**: usan los defaults de plataforma solo si la lista cargada es null o está vacía (0 elementos). Si el JSON contiene aunque sea un elemento, se respeta tal cual.
-- **`Browser`** y **`Terminal`**: no tienen default — se cargan tal cual desde el JSON (pueden ser `""`). La selección del primero disponible ocurre en `ActiveBrowser`/`ActiveTerminal`, no en `Load()`.
+Al arrancar por primera vez (o si el campo `theme` del JSON esta vacio), la aplicacion consulta el modo del sistema operativo y selecciona un tema:
 
-## Rutas en el JSON
+| Estado del SO | Tema seleccionado |
+|---|---|
+| Modo oscuro activo | `dark-default` |
+| Modo claro activo | `light-gray` |
+| No se puede determinar (`null`) | `dark-default` |
 
-`SearchFolders` y `AppDirectories` se almacenan en crudo (`$HOME/Downloads`, `~/foo`, rutas absolutas…). La expansión `$HOME/` → ruta absoluta ocurre en el momento de uso, nunca al cargar ni guardar. `PlatformProvider.ExpandPath()` gestiona la expansión. Las propiedades `ExpandedSearchFolders` / `ExpandedAppDirectories` devuelven las listas expandidas; los consumidores (`UserDocumentSearch`, `ApplicationSearch`) las usan directamente.
+Este valor se persiste en el JSON. En arranques posteriores, se respeta el valor guardado sin volver a consultar el SO.
 
-### ExpandPath() — casos soportados
+**Invariante:** el DTO de serializacion (`UserSettingsData`) usa `""` como default para `Theme`, mientras que la logica de dominio aplica `DefaultTheme()` si el valor es vacio. Esto permite que la deteccion de plataforma funcione sin que el DTO dependa de ella.
 
-- `$HOME` o `~` → directorio home del usuario
-- `$HOME/path` o `~/path` → home + path
-- Cualquier otro valor → devuelto sin modificación
+> **Verificar en:** `PlatformProvider.DefaultTheme()` y `IsSystemDarkMode()` en `Yottacast.Core/Platform/PlatformProvider.cs`. Logica de asignacion en `UserSettings.Load()`.
 
-## Detección automática de tema
+---
 
-`platform.DefaultTheme()` elige un tema oscuro o claro según el modo del sistema. `Load()` lo llama solo si el campo `theme` en el JSON está ausente o vacío. La implementación base de `DefaultTheme()` en `PlatformProvider` llama a `IsSystemDarkMode()` y devuelve `"dark-default"` si el valor es `true` o `null`, y `"light-gray"` si es `false`. Las subclases de plataforma pueden sobrescribir `DefaultTheme()` o solo `IsSystemDarkMode()`.
+## 6. Atajo de teclado global (Hotkey)
 
-**Doble default para Theme**: `UserSettingsData` (el DTO de serialización) usa `""` como default para `Theme`, mientras que `UserSettings` (la clase de dominio) aplica `platform.DefaultTheme()` si el valor cargado es vacío. Esta distinción permite que el JSON omita el campo en la primera ejecución y que la lógica de plataforma elija el tema correcto sin que el DTO tenga dependencia de `PlatformProvider`.
+El usuario configura una combinacion de teclas para mostrar/ocultar el launcher. El cambio tiene efecto inmediato, sin reiniciar la aplicacion.
 
-## Auto-reparación de Browser y Terminal
+### Formato y parsing
 
-`UserSettings` se auto-repara sin depender de `ApplicationSearch`:
+La hotkey se almacena como texto legible (p.ej. `"Alt+Space"`, `"Ctrl+Shift+F1"`). El parsing es case-insensitive y acepta alias:
 
-- **`ActiveBrowser`** / **`ActiveTerminal`** — se evalúan en cada acceso (son propiedades, no campos). Llaman a `BrowserDiscovery.Resolve` / `TerminalDiscovery.Resolve` (método estático, comprueba disco):
-  1. Si `Browser` / `Terminal` no está vacío → busca ese nombre concreto en disco.
-  2. Si no existe (o el campo era `""`): itera `KnownBrowserNames` / `KnownTerminalNames` y devuelve el primero encontrado en disco.
-  3. Si ninguno existe en disco → devuelve `null`.
-  - Auto-reparación: si el nombre guardado no existe pero Resolve encuentra un alternativo (`resolved.Name != Browser`), actualiza el campo y llama `Save()`. Esto incluye el caso `Browser = ""`: si Resolve encuentra un browser disponible, su nombre diferirá de `""`, por lo que también actualiza `Browser` y llama `Save()`.
-  - **Devuelve `null`** solo cuando ningún browser/terminal conocido está instalado en el sistema.
-- **`EnsureIntegrity()`** — accede a ambas propiedades, forzando la validación y el guardado si algo cambió. Llamar en puntos naturales (p.ej. al abrir Settings).
+| Alias aceptados | Modificador resultante |
+|---|---|
+| `Option`, `Options` | Alt |
+| `Control` | Ctrl |
+| `Cmd`, `Command`, `Win`, `Windows` | Meta |
 
-`SettingsWindowViewModel` llama `settings.EnsureIntegrity()` en su constructor, después de construir las listas de opciones de los pickers (`Discover()`) pero antes de leer el valor seleccionado de `settings.Browser`/`settings.Terminal`. `MainWindowViewModel` usa `settings.ActiveBrowser` directamente al construir el resultado de Google.
+La forma canonica al serializar sigue el orden fijo: `Ctrl > Alt > Shift > Meta > Tecla`.
 
-### BrowserDiscovery y TerminalDiscovery: dos estrategias de resolución
+Si la cadena no contiene ninguna tecla no-modificadora, se considera invalida y se usa el default (`Alt+Space`).
 
-Ambas clases exponen dos métodos de resolución con propósitos distintos:
+### Captura en la ventana de Settings
 
-- **`Discover()`** — para poblar los pickers de la UI: consulta primero el caché de `ApplicationSearch` (en memoria), y si no encuentra el nombre, cae en `BrowserFallbackPaths` / `TerminalFallbackPaths` del `PlatformProvider` buscando el primer path existente en disco. Requiere que `ApplicationSearch` esté inicializado.
-- **`Resolve(string, PlatformProvider)`** — estático, para auto-reparación: llama a `platform.GetBrowserPaths(name)` y comprueba existencia en disco con `File.Exists` / `Directory.Exists`. No depende del caché de apps, por lo que es seguro llamarlo en cualquier momento del ciclo de vida.
-- **`GetCandidatePaths()`** — variante de `Discover()` que devuelve tuplas `(name, path)` incluyendo apps que solo tienen ruta primaria del platform provider aunque no existan en el caché; usada desde el CLI.
+1. El usuario hace clic en el area de hotkey --> se inicia la captura y se muestra "Press keys...".
+2. Pulsar solo teclas modificadoras (Alt, Ctrl, Shift, Meta) se ignora; no se registra nada hasta que se pulse una tecla principal.
+3. Pulsar ESC o hacer clic fuera del area de hotkey cancela la captura y restaura el valor previo.
+4. Cualquier otra tecla (con o sin modificadores) se guarda inmediatamente.
 
-La diferencia clave es que `Resolve` es el único safe para ser llamado antes de que `ApplicationSearch` haya terminado su escaneo.
+**Invariante:** el cache interno del parsing se invalida cada vez que se asigna un nuevo valor al campo `Hotkey`, de modo que la hotkey activa siempre refleja el ultimo valor configurado.
 
-## WebSearchEngines
+> **Verificar en:** `HotkeyConfig` en `Yottacast.Core/Platform/HotkeyConfig.cs`. Propiedad `ParsedHotkey` en `UserSettings`. Captura en `SettingsWindowViewModel.ProcessKeyCapture()` y `SettingsWindow.axaml.cs` (handlers `OnHotkeyAreaPointerPressed`, `OnPointerPressed`).
 
-`UserSettings.WebSearchEngines` almacena la configuración por motor de búsqueda web. Cada `WebSearchEngineSettings` tiene:
+---
 
-| Campo | Tipo | Comportamiento |
+## 7. Auto-reparacion de browser y terminal
+
+La aplicacion garantiza que siempre se use un browser y terminal validos, incluso si el usuario desinstala el que tenia configurado.
+
+### Comportamiento de `ActiveBrowser` / `ActiveTerminal`
+
+Cada vez que se accede a estas propiedades:
+
+1. Se busca en disco el nombre configurado.
+2. Si no existe (o el campo estaba vacio `""`): se itera la lista de browsers/terminales conocidos y se devuelve el primero que exista en disco.
+3. Si se encontro un alternativo diferente al configurado, se actualiza el campo y se guarda automaticamente.
+4. Si no se encuentra ningun browser/terminal conocido instalado en el sistema, se devuelve `null`.
+
+**Invariantes:**
+
+- `ActiveBrowser`/`ActiveTerminal` no son idempotentes en presencia de auto-reparacion: cada acceso comprueba disco y puede disparar un guardado. En flujos criticos de rendimiento, cachear el resultado localmente.
+- La resolucion (`Resolve`) es estatica y no depende del cache de `ApplicationSearch`, por lo que es segura de llamar en cualquier punto del ciclo de vida.
+- `EnsureIntegrity()` fuerza la validacion de ambos accediendo a las dos propiedades. Se llama automaticamente al abrir la ventana de Settings.
+
+### Dos estrategias de descubrimiento
+
+| Metodo | Proposito | Dependencia de ApplicationSearch |
 |---|---|---|
-| `Id` | string | Identificador del motor (e.g. `"google"`) |
-| `Enabled` | bool | Si el motor aparece en resultados |
-| `Mode` | `WebSearchMode` | `PrefixOnly` o `ShowAlways` (serializado como string en JSON; si el valor es inválido, usa `PrefixOnly`) |
-| `Prefix` | string | Alias de teclado que activa el motor (e.g. `"g"`) |
-| `QueryUrl` | `string?` | URL personalizada con placeholder `{0}`; `null` significa "usar URL por defecto del engine". Solo se persiste en JSON si el usuario la ha modificado explícitamente |
+| `Discover()` | Poblar los pickers de la UI | Si -- usa el cache de apps en memoria, con fallback a rutas conocidas en disco |
+| `Resolve()` | Auto-reparacion de settings | No -- solo comprueba existencia en disco con las rutas del PlatformProvider |
+| `GetCandidatePaths()` | Uso desde el CLI | Parcial -- combina cache con rutas primarias del PlatformProvider |
 
-El merge de engines al cargar preserva las personalizaciones del usuario y añade automáticamente los engines nuevos con sus defaults. Ver `WebSearchDefaults.DefaultSettingsFor()` para los valores por defecto de cada motor.
+`TerminalDiscovery.Discover()` filtra las rutas del fallback que contienen `*` (patrones glob), ya que algunas rutas de terminal de plataforma incluyen versiones variables. `BrowserDiscovery.Discover()` no tiene esta restriccion.
 
-La UI de edición (sección "Web Search" en Settings) permite: toggle Enabled, toggle Mode, editar Prefix por doble-clic, y editar CustomUrl directamente. Los cambios se guardan automáticamente al modificar cada campo.
+> **Verificar en:** `BrowserDiscovery` en `Yottacast.Core/Services/BrowserDiscovery.cs`. `TerminalDiscovery` en `Yottacast.Core/Services/TerminalDiscovery.cs`. Llamada a `EnsureIntegrity()` en el constructor de `SettingsWindowViewModel`.
 
-## SettingsWindowViewModel — navegación por secciones
+---
 
-`SettingsWindowViewModel` usa un enum `SettingsSection` para dividir el panel en secciones: `General`, `AppSearch`, `WebSearch`, `FileSearch`, `Calculator`, `Clipboard`, `Emoji`. La sección activa se controla con `SelectedSection` y los comandos `SelectX()` generados por `[RelayCommand]`.
+## 8. Motores de busqueda web
 
-## SettingsWindowViewModel — fallback adicional en la UI
+Cada motor de busqueda web tiene su propia configuracion que el usuario puede personalizar:
 
-Tras llamar `EnsureIntegrity()`, el ViewModel inicializa los pickers con un segundo nivel de seguridad:
+| Campo | Descripcion |
+|---|---|
+| Id | Identificador unico del motor (p.ej. `"google"`) |
+| Enabled | Si el motor aparece en resultados |
+| Mode | `PrefixOnly` (solo se activa con el alias) o `ShowAlways` (aparece siempre) |
+| Prefix | Alias de teclado que activa el motor (p.ej. `"g"` para Google) |
+| QueryUrl | URL personalizada con placeholder `{0}`. `null` significa usar la URL por defecto |
 
-- Si `settings.Browser` no está en la lista descubierta → usa el primer browser descubierto.
-- Si `settings.Terminal` no está en la lista descubierta → usa el primer terminal descubierto.
-- Si `settings.Theme` no coincide con ningún tema cargado → usa el primer tema disponible.
+La aplicacion incluye 20 motores preconfigurados en las categorias: General, Shopping, Video, Social, Knowledge, Dev, Entertainment y Maps. Por defecto solo Google usa el modo `ShowAlways`; el resto usa `PrefixOnly`.
 
-Este fallback cubre casos en que la lista de pickers difiere del valor guardado (p.ej. browser instalado pero no en el picker actual).
+Al cargar las preferencias, se fusionan los motores guardados con los predeterminados: las personalizaciones del usuario se conservan y los motores nuevos (anadidos en actualizaciones) aparecen automaticamente con sus defaults.
 
-Las listas `SearchFolders` y `AppDirectories` en el ViewModel son `ObservableCollection<string>`. Sus eventos `CollectionChanged` están suscritos en el constructor y, ante cualquier cambio (añadir, eliminar, reordenar), sincronizan inmediatamente la lista a `settings.SearchFolders` / `settings.AppDirectories` y llaman `Save()`. El code-behind gestiona el picker de carpetas del SO (`StorageProvider.OpenFolderPickerAsync`) y llama a `AddSearchFolder` / `AddAppDirectory` del ViewModel, que deduplican (no añaden si la ruta ya existe).
+La UI de edicion (seccion "Web Search" en Settings) permite: toggle Enabled, toggle Mode, editar Prefix por doble-clic, y editar QueryUrl. Los cambios se guardan automaticamente.
 
-## Serialización interna
+**Invariante:** si el campo `Mode` del JSON contiene un valor no reconocido, se interpreta como `PrefixOnly`. El `QueryUrl` solo se escribe en el JSON si tiene un valor no vacio (se omite cuando es `null`, usando la URL por defecto del motor).
 
-`UserSettings` usa un record privado `UserSettingsData` como DTO de serialización/deserialización JSON. Este DTO nunca se expone fuera de la clase; actúa como buffer entre el JSON en disco y la clase de dominio. Los nombres de campo JSON usan `camelCase` (p. ej. `"searchFolders"`, `"enableCalculator"`) definidos mediante `[JsonPropertyName]`. El JSON se escribe con `WriteIndented = true`.
+> **Verificar en:** `WebSearchEngine`, `WebSearchEngineSettings`, `WebSearchDefaults` en `Yottacast.Core/Search/WebSearch/WebSearchEngine.cs`. Merge en `UserSettings.MergeWebSearchEngines()`. UI en `WebSearchEngineRowViewModel` y `SettingsWindow.axaml.cs`.
 
-## Ciclo de vida en DI
+---
 
-`UserSettings` se registra como **singleton** en el contenedor DI de `App`. La carga ocurre en el momento de construcción del contenedor (`BuildServices`), antes de que se muestre cualquier ventana. Una vez cargado, la instancia vive durante toda la vida de la aplicación; no hay recarga desde disco salvo que se destruya el contenedor.
+## 9. Ventana de Settings
 
-`SettingsWindowViewModel`, en cambio, se registra como **transient**. Cada vez que se abre la ventana de Settings se crea una nueva instancia, lo que implica que el estado de la UI (sección activa, scroll position, etc.) se reinicia a `SettingsSection.General` en cada apertura.
+### Secciones
 
-## Apertura de la ventana de Settings
+La ventana de Settings se divide en secciones navegables: General, AppSearch, WebSearch, FileSearch, Calculator, Clipboard y Emoji. Cada apertura de la ventana inicia en la seccion General (el ViewModel es transient y se recrea en cada apertura).
 
-`App.OpenSettings()` espera `await appSearch.WhenReady()` antes de construir el `SettingsWindowViewModel`. Esto garantiza que `BrowserDiscovery.Discover()` / `TerminalDiscovery.Discover()` encuentren el caché de `ApplicationSearch` ya poblado cuando el usuario abre Settings. Si Settings se abre antes de que `ApplicationSearch` haya terminado su escaneo, la llamada bloquea hasta que esté listo. Si la ventana ya está visible y activa, se activa sin recrearla.
+### Flujo de apertura
 
-## Default de Hotkey en Load()
+Antes de mostrar la ventana, la aplicacion espera a que `ApplicationSearch` haya completado su escaneo inicial (`await appSearch.WhenReady()`). Esto garantiza que los pickers de browser y terminal muestren datos completos. Si la ventana ya esta visible, simplemente se activa sin recrearla.
 
-El campo `Hotkey` en `UserSettingsData` tiene default `"Alt+Space"`. Adicionalmente, `Load()` normaliza el valor: si `data.Hotkey` es null o vacío después de deserializar, sustituye por `"Alt+Space"`. Este comportamiento es paralelo al de `Theme`: ambos campos tienen un default de último recurso en `Load()` independiente del default del DTO.
+### Seguridad en los pickers
 
-## Logging de Save()
+Tras la auto-reparacion (`EnsureIntegrity()`), el ViewModel aplica un segundo nivel de fallback en la UI:
 
-`Save()` registra `LogDebug` cuando el guardado tiene éxito (`"Settings saved to {Path}"`). Ante cualquier excepción registra `LogWarning`. Los mensajes de auto-reparación de browser/terminal en `ActiveBrowser`/`ActiveTerminal` se emiten a nivel `LogInformation`.
+- Si el browser guardado no esta en la lista descubierta, se selecciona el primero disponible.
+- Si el terminal guardado no esta en la lista descubierta, se selecciona el primero disponible.
+- Si el tema guardado no coincide con ningun tema cargado, se selecciona el primero disponible.
 
-## UserSettings.Load() — constructor privado
+### Listas de carpetas
 
-El constructor de `UserSettings` es privado. La única vía de creación es `UserSettings.Load(...)`. Esto garantiza que toda instancia ha pasado por la lógica de carga y de `Save()` inicial.
+Las listas `SearchFolders` y `AppDirectories` son observables. Cualquier cambio (anadir, eliminar) se sincroniza inmediatamente a las preferencias y se guarda. La adicion deduplica: no se anade una ruta que ya exista en la lista. El selector de carpetas usa el picker nativo del SO.
 
-## TerminalDiscovery.Discover() — filtro de wildcards
+> **Verificar en:** `SettingsWindowViewModel` en `Yottacast/ViewModels/SettingsWindowViewModel.cs`. `App.OpenSettings()` en `Yottacast/App.axaml.cs`. Code-behind en `Yottacast/Views/SettingsWindow.axaml.cs`.
 
-`TerminalDiscovery.Discover()` filtra las rutas del `TerminalFallbackPaths` que contienen `*`, ya que algunas rutas de terminal en la plataforma son patrones glob (p.ej. rutas con versiones). `BrowserDiscovery.Discover()` no tiene esta restricción.
+---
 
-## Gotchas
+## 10. Serializacion
 
-- **`Save()` silencia excepciones**: la escritura a disco está envuelta en try-catch. Si falla (permisos, disco lleno, etc.), registra un warning con `LogWarning` y continúa. Los cambios se mantienen en memoria pero no se persisten en disco hasta que un `Save()` posterior tenga éxito.
-- **`Save()` crea el directorio automáticamente**: antes de escribir, llama `Directory.CreateDirectory(dir)`. Si la carpeta `Yottacast/` no existe bajo `ApplicationData`, se crea sin error.
-- **`ActiveBrowser` y `ActiveTerminal` no son idempotentes en presencia de auto-reparación**: cada acceso comprueba disco y puede llamar `Save()`. En flujos críticos de rendimiento, preferir acceder una sola vez y cachear el resultado en la llamada.
+El JSON usa `camelCase` para los nombres de campo (p.ej. `"searchFolders"`, `"enableCalculator"`, `"hotkey"`). Se escribe con indentacion para legibilidad.
+
+Internamente se usa un record privado `UserSettingsData` como DTO de serializacion que nunca se expone fuera de la clase. Esto aisla la estructura del JSON de la interfaz publica de `UserSettings`.
+
+> **Verificar en:** record `UserSettingsData` y `WebSearchEngineSettingsData` en `Yottacast.Core/Services/UserSettings.cs`.
+
+---
+
+## 11. Logging
+
+| Situacion | Nivel |
+|---|---|
+| Carga exitosa del fichero | `Information` |
+| Fichero no encontrado o invalido (se crean defaults) | `Information` |
+| Guardado exitoso | `Debug` |
+| Error al guardar | `Warning` |
+| Auto-reparacion de browser/terminal | `Information` |
+
+> **Verificar en:** `UserSettings.Load()`, `UserSettings.Save()`, propiedades `ActiveBrowser`/`ActiveTerminal` en `Yottacast.Core/Services/UserSettings.cs`.

@@ -1,141 +1,384 @@
-# PlatformProvider / ProcessRunner / SharpHook
+# Soporte multi-plataforma
 
-## PlatformProvider
+Yottacast se ejecuta en macOS, Windows y Linux. La logica especifica de cada sistema operativo esta encapsulada de forma
+que el resto de la aplicacion no necesita saber en que plataforma corre. Este documento describe los comportamientos
+esperados por plataforma y los contratos que deben cumplirse.
 
-Clase abstracta en `Yottacast.Core.Platform`. Centraliza toda la lógica OS-específica. Una única comprobación de OS en `App.axaml.cs` (y `Yottacast.Cli/Program.cs`) elige la instancia concreta; el resto del código no hace `RuntimeInformation.IsOSPlatform()`.
+---
 
-Responsabilidades:
-- `IsSystemDarkMode()` / `DefaultTheme()` — detección del tema del SO
-- `DefaultAppDirectories()` / `DefaultSearchFolders()` — valores por defecto según OS
-- `ScanAppsAsync()` / `CreateAppWatchers()` / `LaunchApp()` — gestión de apps
-- `SearchFilesAsync()` — búsqueda de archivos (mdfind / Windows Search / locate)
-- `KnownBrowserNames` / `BrowserFallbackPaths` / `GetBrowserPaths()` / `OpenUrl()` — datos y lanzador de browsers
-- `KnownTerminalNames` / `TerminalFallbackPaths` / `GetTerminalPaths()` / `ExecuteCommand()` — datos y lanzador de terminales
-- `GetAppIconBytes(appPath)` / `GetFileIconBytes(filePath)` — icono en PNG (macOS: NSWorkspace + lockFocus; otros: null)
-- `GetDefaultAppPath(filePath)` — ruta del `.app` que abriría el fichero (macOS: NSWorkspace `URLForApplicationToOpenURL:`; otros: null)
-- `AreIconsSame(filePath, appPath)` — true si el icono del fichero es visualmente el mismo que el de la app (macOS: Info.plist semántico; otros: false)
-- `ExpandPath(path)` — método estático. Convierte `$HOME` o `~` solos en el directorio home; `$HOME/...` o `~/...` en home + sufijo. Cualquier otra ruta se devuelve sin modificar.
+## 1. Aislamiento de la logica de plataforma
 
-**macOS — `BrowserFallbackPaths` y `TerminalFallbackPaths`**: ambos devuelven diccionarios vacíos. El descubrimiento de browsers y terminales en macOS se apoya en `ApplicationSearch`/Spotlight, no en rutas hardcoded. En Windows sí están poblados con rutas conocidas.
+La aplicacion determina en que sistema operativo se ejecuta **una sola vez** al arrancar. A partir de ese momento, todo
+el codigo accede a las capacidades del OS a traves de una abstraccion unica (`PlatformProvider`) y un singleton de
+gestion de ventana/foco (`AppHandler`). Ninguna otra parte del codigo consulta directamente el sistema operativo.
 
-**Linux — soporte de browsers y terminales**: `LinuxPlatformProvider` no implementa browsers ni terminales: `KnownBrowserNames` y `KnownTerminalNames` son listas vacías, y `OpenUrl()` / `ExecuteCommand()` son no-ops. La búsqueda de archivos sí está implementada vía `plocate`/`locate`.
+**Invariante**: fuera de `App.axaml.cs`, `Program.cs` (CLI) y las propias implementaciones de plataforma, no existe
+ninguna llamada a `RuntimeInformation.IsOSPlatform()` ni a `OperatingSystem.Is*()`.
 
-### Detección de dark mode por plataforma
+> **Verificar en:** `Yottacast.Core/Platform/PlatformProvider.cs` (clase abstracta), `Yottacast/App.axaml.cs` (seleccion
+> de instancia), `Yottacast/Services/AppHandler.cs` (singleton `Instance`).
 
-- **macOS**: lanza `defaults read -g AppleInterfaceStyle` y comprueba si la salida es `"Dark"`. Devuelve `null` si el proceso falla.
-- **Windows**: lee el valor de registro `AppsUseLightTheme` en `HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize`; `val == 0` → dark. Devuelve `null` si la clave no existe o hay error.
-- **Linux**: lanza `gsettings get org.gnome.desktop.interface color-scheme` y busca `"prefer-dark"` en la salida. Devuelve `null` si el comando falla (p. ej. entornos no GNOME).
+---
 
-### Escaneo de apps por plataforma
+## 2. Deteccion del tema del sistema (claro/oscuro)
 
-- **macOS**: delega en `SpotlightInterop.Query` con el predicado `kMDItemContentType == 'com.apple.application-bundle'`. El watcher observa `*.app` con `NotifyFilter = DirectoryName | LastWrite`: `Created`/`Deleted` detectan instalación/desinstalación; `Changed` detecta cuando el bundle termina de copiarse (el mtime del directorio cambia al añadir ficheros internos), permitiendo recargar el icono si el bundle estaba incompleto en el evento `Created` inicial.
-- **Windows**: recorre los subdirectorios de cada `dir` configurado, busca el `.exe` con el mismo nombre que la carpeta y, si no existe, coge el primer `.exe` encontrado. El watcher observa `*.exe` con `IncludeSubdirectories = true`.
-- **Linux**: enumera los ficheros `*.desktop` de los directorios configurados (sin subdirectorios). El watcher observa `*.desktop`.
+La aplicacion debe detectar si el usuario tiene configurado el tema oscuro del OS para aplicar el tema visual adecuado
+por defecto.
 
-`ScanAppsAsync` es sincrónico en Windows y Linux (devuelve `Task.CompletedTask` directamente); solo en macOS se envuelve en `Task.Run` porque `SpotlightInterop.Query` bloquea el hilo.
+| Plataforma | Metodo de deteccion                                              | Resultado oscuro         |
+|------------|------------------------------------------------------------------|--------------------------|
+| macOS      | Ejecuta `defaults read -g AppleInterfaceStyle`                   | La salida es `"Dark"`    |
+| Windows    | Lee registro `HKCU\...\Themes\Personalize\AppsUseLightTheme`     | Valor == 0               |
+| Linux      | Ejecuta `gsettings get org.gnome.desktop.interface color-scheme` | Contiene `"prefer-dark"` |
 
-### `LaunchApp` por plataforma
+**Invariantes**:
 
-- **macOS**: `open "<path>"` con `UseShellExecute = false`.
-- **Windows**: `ProcessStartInfo(path) { UseShellExecute = true }` — delega en el shell de Windows para abrir el exe con permisos adecuados.
-- **Linux**: `xdg-open "<path>"` con `UseShellExecute = false`.
+- Si la deteccion falla (proceso con error, clave de registro inexistente, entorno no GNOME), el resultado es `null` y
+  se usa el tema oscuro por defecto (`"dark-default"`).
+- El tema por defecto si el modo es claro es `"light-gray"`.
 
-### Búsqueda de ficheros: estrategias específicas
+> **Verificar en:** `MacOsPlatformProvider.IsSystemDarkMode()`, `WindowsPlatformProvider.IsSystemDarkMode()`,
+`LinuxPlatformProvider.IsSystemDarkMode()`, `PlatformProvider.DefaultTheme()`.
 
-**macOS** (`SpotlightInterop`): antes de construir el predicado, las comillas simples se escapan (`'` → `\'`). El predicado `kMDItemFSName` admite wildcard `*` literal en la query del usuario; en caso contrario, parte la query por espacios y genera una cláusula `&&` con `*token*cd` por cada token (case-insensitive, diacrítico-insensible). Si alguna carpeta del scope no existe, se omite con `LogWarning`. Si no quedan carpetas válidas, el scope cae al directorio home.
+---
 
-**Windows** (`WindowsPlatformProvider`): la query se sanitiza eliminando completamente `'`, `"` y `*` antes de construir el script. Emite un script PowerShell que abre una conexión ADODB a `Search.CollatorDSO` (Windows Search) y ejecuta SQL sobre `SystemIndex` con `CONTAINS(System.FileName, 'token*')`. El script se codifica en Base64 Unicode y se pasa a `powershell -EncodedCommand` para evitar problemas de escaping en shell. El filtro de carpetas se inyecta como cláusula `AND (System.ItemPathDisplay LIKE 'folder%' OR ...)`.
+## 3. Descubrimiento e indexacion de aplicaciones
 
-**Linux** (`LinuxPlatformProvider`): llama a `plocate` (si existe en `/usr/bin/plocate`) o `locate`, usando solo el primer token de la query como argumento nativo (`-b -l maxResults *token*`). El filtro de carpetas y los tokens adicionales se aplican en el callback de .NET: las líneas que no cumplan se descartan sin contar para el límite (retornando `true` para seguir leyendo). Como el post-filtrado ocurre en .NET después del límite nativo, el número de resultados entregados puede ser menor que `maxResults`.
+La aplicacion debe encontrar todas las aplicaciones instaladas en los directorios configurados por el usuario y mantener
+la lista actualizada en tiempo real.
 
-### `ExecuteCommand` en macOS: despacho por terminal
+### 3.1 Escaneo inicial
 
-- **Terminal** e **iTerm**: usan AppleScript vía `osascript -e`. Los comandos se escapan con `EscapeAppleScript` (escapa `\` y `"`).
-- **Warp**: abre la URL `warp://action/new_tab?command=<urlencoded>` con `open`.
-- **Otros terminales**: escribe un fichero temporal `*.command` en `/tmp`, le da permisos de ejecución con `chmod +x` y lo abre con `open -a <terminalName>`.
+| Plataforma | Que busca                         | Mecanismo                                                                    |
+|------------|-----------------------------------|------------------------------------------------------------------------------|
+| macOS      | Bundles `.app`                    | Spotlight (`kMDItemContentType == 'com.apple.application-bundle'`)           |
+| Windows    | Archivos `.exe` en subdirectorios | Recorrido de filesystem: busca `<carpeta>/<carpeta>.exe`, o el primer `.exe` |
+| Linux      | Archivos `.desktop`               | Enumeracion directa (sin subdirectorios)                                     |
 
-### `ExecuteCommand` en Windows: despacho por terminal
+**Invariante**: el escaneo en macOS es asincrono (envuelto en `Task.Run` porque Spotlight bloquea el hilo). En Windows y
+Linux el escaneo es sincrono y devuelve `Task.CompletedTask`.
 
-Los paths de terminales que contienen `*` (p. ej. Windows Terminal en `WindowsApps`) se excluyen del match de primer path existente. Argumentos según terminal: PowerShell → `-NoExit -Command "<cmd>"`, Command Prompt → `/K "<cmd>"`, resto → el comando verbatim.
+### 3.2 Vigilancia de cambios (watchers)
 
-### KeyNameMap (hotkey)
+| Plataforma | Filtro del watcher | Eventos observados                                                          | Subdirectorios |
+|------------|--------------------|-----------------------------------------------------------------------------|----------------|
+| macOS      | `*.app`            | `Created`, `Changed`, `Deleted` (NotifyFilter: `DirectoryName + LastWrite`) | No             |
+| Windows    | `*.exe`            | `Created`, `Deleted` (NotifyFilter: `FileName`)                             | Si             |
+| Linux      | `*.desktop`        | `Created`, `Deleted` (NotifyFilter: `FileName`)                             | No             |
 
-`App.axaml.cs` construye en startup un `Dictionary<string, KeyCode>` (case-insensitive) que cubre: teclas nombradas (`Space`, `Enter`, `Tab`, `Backspace`, `Delete`, `Escape`), A–Z, 0–9 y F1–F12. Los nombres se mapean quitando el prefijo `Vc` de `SharpHook.KeyCode`. Nombres no reconocidos devuelven `KeyCode.VcUndefined` y nunca activarán el hotkey.
+**Invariante (macOS)**: el evento `Changed` existe a proposito. Cuando un `.app` se copia, el `Created` puede llegar
+antes de que el bundle este completo; el `Changed` detecta cuando se terminan de copiar los archivos internos (el mtime
+del directorio cambia), permitiendo recargar el icono.
 
-## SpotlightInterop
+> **Verificar en:** `MacOsPlatformProvider.ScanAppsAsync()` / `CreateAppWatchers()`,
+`WindowsPlatformProvider.ScanAppsAsync()` / `CreateAppWatchers()`, `LinuxPlatformProvider.ScanAppsAsync()` /
+`CreateAppWatchers()`.
 
-Clase `internal static` en `Yottacast.Core.Platform`. Wrapper de P/Invoke sobre la API `MDQuery` de CoreServices y `CFString`/`CFArray` de CoreFoundation.
+---
 
-El método público `Query(predicate, scopes, onLine, ct)` es **sincrónico y bloquea el hilo**. Los llamadores (`ScanAppsAsync`, `SearchFilesAsync`) lo envuelven en `Task.Run`.
+## 4. Lanzamiento de aplicaciones
 
-Flujo interno:
-1. Crea un `CFString` con el predicado y construye un `MDQueryRef` con `MDQueryCreate`.
-2. Si hay scopes, crea un `CFArray` de `CFString` y llama `MDQuerySetSearchScope`.
-3. Ejecuta la query con `MDQueryExecute(query, kMDQuerySynchronous=1)` — bloquea hasta completar.
-4. Comprueba cancelación antes de iterar resultados.
-5. Por cada resultado: obtiene el ítem con `MDQueryGetResultAtIndex` (no transfiere ownership), copia el atributo `kMDItemPath` con `MDItemCopyAttribute` (sí transfiere ownership → `CFRelease` en `finally` interno), decodifica el path desde un buffer de 4096 bytes UTF-8.
-6. Si `onLine` devuelve `false`, para la iteración.
-7. En el `finally` externo libera todos los `IntPtr` acumulados en la lista `owned` (predicado, query, scope refs, scope array, attrName).
+| Plataforma | Comando                          | UseShellExecute |
+|------------|----------------------------------|-----------------|
+| macOS      | `open "<path>"`                  | `false`         |
+| Windows    | `ProcessStartInfo(path)` directo | `true`          |
+| Linux      | `xdg-open "<path>"`              | `false`         |
 
-`kCFTypeArrayCallBacks` es una variable global exportada de CoreFoundation; se resuelve una vez en el constructor estático vía `NativeLibrary.Load` + `NativeLibrary.GetExport`.
+**Invariante**: Windows usa `UseShellExecute = true` para que el shell gestione permisos (UAC). macOS y Linux lanzan el
+proceso directamente.
 
-## ProcessRunner
+> **Verificar en:** `MacOsPlatformProvider.LaunchApp()`, `WindowsPlatformProvider.LaunchApp()`,
+`LinuxPlatformProvider.LaunchApp()`.
 
-Único runner: `ProcessRunner.RunAsync(binary, string[] args, string? cwd, onLine, ct)`.
+---
 
-`args` es un array `string[]`; el runner los ensambla en una sola cadena pasada al proceso. Los argumentos que contienen espacios se entrecomillan automáticamente (dobles comillas; las comillas dobles internas se escapan con `\"`). Esto lo hace el método privado `QuoteArg`. `cwd` es nullable: si es `null` se usa `Environment.CurrentDirectory`.
+## 5. Busqueda de archivos
 
-`RunAsync` devuelve `ProcessResult(Elapsed, ExitCode, Cancelled, Error?)`. La propiedad calculada `IsSuccess` es `true` cuando `Error is null && !Cancelled && ExitCode == 0`.
+La aplicacion permite buscar archivos del usuario mediante un motor de busqueda nativo de cada plataforma.
 
-Acepta `Func<string, bool> onLine` — retorna `false` para parar antes del EOF. Redirige stdout al pipe del proceso. Siempre llama `Kill(entireProcessTree: true)` en el bloque `finally` (garantiza limpieza tanto en cancelación como en early exit por `false`; si el proceso ya terminó es un no-op).
+### 5.1 Estrategia por plataforma
 
-Registrado en DI como singleton. `WindowsPlatformProvider` y `LinuxPlatformProvider` lo reciben por inyección de constructor; `MacOsPlatformProvider` no lo necesita porque lanza procesos directamente vía `System.Diagnostics.Process` y `SpotlightInterop`.
+| Plataforma | Motor                                | Tratamiento de la query                                                                                                                                      |
+|------------|--------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| macOS      | Spotlight (via `SpotlightInterop`)   | Escapa comillas simples. Si contiene `*`, usa predicado literal. Si no, parte por espacios y genera clausulas `kMDItemFSName == '*token*'cd` unidas con `&&` |
+| Windows    | Windows Search (ADODB + SystemIndex) | Elimina `'`, `"` y `*`. Genera clausula `CONTAINS(System.FileName, 'token*')` por cada token. El script PowerShell se codifica en Base64 Unicode             |
+| Linux      | `plocate` (preferido) o `locate`     | Solo el primer token se pasa como argumento nativo (`-b -l maxResults *token*`). Tokens adicionales y filtro de carpetas se aplican en .NET                  |
 
-### Iconos de app y fichero en macOS
+### 5.2 Invariantes
 
-**`GetAppIconBytes` / `GetFileIconBytes`**: obtienen el icono PNG de un path (app o fichero) usando `NSWorkspace iconForFile:` vía Objective-C P/Invoke. Renderizan la imagen a 64×64 puntos con el patrón `lockFocus` / `drawInRect:` / `unlockFocus` y la serializan a PNG vía `NSBitmapImageRep representationUsingType:properties:` (tipo 4 = PNG). En Retina el resultado son 128×128 píxeles físicos. Ver `GetAppIconBytes` en `MacOsPlatformProvider.cs` para los detalles de cada paso.
+- **macOS**: si alguna carpeta del scope no existe, se omite con un warning. Si no queda ninguna carpeta valida, el
+  scope es el directorio home del usuario.
+- **Windows**: el script se pasa como `-EncodedCommand` (Base64 Unicode) para evitar problemas de escaping en shell.
+- **Linux**: el post-filtrado de carpetas y tokens adicionales ocurre despues del limite nativo de `plocate`/`locate`,
+  por lo que el numero de resultados entregados puede ser menor que `maxResults`.
 
-**`GetDefaultAppPath`**: crea un `NSURL fileURLWithPath:` para el fichero y llama `NSWorkspace URLForApplicationToOpenURL:`. Devuelve `nil` si el sistema no tiene ninguna app registrada para esa extensión.
+> **Verificar en:** `MacOsPlatformProvider.SearchFilesAsync()`, `WindowsPlatformProvider.SearchFilesAsync()`,
+`LinuxPlatformProvider.SearchFilesAsync()`, `SpotlightInterop.Query()`.
 
-**`AreIconsSame`**: compara semánticamente, no por píxeles. Lee `Contents/Info.plist` del bundle via `NSDictionary dictionaryWithContentsOfFile:` (soporta tanto XML como plist binario). Itera `CFBundleDocumentTypes`; retorna `true` si alguna entrada tiene `CFBundleTypeIconFile` y su `CFBundleTypeExtensions` incluye la extensión del fichero. Esto indica que la app registró un icono propio para ese tipo de documento, por lo que el icono del fichero ya lleva implícito el logo de la app (badging sería redundante).
+---
 
-**Gotcha — comparación de píxeles no es fiable para iconos en macOS**: macOS genera representaciones TIFF diferentes para el icono de un fichero (obtenido via `iconForFile:` sobre el fichero) y el icono de la app (mismo método sobre el `.app`), incluso cuando visualmente son idénticos. Comparar bytes, TIFF o píxeles renderizados produce falsos negativos. La única aproximación fiable es semántica: leer el `Info.plist`.
+## 6. Spotlight (macOS): interoperacion nativa
 
-**Gotcha — Raw string literals con variables PowerShell**: usar `$$"""..."""` en lugar de `$"""..."""` cuando el contenido tiene `$var`. Con `$$`, interpolación C# pasa a `{{expr}}` y los `$` sueltos son literales.
+`SpotlightInterop` es un wrapper P/Invoke sobre la API `MDQuery` de CoreServices. Es sincronico y bloquea el hilo; los
+llamadores lo envuelven en `Task.Run`.
 
-## AppHandler
+**Contrato de memoria**:
 
-Clase abstracta en `Yottacast/Services/AppHandler.cs`. Define los métodos abstractos `OnFrameworkInitializationCompleted()`, `OnShow()` y `OnHide()`, la propiedad abstracta `CloseWindowShortcut`, y el método virtual `SimulatePasteAsync()` (default no-op). Expone un singleton estático `Instance` que elige la implementación concreta en función del OS (`MacAppHandler`, `WindowsAppHandler`, `LinuxAppHandler`).
+- `MDQueryGetResultAtIndex` no transfiere ownership (no se libera).
+- `MDItemCopyAttribute` si transfiere ownership (se libera con `CFRelease` en un `finally` interno por cada resultado).
+- Todos los `IntPtr` acumulados (predicado, query, scope refs, scope array, atributo) se liberan en un `finally`
+  externo.
+- Los paths se decodifican desde un buffer UTF-8 de 4096 bytes.
 
-- `OnFrameworkInitializationCompleted()` — invocado antes de crear la ventana; en macOS establece `NSApplicationActivationPolicyAccessory`.
-- `OnShow()` / `OnHide()` — se llaman desde `App.axaml.cs` al mostrar/ocultar la ventana.
-- `CloseWindowShortcut` — atajo de teclado para ocultar la ventana (Cmd+W en macOS, Ctrl+F4 en Windows, Ctrl+W en Linux).
-- `SimulatePasteAsync()` — lo llama `MainWindow` tras activar un resultado con `PasteAfterActivate = true` (`OnHide()` se llama separadamente antes). Espera a que la app destino recupere el foco y luego simula el atajo de pegar. Ver `MacAppHandler.cs` / `WindowsAppHandler.cs` para la implementación concreta.
+`kCFTypeArrayCallBacks` es una variable global exportada de CoreFoundation; se resuelve una vez en el constructor
+estatico via `NativeLibrary.Load` + `NativeLibrary.GetExport`.
 
-### MacAppHandler
+> **Verificar en:** `Yottacast.Core/Platform/SpotlightInterop.cs`.
 
-MacAppHandler usa P/Invoke a las APIs del runtime Objective-C de macOS (`libobjc.dylib`) y CoreGraphics para gestionar la política de activación, el foco y el paste simulado.
+---
 
-- **`OnShow`**: captura `NSWorkspace.sharedWorkspace.frontmostApplication` con `objc_retain` y lo guarda en `_previousApp` (libera el valor previo si existía). Luego llama `activateIgnoringOtherApps:` sobre `NSApplication.sharedApplication`.
-- **`OnHide`**: llama `activateWithOptions:` con `NSApplicationActivateIgnoringOtherApps = 2` sobre `_previousApp`, y libera la referencia con `objc_release`.
-- **`SimulatePasteAsync`**: espera 150 ms para que la app destino recupere el foco. Luego usa CoreGraphics: crea dos `CGEvent` de teclado (key down y key up) con `CGEventCreateKeyboardEvent(source=null, virtualKey=0x09 ('v'), ...)`, establece el flag `kCGEventFlagMaskCommand = 0x100000` en ambos con `CGEventSetFlags`, los publica con `CGEventPost(kCGHIDEventTap=0, event)` y los libera con `CFRelease`.
+## 7. Ejecucion de procesos externos
 
-**`WindowsAppHandler.SimulatePasteAsync`**: espera 150 ms y luego usa `keybd_event` de `user32.dll` para enviar VK_CONTROL (0x11) down, VK_V (0x56) down, VK_V up, VK_CONTROL up. `OnShow`/`OnHide` son no-ops (Windows gestiona el foco automáticamente).
+`ProcessRunner` es el runner generico para lanzar procesos con lectura linea a linea de stdout y stderr.
 
-**`LinuxAppHandler`**: todos los métodos son no-ops; `SimulatePasteAsync` usa la implementación base (no hace nada).
+**Contrato**:
 
-## SharpHook (global hotkey)
+- Los argumentos con espacios se entrecomillan automaticamente (comillas dobles; las comillas internas se escapan con
+  `\"`).
+- `cwd` nullable: si es `null`, se usa `Environment.CurrentDirectory`.
+- El callback `onLine` puede devolver `false` para parar la lectura antes del EOF.
+- El proceso siempre se mata con `Kill(entireProcessTree: true)` en un bloque `finally` tras la lectura (garantiza
+  limpieza en cancelacion, early exit por `false`, o finalizacion normal; si el proceso ya termino es un no-op).
+- Resultado: `ProcessResult(Elapsed, ExitCode, Cancelled, Error?)`. `IsSuccess` es `true` cuando
+  `Error is null && !Cancelled && ExitCode == 0`.
+- Tanto stdout como stderr se drenan en paralelo (`Task.WhenAll`). Cuando cualquier callback devuelve `false`, un
+  `CancellationTokenSource` vinculado cancela ambas lecturas.
 
-Los tipos de SharpHook están en los namespaces `SharpHook` y `SharpHook.Data`; ver `App.axaml.cs` para los checks exactos de tecla y modificador.
+**Uso por plataforma**: `WindowsPlatformProvider` y `LinuxPlatformProvider` lo reciben por inyeccion de constructor.
+`MacOsPlatformProvider` no lo usa porque lanza procesos directamente con `System.Diagnostics.Process` y delega en
+`SpotlightInterop`.
 
-El hotkey muestra/oculta la ventana. La combinación se carga de `UserSettings.Hotkey` y se parsea en tiempo de arranque a través de `HotkeyConfig.Parse` (definido en `Yottacast.Core/Platform/HotkeyConfig.cs`). El valor por defecto es `"Alt+Space"`. Los cambios en Settings se reflejan inmediatamente, sin reiniciar.
+> **Verificar en:** `Yottacast.Core/Services/ProcessRunner.cs`.
 
-`HotkeyConfig.Parse` acepta aliases de modificador además de los nombres canónicos: `"option"`/`"options"` → `Alt`; `"cmd"`/`"command"`/`"win"`/`"windows"` → `Meta`. Los modificadores canónicos son `Alt`, `Ctrl`, `Shift`, `Meta`.
+---
 
-**Matching exacto de modificadores**: los cuatro grupos de modificadores (Alt, Ctrl, Shift, Meta) deben coincidir exactamente. Si el usuario tiene configurado `Alt+Space` y pulsa `Alt+Cmd+Space`, el hotkey no se activa. Ver la lógica en `RegisterGlobalHotKey` en `App.axaml.cs`.
+## 8. Navegadores y terminales
 
-**`HotkeyConfig.ToString()`** serializa en el orden canónico Ctrl → Alt → Shift → Meta → Key, independientemente del orden en que se haya parseado.
+### 8.1 Descubrimiento de navegadores
 
-**Gotcha — `SimpleGlobalHook` requerido**: se usa `SimpleGlobalHook` (no `TaskPoolGlobalHook`) porque necesita `e.SuppressEvent = true` para evitar que el OS reciba la tecla. Con `TaskPoolGlobalHook` el handler corre en otro thread y la supresión no tiene efecto.
+| Plataforma | Estrategia                                                                                                                                            | Fallback paths |
+|------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|
+| macOS      | Se apoya en la busqueda de apps (Spotlight); `BrowserFallbackPaths` vacio. `GetBrowserPaths` devuelve rutas en `/Applications` y `$HOME/Applications` | No hardcoded   |
+| Windows    | `BrowserFallbackPaths` con rutas conocidas de Chrome, Firefox, Edge, Brave, Opera, Vivaldi                                                            | Si, hardcoded  |
+| Linux      | `KnownBrowserNames` vacio; `OpenUrl()` es no-op                                                                                                       | No soportado   |
 
-**Gotcha — Permiso Accessibility en macOS**: sin el permiso, el hook detecta la tecla pero no la suprime (llega también a la app activa). Se ignora silenciosamente sin error — puede ser confuso al depurar.
+### 8.2 Descubrimiento de terminales
+
+| Plataforma | Terminales conocidos                                           | Fallback paths                                                                                                                     |
+|------------|----------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------|
+| macOS      | Terminal, iTerm, Warp, Alacritty, Kitty, Hyper, WezTerm, Tabby | `TerminalFallbackPaths` vacio; `GetTerminalPaths` busca en `/Applications`, `$HOME/Applications`, `/System/Applications/Utilities` |
+| Windows    | Windows Terminal, PowerShell, Command Prompt, Git Bash         | Hardcoded con rutas conocidas                                                                                                      |
+| Linux      | `KnownTerminalNames` vacio; `ExecuteCommand()` es no-op        | No soportado                                                                                                                       |
+
+### 8.3 Ejecucion de comandos en terminal (macOS)
+
+El despacho depende del terminal seleccionado:
+
+| Terminal | Mecanismo                                                                                                                     |
+|----------|-------------------------------------------------------------------------------------------------------------------------------|
+| Terminal | AppleScript: `tell application "Terminal" to do script "..."`                                                                 |
+| iTerm    | AppleScript: `tell application "iTerm" to create window with default profile command "..."`                                   |
+| Warp     | Abre URL `warp://action/new_tab?command=<urlencoded>` con `open`                                                              |
+| Otros    | Escribe un script temporal `*.command` en `/tmp`, le da permisos de ejecucion (`chmod +x`) y lo abre con `open -a <terminal>` |
+
+**Invariante**: los comandos enviados via AppleScript se escapan con `EscapeAppleScript` (escapa `\` y `"`).
+
+### 8.4 Ejecucion de comandos en terminal (Windows)
+
+Los paths de terminales que contienen `*` (por ejemplo, Windows Terminal en `WindowsApps`) se excluyen al buscar el
+primer path existente. Los argumentos varian segun el terminal:
+
+| Terminal       | Argumentos                 |
+|----------------|----------------------------|
+| PowerShell     | `-NoExit -Command "<cmd>"` |
+| Command Prompt | `/K "<cmd>"`               |
+| Otros          | El comando tal cual        |
+
+> **Verificar en:** `MacOsPlatformProvider.ExecuteCommand()`, `MacOsPlatformProvider.OpenUrl()`,
+`WindowsPlatformProvider.ExecuteCommand()`, `WindowsPlatformProvider.OpenUrl()`, `LinuxPlatformProvider`.
+
+---
+
+## 9. Iconos de aplicaciones y archivos
+
+Solo macOS implementa la obtencion de iconos. En Windows y Linux, los metodos devuelven `null` (iconos) o `false` (
+comparacion).
+
+### 9.1 Obtencion del icono (`GetAppIconBytes` / `GetFileIconBytes`)
+
+El icono se obtiene via `NSWorkspace iconForFile:` (Objective-C P/Invoke). Se renderiza a 64x64 puntos logicos con el
+patron `lockFocus` / `drawInRect:` / `unlockFocus` y se serializa a PNG via
+`NSBitmapImageRep representationUsingType:properties:` (tipo 4 = PNG).
+
+**Invariante**: en pantallas Retina (2x) el resultado son 128x128 pixeles fisicos, suficiente para la visualizacion a
+28x28 logicos. `GetFileIconBytes` delega internamente en `GetAppIconBytes` (mismo metodo para ambos).
+
+### 9.2 App por defecto para un archivo (`GetDefaultAppPath`)
+
+Crea un `NSURL fileURLWithPath:` y llama `NSWorkspace URLForApplicationToOpenURL:`. Devuelve `null` si el sistema no
+tiene ninguna app registrada para esa extension.
+
+### 9.3 Deteccion de iconos redundantes (`AreIconsSame`)
+
+Determina si el icono de un archivo ya incorpora visualmente el logo de la app que lo abre, para evitar badging
+redundante.
+
+**Metodo**: lee `Contents/Info.plist` del bundle de la app (via `NSDictionary dictionaryWithContentsOfFile:`, soporta
+XML y plist binario). Itera `CFBundleDocumentTypes`; retorna `true` si alguna entrada tiene `CFBundleTypeIconFile` y su
+`CFBundleTypeExtensions` incluye la extension del archivo.
+
+**Invariante (critico)**: la comparacion es semantica, nunca por pixeles. macOS genera representaciones TIFF diferentes
+para el mismo icono obtenido desde el archivo vs. desde la app (incluso cuando visualmente son identicos). Comparar
+bytes, TIFF o pixeles renderizados produce falsos negativos. La unica aproximacion fiable es leer el `Info.plist`.
+
+> **Verificar en:** `MacOsPlatformProvider.GetAppIconBytes()`, `MacOsPlatformProvider.GetFileIconBytes()`,
+`MacOsPlatformProvider.GetDefaultAppPath()`, `MacOsPlatformProvider.AreIconsSame()`.
+
+---
+
+## 10. Gestion de ventana y foco (`AppHandler`)
+
+`AppHandler` gestiona el ciclo de vida de la ventana principal: que ocurre al mostrarla, al ocultarla, y como simular el
+pegado tras activar un resultado.
+
+### 10.1 Inicializacion
+
+| Plataforma | Comportamiento                                                                                   |
+|------------|--------------------------------------------------------------------------------------------------|
+| macOS      | Establece `NSApplicationActivationPolicyAccessory` (sin icono en Dock, sin barra de menu propia) |
+| Windows    | No-op                                                                                            |
+| Linux      | No-op                                                                                            |
+
+### 10.2 Mostrar la ventana (`OnShow`)
+
+| Plataforma | Comportamiento                                                                                                                   |
+|------------|----------------------------------------------------------------------------------------------------------------------------------|
+| macOS      | Captura `NSWorkspace.frontmostApplication` con `objc_retain`, la guarda. Luego activa Yottacast con `activateIgnoringOtherApps:` |
+| Windows    | No-op (Windows gestiona el foco automaticamente)                                                                                 |
+| Linux      | No-op                                                                                                                            |
+
+**Invariante (macOS)**: si habia una referencia previa a `_previousApp`, se libera con `objc_release` antes de retener
+la nueva.
+
+### 10.3 Ocultar la ventana (`OnHide`)
+
+| Plataforma | Comportamiento                                                                                                                   |
+|------------|----------------------------------------------------------------------------------------------------------------------------------|
+| macOS      | Restaura el foco a la app previa con `activateWithOptions:` (`NSApplicationActivateIgnoringOtherApps = 2`), libera la referencia |
+| Windows    | No-op                                                                                                                            |
+| Linux      | No-op                                                                                                                            |
+
+**Invariante**: tras ocultar, el usuario debe ver la app que tenia en foco antes de invocar Yottacast.
+
+### 10.4 Simulacion de pegado (`SimulatePasteAsync`)
+
+Se invoca cuando el usuario activa un resultado con `PasteAfterActivate = true`. Se ejecuta despues de `OnHide()`.
+
+| Plataforma | Mecanismo                                                                                                                   | Delay previo |
+|------------|-----------------------------------------------------------------------------------------------------------------------------|--------------|
+| macOS      | CoreGraphics: `CGEventCreateKeyboardEvent` (key 0x09 = 'v') con flag `kCGEventFlagMaskCommand`, publicado con `CGEventPost` | 150 ms       |
+| Windows    | `keybd_event` de `user32.dll`: VK_CONTROL down, VK_V down, VK_V up, VK_CONTROL up                                           | 150 ms       |
+| Linux      | No-op (usa la implementacion base que no hace nada)                                                                         | --           |
+
+**Invariante**: el delay de 150 ms (`AppDefaults.PasteDelayMs`) existe para que la app destino recupere el foco antes de
+recibir el evento de teclado.
+
+### 10.5 Ocultacion del cursor
+
+| Plataforma | Mecanismo                            |
+|------------|--------------------------------------|
+| macOS      | `NSCursor setHiddenUntilMouseMoves:` |
+| Windows    | `ShowCursor` de `user32.dll`         |
+| Linux      | No-op                                |
+
+### 10.6 Atajo para cerrar ventana
+
+| Plataforma | Atajo   |
+|------------|---------|
+| macOS      | Cmd+W   |
+| Windows    | Ctrl+F4 |
+| Linux      | Ctrl+W  |
+
+> **Verificar en:** `Yottacast/Services/AppHandler.cs`, `Yottacast/Services/MacAppHandler.cs`,
+`Yottacast/Services/WindowsAppHandler.cs`, `Yottacast/Services/LinuxAppHandler.cs`, `Yottacast.Core/AppDefaults.cs` (
+> constante `PasteDelayMs`).
+
+---
+
+## 11. Hotkey global (SharpHook)
+
+El hotkey global muestra/oculta la ventana principal. La combinacion se configura en `UserSettings.Hotkey` (valor por
+defecto: `"Alt+Space"`) y se parsea con `HotkeyConfig.Parse` al arrancar. Los cambios en la configuracion se reflejan
+inmediatamente, sin reiniciar.
+
+### 11.1 Parseo de la combinacion
+
+`HotkeyConfig.Parse` acepta una cadena con modificadores y una tecla separados por `+`. Es case-insensitive.
+
+| Alias aceptados                            | Modificador canonico |
+|--------------------------------------------|----------------------|
+| `alt`, `option`, `options`                 | Alt                  |
+| `ctrl`, `control`                          | Ctrl                 |
+| `shift`                                    | Shift                |
+| `meta`, `cmd`, `command`, `win`, `windows` | Meta                 |
+
+**Invariante**: `HotkeyConfig.ToString()` serializa siempre en orden canonico Ctrl, Alt, Shift, Meta, Key,
+independientemente del orden de parseo.
+
+### 11.2 Mapa de teclas (`KeyNameMap`)
+
+Cubre: teclas nombradas (`Space`, `Enter`, `Tab`, `Backspace`, `Delete`, `Escape`), A-Z, 0-9 y F1-F12. Los nombres se
+mapean a los valores de `SharpHook.KeyCode` (quitando el prefijo `Vc`). Un nombre no reconocido produce
+`KeyCode.VcUndefined` y nunca activara el hotkey.
+
+### 11.3 Matching exacto de modificadores
+
+Los cuatro grupos de modificadores (Alt, Ctrl, Shift, Meta) deben coincidir exactamente con la configuracion. Si el
+hotkey es `Alt+Space` y el usuario pulsa `Alt+Cmd+Space`, no se activa.
+
+### 11.4 Gotchas
+
+- **`SimpleGlobalHook` requerido**: se usa `SimpleGlobalHook` (no `TaskPoolGlobalHook`) porque el handler debe correr en
+  el hilo del hook para que `e.SuppressEvent = true` tenga efecto. Con `TaskPoolGlobalHook`, el handler corre en otro
+  thread y la supresion no funciona.
+- **Permiso Accessibility en macOS**: sin este permiso, el hook detecta la tecla pero no la suprime (llega tambien a la
+  app activa). No produce error; se ignora silenciosamente.
+
+> **Verificar en:** `Yottacast/App.axaml.cs` (metodos `RegisterGlobalHotKey`, `BuildKeyNameMap`, `KeyNameToKeyCode`),
+`Yottacast.Core/Platform/HotkeyConfig.cs`.
+
+---
+
+## 12. Expansion de rutas (`ExpandPath`)
+
+Metodo estatico en `PlatformProvider`. Convierte rutas con prefijo `$HOME` o `~` al directorio home del usuario.
+
+| Entrada               | Salida          |
+|-----------------------|-----------------|
+| `$HOME` o `~`         | Directorio home |
+| `$HOME/...` o `~/...` | Home + sufijo   |
+| Cualquier otra ruta   | Sin modificar   |
+
+**Invariante**: este metodo es la unica forma de resolver `$HOME`/`~` en toda la aplicacion. Las listas de directorios
+por defecto usan `$HOME/...` y se expanden con este metodo.
+
+> **Verificar en:** `PlatformProvider.ExpandPath()`.
+
+---
+
+## 13. Gotcha: raw string literals con variables PowerShell
+
+Al generar scripts PowerShell en C#, usar `$$"""..."""` en lugar de `$"""..."""` cuando el contenido tiene `$var`. Con
+`$$`, la interpolacion de C# pasa a `{{expr}}` y los `$` sueltos son literales para PowerShell.
+
+> **Verificar en:** `WindowsPlatformProvider.SearchFilesAsync()`.

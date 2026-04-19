@@ -1,55 +1,126 @@
-# BrowserDiscovery
+# Navegador del usuario
 
-`BrowserDiscovery` encapsula la detección y el lanzamiento del navegador configurado por el usuario en sus settings. El navegador se usa para abrir búsquedas de Google desde el resultado de tipo Google suggestion.
+Este documento describe el comportamiento esperado de la seleccion, resolucion y apertura del navegador web configurado por el usuario en Yottacast.
 
-## Descubrimiento e instancias
+---
 
-Inyecta `ApplicationSearch` y `PlatformProvider`. Los datos de navegadores conocidos vienen de `platform.KnownBrowserNames`, `platform.BrowserFallbackPaths` y `platform.GetBrowserPaths`.
+## 1. Proposito
 
-**`Discover()`** — apps instaladas para poblar el picker de Settings:
-- Consulta el caché de `ApplicationSearch`. Si no encuentra el nombre, usa `platform.BrowserFallbackPaths` para comprobar disco con `File.Exists()`.
-- *Linux*: devuelve lista vacía (no implementado).
-- *macOS*: `BrowserFallbackPaths` es un diccionario vacío, así que en macOS `Discover()` se apoya exclusivamente en el caché de `ApplicationSearch`; no hay fallback a disco.
+El usuario puede elegir un navegador web preferido en la ventana de Settings. Ese navegador se utiliza para abrir URLs generadas por los resultados de tipo "Web Search" (busquedas en Google, DuckDuckGo, etc.). El sistema debe garantizar que siempre se use un navegador valido o, en su defecto, que la accion de abrir URL no produzca errores visibles.
 
-**`DiscoverAsync()`** — wrapper no-op: devuelve `Task.FromResult(Discover())`. Existe para uniformidad de la API.
+---
 
-**`GetCandidatePaths()`** — lista completa para el picker de Settings:
-- Usa el caché si está disponible; si no, usa `platform.GetBrowserPaths(name)` y toma la primera ruta. Este es un data source distinto al de `Discover()`: en macOS, `GetBrowserPaths` devuelve rutas convencionales en `/Applications`, mientras que `BrowserFallbackPaths` está vacío.
-- Filtra entradas cuya ruta sea null o vacía. Puede mostrar apps no instaladas.
+## 2. Seleccion del navegador en Settings
 
-**`Resolve(string name, PlatformProvider)`** — método estático para auto-reparación de `UserSettings`, sin dependencia de `ApplicationSearch`. Comprueba disco directamente vía `platform.GetBrowserPaths()`, aceptando tanto `Directory.Exists(p)` como `File.Exists(p)` (OR). Funciona aunque el caché esté vacío.
+Cuando el usuario abre la ventana de Settings, la aplicacion muestra un picker con los navegadores disponibles.
 
-- Si `preferredName` está vacío o es nulo, salta directamente al fallback e itera `KnownBrowserNames` en orden hasta encontrar uno en disco.
-- Si `preferredName` no está en disco, también itera `KnownBrowserNames` completo (incluyendo el propio `preferredName` de nuevo si aparece en la lista). Devuelve el primero encontrado.
-- Devuelve `null` si ningún browser conocido existe en disco.
-- Cuando `GetBrowserPaths` devuelve varias rutas para un mismo nombre (Windows), toma la primera que exista — `Directory.Exists || File.Exists`.
+**Comportamiento esperado:**
 
-Ver `docs/user-settings.md` §Auto-reparación para el flujo completo de `ActiveBrowser` y `EnsureIntegrity()`.
+- La lista solo contiene navegadores realmente instalados en el sistema.
+- Para determinar si un navegador esta instalado, se consulta primero la cache de aplicaciones (`ApplicationSearch`). Si no se encuentra ahi, se recurre a rutas de fallback conocidas (`BrowserFallbackPaths`) verificando existencia en disco con `File.Exists`.
+- La lista se genera de forma sincrona al construir el ViewModel de Settings.
 
-**`OpenUrl()`** — método de instancia que delega en `platform.OpenUrl()`. Recibe un `BrowserInfo` (name + executable path); solo usa el `Name` para la llamada al platform.
+> **Verificar en:**
+> - `Yottacast/ViewModels/SettingsWindowViewModel.cs` -- constructor, llamada a `browserDiscovery.Discover()`
+> - `Yottacast.Core/Services/BrowserDiscovery.cs` -- metodo `Discover()`
 
-## `BrowserInfo`
+---
 
-`BrowserInfo` es un `record` con dos campos: `Name` (nombre de visualización, e.g. `"Google Chrome"`) y `ExecutablePath` (ruta en disco). Es el tipo de retorno de `Discover()`, `DiscoverAsync()` y `Resolve()`, y es lo que `UserSettings.ActiveBrowser` expone al resto de la app.
+## 3. Resolucion del navegador activo (auto-reparacion)
 
-## Integración con la capa de presentación
+El navegador configurado puede dejar de existir (por ejemplo, si el usuario lo desinstala). El sistema se auto-repara de forma transparente.
 
-- `SettingsWindowViewModel` llama a `browserDiscovery.Discover()` al construirse para poblar la lista de navegadores del picker. Solo aparecen navegadores realmente instalados.
-- `MainWindowViewModel` accede a `settings.ActiveBrowser` en el `OnActivate` del resultado Google. Si `ActiveBrowser` devuelve `null` (ningún navegador disponible), la acción retorna sin hacer nada; no lanza excepción.
-- `UserSettings.ActiveBrowser` tiene efecto secundario: si el nombre guardado ya no existe en disco pero hay otro disponible, actualiza `Browser` y llama a `Save()` — el cambio se persiste en ese momento, no en un paso de reparación separado.
+**Invariantes:**
 
-## Lanzamiento por plataforma
+- Cada vez que se accede a `ActiveBrowser`, se verifica que el navegador guardado existe en disco.
+- Si el navegador guardado ya no existe, se itera una lista ordenada de navegadores conocidos y se selecciona el primero que exista en disco.
+- Cuando se produce un cambio automatico de navegador, el nuevo valor se persiste inmediatamente (llamada a `Save()`).
+- Si ningun navegador conocido existe en disco, `ActiveBrowser` devuelve `null`.
+- La resolucion no depende de la cache de `ApplicationSearch`: usa directamente `Directory.Exists` o `File.Exists` sobre las rutas devueltas por `GetBrowserPaths`.
+- `EnsureIntegrity()` fuerza la resolucion de navegador (y terminal) como efecto secundario; esta pensado para llamarse en puntos naturales como al abrir Settings.
 
-**macOS `OpenUrl`** — llama `open -a <browserName> <url>`, pasando el nombre de visualización del browser. El OS resuelve el bundle. Excepciones se tragan silenciosamente (`catch { }`).
+**Logica de fallback de `Resolve`:**
 
-**Windows `OpenUrl`** — resuelve la ruta del exe desde `GetBrowserPaths` en el momento de la llamada (usando `File.Exists`); retorna silenciosamente si no se encuentra. Lanza el exe directamente con la URL como argumento. Excepciones se tragan silenciosamente.
+| Situacion | Comportamiento |
+|---|---|
+| Nombre preferido vacio o nulo | Salta directamente al fallback: itera `KnownBrowserNames` en orden |
+| Nombre preferido existe en disco | Devuelve ese navegador |
+| Nombre preferido no existe en disco | Itera `KnownBrowserNames` completo (puede incluir de nuevo el nombre preferido si aparece en la lista) y devuelve el primero encontrado |
+| Ningun navegador conocido existe | Devuelve `null` |
 
-**Linux `OpenUrl`** — no implementado: el método es un no-op.
+> **Verificar en:**
+> - `Yottacast.Core/Services/UserSettings.cs` -- propiedad `ActiveBrowser`, metodo `EnsureIntegrity()`
+> - `Yottacast.Core/Services/BrowserDiscovery.cs` -- metodo estatico `Resolve()`
 
-## Datos de plataforma
+---
 
-**macOS** — `KnownBrowserNames` es una lista fija de nombres de app (ver `MacOsPlatformProvider`). `GetBrowserPaths` genera rutas convencionales en `/Applications/<name>.app` y `$HOME/Applications/<name>.app` — las rutas contienen el literal `$HOME` sin expandir, ya que `Resolve` usa `Directory.Exists`/`File.Exists` directamente (el OS no expande `$HOME`). `BrowserFallbackPaths` está vacío.
+## 4. Apertura de URL en el navegador
 
-**Windows** — `KnownBrowserNames` se deriva de las claves de `_browserFallbackPaths`. `GetBrowserPaths` y `BrowserFallbackPaths` devuelven las mismas rutas absolutas (son la misma fuente). Los nombres de browser en Windows incluyen `"Mozilla Firefox"` (con nombre completo), a diferencia de macOS donde es `"Firefox"`.
+Cuando el usuario activa un resultado de tipo Web Search, se abre la URL construida en el navegador activo.
 
-**Linux** — todas las propiedades devuelven colecciones vacías; browser y terminal no están implementados.
+**Invariantes:**
+
+- Si `ActiveBrowser` devuelve `null`, la accion retorna sin hacer nada. El usuario no ve un error ni una excepcion.
+- Las excepciones durante el lanzamiento del proceso se capturan silenciosamente (`catch { }`). El usuario nunca ve un dialogo de error del sistema.
+- El metodo `OpenUrl` de `BrowserDiscovery` delega en la implementacion de plataforma, pasando el nombre del navegador (no la ruta del ejecutable).
+
+> **Verificar en:**
+> - `Yottacast.Core/Search/WebSearch/WebSearchSource.cs` -- callback `OnActivate`
+> - `Yottacast.Core/Services/BrowserDiscovery.cs` -- metodo `OpenUrl()`
+
+---
+
+## 5. Comportamiento por plataforma
+
+### 5.1 macOS
+
+| Aspecto | Comportamiento |
+|---|---|
+| Lista de navegadores conocidos | Safari, Google Chrome, Firefox, Brave Browser, Microsoft Edge, Opera, Arc, Vivaldi, Chromium, Tor Browser, DuckDuckGo, Orion |
+| Fallback paths | Diccionario vacio: `Discover()` depende exclusivamente de la cache de `ApplicationSearch` |
+| Rutas de resolucion (`GetBrowserPaths`) | `/Applications/{name}.app` y `$HOME/Applications/{name}.app` |
+| Apertura de URL | Ejecuta `open -a <browserName> <url>`, delegando la resolucion del bundle al SO |
+
+**Nota sobre `$HOME` sin expandir:** `GetBrowserPaths` en macOS obtiene la variable `home` via `Environment.GetFolderPath` pero luego usa el literal `$HOME` en la ruta interpolada. La variable `home` queda sin usar. Como `Directory.Exists` y `File.Exists` no expanden `$HOME`, la segunda ruta (`$HOME/Applications/...`) nunca resolvera correctamente. En la practica, `Resolve()` solo funciona con navegadores instalados en `/Applications`.
+
+### 5.2 Windows
+
+| Aspecto | Comportamiento |
+|---|---|
+| Lista de navegadores conocidos | Google Chrome, Mozilla Firefox, Microsoft Edge, Brave Browser, Opera, Vivaldi |
+| Fallback paths | Rutas absolutas a ejecutables conocidos (misma fuente que `GetBrowserPaths`) |
+| Apertura de URL | Resuelve la ruta del `.exe` desde `GetBrowserPaths` en el momento de la llamada (`File.Exists`). Si no se encuentra, retorna silenciosamente. Lanza el exe con la URL como argumento |
+
+**Diferencia de nombres:** En Windows, Firefox se llama `"Mozilla Firefox"` (nombre completo); en macOS es `"Firefox"`.
+
+### 5.3 Linux
+
+| Aspecto | Comportamiento |
+|---|---|
+| Lista de navegadores conocidos | Vacia |
+| Fallback paths | Vacio |
+| Apertura de URL | No-op (metodo vacio) |
+
+La funcionalidad de navegador no esta implementada en Linux.
+
+> **Verificar en:**
+> - `Yottacast.Core/Platform/MacOsPlatformProvider.cs` -- seccion Browser
+> - `Yottacast.Core/Platform/WindowsPlatformProvider.cs` -- seccion Browser
+> - `Yottacast.Core/Platform/LinuxPlatformProvider.cs` -- seccion Browser
+
+---
+
+## 6. Modelo de datos
+
+`BrowserInfo` es un `record` con dos campos:
+
+| Campo | Tipo | Descripcion |
+|---|---|---|
+| `Name` | `string` | Nombre de visualizacion (ej. `"Google Chrome"`) |
+| `ExecutablePath` | `string` | Ruta completa en disco |
+
+Este tipo es el valor de retorno de `Discover()`, `Resolve()` y la propiedad `ActiveBrowser`. La propiedad `UserSettings.Browser` solo almacena el `Name` (string), no el objeto completo.
+
+> **Verificar en:**
+> - `Yottacast.Core/Services/BrowserDiscovery.cs` -- declaracion del record `BrowserInfo`
+> - `Yottacast.Core/Services/UserSettings.cs` -- propiedad `Browser` (string) y formato JSON (`SettingsData`)

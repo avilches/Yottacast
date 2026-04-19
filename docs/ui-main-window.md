@@ -1,108 +1,228 @@
-# MainWindow — UI y comportamiento visual
+# Ventana principal -- comportamiento y contratos
 
-## Indicador de búsqueda en curso (IsSearching)
+Este documento describe el comportamiento esperado de la ventana principal de Yottacast (el launcher). Se organiza por capacidades y contratos verificables, no por archivos de codigo fuente.
 
-`MainWindowViewModel.IsSearching` es `true` mientras la fase diferida (`SearchDeferredAsync`) está activa. Se activa justo antes de iterar la fase diferida y se desactiva en el `finally` al completar, cancelar o fallar.
+---
 
-**Spinner en la UI**: cuando `IsSearching` es `true`, la search row muestra un `Ellipse` giratorio (`Classes="spinner"`, animación CSS en `Window.Styles`) en lugar del badge "ESC". La animación pulsa la opacidad (duración definida en `MainWindow.axaml`) con `PlaybackDirection="Alternate"`. Cuando `IsSearching` baja a `false`, la animación se detiene y el badge ESC reaparece (si el texto está vacío).
+## 1. Ciclo de vida de la ventana
 
-**`CancelDeferredSearch()`**: cancela solo la fase diferida sin tocar el texto ni la búsqueda instant. Llamado por el handler de ESC cuando `IsSearching == true`. Internamente cancela `_deferredCts`, que es un `CancellationTokenSource` enlazado al `ct` principal — si se teclea texto nuevo, el `ct` padre cancela ambas fases.
+La ventana principal es persistente: nunca se destruye, solo se oculta y se vuelve a mostrar. Esto garantiza tiempos de apertura instantaneos.
 
-**`ShowNoResults`**: solo se activa si la búsqueda diferida completó sin cancelación (`completed = true`). Si se paró con ESC o por nueva búsqueda, los resultados parciales permanecen visibles sin mostrar "No results".
+| Invariante | Detalle |
+|---|---|
+| La ventana nunca se cierra | Todo intento de cierre (nativo o programatico) se cancela y se traduce en `Hide()`. |
+| Al mostrarse, el foco va al campo de busqueda | Tanto al abrir por primera vez como al volver a ser visible. |
+| Al ocultarse, el campo de busqueda se deshabilita | Evita que reciba input mientras la ventana no es visible. Se rehabilita al mostrarse. |
+| El estado de Alt se limpia al ocultar | `IsAltPressed` se pone a `false` cuando la ventana deja de ser visible. |
 
-**Gotcha — `ALT+Space` consumido por MainWindow**: MainWindow intercepta `ALT+Space` explícitamente para evitar el beep nativo de macOS cuando la app está en background pero la ventana recibe el evento.
+> **Verificar en:** `MainWindow.axaml.cs` -- `OnClosing`, `OnPropertyChanged` (handler de `IsVisibleProperty`), constructor (handler de `Opened`).
 
-**Gotcha — `ResultItemViewModel.OnUp()`/`OnDown()`**: devuelven `bool`. `true` significa que el ítem ha consumido la tecla (p.ej. navegación interna del grid emoji); `false` delega la navegación de lista a la ventana. Ver `MainWindow.axaml.cs` para el handler.
+---
 
-## Navegación de lista y foco
+## 2. Busqueda: fases y tiempos
 
-**Navegación circular**: `SelectNext` avanza/retrocede con `(current + delta + Count) % Count`, haciendo la navegación circular (al llegar al final vuelve al principio y viceversa).
+La busqueda se divide en dos fases con distinto coste y latencia.
 
-**SearchBox y visibilidad**: al abrir (`Opened`) y al volverse visible (`IsVisibleProperty` changed), la ventana focaliza `SearchBox`. Cuando la ventana se oculta, `SearchBox.IsEnabled` se pone a `false` para evitar que reciba input mientras está escondida; se reactiva con foco cuando vuelve a mostrarse.
+### Fase instant (sin retardo)
 
-## Auto-selección de calculadora y Google item
+Cuando el usuario escribe, las fuentes en memoria (apps cacheadas, emojis, calculadora, web search) se consultan de forma sincrona. Los resultados aparecen inmediatamente.
 
-**Auto-selección de calculadora**: si hay un resultado de categoría `"Calculator"` o `"Converter"` y el usuario no ha navegado con las flechas (`_userNavigated == false`), `RefreshResults()` lo fuerza como `SelectedResult`. Si el usuario había navegado manualmente, intenta preservar el ítem seleccionado previamente; si ya no está en los resultados, selecciona el primero.
+### Fase diferida (con debounce de 250 ms)
 
-**Google item score**: el ítem de Google tiene score fijo 3, garantizando que aparezca por encima de resultados de fuentes de búsqueda (scores ≤ 1) pero es desplazado por resultados de calculadora cuando están presentes (la calculadora también usa score > 1).
+Tras la fase instant, se espera 250 ms sin nuevas pulsaciones antes de consultar las fuentes de disco (busqueda de archivos via Spotlight/Windows Search). Mientras estas fuentes trabajan, se muestra un spinner de actividad en lugar del badge ESC.
 
-**Google item en modo emoji**: el ítem de Google se incluye si `query.Length > 1` (usando `query[1..].Trim()` como término), o es `null` si la query es solo `:`.
+### Modo emoji (prefijo `:`)
 
-## Banner de actualización
+Cuando la query empieza por `:`, solo se ejecuta la fase instant. No hay debounce ni fase diferida.
 
-Cuando `UpdateChecker.UpdateAvailable` es `true`, `MainWindowViewModel` activa `UpdateAvailable` y rellena `UpdateBannerText` con `"Yottacast {LatestVersion} available — click to download"`, lo que muestra una franja clicable al pie de la ventana principal. El comando `UpdateBannerClickCommand` es un placeholder — conectarlo a la URL de descarga en el siguiente plan.
+| Invariante | Detalle |
+|---|---|
+| El usuario ve resultados en memoria sin retardo perceptible | La fase instant se ejecuta de forma sincrona antes de cualquier espera. |
+| Cada nueva pulsacion cancela la busqueda anterior | Se crea un nuevo `CancellationTokenSource` por query. |
+| El spinner solo es visible durante la fase diferida | `IsSearching` se activa justo antes de iterar las fuentes diferidas y se desactiva en el `finally`. |
+| En modo emoji no se accede a disco | `SearchAsync` retorna inmediatamente tras la fase instant si la query empieza por `:`. |
+| Limite por fuente: 10 resultados | Definido en `AppDefaults.SearchSourceLimit`. |
 
-## Tecla Escape — jerarquía de tres niveles
+> **Verificar en:** `MainWindowViewModel.cs` -- `SearchAsync`, `OnSearchTextChanged`. `AppDefaults.cs` -- `SearchDebouncedMs`, `SearchSourceLimit`.
 
-El handler de ESC en `MainWindow.OnKeyDown` aplica esta lógica en cascada:
-1. Si `IsSearching == true` → llama `CancelDeferredSearch()`.
-2. Si el texto no está vacío → vacía `SearchText`.
-3. En caso contrario → llama `Hide()`.
+---
 
-## Tecla Enter — activación y paste post-acción
+## 3. Resultados: ordenacion y auto-seleccion
 
-Al pulsar Enter, el handler en `MainWindow.OnKeyDown` ejecuta `OnActivate()`, vacía `SearchText` y llama `Hide()`. Si `result.PasteAfterActivate` es `true`, además llama `AppHandler.Instance.OnHide()` seguido de `AppHandler.Instance.SimulatePasteAsync()`, de modo que el contenido copiado por la acción queda pegado inmediatamente en la app anterior.
+Los resultados de ambas fases se combinan (merge) ordenados por score descendente.
 
-## Atajo de cierre de ventana por plataforma
+### Auto-seleccion de calculadora/conversor
 
-`MainWindow.OnKeyDown` intercepta el atajo nativo de "cerrar ventana" obtenido de `AppHandler.Instance.CloseWindowShortcut` (Cmd+W en macOS, Ctrl+F4 en Windows, Ctrl+W en Linux) y lo redirige a `Hide()` en vez de dejar que la ventana se cierre.
+Si existe un resultado de tipo `CalculatorResultItemViewModel` o `ConversionResultItemViewModel`, y el usuario no ha navegado con las flechas, ese resultado se selecciona automaticamente. Esto permite ver el resultado de la calculadora sin necesidad de navegar.
 
-## Cmd+, para abrir Settings
+### Preservacion de seleccion tras navegacion manual
 
-`OnKeyDown` intercepta `Key.OemComma + KeyModifiers.Meta` y llama `(Application.Current as App)?.OpenSettings()`.
+Si el usuario ha navegado manualmente (flechas arriba/abajo), el sistema intenta preservar el item que tenia seleccionado. Si ese item ya no esta en los resultados, se selecciona el primero.
 
-## OnClosing siempre cancela el cierre
+### Reset de navegacion por query
 
-`MainWindow.OnClosing` hace siempre `e.Cancel = true; Hide()`, impidiendo cualquier cierre nativo (por ejemplo el `performClose:` de macOS que puede llegar tras cerrar la SettingsWindow).
+Cada nueva query reinicia el flag de navegacion manual (`_userNavigated = false`), restaurando el comportamiento de auto-seleccion.
 
-## Captura de flechas izquierda/derecha en fase tunnel
+| Invariante | Detalle |
+|---|---|
+| `ShowNoResults` solo aparece si la fase diferida completo sin cancelacion y hay 0 resultados | Si se cancelo (ESC o nueva query), los resultados parciales permanecen visibles. |
+| `ShowNoResults` se limpia en cada `RefreshResults` | Solo `SearchAsync` puede activarlo a `true`. |
 
-`MainWindow` registra `OnTunnelKeyDown` con `RoutingStrategies.Tunnel`, lo que lo ejecuta *antes* de que el `TextBox` procese los movimientos del cursor. `OnLeft` y `OnRight` en `BaseResultItemViewModel` son `Func<bool>?` — si el handler devuelve `true`, el evento se marca como `Handled = true` y el TextBox no mueve el cursor; si devuelve `false`, el evento no se consume y el TextBox procesa el movimiento de cursor normalmente (útil para celdas en el extremo de la navegación). Las teclas Up/Down también pasan por aquí; si el ítem devuelve `false`, la ventana las procesa como navegación de lista en la fase de burbuja.
+> **Verificar en:** `MainWindowViewModel.cs` -- `RefreshResults`, `SearchAsync`, `NotifyUserNavigated`.
 
-## SearchSourceLimit
+---
 
-`MainWindowViewModel` define `SearchSourceLimit = 10` como número máximo de resultados que se piden a cada fuente en cada búsqueda, tanto instant como deferred.
+## 4. Busqueda web (antes "Google item")
 
-## Emoji mode: solo fuentes instant, sin debounce ni deferred
+Yottacast soporta multiples motores de busqueda web configurables. Cada motor puede funcionar en dos modos:
 
-Cuando la query empieza por `:`, `SearchAsync` retorna inmediatamente después de la fase instant, sin esperar el debounce de 250 ms ni lanzar las fuentes deferred.
+| Modo | Comportamiento | Score |
+|---|---|---|
+| `ShowAlways` | El motor aparece siempre que haya texto de busqueda (salvo si hay un motor con prefijo activo). | 3.0 |
+| `PrefixOnly` | El motor solo aparece cuando la query comienza con su prefijo (ej. `yt video`). | 3.5 |
 
-## Debounce solo para la fase deferred
+Cuando un motor de tipo `PrefixOnly` coincide, los motores `ShowAlways` se ocultan para no ensuciar los resultados.
 
-El `Task.Delay(250, ct)` se sitúa *después* de publicar los resultados instant. El usuario ve resultados de memoria de inmediato; solo el acceso a disco se retrasa.
+Los motores web no aparecen en modo emoji (queries que empiezan con `:`).
 
-## Reset de `_userNavigated` en cada nueva búsqueda
+> **Verificar en:** `WebSearchSource.cs` -- `Search`.
 
-`OnSearchTextChanged` pone `_userNavigated = false` al inicio de cada nueva query, antes de llamar a `SearchAsync`. Esto garantiza que la auto-selección de calculadora funcione en cada búsqueda nueva, independientemente de si el usuario navegó en la búsqueda anterior.
+---
 
-## `ShowNoResults` siempre se limpia en `RefreshResults`
+## 5. Atajos de teclado
 
-`RefreshResults` pone `ShowNoResults = false` en cada llamada. Solo `SearchAsync` puede activarlo a `true`, y únicamente cuando la fase deferred completa sin cancelación y `Results.Count == 0`.
+### Tecla Escape -- jerarquia de tres niveles
 
-## Footer de resultados
+El handler de ESC aplica esta logica en cascada:
 
-La ventana muestra un footer con el recuento de resultados (`Results.Count`) y los atajos de teclado (navegar con ↑↓, abrir con ↵). El footer solo es visible cuando `HasResults` es `true`.
+1. Si hay una busqueda diferida en curso (`IsSearching == true`): cancela la fase diferida **y limpia el texto de busqueda**.
+2. Si el texto no esta vacio (y no habia busqueda diferida): limpia el texto.
+3. Si el texto ya esta vacio: oculta la ventana.
 
-## Score visible en la UI
+### Tecla Enter -- activacion y paste
 
-La plantilla estándar de ítem (`ResultItemViewModel`) muestra el `Score` formateado a dos decimales junto a la etiqueta de categoría, con opacidad reducida (0.6). La lista de resultados tiene una altura máxima de 416 px con scroll vertical automático y sin scroll horizontal.
+Al pulsar Enter sobre un resultado seleccionado:
 
-## Apps recién instaladas (pending apps)
+1. Ejecuta la accion del resultado (`OnActivate`).
+2. Limpia el texto de busqueda.
+3. Oculta la ventana.
+4. Si el resultado tiene `PasteAfterActivate = true` (usado por emojis): devuelve el foco a la app anterior y simula un pegado (Cmd+V / Ctrl+V).
 
-Cuando el sistema detecta una app nueva via `FileSystemWatcher` (después del scan inicial), `MainWindowViewModel` la almacena en `_pendingAppInfos: List<AppInfo>`.
+### Cierre nativo de ventana
 
-**`StartTrackingNewAppsAsync()`** — se suscribe a `appSearch.AppAdded` solo tras `appSearch.WhenReady()`, de modo que las apps del scan inicial no se tratan como "recién instaladas".
+El atajo nativo de "cerrar ventana" se intercepta y se redirige a ocultar la ventana.
 
-**`ShowPendingApps()`** — reconstruye `Results` llamando `appSearch.CreateResultItem(info)` para cada `AppInfo` pendiente. Se reconstruyen los `ResultItemViewModel` en cada llamada para capturar el icono más reciente del caché (los iconos pueden no estar disponibles cuando llega el evento `AppAdded`).
+| Plataforma | Atajo |
+|---|---|
+| macOS | Cmd+W |
+| Windows | Ctrl+F4 |
+| Linux | Ctrl+W |
 
-**Ciclo de vida de `_pendingAppInfos`**:
-- **App instalada con buscador vacío** → se añade a `_pendingAppInfos` y se muestra inmediatamente.
-- **App instalada con buscador con texto** → se refresca `SearchInstant` con la query actual; si la app coincide, aparece. No va a `_pendingAppInfos`.
-- **Usuario empieza a escribir** → `_pendingAppInfos.Clear()` — las apps pendientes se descartan permanentemente.
-- **Usuario borra el texto (vuelve a vacío)** → `ShowPendingApps()` muestra las apps que quedaban (si aún no se había escrito nada).
-- **Hide/Show de Yottacast** → `_pendingAppInfos` persiste en memoria; las apps siguen visibles al volver a abrir.
-- **Icono cargado** (`IconLoaded`) → si hay pendientes y el buscador está vacío, `ShowPendingApps()` reconstruye la lista para reflejar el icono recién disponible.
+### Otros atajos
 
-## Navegación interna del grid emoji — comportamiento en los bordes
+| Atajo | Accion |
+|---|---|
+| Cmd+, (macOS) | Abre la ventana de Settings |
+| Alt+Space | Se consume sin accion para evitar el beep nativo de macOS |
 
-`EmojiGridResultViewModel.SelectDown()`/`SelectUp()` devuelven `false` si el movimiento saldría fuera del grid (primera o última fila), delegando la navegación al nivel de lista. `SelectNext()`/`SelectPrevious()` (flechas derecha/izquierda) siempre envuelven circularmente dentro de las celdas del grid.
+> **Verificar en:** `MainWindow.axaml.cs` -- `OnKeyDown`. `MacAppHandler.cs`, `WindowsAppHandler.cs`, `LinuxAppHandler.cs` -- `CloseWindowShortcut`.
+
+---
+
+## 6. Navegacion de lista
+
+### Navegacion circular
+
+Las flechas arriba/abajo navegan la lista de forma circular: al llegar al final vuelve al principio y viceversa. La formula es `(current + delta + Count) % Count`.
+
+### Captura de flechas en fase tunnel
+
+La ventana registra un handler en la fase tunnel (`RoutingStrategies.Tunnel`) que se ejecuta antes de que el `TextBox` procese las teclas. Esto permite que los items con navegacion interna (como el grid de emojis) capturen las flechas antes de que muevan el cursor del campo de texto.
+
+Cada item puede definir handlers opcionales (`OnLeft`, `OnRight`, `OnUp`, `OnDown`) que devuelven `bool`:
+- `true`: la tecla fue consumida por el item (el `TextBox` no mueve el cursor).
+- `false`: la tecla pasa al siguiente handler (movimiento de cursor del TextBox o navegacion de lista).
+
+### Navegacion del grid de emojis
+
+| Tecla | Comportamiento |
+|---|---|
+| Izquierda/Derecha | Navegacion circular dentro de las celdas del grid (al llegar al final vuelve al principio). |
+| Arriba/Abajo | Si el movimiento saldria del grid (primera o ultima fila), devuelve `false` y delega la navegacion al nivel de lista. |
+
+> **Verificar en:** `MainWindow.axaml.cs` -- `OnTunnelKeyDown`, `SelectNext`. `EmojiGridResultViewModel.cs` -- `SelectDown`, `SelectUp`, `SelectNext`, `SelectPrevious`. `BaseResultItemViewModel.cs` -- `OnLeft`, `OnRight`, `OnUp`, `OnDown`.
+
+---
+
+## 7. Ocultacion automatica del cursor del raton
+
+Mientras el usuario escribe, el cursor del raton se oculta para no distraer. Se vuelve a mostrar cuando el raton se mueve de su posicion original. El sistema rastrea la posicion en pantalla para distinguir movimientos reales del usuario de movimientos sinteticos causados por el redimensionamiento de la ventana (cuando aparecen resultados).
+
+> **Verificar en:** `MainWindow.axaml.cs` -- `HideCursor`, `ShowCursor`, `TrackOrShowCursor`, `OnTunnelPointerMoved`.
+
+---
+
+## 8. Seleccion con raton
+
+Mover el raton sobre un resultado lo selecciona (hover-to-select), pero solo si el cursor no esta oculto. Hacer clic (tap) sobre un resultado ejecuta la misma logica que Enter: activacion, limpieza de texto, ocultacion de ventana y paste si corresponde.
+
+> **Verificar en:** `MainWindow.axaml.cs` -- `OnResultsPointerMoved`, `OnResultsTapped`.
+
+---
+
+## 9. Apps recien instaladas (pending apps)
+
+Cuando el sistema detecta una app nueva (via `FileSystemWatcher`, despues del scan inicial), la ventana principal reacciona en funcion del estado del buscador:
+
+| Estado del buscador | Comportamiento |
+|---|---|
+| Vacio | La app se anade a la lista de pendientes y se muestra inmediatamente. |
+| Con texto | Se refresca la busqueda instant; si la app coincide con la query, aparece. No se anade a pendientes. |
+| El usuario empieza a escribir | Las apps pendientes se descartan permanentemente (`_pendingAppInfos.Clear()`). |
+| El usuario borra todo el texto | Se muestran las apps pendientes que quedaban (si no se habia escrito nada antes). |
+| La ventana se oculta y se reabre | Las apps pendientes persisten en memoria. |
+| Se carga un icono | Si hay pendientes y el buscador esta vacio, se reconstruye la lista para reflejar el icono recien disponible. |
+
+El tracking de apps nuevas solo se activa despues de que `ApplicationSearch` complete su scan inicial (`WhenReady()`), evitando que las apps del scan inicial se traten como "recien instaladas".
+
+> **Verificar en:** `MainWindowViewModel.cs` -- `StartTrackingNewAppsAsync`, `OnNewAppInstalled`, `ShowPendingApps`, `OnAppCacheChanged`, `OnSearchTextChanged`.
+
+---
+
+## 10. Banner de actualizacion
+
+Cuando hay una version nueva disponible, se muestra una franja clicable al pie de la ventana con el texto `"Yottacast {version} available -- click to download"`. El comando de clic es actualmente un placeholder sin implementacion.
+
+> **Verificar en:** `MainWindowViewModel.cs` -- `CheckForUpdateAsync`, `UpdateBannerClick`. `MainWindow.axaml` -- seccion "Update banner".
+
+---
+
+## 11. Score visible como modo debug
+
+En modo normal, cada item estandar muestra su etiqueta de categoria (ej. "App", "File", "Web"). Si el usuario mantiene pulsada la tecla Alt, la categoria se reemplaza por el score numerico (formato dos decimales). Esto permite depurar el ranking sin herramientas externas.
+
+> **Verificar en:** `MainWindow.axaml` -- DataTemplate de `ResultItemViewModel`, condicion `IsAltPressed`. `MainWindowViewModel.cs` -- `IsAltPressed`. `MainWindow.axaml.cs` -- `OnKeyDown` (Alt), `OnKeyUp` (Alt).
+
+---
+
+## 12. Hint de busqueda
+
+Cuando una fuente instant proporciona un hint (ej. la calculadora detecta un error corregible), se muestra como texto rojo debajo del campo de busqueda. Se limpia automaticamente en cada nueva busqueda o cuando el texto se vacia.
+
+> **Verificar en:** `MainWindowViewModel.cs` -- `SearchHint`. `MainWindow.axaml` -- TextBlock con binding a `SearchHint`. `GlobalSearch.cs` -- `SearchInstant` (extraccion de hint via `ISearchHintProvider`).
+
+---
+
+## 13. Layout de la ventana
+
+| Propiedad | Valor |
+|---|---|
+| Decoraciones del sistema | Ninguna (`SystemDecorations="None"`) |
+| Fondo | Transparente con borde redondeado |
+| Ancho | Definido por tema (`Theme.WindowWidth`) |
+| Alto | Ajustado al contenido (`SizeToContent="Height"`) |
+| Barra de tareas | No visible (`ShowInTaskbar="False"`) |
+| Redimensionable | No |
+| Altura maxima de la lista de resultados | 416 px con scroll vertical automatico, sin scroll horizontal |
+
+> **Verificar en:** `MainWindow.axaml` -- atributos del `Window` y propiedades del `ListBox`.

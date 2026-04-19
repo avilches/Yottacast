@@ -1,172 +1,217 @@
-# Fuentes de búsqueda
+# Fuentes de busqueda
 
-## ApplicationSearch
+Este documento describe las fuentes de busqueda de Yottacast: que datos ofrece cada una al usuario, bajo que condiciones se activan y como se coordinan entre si. El algoritmo de scoring detallado de cada fuente esta documentado en `docs/search-scoring.md` (apps, emoji) y en `docs/search-files.md` (documentos).
 
-Clase: `Yottacast.Core.Search.Application.ApplicationSearch` (implementa `IInstantSearchSource`)
+---
 
-Mantiene un `ConcurrentDictionary<string, AppInfo>` en memoria con las apps instaladas.
-Inyecta `UserSettings` para leer `AppDirectories`.
+## 1. Busqueda de aplicaciones
 
-**Arranque por plataforma** — toda la lógica OS-específica está en `PlatformProvider`:
-- **macOS**: `ScanAppsAsync` consulta Spotlight vía `SpotlightInterop.Query()` (P/Invoke a CoreServices `MDQuery`, no subprocess); `CreateAppWatchers` monta watchers en `*.app`.
-- **Windows**: `ScanAppsAsync` escanea `AppDirectories` buscando `.exe`; `CreateAppWatchers` en `*.exe`.
-- **Linux**: `ScanAppsAsync` escanea `AppDirectories` buscando `.desktop`; `CreateAppWatchers` en `*.desktop`.
+El usuario escribe un nombre (parcial o completo) y Yottacast muestra las aplicaciones instaladas que coinciden, con su icono, ordenadas por relevancia.
 
-Evento `AppAdded` notifica cuando se detecta una app nueva post-scan. `MainWindowViewModel` se suscribe tras `WhenReady()` para mostrar las apps recién instaladas mientras Yottacast está en ejecución (ver `ui-main-window.md`).
+### Invariantes
 
-**Cambio de AppDirectories en settings** ⚠️ TODO: `ReloadAppDirectories()` no está implementado. `SettingsWindowViewModel` gestiona `AppDirectories` con un `ObservableCollection` y un `CollectionChanged` que llama `Save()`, pero los cambios no recargan el caché de `ApplicationSearch`. Para implementarlo correctamente habría que hacer `Stop()` + `Start()` limpiando el caché.
+- El usuario nunca espera a que se carguen las apps: la UI solo acepta input despues de que el cache de apps esta listo (`WhenInstantReady`).
+- Las apps recien instaladas aparecen en la lista sin reiniciar Yottacast, gracias a los watchers de filesystem.
+- Si el usuario no ha escrito nada, las apps recien detectadas se muestran como resultados pendientes. Si esta buscando, se refrescan los resultados instant para incluir la nueva app si coincide con la query.
+- Solo se monitorizan directorios que existen en disco; los configurados pero inexistentes se ignoran silenciosamente.
+- El arranque es idempotente: llamadas repetidas a `Start()` son no-op. El ciclo `Stop()` + `Start()` es valido para reinicio, aunque actualmente ningun codigo lo ejecuta.
 
-**`AppInfo`** es un record simple con `Name` y `Path`. La carga de iconos ya no vive en `AppInfo` sino en `AppIconCache`.
+### Escaneo por plataforma
 
-**Guard de arranque idempotente** — `Start()` comprueba `_started` antes de lanzar el escaneo; llamadas repetidas son no-op. `Stop()` resetea `_started = false`, haciendo el ciclo `Stop()` + `Start()` válido para un reinicio limpio, aunque actualmente ningún código lo ejecuta. ⚠️ `_started` es un `bool` plano sin sincronización — llamadas concurrentes a `Start()` podrían crear una race condition.
+| Plataforma | Metodo de escaneo | Watchers | Filtro |
+|---|---|---|---|
+| macOS | Spotlight via P/Invoke a CoreServices `MDQuery` (sincrono, no subprocess) | `FileSystemWatcher` en `*.app` | `kMDItemContentType == 'com.apple.application-bundle'` |
+| Windows | Escaneo de directorios buscando `.exe` | `FileSystemWatcher` en `*.exe` | -- |
+| Linux | Escaneo de directorios buscando `.desktop` | `FileSystemWatcher` en `*.desktop` | -- |
 
-**`ApplicationSearch` implementa `IDisposable`** — `Dispose()` llama `Stop().GetAwaiter().GetResult()` de forma síncrona, limpiando watchers y caché.
+Los directorios de busqueda provienen de `UserSettings.ExpandedAppDirectories` (configurables por el usuario).
 
-**`AppInfo.IconPath` y thread safety** — el `Lazy<string?>` interno usa `LazyThreadSafetyMode.ExecutionAndPublication`: solo un thread ejecuta el factory de icono; los demás bloquean hasta que completa.
+### Consultas directas al cache
 
-**Watchers solo en directorios existentes** — `CreateAppWatchers` filtra las dirs con `Directory.Exists()` antes de montar el watcher; los directorios configurados pero inexistentes se ignoran silenciosamente.
+Otros servicios (`BrowserDiscovery`, `TerminalDiscovery`) consultan el cache de apps sin pasar por la pipeline de busqueda:
 
-**Métodos de consulta directa** — usados por `BrowserDiscovery` y `TerminalDiscovery` para consultar el caché sin pasar por la pipeline de búsqueda:
-
-| Método | Comportamiento |
+| Metodo | Comportamiento |
 |---|---|
-| `Find(string name)` | Búsqueda exacta en el caché por clave de nombre (case-insensitive); devuelve `AppInfo?` |
-| `FindAll()` | Devuelve todas las apps en caché como `IReadOnlyList<AppInfo>` |
+| `Find(name)` | Busqueda exacta por clave de nombre (case-insensitive). Devuelve `AppInfo?` |
+| `FindAll()` | Todas las apps en cache como `IReadOnlyList<AppInfo>` |
 
-## WebSearchSource
+### Limitacion conocida
 
-Clase: `Yottacast.Core.Search.WebSearch.WebSearchSource` (implementa `IInstantSearchSource`)
+El cambio de `AppDirectories` en settings no recarga el cache de `ApplicationSearch`. Para que surta efecto, el usuario debe reiniciar la aplicacion.
 
-Genera resultados para abrir búsquedas web en el navegador configurado.
+> **Verificar en:** `ApplicationSearch.cs` (Start, Stop, ScanAndWatchAsync, AddApp, Search, Find, FindAll), `PlatformProvider.cs` (ScanAppsAsync, CreateAppWatchers), `MacOsPlatformProvider.cs` (ScanAppsAsync, CreateAppWatchers), `SpotlightInterop.cs` (Query).
 
-**Motores predefinidos** — definidos como lista estática en `WebSearchDefaults.Engines` (`WebSearchEngine.cs`). Cada motor tiene `Id`, `Name`, `QueryUrl` (con `{0}` como placeholder) y `IconResource` (nombre del embedded resource PNG). Ver `WebSearchDefaults` para la lista completa.
+---
 
-**Configuración por motor** — almacenada en `UserSettings.WebSearchEngines` (`List<WebSearchEngineSettings>`). Cada entrada tiene `Id`, `Enabled`, `Mode`, `Prefix` y `QueryUrl?`. Los valores por defecto de cada campo están en `WebSearchDefaults.DefaultSettingsFor(id)`.
+## 2. Busqueda web
 
-**URL de búsqueda**: `WebSearchSource` usa `userConfig.QueryUrl` si el usuario lo ha personalizado explícitamente; en caso contrario usa el `QueryUrl` del engine por defecto. Esto permite actualizar las URLs por defecto entre versiones sin sobreescribir las personalizaciones del usuario.
+Yottacast permite lanzar busquedas web en multiples motores directamente desde el launcher. Los resultados son enlaces que se abren en el navegador configurado.
 
-**Modos de activación**:
-- `ShowAlways` — el motor aparece siempre (para cualquier query no vacía). Score: 3.0.
-- `PrefixOnly` — solo aparece si la query empieza por `"{prefix} "` (prefijo + espacio). La query de búsqueda es el texto tras el espacio. Score: 3.5 (intención explícita del usuario).
+### Invariantes
 
-Queries que empiezan por `:` (modo emoji) se ignoran completamente.
+- Las queries que empiezan por `:` (modo emoji) nunca generan resultados web.
+- Cuando un motor con prefijo coincide, los motores `ShowAlways` se ocultan para evitar ruido. Solo se muestran los motores cuyo prefijo fue activado explicitamente.
+- Si el usuario ha personalizado la URL de un motor, se usa esa URL. Si no, se usa la URL por defecto del motor. Esto permite actualizar URLs por defecto entre versiones sin sobreescribir personalizaciones.
+- Si falta el icono PNG embebido de un motor, el hueco del icono queda vacio sin error.
+- Motores anadidos en versiones futuras aparecen automaticamente para usuarios existentes (merge de settings al cargar).
 
-**Título del resultado**: `"{EngineName}: {searchQuery}"`, p. ej. `"Google: hola"`.
+### Modos de activacion
 
-**Iconos** — los PNGs se embeben como `EmbeddedResource` en `Yottacast.Core` bajo `Search/WebSearch/Icons/{id}.png`. Se cargan en memoria al construir la clase. Si falta el PNG de un motor, `IconBytes` es `null` y el hueco del icono queda vacío sin error.
+| Modo | Cuando aparece | Score | Ejemplo |
+|---|---|---|---|
+| `ShowAlways` | Siempre (query no vacia, sin prefijo activo de otro motor) | 3.0 | Escribir "hola" muestra "Google: hola" |
+| `PrefixOnly` | Solo si la query empieza por `"{prefijo} "` (prefijo + espacio) | 3.5 | Escribir "y gatos" muestra "YouTube: gatos" |
 
-**Merge de settings** — al cargar `UserSettings`, los engines presentes en `WebSearchDefaults.Engines` pero ausentes del fichero de settings se añaden con sus valores por defecto. Esto garantiza que engines añadidos en versiones futuras aparezcan automáticamente para usuarios existentes sin borrar sus personalizaciones.
+### Titulo del resultado
 
-## UserDocumentSearch
+El formato es `"{NombreMotor}: {queryBusqueda}"`, p. ej. `"Google: hola"`. El subtitulo siempre es `"Open in browser"`.
 
-Clase: `Yottacast.Core.Search.UserDocuments.UserDocumentSearch` (implementa `IDeferredSearchSource`)
+### Motores disponibles por defecto
 
-Ver `docs/search-files.md` para la documentación completa de esta fuente, el backend `FileSearch`, los backends por plataforma y el scoring.
+Los motores predefinidos cubren categorias generales (Google, Bing, DuckDuckGo), shopping (Amazon), video (YouTube, Twitch), social (Reddit, X, LinkedIn, Pinterest, TikTok), conocimiento (Wikipedia, Wolfram Alpha), desarrollo (GitHub, Stack Overflow, npm, PyPI, MDN), entretenimiento (IMDb, Spotify) y mapas (Google Maps). Cada uno tiene un prefijo por defecto y puede estar habilitado o deshabilitado de fabrica.
 
-**Mínimo de caracteres** — `SearchAsync` hace `yield break` si `query.Length < 2`. Nunca se lanza una búsqueda de un solo carácter.
+> **Verificar en:** `WebSearchSource.cs` (Search, LoadIcons), `WebSearchEngine.cs` (WebSearchDefaults.Engines, DefaultSettingsFor), `UserSettings.cs` (MergeWebSearchEngines).
 
-**Timeout interno** — `UserDocumentSearch` crea un `CancellationTokenSource` vinculado al `ct` del caller y le aplica `CancelAfter(timeoutMs)` (defecto: 20 s). La task de background que llama a `fileSearch.SearchAsync` usa este CTS derivado. El `await foreach` del canal usa el `ct` original del caller.
+---
 
-**Task de background con `CancellationToken.None`** — la `Task.Run` que ejecuta la búsqueda se inicia con `CancellationToken.None`, así la tarea no se cancela externamente; la cancelación se propaga a través del CTS derivado a `fileSearch.SearchAsync`.
+## 3. Busqueda de documentos del usuario
 
-**Snapshots basados en tiempo, no en conteo** — los snapshots intermedios se emiten como máximo una vez cada 200 ms (`SnapshotIntervalMs`). Además, siempre se emite un snapshot final después de que `fileSearch.SearchAsync` termina o es cancelada (si el buffer no está vacío).
+Busca archivos en las carpetas configuradas del usuario (Downloads, Desktop, Documents, etc.) usando el indice nativo del sistema operativo.
 
-**Wildcards** — si la query contiene `*`, se salta toda la lógica de tokenización y scoring multi-token; el resultado recibe score fijo 0.5 independientemente del nombre del archivo.
+### Invariantes
 
-## Scoring
+- Nunca se lanza una busqueda de archivos si la query tiene menos de 2 caracteres.
+- Las queries que empiezan por `:` (modo emoji) nunca activan la busqueda de archivos (las fuentes deferred no se lanzan en modo emoji).
+- La busqueda de archivos tiene un timeout de 20 segundos. Si Spotlight (u otro backend) no termina a tiempo, se cancelan y se muestran los resultados parciales obtenidos hasta ese momento.
+- Los resultados se emiten progresivamente: como maximo un snapshot cada 200 ms, mas un snapshot final al terminar o cancelarse.
+- Si la query contiene `*`, se usa como wildcard (se salta la tokenizacion y scoring multi-token; score fijo 0.5).
+- Cada archivo muestra un badge con el icono de la aplicacion por defecto para su extension, salvo que el badge sea identico al icono principal del archivo (comparacion semantica via Info.plist en macOS).
 
-El algoritmo de scoring de cada fuente está documentado en `docs/search-scoring.md` (apps, emoji y scores entre fuentes) y en `docs/search-files.md` (documentos).
+### Backend por plataforma
 
-## GlobalSearch
+| Plataforma | Backend | Metodo |
+|---|---|---|
+| macOS | Spotlight via P/Invoke a CoreServices `MDQuery` | Predicate `kMDItemFSName == '*query*'cd` |
+| Windows | Windows Search Index | (pendiente de implementacion completa) |
+| Linux | plocate / locate | (pendiente de implementacion completa) |
 
-Clase: `Yottacast.Core.Search.GlobalSearch`
+### Iconos de badge por extension
 
-Orquesta todas las sources registradas por DI. Distingue dos listas: `_instantSources` y `_deferredSources`.
+Para cada archivo encontrado, se intenta cargar el icono de la aplicacion por defecto asociada a su extension. El badge se suprime en dos casos:
+1. La ruta de la app por defecto es la misma que la del archivo (el archivo ES una app).
+2. La app registra un icono de documento personalizado para esa extension en su `Info.plist` (campo `CFBundleTypeIconFile` en `CFBundleDocumentTypes`), lo que indica que macOS ya usa el icono de la app como icono del documento.
 
-**Ciclo de vida**:
-- `Start()` llama `Start()` en todas las sources (fire-and-forget).
-- `WhenInstantReady()` — espera solo las instant sources; es el gate que usa la UI antes de aceptar input.
-- `WhenReady()` — espera todas (instant + deferred).
-- `Stop()` cancela y limpia todas las sources en paralelo.
+> **Verificar en:** `UserDocumentSearch.cs` (SearchAsync, PreloadBadgeIconAsync), `FileSearch.cs` (SearchAsync), `MacOsPlatformProvider.cs` (SearchFilesAsync, AreIconsSame, GetDefaultAppPath), `SpotlightInterop.cs` (Query), `AppDefaults.cs` (FileSearchMinQueryLength, FileSearchTimeoutMs, FileSearchSnapshotIntervalMs).
 
-**Búsqueda instant**: `SearchInstant(query, limit)` consulta todas las instant sources en secuencia, combina sus resultados, los ordena por score y aplica el limit global. Cada source recibe el mismo `limit` individualmente.
+---
 
-**Búsqueda deferred — merge por slots**: `SearchDeferredAsync` usa `SearchSourcesAsync`, que asigna un slot por source. Cuando cualquier source emite un nuevo snapshot, su slot se actualiza y se yields la unión ordenada de todos los slots. Así la UI refleja la mejor combinación disponible en cada instante, incluso si una source es más lenta.
+## 4. Orquestacion de la busqueda (GlobalSearch)
 
-La coordinación interna usa un `Channel<(int sourceIndex, snapshot)>` y `Task.WhenAll` para completar el canal cuando todas las sources terminan.
+`GlobalSearch` coordina todas las fuentes registradas. Las fuentes se dividen en dos categorias:
 
-**Cancelación en las tasks de source** — cada task de source se inicia con `CancellationToken.None` (no con el `ct` del caller), de modo que no puede ser abortada externamente. La cancelación llega a la source vía el `ct` pasado a su `SearchAsync`. `OperationCanceledException` se captura silenciosamente dentro de cada task; la cancelación no produce errores en el canal.
+| Categoria | Comportamiento | Ejemplos |
+|---|---|---|
+| Instant (`IInstantSearchSource`) | Respuesta sincrona, en memoria. Se consultan sin delay. | Apps, Web, Calculadora, Emoji |
+| Deferred (`IDeferredSearchSource`) | Respuesta asincrona con snapshots progresivos. Se lanzan tras un debounce. | Documentos |
 
-## Interfaces de ciclo de vida
+### Invariantes del ciclo de vida
 
-`IInstantSearchSource` y `IDeferredSearchSource` comparten el mismo contrato de ciclo de vida:
+- `Start()` inicia todas las fuentes (fire-and-forget). Cada fuente arranca en background.
+- `WhenInstantReady()` completa cuando todas las fuentes instant estan listas. La UI no acepta input antes de este punto.
+- `WhenReady()` completa cuando todas las fuentes (instant + deferred) estan listas.
+- `Stop()` cancela y limpia todas las fuentes en paralelo.
 
-| Método | Contrato |
-|---|---|
-| `Start()` | Fire-and-forget. No devuelve Task — el arranque es siempre async interno. |
-| `WhenReady()` | Task que completa cuando la source está lista para servir queries. |
-| `Stop()` | Cancela y limpia. Devuelve Task (puede ser no-op). |
+### Contrato de las interfaces
 
-`IInstantSearchSource` expone `Search(string query, int limit) → IReadOnlyList<ResultItemViewModel>` (síncrono).
-`IDeferredSearchSource` expone `SearchAsync(string query, int limit, CancellationToken) → IAsyncEnumerable<IReadOnlyList<ResultItemViewModel>>` — cada elemento es un snapshot completo y ordenado, no un resultado individual.
+| | `IInstantSearchSource` | `IDeferredSearchSource` |
+|---|---|---|
+| `Start()` | `void` — fire-and-forget | `void` — fire-and-forget |
+| `WhenReady()` | `Task` — completa cuando esta lista | `Task` — completa cuando esta lista |
+| `Stop()` | `Task` | `Task` |
+| Busqueda | `Search(query, limit)` → `IReadOnlyList<BaseResultItemViewModel>` (sincrono) | `SearchAsync(query, limit, ct)` → `IAsyncEnumerable<IReadOnlyList<BaseResultItemViewModel>>` (cada elemento es un snapshot completo) |
 
-## Flujo de búsqueda en MainWindowViewModel
+### Busqueda instant con hints
 
-`OnSearchTextChanged` cancela la búsqueda anterior (CTS) y arranca `SearchAsync`. Si el texto está vacío, limpia los snapshots y llama `ShowPendingApps()`. Si el texto es no vacío, limpia `_pendingAppInfos` permanentemente (las apps recién instaladas desaparecen en cuanto el usuario empieza a buscar).
+`SearchInstant` devuelve una tupla `(Items, Hint)`. Los items son los resultados ordenados por score y limitados. El hint es un texto opcional proporcionado por fuentes que implementan `ISearchHintProvider` (p. ej. la calculadora), que la UI muestra como sugerencia bajo el campo de busqueda.
 
-`SearchAsync` opera en dos fases:
+### Merge de resultados deferred por slots
 
-**Fase 1 — instant (sin delay)**:
-1. Llama `globalSearch.SearchInstant(query, limit: SearchSourceLimit)` — síncrono, en memoria. Incluye los resultados de `WebSearchSource`.
-2. Llama `RefreshResults()` para actualizar la UI.
-3. Si la query empieza por `:` (modo emoji), se detiene aquí — las fuentes deferred no se lanzan.
+Cada fuente deferred ocupa un slot. Cuando cualquier fuente emite un nuevo snapshot, su slot se actualiza y se emite la union ordenada de todos los slots. Asi la UI refleja la mejor combinacion disponible en cada instante, incluso si una fuente es mas lenta que otra.
 
-**Fase 2 — deferred (debounce 250ms)**:
-5. Espera 250ms con `Task.Delay(250, ct)`. Si el usuario sigue escribiendo, la CTS se cancela y se sale aquí.
-6. Crea un nuevo `_deferredCts` vinculado al `ct` del caller para poder cancelar la búsqueda deferred independientemente (via `CancelDeferredSearch()`).
-7. Itera `globalSearch.SearchDeferredAsync(...)` actualizando `_deferredSnapshot` en cada snapshot y llamando `RefreshResults()`.
-8. Al terminar, si la búsqueda completó (no fue cancelada), actualiza `ShowNoResults`.
+La coordinacion interna usa un `Channel` unbounded. Cada tarea de fuente se inicia con `CancellationToken.None` (la cancelacion llega via el token pasado a `SearchAsync`). Las `OperationCanceledException` se capturan silenciosamente dentro de cada tarea.
 
-**`RefreshResults()`** — merge y selección:
-- Combina `_instantSnapshot` + `_deferredSnapshot`, ordena por score, actualiza `Results`.
-- La lógica de selección visual (auto-selección de calculadora, preservación del ítem previo) está documentada en `ui-main-window.md`.
+> **Verificar en:** `GlobalSearch.cs` (SearchInstant, SearchDeferredAsync, SearchSourcesAsync), `IInstantSearchSource.cs`, `IDeferredSearchSource.cs`, `ISearchHintProvider.cs`.
 
-**`SearchSourceLimit`**: cada source recibe un límite de 10 resultados. El merge global también aplica un límite de 10.
+---
 
-## FileSearch y PlatformProvider
+## 5. Flujo de busqueda en la UI
 
-Ver `docs/search-files.md` para la documentación de `FileSearch` y los backends por plataforma (macOS Spotlight, Windows Search, Linux locate/plocate).
+Cuando el usuario escribe en el campo de busqueda, la UI ejecuta un flujo en dos fases.
 
-## ApplicationSearch — detalles de implementación
+### Fase 1 -- Instant (sin delay)
 
-**`Stop()`** limpia el caché, cancela el CTS de background, elimina todos los watchers y resetea `_readyTcs`. Esto permite un reinicio limpio llamando de nuevo a `Start()`, aunque actualmente ningún código lo hace.
+1. Se cancela cualquier busqueda anterior.
+2. Si el texto esta vacio: se limpian los snapshots, se muestran las apps pendientes (recien instaladas) y se termina.
+3. Si el texto no esta vacio: se limpian las apps pendientes y se consultan todas las fuentes instant.
+4. Se actualizan los resultados en pantalla.
+5. Si la query empieza por `:` (modo emoji): se detiene aqui. Las fuentes deferred no se lanzan.
 
-**`AddApp()`** registra la app en el diccionario. Para apps nuevas (`isNew`): llama `iconCache.PreloadAsync(path)` y dispara `AppAdded`. Para apps ya conocidas (re-detección por watcher, p.ej. el bundle acababa de estar incompleto al primer evento): llama `iconCache.Reload(path)` para forzar recarga del icono, y no dispara `AppAdded`.
+### Fase 2 -- Deferred (debounce 250 ms)
 
-**`CreateResultItem(AppInfo, double score = 1.0)`**: factory que construye un `ResultItemViewModel` para una app. Usado internamente por `Search()` (con el score de `NameMatcher`) y externamente por `MainWindowViewModel` para mostrar apps recién instaladas. La categoría es `"Applications"`, el icono fallback es `"📱"`; si `AppIconCache` ya tiene los bytes del icono en memoria, se asignan a `IconBytes`.
+6. Se espera 250 ms. Si el usuario sigue escribiendo, la espera se cancela y se vuelve al paso 1.
+7. Se crea un CTS vinculado para poder cancelar la busqueda deferred independientemente.
+8. Se iteran los snapshots de las fuentes deferred, actualizando la UI en cada snapshot.
+9. Al terminar (si no fue cancelada), se muestra "sin resultados" si la lista esta vacia.
 
-## Iconos de apps
+### Merge y seleccion de resultados
 
-Los iconos se gestionan en dos capas: carga (plataforma + caché) y renderizado (UI).
+Los resultados instant y deferred se combinan, se ordenan por score descendente y se muestran. La logica de seleccion automatica:
+- Si hay un resultado de calculadora/conversion y el usuario no ha navegado manualmente, se auto-selecciona.
+- Si el usuario navego manualmente y su seleccion anterior sigue en la lista, se preserva.
+- En caso contrario, se selecciona el primer resultado.
 
-**`AppIconCache`** (ver `Yottacast.Core/Services/AppIconCache.cs`) es un servicio singleton con caché de dos niveles:
+### Limites
 
-- **Memoria**: `ConcurrentDictionary<string, byte[]?>` indexado por la ruta del bundle (`.app`). `Get(appPath)` es O(1) y se llama en cada `Search()`.
-- **Disco**: `~/.cache/yottacast/app-icons/{sha1(appPath)}_{mtime_unix}.png`. El sufijo de mtime invalida la entrada automáticamente cuando la app se actualiza. Los archivos huérfanos de versiones anteriores no se limpian activamente.
+Cada fuente recibe un limite de 10 resultados. El merge global tambien se limita a 10 resultados visibles (configurable en `AppDefaults.SearchSourceLimit`).
 
-`PreloadAsync(appPath)` se llama (fire-and-forget) desde `AddApp()` para apps nuevas. Comprueba disco primero; si falla, llama a `platform.GetAppIconBytes`. Ignora llamadas duplicadas para la misma ruta (comprueba `ContainsKey` antes de lanzar el Task).
+> **Verificar en:** `MainWindowViewModel.cs` (OnSearchTextChanged, SearchAsync, RefreshResults, OnNewAppInstalled, OnAppCacheChanged), `AppDefaults.cs` (SearchSourceLimit, SearchDebouncedMs).
 
-`Reload(appPath)` — invalida la entrada en memoria (`TryRemove`) y relanza la carga. Usado cuando una app ya conocida es re-detectada por el watcher (p.ej. el bundle seguía copiándose cuando se disparó el evento `Created` inicial). Puede producir cargas concurrentes si el watcher dispara muchos eventos `Changed` seguidos; la última escritura gana.
+---
 
-Cuando un icono termina de cargarse con bytes no nulos, `AppIconCache` dispara `IconLoaded`. `ApplicationSearch` expone este evento; `MainWindowViewModel` se suscribe en `Initialize()` y re-ejecuta `SearchInstant` en el hilo UI para refrescar los resultados visibles con el icono recién disponible.
+## 6. Iconos de aplicaciones
 
-**`PlatformProvider.GetAppIconBytes`** — virtual, devuelve `null` por defecto:
+Los iconos de apps se gestionan en dos capas: carga (plataforma + cache) y renderizado (UI).
 
-- **macOS**: usa `NSWorkspace.iconForFile:` vía P/Invoke a `libobjc.dylib`. Tras obtener el `NSImage`, llama `setSize: 128×128` para forzar la representación de alta resolución, extrae `TIFFRepresentation`, convierte a PNG vía `NSBitmapImageRep` y devuelve los bytes. Ver `MacOsPlatformProvider.GetAppIconBytes`.
+### Cache de dos niveles (AppIconCache)
+
+| Nivel | Estructura | Acceso |
+|---|---|---|
+| Memoria | `ConcurrentDictionary<string, byte[]?>` por ruta de bundle | `Get(appPath)` — O(1), se llama en cada `Search()` |
+| Disco | `~/.cache/yottacast/app-icons/{sha1(ruta)}_{mtime_unix}_v2.png` | Consultado en `PreloadAsync` antes de llamar a la plataforma |
+
+### Invariantes
+
+- El sufijo `_v2` y el mtime en el nombre del fichero invalidan la entrada automaticamente cuando la app se actualiza.
+- `PreloadAsync` ignora llamadas duplicadas para la misma ruta (comprueba `ContainsKey` antes de lanzar la tarea).
+- `Reload` invalida la entrada en memoria y relanza la carga. Se usa cuando una app conocida es re-detectada por el watcher (p. ej. el bundle seguia copiandose al primer evento).
+- Cuando un icono termina de cargarse con bytes no nulos, se dispara `IconLoaded`. La UI se suscribe y re-ejecuta `SearchInstant` en el hilo UI para refrescar los iconos visibles.
+- Los archivos huerfanos de versiones anteriores en la cache de disco no se limpian activamente.
+
+### Obtencion del icono por plataforma
+
+- **macOS**: usa `NSWorkspace.iconForFile:` via P/Invoke a `libobjc.dylib`. Dibuja la imagen en un `NSImage` de 64x64 puntos (128x128 pixeles en Retina), extrae `TIFFRepresentation`, convierte a PNG via `NSBitmapImageRep` y devuelve los bytes.
 - **Windows y Linux**: no implementado, devuelve `null`.
 
-**Renderizado**: el converter `PathToAppIconConverter` (en `Yottacast/Converters/`) recibe `byte[]?` de `ResultItemViewModel.IconBytes` y devuelve un `Bitmap` de Avalonia usando `ConditionalWeakTable<byte[], Bitmap>` como caché, de modo que los bitmaps se liberan junto con los bytes que los originaron. En el DataTemplate de `ResultItemViewModel` se muestra la `Image` cuando `IconBytes != null` y el emoji fallback cuando es `null`.
+### Renderizado en la UI
 
-## RandomSearch
+`PathToAppIconConverter` recibe `byte[]?` de `IconBytes` y devuelve un `Bitmap` de Avalonia. Usa `ConditionalWeakTable<byte[], Bitmap>` como cache para que los bitmaps se liberen junto con los bytes que los originaron. Si `IconBytes` es `null`, se muestra el emoji fallback.
 
-`RandomSearch` es una `IDeferredSearchSource` de prueba. Está registrada como singleton en el contenedor DI, pero la línea que la conecta como `IDeferredSearchSource` activa en `GlobalSearch` está comentada en `App.axaml.cs`. Emite hasta 5 resultados con scores aleatorios (0.5–1.0) con delays progresivos entre ellos. Cada snapshot es acumulativo (añade al array existente antes de yield). Ver `Yottacast.Core.Search.RandomSearch`.
+> **Verificar en:** `AppIconCache.cs` (PreloadAsync, Reload, Load, DiskCachePath), `MacOsPlatformProvider.cs` (GetAppIconBytes), `PathToAppIconConverter.cs`, `ApplicationSearch.cs` (CreateResultItem, IconLoaded).
+
+---
+
+## 7. RandomSearch (solo testing)
+
+`RandomSearch` es una fuente deferred de prueba. Esta registrada como singleton en el contenedor DI pero la linea que la conecta como `IDeferredSearchSource` esta comentada en `App.axaml.cs`. Emite hasta 5 resultados con scores aleatorios (0.5 a 1.0) con delays progresivos (200 ms + 50 ms por resultado). Cada snapshot es acumulativo.
+
+> **Verificar en:** `RandomSearch.cs`, `App.axaml.cs` (linea comentada de registro DI).

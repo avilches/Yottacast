@@ -1,104 +1,156 @@
-# Búsqueda de emojis
+# Busqueda de emojis
 
-`EmojiSearch` es un `IInstantSearchSource` que se activa cuando la query empieza por `:`. Devuelve un único `EmojiGridResultViewModel` que agrupa todos los emojis candidatos en un grid navegable con ←/→/↑/↓ (ver `EmojiGridResultViewModel.Columns` para el número de columnas). Al activarlo copia el emoji seleccionado al portapapeles y lo pega automáticamente en la app de destino.
+## Proposito
 
-## Datos de origen
+Yottacast permite buscar e insertar emojis en cualquier aplicacion. El usuario escribe `:` seguido de un termino de busqueda en el launcher y obtiene un grid visual con los emojis candidatos. Al confirmar la seleccion, el emoji se copia al portapapeles y se pega automaticamente en la aplicacion de destino.
 
-La fuente de datos es [iamcal/emoji-data](https://github.com/iamcal/emoji-data), un JSON de ~1.25 MB con más de 1600 entradas. El fichero `Search/Emoji/emoji-data.json` se descarga en tiempo de compilación si no existe (target `DownloadEmojiData` en el `.csproj`) y se embute en el ensamblado como `EmbeddedResource`. Para actualizar a una versión más reciente, basta con eliminar `Search/Emoji/emoji-data.json` y recompilar. No hay descarga en runtime. De los muchos campos del JSON original, solo se conservan los necesarios para mostrar y buscar emojis usando la representación nativa del SO (no sprites PNG). Ver `EmojiDataLoader.ParseRawJson` para los campos exactos que se extraen.
+---
 
-## EmojiDataLoader
+## Activacion y query
 
-Clase instanciable (registrada en DI) que gestiona el ciclo parseo → caché. `EmojiSearch` la llama desde `Start()`.
+| Query         | Comportamiento                                                                        |
+|---------------|---------------------------------------------------------------------------------------|
+| `:`           | Muestra los 20 emojis con menor `sort_order` positivo (orden Unicode CLDR). Se excluyen los que tienen `sort_order == 0`. |
+| `:smile`      | Filtra todos los emojis cuyo nombre o keywords coincidan con "smile", ordenados por relevancia descendente, limitados por el parametro `limit` de la pipeline. |
+| `: smile`     | Equivalente a `:smile` -- los espacios tras los dos puntos se ignoran.                |
+| `smile`       | Sin `:` inicial, la busqueda de emojis no se activa. El usuario nunca ve emojis si no escribe `:`. |
 
-### Caché en disco
+**Invariante:** la busqueda de emojis solo se activa cuando la query empieza por `:`. Cualquier otro prefijo no produce resultados de emojis.
 
-La caché se guarda en `AppData/Yottacast/emoji-cache.json` (misma carpeta que `settings.json`). El formato es un array de arrays de 5 elementos `[char, name, [keywords], category, sortOrder]`, mucho más compacto que el JSON original (~100-150 KB). Se escribe de forma atómica (fichero temporal + `File.Move`) para evitar corromperse ante un cierre inesperado.
+> **Verificar en:** `EmojiSearch.Search()` -- condicion `query.StartsWith(':')`; constante `AppDefaults.EmojiDefaultLimit` (valor 20) en `AppDefaults.cs`.
 
-El nombre del fichero está definido como constante en `EmojiDataLoader`. No hay TTL: la caché es válida indefinidamente. Para forzar una regeneración, basta con eliminar el fichero de caché.
+---
 
-### Flujo de carga
+## Presentacion del grid
 
-```
-LoadAsync(cacheDir)
-  ├─ ¿existe emoji-cache.json en disco (cacheDir)?  →  ParseCompactCache  →  return entries
-  ├─ ¿embedded emoji-cache.json?  →  ParseCompactCache  →  return entries
-  └─ else
-       ├─ lee EmbeddedResource (emoji-data.json compilado en el ensamblado)
-       ├─ ParseRawJson  →  WriteCompactCache(disco)  →  return entries
-       └─ si falla el parseo  →  return []  (sin crash; emojis simplemente no aparecen)
-```
+Los resultados se muestran como un unico item de tipo grid en la lista de resultados, en lugar de items individuales. El grid contiene:
 
-El `emoji-cache.json` embebido se genera en desarrollo y se incluye en el repo; ver `docs/release-workflow.md` para el ciclo completo.
+- Una cuadricula de celdas de 40x40 px con 8 columnas (constante `AppDefaults.EmojiColumns`).
+- Debajo del grid, informacion del emoji seleccionado: nombre, categoria y keywords.
 
-### EmojiEntry y pre-tokenización
+El primer emoji del grid aparece seleccionado inicialmente. El icono y titulo del resultado en la lista se toman del primer emoji del grid. La categoria del resultado siempre es `"Emoji"` y el score es `3.5`.
 
-`EmojiEntry` almacena los cinco campos del JSON (`Char`, `Name`, `Keywords`, `Category`, `SortOrder`) más una propiedad `NameTokens` inicializada en construcción con un simple space-split del `Name`. Los nombres de emoji son siempre minúsculas separadas por espacios, por lo que space-split es suficiente para obtener los mismos tokens que `NameMatcher.SplitTokens`. Esto evita re-tokenizar en cada búsqueda.
+**Invariante:** siempre se devuelve exactamente 0 o 1 resultado (nunca multiples items en la lista). Si no hay emojis que coincidan, no se muestra ningun resultado.
 
-### Parseo del JSON raw
+> **Verificar en:** `EmojiSearch.MakeGrid()` -- construccion del `EmojiGridResultViewModel`; `EmojiGridResultView.axaml` -- template AXAML con `UniformGrid` y panel de informacion.
 
-Por cada entrada del JSON:
-- Se descarta si `obsoleted_by` no es null (emojis reemplazados por versiones gendered o más recientes).
-- Se descarta si el campo `unified` está ausente o es una cadena vacía.
-- El campo `unified` (hexadecimales separados por `-`) se convierte a carácter usando `char.ConvertFromUtf32` por cada segmento. Si la conversión lanza una excepción (codepoint malformado), la entrada se descarta silenciosamente en lugar de propagar el error.
-- El `name` (en mayúsculas en el JSON) se normaliza a minúsculas.
-- Los `short_names` (identifiers tipo `:thumbsup:`) y los `texts` (ASCII como `:D`) se combinan en un único array `Keywords`.
+---
 
-## ViewModels del grid
+## Navegacion con teclado
 
-### EmojiCellViewModel
+| Tecla     | Comportamiento                                                                                          |
+|-----------|---------------------------------------------------------------------------------------------------------|
+| Izquierda | Mueve la seleccion a la celda anterior (con wrap circular al final del grid). Siempre consume el evento. |
+| Derecha   | Mueve la seleccion a la celda siguiente (con wrap circular al inicio del grid). Siempre consume el evento. |
+| Arriba    | Mueve la seleccion una fila hacia arriba. Si ya esta en la primera fila, no consume el evento y la ventana gestiona la navegacion de lista. |
+| Abajo     | Mueve la seleccion una fila hacia abajo. Si ya esta en la ultima fila, no consume el evento y la ventana gestiona la navegacion de lista. |
+| Enter     | Copia el emoji seleccionado al portapapeles, oculta el launcher y pega automaticamente en la app anterior. |
 
-Representa una celda individual: `Char` (el carácter emoji), `Name`, `Category`, `Keywords` e `IsSelected` (con INPC manual). Expone además `KeywordsText`, una propiedad calculada que une `Keywords` con `", "` para su uso directo en bindings; devuelve `""` si `Keywords` está vacío. El template AXAML aplica la clase CSS `emoji-selected` al `Border` cuando `IsSelected` es true. `EmojiCellViewModel` no hereda de `ObservableObject` — implementa `INotifyPropertyChanged` manualmente.
+**Invariante:** las teclas izquierda/derecha nunca escapan del grid. Las teclas arriba/abajo escapan solo cuando no hay fila disponible en esa direccion, permitiendo al usuario navegar a otros resultados de la lista.
 
-### EmojiGridResultViewModel
+> **Verificar en:** `EmojiGridResultViewModel.SelectNext()`, `SelectPrevious()` (wrap circular), `SelectUp()`, `SelectDown()` (devuelven `bool`); `MainWindow.axaml.cs` -- `OnTunnelKeyDown()` maneja las flechas en fase tunnel.
 
-Hereda de `ResultItemViewModel`. Contiene la lista de `EmojiCellViewModel` (propiedad `Cells`) y gestiona el índice seleccionado (`SelectedEmojiIndex`). Al cambiar el índice, actualiza `IsSelected` en las celdas afectadas y notifica `SelectedEmoji` (la celda activa). El setter de `SelectedEmojiIndex` incluye una guarda `Cells.Count > 0` que evita `IndexOutOfRange` si el grid está vacío. Expone `SelectNext()` y `SelectPrevious()` con wrap circular. Tampoco hereda de `ObservableObject` — implementa `INotifyPropertyChanged` manualmente, disparando cambios para `SelectedEmojiIndex` y `SelectedEmoji`.
+---
 
-El `Icon` y el `Title` del `EmojiGridResultViewModel` se inicializan con el `Char` y el `Name` de la primera celda del grid; `Category` se fija siempre a `"Emoji"` y `Score` a `3.5`.
+## Flujo de activacion (Enter)
 
-### Template AXAML del grid
+Cuando el usuario pulsa Enter sobre el grid:
 
-El grid usa un `UniformGrid` con 8 columnas (valor constante `EmojiGridResultViewModel.Columns = 8`). Cada celda es un `Border` de 40×40 px con `CornerRadius=8`. Debajo del grid, un `StackPanel` centrado muestra tres líneas: `SelectedEmoji.Name` (en `Theme.ItemTitle`), `SelectedEmoji.Category` (en `Theme.ItemCategory`) y `SelectedEmoji.KeywordsText` (en `Theme.ItemSubtitle`, con `TextWrapping="Wrap"` y `MaxWidth=400`).
+1. Se copia el caracter emoji seleccionado al portapapeles via `ClipboardService`.
+2. Se limpia el texto de busqueda.
+3. Se oculta la ventana del launcher.
+4. Se restaura el foco a la aplicacion que estaba activa antes de abrir Yottacast (`AppHandler.OnHide()`).
+5. Se simula un pegado (Cmd+V en macOS, Ctrl+V en Windows) con un breve delay para que la app destino tenga tiempo de tomar el foco.
 
-## EmojiSearch
+**Invariante:** el emoji se pega automaticamente en la aplicacion de destino sin intervencion adicional del usuario. Este comportamiento lo controla la propiedad `PasteAfterActivate = true`.
 
-Implementa `IInstantSearchSource` — sus resultados van por la pipeline instant de `GlobalSearch`, no por la deferred.
+> **Verificar en:** `EmojiSearch.MakeGrid()` -- `OnActivate` y `PasteAfterActivate`; `MainWindow.axaml.cs` -- logica de Enter que invoca `OnActivate`, `Hide()`, `OnHide()`, `SimulatePasteAsync()`; `MacAppHandler.cs` / `WindowsAppHandler.cs` -- implementaciones de `SimulatePasteAsync()`.
 
-### Ciclo de vida
+---
 
-- `Start()` lanza `EmojiDataLoader.LoadAsync` en un `Task.Run` y encadena un `ContinueWith` que puebla `_entries` cuando termina. Si la Task falla, `_entries` permanece vacío (sin propagación de excepciones).
-- `WhenReady()` expone esa Task. Si `Start()` no se llamó, devuelve `Task.CompletedTask`. `GlobalSearch` la espera antes de hacer queries.
-- `Stop()` es no-op.
-- `_entries` se marca `volatile` — se escribe una sola vez desde el `ContinueWith` y luego solo se lee.
+## Algoritmo de matching
 
-### Resultados
+La busqueda compara el termino contra el nombre y los keywords de cada emoji. El sistema de puntuacion garantiza un orden de relevancia predecible:
 
-`Search` devuelve siempre una lista de un único elemento: un `EmojiGridResultViewModel` construido por `MakeGrid`.
+| Tipo de coincidencia         | Score        | Ejemplo                                     |
+|------------------------------|--------------|----------------------------------------------|
+| Nombre exacto                | 3.0          | `:fire` coincide exactamente con "fire"       |
+| Nombre parcial (NameMatcher) | 1.2 -- 2.0   | `:grin` coincide con "grinning face"          |
+| Keyword (NameMatcher)        | 0.0 -- 1.0   | `:thumbsup` coincide con el keyword "thumbsup"|
 
-- Al escribir solo `:` (sin término): grid con los 20 emojis de menor `sort_order` positivo (se excluyen los que tienen `sort_order == 0`) según el orden Unicode CLDR. Este límite de 20 está hardcodeado en `GetDefaultEmojis` y no depende del parámetro `limit` que recibe `Search`.
-- Al escribir `:smile` (o cualquier término): grid con todos los emojis que coincidan, ordenados por score descendente, hasta el límite de la query (parámetro `limit` que pasa `GlobalSearch`). El término se extrae con `query[1..].Trim().ToLowerInvariant()`, por lo que espacios tras los dos puntos (`: smile`) se ignoran. `EmojiSearch.MatchScore` prioriza nombre exacto > nombre con `NameMatcher.Score` (usando `NameTokens` pre-computados) > keyword con `NameMatcher.Score`. El rango de scores garantiza que cualquier match por nombre supera a cualquier match por keyword. Para el matching de keywords se usa la sobrecarga `NameMatcher.Score(string, string)`, que aplica la misma cadena de tiers (prefix, camelHump, initials, multi-word abbreviation, internal substring ≥3 chars) que el matching de nombre.
+**Invariante:** cualquier coincidencia por nombre siempre puntua mas alto que cualquier coincidencia exclusivamente por keyword. Esto garantiza que al buscar `:fire`, el emoji "fire" aparece antes que "fireworks" (que coincidiria por prefijo).
 
-Si la caché no está lista o la carga falló, se devuelve lista vacía (sin error visible al usuario).
+El matching de nombre usa los tokens pre-computados del nombre (space-split), aprovechando que los nombres de emoji son siempre minusculas separadas por espacios. Para keywords, se aplica `NameMatcher.Score(string, string)` a cada keyword individual y se toma el mejor score.
 
-### Activación y navegación
+> **Verificar en:** `EmojiSearch.MatchScore()` -- logica de scoring con rangos; `EmojiEntry.NameTokens` -- pre-tokenizacion; `NameMatcher.Score()` en `NameMatcher.cs`.
 
-`MakeGrid` construye el `EmojiGridResultViewModel` con captura circular de `grid`:
+---
 
-- `OnActivate` copia `grid.Cells[grid.SelectedEmojiIndex].Char` al portapapeles vía `ClipboardService`.
-- `OnLeft` llama a `grid.SelectPrevious()`; `OnRight` llama a `grid.SelectNext()`.
-- `OnUp` llama a `grid.SelectUp()`; `OnDown` llama a `grid.SelectDown()`. Ambos devuelven `bool`: `true` si se movió dentro del grid (consumiendo la tecla), `false` si no hay fila superior/inferior disponible (delegando la navegación de lista a la ventana).
+## Datos de origen y cache
 
-`PasteAfterActivate = true` indica a la UI que pegue automáticamente tras ocultar la ventana. El flujo completo en `MainWindow.axaml.cs` al pulsar Enter sobre el grid es: invocar `OnActivate` (copia al portapapeles) → limpiar `SearchText` → `Hide()` → `AppHandler.Instance.OnHide()` (restaura foco a la app anterior) → `AppHandler.Instance.SimulatePasteAsync()` (envía Cmd+V / Ctrl+V con delay). Ver `docs/search-calculator.md` para el funcionamiento de `ClipboardService`.
+### Fuente de datos
 
-`OnLeft`/`OnRight`/`OnUp`/`OnDown` son propiedades de `ResultItemViewModel`. La ventana principal intercepta ←/→/↑/↓ en la fase túnel (`AddHandler(KeyDownEvent, ..., RoutingStrategies.Tunnel)`) y, si el item seleccionado tiene esas acciones, las invoca. Para ←/→ siempre marca el evento como handled; para ↑/↓, el evento queda handled solo si el callback devuelve `true`. Ver `MainWindow.axaml.cs`.
+Los emojis provienen del proyecto [iamcal/emoji-data](https://github.com/iamcal/emoji-data), un JSON con mas de 1600 entradas. El fichero `Search/Emoji/emoji-data.json` se descarga en tiempo de compilacion si no existe (target MSBuild `DownloadEmojiData`). No hay descarga en runtime.
 
-## Tests
+Para actualizar a una version mas reciente, basta con eliminar `Search/Emoji/emoji-data.json` y recompilar.
 
-`EmojiDataLoader` es `public`, pero su método `LoadAsync` es `internal`. La anotación `InternalsVisibleTo("Yottacast.Core.Tests")` en el `.csproj` de Core permite llamar a `LoadAsync` (y otros métodos internos como `ParseRawJson`, `ParseCompactCache`) directamente desde `EmojiDataLoaderTests`.
+### Estrategia de cache
 
-Los tests de `EmojiSearchTests` prepueblan una caché compacta en un directorio temporal y llaman `Start()` + `WhenReady()` antes de hacer queries, sin necesidad de red. Hay además una clase `EmojiSearchRealDataTests` que usa un `IClassFixture<RealEmojiDataFixture>` para cargar el dataset completo embebido una sola vez y compartirlo entre todos los tests de integración, evitando el coste de parsear el JSON raw en cada test.
+El sistema usa una cache compacta (`emoji-cache.json`) para evitar parsear el JSON raw (~1.25 MB) en cada inicio. El formato compacto es un array de arrays de 5 elementos `[char, name, [keywords], category, sortOrder]` (~100-150 KB).
 
-## Gotchas
+El flujo de carga sigue esta prioridad:
 
-- **Selectores de variación FE0F** — algunos `unified` terminan en `-FE0F` (emoji presentation selector). Deben incluirse en la conversión a carácter; sin ellos el emoji se renderiza como símbolo de texto en lugar de emoji.
-- **Pares surrogados** — la mayoría de emojis están en el plano suplementario (codepoints > U+FFFF) y ocupan dos `char` en .NET. `char.ConvertFromUtf32` los genera correctamente.
-- **Secuencias ZWJ** — emojis compuestos (familias, profesiones) usan Zero-Width Joiner (`U+200D`) entre codepoints. `char.ConvertFromUtf32(0x200D)` lo maneja sin problema al estar en el BMP.
+1. Cache en disco (ruta de AppData del SO) -- si existe, se usa directamente.
+2. Cache embebida en el ensamblado -- si existe en el recurso embebido.
+3. JSON raw embebido -- se parsea, se genera la cache en disco, y se devuelve.
+4. Si todo falla -- se devuelve lista vacia sin crash. Los emojis simplemente no aparecen.
+
+**Invariante:** la aplicacion nunca hace peticiones de red en runtime para obtener datos de emojis. Si la cache no esta lista cuando el usuario busca, se devuelve una lista vacia sin errores visibles.
+
+La cache no tiene TTL: es valida indefinidamente. Para forzar una regeneracion, se elimina el fichero de cache.
+
+La escritura de cache es atomica (fichero temporal + `File.Move`) para evitar corrupcion ante cierres inesperados.
+
+> **Verificar en:** `EmojiDataLoader.LoadAsync()` -- flujo de carga con prioridades; `EmojiDataLoader.WriteCompactCache()` -- escritura atomica; `Yottacast.Core.csproj` -- targets `DownloadEmojiData` y `CopyEmojiCache`, y recursos embebidos.
+
+---
+
+## Parseo del JSON raw
+
+Al procesar el JSON original de iamcal/emoji-data, se aplican las siguientes reglas:
+
+| Regla                                  | Detalle                                                                                  |
+|----------------------------------------|------------------------------------------------------------------------------------------|
+| Emojis obsoletos se descartan          | Entradas con `obsoleted_by` no vacio se ignoran (reemplazados por versiones mas recientes). |
+| Campo `unified` obligatorio            | Si falta o esta vacio, la entrada se descarta.                                           |
+| Conversion de codepoints               | `unified` (hex separados por `-`) se convierte a string via `char.ConvertFromUtf32` por segmento. Si la conversion falla, se descarta silenciosamente. |
+| Nombre normalizado a minusculas        | El campo `name` (mayusculas en el JSON) se normaliza a minusculas.                       |
+| Keywords combinados                    | `short_names` y `texts` (ASCII como `:D`) se combinan en un unico array `Keywords`, eliminando duplicados. |
+
+> **Verificar en:** `EmojiDataLoader.ParseRawJson()`.
+
+---
+
+## Consideraciones Unicode
+
+- **Selector de variacion FE0F** -- Algunos codepoints terminan en `-FE0F` (emoji presentation selector). Se incluyen en la conversion; sin ellos, el emoji se renderiza como simbolo de texto.
+- **Pares surrogados** -- La mayoria de emojis estan en el plano suplementario (codepoints > U+FFFF) y ocupan dos `char` en .NET. `char.ConvertFromUtf32` los genera correctamente.
+- **Secuencias ZWJ** -- Emojis compuestos (familias, profesiones) usan Zero-Width Joiner (`U+200D`) entre codepoints, que se maneja sin problema al estar en el BMP.
+
+> **Verificar en:** `EmojiDataLoader.UnifiedToChar()` -- conversion de hex a string; tests `ParseRawJson_IncludesFE0FVariationSelector` y `ParseRawJson_HandlesMultiCodepointEmoji` en `EmojiDataLoaderTests.cs`.
+
+---
+
+## Testing
+
+Los tests cubren dos niveles:
+
+| Nivel       | Clase                          | Estrategia                                                                                    |
+|-------------|--------------------------------|-----------------------------------------------------------------------------------------------|
+| Unitario    | `EmojiSearchTests`             | Prepueblan una cache compacta en un directorio temporal. No requieren red ni recurso embebido. |
+| Unitario    | `EmojiDataLoaderTests`         | Prueban `ParseRawJson`, `ParseCompactCache` y `LoadAsync` con datos sinteticos y reales.      |
+| Integracion | `EmojiSearchRealDataTests`     | Cargan el dataset completo embebido una sola vez via `IClassFixture<RealEmojiDataFixture>` y validan el matching contra datos de produccion. |
+
+El acceso a metodos `internal` de `EmojiDataLoader` desde los tests se habilita mediante `InternalsVisibleTo("Yottacast.Core.Tests")` en el `.csproj`.
+
+> **Verificar en:** `EmojiSearchTests.cs`, `EmojiDataLoaderTests.cs`, `RealEmojiDataFixture` en `EmojiSearchTests.cs`; atributo `InternalsVisibleTo` en `Yottacast.Core.csproj`.

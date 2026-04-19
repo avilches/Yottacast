@@ -1,37 +1,192 @@
-# UI: Themes
+# UI: Sistema de temas
 
-Clase: `Yottacast.Services.ThemeService`
+## Objetivo
 
-Lee `Themes/{name}.json`, aplica tokens en `Application.Current.Resources` en runtime.
+Yottacast permite personalizar la apariencia visual de la ventana principal mediante temas definidos en archivos JSON. El sistema garantiza que la aplicacion siempre arranque con un aspecto coherente, incluso si el fichero de tema esta corrupto, ausente o mal configurado.
 
-`ThemeService.Apply(themeName)` — carga el JSON indicado. Si el fichero no existe o el parsing falla, registra un warning en el log y llama `ApplyBuiltinDefault()` como fallback.
-`ThemeService.ApplyBuiltinDefault()` — aplica dark-default hardcodeado como fallback (no puede fallar).
+---
 
-All theme tokens are listed in `ThemeService.ApplyBuiltinDefault()` which also serves as the canonical default. Colors use Avalonia's `Color.TryParse` format; see any theme JSON file for examples.
-Los JSON se copian al output vía `CopyToOutputDirectory=PreserveNewest`.
+## Comportamiento en el arranque
 
-Available themes are the JSON files in `Yottacast/Themes/` (excluding `settings.json`).
+El tema se aplica de forma sincrona **antes** de crear la ventana principal. El usuario nunca ve la interfaz con un tema incorrecto o parcialmente aplicado.
 
-**`ThemeOption` record**: `AvailableThemes()` devuelve `IReadOnlyList<ThemeOption>` donde cada entrada tiene `Id` (nombre de fichero sin extensión) y `DisplayName` (campo `"name"` del JSON; si falta o el parse falla, usa el `Id` como fallback). Los ficheros se procesan ordenados alfabéticamente; si dos ficheros producen el mismo `Id` (p.ej. copias de conflicto de iCloud como `dark-default 2.json`), solo el primero se incluye.
+El tema inicial se determina segun esta logica:
 
-**Campo `variant` en el JSON**: `Apply()` lee `json["variant"]` y asigna `app.RequestedThemeVariant` a `ThemeVariant.Light` si el valor es `"light"`, o `ThemeVariant.Dark` en cualquier otro caso.
+| Situacion | Tema seleccionado |
+|---|---|
+| Primera ejecucion, sistema en modo oscuro o indeterminado | `dark-default` |
+| Primera ejecucion, sistema en modo claro | `light-gray` |
+| Settings existente con campo `theme` valido | El tema guardado |
+| Settings existente con campo `theme` vacio | Deteccion automatica del sistema (misma logica que primera ejecucion) |
 
-**Aplicación al arranque**: `App.OnFrameworkInitializationCompleted()` llama `themeService.Apply(userSettings.Theme)` de forma síncrona antes de crear la `MainWindow`, por lo que el tema está activo antes de que cualquier control se renderice.
+> **Verificar en:**
+> - `App.OnFrameworkInitializationCompleted()` -- llama `themeService.Apply(userSettings.Theme)` antes de instanciar `MainWindow`.
+> - `PlatformProvider.DefaultTheme()` -- logica de deteccion oscuro/claro.
+> - `UserSettings.Load()` -- fallback cuando `theme` esta vacio o el fichero no existe.
 
-**Hot-swap en Settings**: `SettingsWindowViewModel.OnSelectedThemeChanged()` llama `_themeService.Apply(value.Id)` inmediatamente al cambiar el picker. El cambio es instantáneo sin reiniciar la aplicación.
+---
 
-**Metadata en JSON (author, url)**: todos los temas tienen `"author": ""` y `"url": ""`. `ThemeService` los ignora hoy; estarán disponibles cuando se implemente la descarga de temas.
+## Cambio de tema en caliente
 
-**Gotcha — Colores mal formados ignorados silenciosamente**: `SetBrush()` usa `Color.TryParse`. Si el valor del color en el JSON no es un color válido, el brush no se asigna y el token conserva su valor anterior sin ningún error o aviso.
+El usuario puede cambiar el tema desde la ventana de Settings sin reiniciar la aplicacion. Al seleccionar un tema en el picker:
 
-**Gotcha — Temas cargados síncronamente en SettingsWindow**: `SettingsWindowViewModel` llama `AvailableThemes()` en su constructor, que enumera los JSON de `Themes/` ordenados alfabéticamente por nombre de fichero y excluye `settings.json`. Si ninguno carga, añade `"dark-default"` como fallback.
+1. Se persiste la seleccion en el fichero de settings.
+2. Se aplica inmediatamente sobre los recursos de la aplicacion.
+3. Todos los controles visibles reflejan el nuevo tema al instante.
 
-**Resolución de la carpeta de temas**: `ThemesFolder` se resuelve como `Path.Combine(AppContext.BaseDirectory, "Themes")`, relativo al directorio del ejecutable, no al directorio de trabajo actual.
+**Invariante:** el picker de temas nunca queda sin seleccion. Si el tema guardado no existe en la lista, se selecciona el primero disponible.
 
-**`Apply()` con `Application.Current` nulo**: si `Application.Current` es null en el momento de aplicar un tema (p.ej. en tests o inicio muy temprano), `Apply()` llama directamente `ApplyBuiltinDefault()` sin registrar error.
+**Invariante:** la seleccion inicial en el constructor del ViewModel se asigna al campo interno (no a la propiedad), evitando que se dispare el callback de cambio y se sobreescriban los settings durante la inicializacion.
 
-**Tokens numéricos ignorados silenciosamente**: `SetDouble()` y `SetCornerRadius()` aplican el mismo patrón que `SetBrush()` — si el nodo JSON es null, el token se omite sin aviso y conserva su valor anterior. Esto afecta a todos los tokens de `fonts` y `layout`.
+> **Verificar en:**
+> - `SettingsWindowViewModel.OnSelectedThemeChanged()` -- persiste y aplica.
+> - Constructor de `SettingsWindowViewModel` -- asignacion al campo `_selectedTheme`.
 
-**Detección del modo oscuro del sistema**: `PlatformProvider.DefaultTheme()` llama a `IsSystemDarkMode()` (abstracto, implementado por cada plataforma) y devuelve `"dark-default"` si es dark o null, y `"light-gray"` si es light. Este valor se usa en `UserSettings.Load()` cuando el fichero de settings no existe o cuando el campo `theme` está vacío, garantizando que el primer arranque se adapta al modo del sistema.
+---
 
-**Selección inicial del tema en el picker de Settings**: el constructor de `SettingsWindowViewModel` inicializa `_selectedTheme` buscando en `Themes` el tema cuyo `Id` coincide con `settings.Theme`; si no hay coincidencia, usa el primero de la lista. La asignación se hace directamente al campo (no a la propiedad) para no disparar `OnSelectedThemeChanged` durante la inicialización.
+## Formato de un fichero de tema
+
+Cada tema es un fichero `.json` en la carpeta `Themes/` del directorio de la aplicacion. La estructura contiene cuatro secciones:
+
+| Seccion | Contenido | Ejemplo de token |
+|---|---|---|
+| `name` | Nombre para mostrar en el picker | `"Dark Default"` |
+| `variant` | `"light"` o `"dark"` (controla el `ThemeVariant` de Avalonia) | `"dark"` |
+| `colors` | 22 tokens de color en formato Avalonia (`#AARRGGBB` o `#RRGGBB`) | `"windowBackground": "#F21C1C22"` |
+| `fonts` | 5 tamanos de fuente (numeros) | `"search": 18` |
+| `layout` | 5 corner radius + ancho de ventana (numeros) | `"windowWidth": 700` |
+
+Los campos `author` y `url` estan presentes en los JSON pero no se utilizan actualmente. Estan reservados para una futura funcionalidad de descarga de temas.
+
+Si el valor de `variant` no es `"light"`, se asume `"dark"`.
+
+> **Verificar en:**
+> - `ThemeService.Apply()` -- lectura del JSON y asignacion de tokens.
+> - Cualquier fichero en `Yottacast/Themes/*.json` como referencia de estructura.
+
+---
+
+## Tokens de tema disponibles
+
+### Colores (seccion `colors`)
+
+| Token JSON | Recurso Avalonia | Zona de la UI |
+|---|---|---|
+| `windowBackground` | `Theme.WindowBackground` | Fondo de la ventana principal |
+| `searchText` | `Theme.SearchText` | Texto de la barra de busqueda |
+| `searchPlaceholder` | `Theme.SearchPlaceholder` | Placeholder de la barra de busqueda |
+| `searchCaret` | `Theme.SearchCaret` | Cursor de texto |
+| `searchSelection` | `Theme.SearchSelection` | Seleccion de texto |
+| `icon` | `Theme.Icon` | Icono principal |
+| `divider` | `Theme.Divider` | Linea separadora |
+| `itemIconBackground` | `Theme.ItemIconBackground` | Fondo del icono de cada resultado |
+| `itemTitle` | `Theme.ItemTitle` | Titulo de cada resultado |
+| `itemSubtitle` | `Theme.ItemSubtitle` | Subtitulo de cada resultado |
+| `itemCategory` | `Theme.ItemCategory` | Etiqueta de categoria |
+| `itemShortcutText` | `Theme.ItemShortcutText` | Texto del atajo de teclado |
+| `itemShortcutBackground` | `Theme.ItemShortcutBackground` | Fondo del atajo de teclado |
+| `itemSelection` | `Theme.ItemSelection` | Fondo del resultado seleccionado |
+| `itemSelectionHover` | `Theme.ItemSelectionHover` | Fondo al hacer hover sobre el seleccionado |
+| `itemHover` | `Theme.ItemHover` | Fondo al hacer hover sobre cualquier resultado |
+| `itemSelectionText` | `Theme.ItemSelectionText` | Texto del resultado seleccionado |
+| `itemSelectionIconBackground` | `Theme.ItemSelectionIconBackground` | Fondo del icono en el resultado seleccionado |
+| `escBadgeBackground` | `Theme.EscBadgeBackground` | Fondo del badge ESC |
+| `escBadgeText` | `Theme.EscBadgeText` | Texto del badge ESC |
+| `footerBorder` | `Theme.FooterBorder` | Borde del footer |
+| `footerText` | `Theme.FooterText` | Texto del footer |
+| `noResultsTitle` | `Theme.NoResultsTitle` | Titulo cuando no hay resultados |
+| `noResultsSubtitle` | `Theme.NoResultsSubtitle` | Subtitulo cuando no hay resultados |
+
+### Fuentes (seccion `fonts`)
+
+| Token JSON | Recurso Avalonia |
+|---|---|
+| `search` | `Theme.FontSizeSearch` |
+| `title` | `Theme.FontSizeTitle` |
+| `subtitle` | `Theme.FontSizeSubtitle` |
+| `small` | `Theme.FontSizeSmall` |
+| `noResults` | `Theme.FontSizeNoResults` |
+
+### Layout (seccion `layout`)
+
+| Token JSON | Recurso Avalonia |
+|---|---|
+| `windowCornerRadius` | `Theme.CornerRadiusWindow` |
+| `itemCornerRadius` | `Theme.CornerRadiusItem` |
+| `iconCornerRadius` | `Theme.CornerRadiusIcon` |
+| `escCornerRadius` | `Theme.CornerRadiusEsc` |
+| `shortcutCornerRadius` | `Theme.CornerRadiusShortcut` |
+| `windowWidth` | `Theme.WindowWidth` |
+
+> **Verificar en:**
+> - `ThemeService.Apply()` -- mapeo token JSON a recurso Avalonia.
+> - `ThemeService.ApplyBuiltinDefault()` -- lista canonica de todos los tokens con sus valores por defecto.
+
+---
+
+## Fallback incorporado
+
+Existe un fallback hardcodeado que replica exactamente el tema `dark-default.json`. Este fallback se activa en cualquiera de estos casos:
+
+- El fichero de tema no existe en disco.
+- El JSON no se puede parsear.
+- Se produce cualquier excepcion durante la aplicacion del tema.
+- `Application.Current` es null (por ejemplo, en tests unitarios o durante un arranque muy temprano).
+
+**Invariante:** la aplicacion siempre arranca con un tema funcional. Nunca se muestra una UI sin estilos.
+
+**Invariante:** cuando se activa el fallback por fichero no encontrado o error de parsing, se registra un warning en el log.
+
+> **Verificar en:**
+> - `ThemeService.Apply()` -- bloques catch y comprobaciones de null.
+> - `ThemeService.ApplyBuiltinDefault()` -- valores hardcodeados.
+
+---
+
+## Descubrimiento de temas
+
+La lista de temas disponibles se construye a partir de los ficheros `*.json` en la carpeta `Themes/`, con las siguientes reglas:
+
+1. Se excluye `settings.json` (usado para configuracion, no es un tema).
+2. Los ficheros se ordenan alfabeticamente por nombre.
+3. Si dos ficheros producen el mismo ID (nombre sin extension), solo se incluye el primero. Esto puede ocurrir con copias de conflicto de iCloud como `dark-default 2.json`.
+4. El nombre para mostrar se extrae del campo `"name"` del JSON. Si falla el parsing, se usa el ID del fichero como nombre.
+5. Si no se encuentra ningun tema, se anade un fallback `"dark-default"` / `"Dark Default"`.
+
+La carpeta de temas se resuelve relativa al directorio del ejecutable (`AppContext.BaseDirectory`), no al directorio de trabajo actual.
+
+Los ficheros JSON se copian al directorio de salida del build con `CopyToOutputDirectory=PreserveNewest`.
+
+> **Verificar en:**
+> - `ThemeService.AvailableThemes()` -- enumeracion y filtrado.
+> - `ThemeService.ThemesFolder` -- resolucion de la ruta.
+> - `Yottacast.csproj` -- regla de copia de `Themes/**`.
+
+---
+
+## Comportamiento silencioso ante valores invalidos
+
+Los tokens que no se pueden interpretar se omiten silenciosamente, conservando el valor anterior del recurso:
+
+| Tipo de token | Metodo | Que ocurre si el valor es invalido |
+|---|---|---|
+| Color | `SetBrush` | `Color.TryParse` falla: el brush no se asigna, sin warning |
+| Numero (fuente/ancho) | `SetDouble` | Nodo JSON null: se omite sin aviso |
+| Corner radius | `SetCornerRadius` | Nodo JSON null: se omite sin aviso |
+
+**Invariante:** un token ausente o invalido en el JSON nunca provoca una excepcion. El peor caso es que ese elemento de la UI conserve el valor del tema anterior o del fallback.
+
+> **Verificar en:**
+> - `ThemeService.SetBrush()`, `ThemeService.SetDouble()`, `ThemeService.SetCornerRadius()` -- comprobaciones de null y TryParse.
+
+---
+
+## Temas incluidos
+
+| Fichero | Variante |
+|---|---|
+| `dark-default.json` | dark |
+| `dark-raycast.json` | dark |
+| `dark-macos.json` | dark |
+| `light-blue.json` | light |
+| `light-gray.json` | light |

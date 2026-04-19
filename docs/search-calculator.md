@@ -1,241 +1,439 @@
 # Calculadora y conversor de unidades
 
-Implementado como `IInstantSearchSource`: `CalculatorSearch` (`Yottacast.Core/Search/Calculator/CalculatorSearch.cs`). Maneja tanto expresiones matemáticas como conversiones de unidades.
+## Proposito
 
-## Motor: MathJsEngine
+El launcher incluye una calculadora integrada y un conversor de unidades/divisas que responde en tiempo real mientras el
+usuario escribe. Funciona como una fuente de busqueda instantanea: si la query del usuario es una expresion matematica o
+una conversion valida, aparece un resultado sin necesidad de pulsar Enter ni seleccionar ninguna categoria.
 
-`MathJsEngine` (`Yottacast.Core/Search/Calculator/MathJsEngine.cs`) — singleton que carga math.js embebido en la DLL (embedded resource en `Yottacast.Core/Search/Calculator/math.min.js`) dentro de un engine Jint 3.x. La inicialización se hace en un background thread; hasta que `WhenReady()` se complete, `Evaluate()` devuelve `ErrorResult` sin bloquear.
+---
 
-**Configuración del engine**: se crea con un límite de recursión (ver `MathJsEngine`).
+## 1. Comportamiento general
 
-**WarmUp**: `mathjs-helpers.js` ejecuta `math.createUnit('USD')` al cargarse, lo que dispara la inicialización del sistema de unidades de math.js y actúa como warmup JIT de Jint, de modo que la primera query real del usuario sea instantánea.
+### 1.1 Que puede hacer el usuario
 
-**Thread safety**: un `lock (_lock)` protege el acceso al engine durante cada llamada a `Evaluate()`. Es seguro llamarlo desde múltiples hilos.
+| Tipo de entrada       | Ejemplo                      | Que ve el usuario                        |
+|-----------------------|------------------------------|------------------------------------------|
+| Expresion aritmetica  | `2 + 3 * 4`                  | Resultado: `14`                          |
+| Funciones matematicas | `sqrt(144)`, `sin(45 deg)`   | Resultado numerico                       |
+| Conversion explicita  | `10 kg to lbs`, `100 F to C` | Resultado con origen y destino           |
+| Conversion implicita  | `10 km`, `60 km/h`           | Conversion automatica al par por defecto |
+| Conversion de divisas | `100 USD`, `50 EUR to GBP`   | Conversion con tasas actualizadas        |
+| Entrada de tiempo     | `38000 s`                    | Descomposicion: `10 h 33 min 20 s`       |
+| Entrada de datos      | `1500 MB`                    | Mejor unidad: `1.5 GB`                   |
 
-**Escape de entrada**: antes de pasarla a math.js, la expresión tiene las barras invertidas, comillas simples, saltos de línea y caracteres nulos escapados (ver `Escape()` en `MathJsEngine`).
+### 1.2 Invariantes de la experiencia de usuario
 
-**Formateo de resultados**: los resultados se formatean con `math.format(r, { precision: 10 })` — 10 dígitos significativos — para evitar ruido de coma flotante como `22.046226218487758`.
+- El resultado **nunca** aparece si la evaluacion devuelve exactamente la misma cadena que la query de entrada (por
+  ejemplo, escribir solo `42` no produce resultado).
+- La calculadora devuelve **como maximo un resultado** por query. El parametro `limit` del contrato de busqueda se
+  ignora.
+- El resultado de la calculadora siempre tiene prioridad alta (score 4), por lo que aparece cerca de la cima de las
+  sugerencias.
+- Los errores de unidades incompatibles (`1 kg to m`) se muestran como hint informativo debajo del campo de busqueda.
+  Los errores de simbolos desconocidos se descartan silenciosamente para no generar ruido con texto plano (
+  `safari to km`).
+- La activacion (Enter) **siempre copia al portapapeles**: el resultado aritmetico para calculos, o la celda
+  seleccionada para conversiones.
+- El icono del resultado distingue el tipo: calculadora para aritmetica, conversor para unidades/divisas.
 
-**Double-checked null guard**: `Evaluate()` comprueba `_engine == null` antes de adquirir el lock y de nuevo dentro de él. La comprobación exterior garantiza un fast-path sin contención cuando el engine todavía no está listo; la interior garantiza corrección ante una hipotética carrera con `Dispose()`.
+> **Verificar en:** `CalculatorSearch.Search()` en `Yottacast.Core/Search/Calculator/CalculatorSearch.cs`
 
-**Tipos de resultado de `Evaluate()`**: devuelve un `EvalResult` (`Yottacast.Core/Search/Calculator/EvalResult.cs`) — subtipo `CalcResult` para expresiones aritméticas, `ConversionResult` para conversiones de unidades o divisas, y `ErrorResult` para errores o expresiones inválidas. `ErrorResult` incluye `ErrorKind` (`UnknownSymbol`, `IncompatibleUnits`, `Syntax`, `Other`) y el token problemático cuando aplica.
+### 1.3 Arranque y disponibilidad
 
-**Manejo de errores**: los errores de evaluación se clasifican con `classifyError()` (JS, en `mathjs-helpers.js`) en `CalcErrorKind`. Solo los errores `IncompatibleUnits` se exponen vía `LastHint` (ej. `1 kg to m` → "Units do not match"). Los errores `UnknownSymbol` se descartan silenciosamente: mostrar un hint para cualquier token no reconocido generaría ruido en queries de texto plano (`safari to km`). `BuildErrorHint` en `CalculatorSearch.cs` soporta ambos tipos por si en el futuro la UI quisiera surfacear uno condicionalmente.
+El motor de evaluacion se inicializa en un hilo de fondo desde el momento en que se construye el singleton. Hasta que la
+inicializacion finalice, cualquier evaluacion devuelve un error sin bloquear. En la practica, la inicializacion termina
+antes de que la UI sea interactiva.
 
-**math.js descargado en build**: el `.csproj` de Core (`Yottacast.Core/Yottacast.Core.csproj`) incluye un target `DownloadMathJs` que ejecuta `curl` si el fichero no existe. El fichero se excluye del repositorio (`.gitignore`). El primer `dotnet build` lo descarga automáticamente.
+La inicializacion incluye un warmup: el registro de la unidad `USD` fuerza la inicializacion interna del sistema de
+unidades de math.js, lo que actua como calentamiento JIT del engine JavaScript.
 
-**Gotcha — versión de math.js incompatible con Jint**: versiones recientes de math.js lanzan "Assignment to constant variable" dentro de Jint 3.x al ejecutar `math.evaluate`. La versión de math.js embebida está fijada; ver el target `DownloadMathJs` del `.csproj`. Si se actualiza Jint a una versión con soporte ES2022+, se puede probar una versión más reciente de math.js.
+> **Verificar en:** constructor de `MathJsEngine` y metodo `Initialize()` en
+`Yottacast.Core/Search/Calculator/MathJsEngine.cs`; `WhenReady()` en `CalculatorSearch.cs`
 
-**Gotcha — EmbeddedResource condicional**: el `<EmbeddedResource>` de `math.min.js` tiene `Condition="Exists(...)"`. Si `curl` falla en el build, la compilación termina correctamente pero el recurso no queda embebido. En ese caso la app lanza `InvalidOperationException` en runtime al intentar cargar el stream del recurso.
+---
 
-**Dispose**: `MathJsEngine.Dispose()` llama `_initTask.Wait()` dentro de un try/catch para absorber fallos de inicialización, luego adquiere el lock, llama `_engine.Dispose()` y pone `_engine = null`. Esto garantiza que no haya evaluaciones en curso cuando se libera el engine.
+## 2. Reconocimiento de expresiones
 
-**La inicialización arranca en el momento de la resolución DI**: `MathJsEngine` está registrado como singleton y su constructor lanza `Task.Run(Initialize)` inmediatamente. Esto significa que el background thread de inicialización empieza cuando el contenedor construye el singleton — antes de que `GlobalSearch.Start()` lo solicite explícitamente — lo que amplía el tiempo disponible para el warmup.
+Toda query pasa por un proceso de normalizacion que analiza el AST (arbol de sintaxis abstracta) de la expresion y la
+clasifica en una de cuatro categorias:
 
-## Unidades custom
+| Categoria            | Significado                                              | Ejemplo             |
+|----------------------|----------------------------------------------------------|---------------------|
+| `calculation`        | Aritmetica pura, sin unidades                            | `2 + 3`, `sqrt(16)` |
+| `unit_entry`         | Valor con unidad que tiene par de conversion por defecto | `10 km`, `60 km/h`  |
+| `simple_conversion`  | Conversion explicita `valor unidad to unidad`            | `10 kg to lbs`      |
+| `complex_conversion` | Expresion compleja con `to`                              | `2*5 kg to lbs`     |
 
-Al arrancar `mathjs-helpers.js` registra unidades custom en math.js (justo después de `math.createUnit('USD')`):
+La normalizacion tambien:
 
-- **Velocidad**: `kmh` y `mph` como unidades simples en la dimensión `m/s`.
-- **Rotación**: `rpm` en la dimensión `1/s`.
-- **Tasas de datos**: `bps`, `kbps`, `Mbps`, `Gbps`, `Tbps` registradas individualmente para nombres exactos.
+- Corrige el case de unidades y funciones (el usuario puede escribir `KG`, `SQRT`, `MILES` sin preocuparse por
+  mayusculas/minusculas).
+- Detecta divisas y las marca para registro dinamico de tasas.
+- Detecta ambiguedades entre unidades (ej. `mg` podria ser miligramo o megagramo) y genera avisos.
+- Limpia el AST: elimina bloques, asignaciones, y rechaza definiciones de funcion.
+- Normaliza las keywords `TO`/`IN` a minusculas antes de parsear.
 
-Estas unidades son necesarias porque math.js no las incluye por defecto y porque los tests de snapshot (`mathjs-unit-snapshot.json`) verifican que el registry no cambie inesperadamente.
+> **Verificar en:** `NormalizeExpressionCore()` en `MathJsEngine.cs`; `normalizeExpression()` en `mathjs-helpers.js`
 
-## Normalización de unidades
+---
 
-math.js es case-sensitive: `kg` y `KG` son tokens distintos (el segundo es inválido). Para que el usuario pueda escribir `KG`, `Km` o `MILES` sin preocuparse por el case, `mathjs-helpers.js` (`Yottacast.Core/Search/Calculator/mathjs-helpers.js`) mantiene mapas de normalización que se aplican sobre el AST antes de evaluar.
+## 3. Conversiones de unidades
 
-### Datos precomputados
+### 3.1 Conversiones implicitas (par por defecto)
 
-**`mathjs-precomputed.json`** (`Yottacast.Core/Search/Calculator/mathjs-precomputed.json`, embedded resource) — generado por `mathjs-precompute.js` (`Yottacast.Core/Search/Calculator/mathjs-precompute.js`). Contiene tres estructuras:
-- `symbols`: lista de todos los tokens canónicos del registry de math.js.
-- `ambiguous`: mapa `lowercase → [{symbol, longName}]` solo para tokens con múltiples formas canónicas distintas.
-- `functionNames`: mapa `lowercase → canonical` de nombres de funciones math.js (para `SQRT` → `sqrt`).
+Cuando el usuario escribe solo un valor con una unidad (`10 km`), el sistema busca automaticamente un destino por
+defecto. La busqueda sigue este orden de prioridad:
 
-Se inyecta en el engine con `loadPrecomputedData()`. A partir de él se construyen:
-- `_unitSymbols` — `lowercase → canonical` para tokens no ambiguos.
-- `_unitAmbiguousMap` — `lowercase → [{symbol, longName}]` para tokens ambiguos.
+1. **`defaultTargets`**: mapa directo unidad-a-unidad (ej. `km` -> `mile`, `degC` -> `degF`).
+2. **`defaultPairs`**: matching dimensional. Si la unidad es compatible dimensionalmente con alguno de los pares, se usa
+   el otro miembro del par (ej. cualquier unidad de masa no listada cae al par `kg/lb`).
+3. **Sin resultado**: si no hay par, la expresion se trata como calculo puro.
 
-El propósito es la cobertura automática total del registry de math.js: sin este mapa, `resolveUnitToken('KG')` no sabría que debe devolver `kg`. `unit-config.json` solo contiene excepciones manuales para unos pocos casos especiales; `mathjs-precomputed.json` cubre los cientos de combinaciones prefijo+unidad automáticamente.
+Para divisas, el par por defecto es EUR/USD.
 
-### Configuración manual: `unit-config.json`
+> **Verificar en:** `findDefaultTarget()` en `mathjs-helpers.js`; seccion `defaultTargets` y `defaultPairs` en
+`unit-config.json`
 
-Embedded resource en `Yottacast.Core/Search/Calculator/unit-config.json`. Se carga con `loadAliasData()` y define:
+### 3.2 Unidades compuestas
 
-Solo `inputAliases` y `displayNames` se deserializan en C# (record `UnitConfig` en `MathJsEngine.cs`). El resto (`tokenAliases`, `evalSafeAliases`, `longNames`, `defaultTargets`, `defaultPairs`, `forceAmbiguous`, `ambiguityOverrides`, `normalizeUnits`, `blocked`) se reenvía íntegro al engine JS mediante `loadAliasData(_aliasJson)` y se consume solo dentro de `mathjs-helpers.js`.
+Expresiones como `10 km/h` se reconocen como unidad compuesta (numerador / denominador). El sistema busca un destino por
+defecto para la unidad compuesta completa (`km / h` -> `mi / h`). La tabla `defaultTargets` incluye pares para las
+combinaciones mas comunes de velocidad y tasa de datos.
 
-- **`inputAliases`**: aliases de entrada con caracteres especiales que se reemplazan antes del parseo (ej. `"°c"` → `"degC"`). Aplicados por `NormalizeExpressionCore` en `MathJsEngine.cs` antes de llamar al JS.
-- **`tokenAliases`**: overrides de tokens en el traversal del AST. Incluye aliases de un solo carácter con case significativo (ej. `"c"` → `"degC"`, `"v"` → `"V"`), formas plurales de unidades cuyo canónico es la forma corta (ej. `"hours"` → `"h"`, `"seconds"` → `"s"`), y aliases de velocidad (ej. `"kmph"` → `"kmh"`). Se mergen en `_unitOverrides` en JS.
-- **`evalSafeAliases`**: sustituciones que se aplican en el nombre del nodo AST antes de que la expresión llegue a `math.evaluate()`, para evitar colisiones con funciones de math.js. Por ejemplo, `"min"` → `"minute"` evita que math.js interprete `min` como la función `math.min`. Procesado íntegramente por `mathjs-helpers.js`; C# no conoce este campo. El resultado se re-transforma para display vía `displayNames` (ver abajo), de modo que el usuario escribe `min` y ve `min` en el resultado.
-- **`displayNames`**: nombres de display para el resultado final (ej. `"degC"` → `"°C"`, `"minute"` → `"min"`). Usados por `DisplayUnit()` en `MathJsEngine.cs`. Solo aplica a la unidad en formato corto (`fromShort`/`toShort`); los nombres largos se construyen aparte. Para unidades compuestas (`"mi / minute"`), `DisplayUnit` divide por ` / ` y aplica el lookup a cada componente antes de re-concatenar, de modo que se obtiene `"mi / min"` automáticamente sin necesitar entradas por cada combinación.
-- **`longNames`**: nombres largos explícitos para unidades simples que no tienen forma larga derivable automáticamente (ej. `"h"` → `"hour"`, `"degC"` → `"celsius"`). Las unidades compuestas con ` / ` no necesitan entradas aquí — se derivan automáticamente de sus componentes (ver "Nombres largos"). Las entradas donde clave y valor son iguales (ej. `"day":"day"`) solo sirven para habilitar la pluralización (`"10 days"`). `loadAliasData()` genera automáticamente el mapeado inverso (ej. `longNames["h"]="hour"` → `_unitOverrides["hour"]="h"`), de modo que `"10 hour"` se normaliza igual que `"10h"`.
-- **`defaultTargets`**: mapa `unidad → target` para la conversión por defecto cuando el usuario escribe solo `valor + unidad`. Prioridad máxima en `findDefaultTarget`: se consulta antes que `defaultPairs`. Necesario para unidades cuyo target natural difiere del que daría el par dimensional — por ejemplo `"g": "oz"` (no `"kg"`) o `"m / s": "km / h"` (no `"mi / h"`). Las entradas que coinciden exactamente con un par (ej. `"kg": "lb"`) son redundantes con `defaultPairs` pero pueden mantenerse por claridad. Actúa como fallback cuando el intercept de `normalizeUnits` no produce un resultado interesante. Ver los valores en `unit-config.json`.
-- **`defaultPairs`**: lista de pares `[A, B]` para matching dimensional. Fallback cuando la unidad no tiene entrada directa en `defaultTargets`. `findDefaultTarget` compara la dimensión física de la unidad con `A` usando `math.Unit.equalBase`; si coincide, devuelve `A` (salvo que la unidad ya sea `A`, en cuyo caso devuelve `B`). Cubre automáticamente todas las variantes con prefijo no enumeradas: con el par `["kg", "lb"]`, cualquier unidad de masa no listada (`Mg`, `ng`…) devuelve `"kg"`. La elección de `A` importa solo para esas unidades no listadas — `"kg"` (no `"g"`) porque `"10 Mg → kg"` es más legible que `"10 Mg → 10000000 g"`.
-- **`forceAmbiguous`**: mapa case-sensitive `{"mS":"ms","MS":"ms"}` que fuerza la resolución a un símbolo preferido y a la vez marca el resultado como ambiguo (emite `AmbiguityHint`) para avisar al usuario del conflicto. Es case-sensitive para distinguir p.ej. `mS` (millisiemens) de `Ms` (megasegundo). Cubierto por `DefaultConversionTests.ForceAmbiguous_mS_ResolvesToMilliseconds_WithAmbiguityHint`.
-- **`ambiguityOverrides`**: mapa lowercase→canónico que fija qué símbolo canónico debe usarse ante una ambigüedad real (ej. `{"pa":"Pa","mhz":"MHz","mg":"mg"}`). Se aplica en `resolveUnitToken` como paso intermedio entre override exacto y resolución de ambigüedad. El resultado sigue marcándose como ambiguo y el hint lista las alternativas — simplemente se decide en qué alternativa caer cuando el usuario no especifica el case. Cubierto por los tests `AmbiguityOverride_pa_ResolvesToPascal` y `AmbiguityOverride_mhz_ResolvesToMegahertz`.
-- **`normalizeUnits`**: lista de unidades que activan el modo de descomposición natural (tiempo) o selección de mejor unidad (datos). Ver la sección "Normalización natural" más abajo. El set vive solo en JS (`_normalizeChains` en `mathjs-helpers.js`); C# consulta `isNormalizableUnit()` vía cross-call para detectarlo, sin mantener una copia propia que pudiera divergir.
-- **`blocked`**: tokens bloqueados — se filtran del mapa de ambigüedad para no aparecer como candidatos en `resolveUnitToken` (ej. símbolos históricos o ambiguos con palabras comunes como `li`, `month`, `BTU`). Nótese que esto solo impide que el token actúe como alternativa en la resolución de ambigüedades; no desactiva la evaluación directa por math.js si el input coincide exactamente con un símbolo nativo del registry.
+> **Verificar en:** `_isCompoundUnitEntry()` en `mathjs-helpers.js`; entradas de `defaultTargets` con ` / ` en
+`unit-config.json`
 
-### Resolución de tokens: `resolveUnitToken`
+### 3.3 Presentacion del resultado de conversion
 
-Definida en `mathjs-helpers.js`. Aplica los checks en este orden:
+Un resultado de conversion puede mostrar dos o tres celdas:
 
-1. **Bloqueado** (`_blockedUnits`) — descartado inmediatamente.
-2. **Override exacto** (`_unitOverrides[name]`) — override de case exacto. Cubre tokens de un solo carácter donde el case importa (`"c"` → `degC` pero `"C"` → Coulomb).
-3. **Override lowercase para multi-char** — para tokens de más de un carácter, también se busca `_unitOverrides[name.toLowerCase()]`. Esto hace que `"Hour"`, `"HOUR"`, `"Celsius"`, `"FAHRENHEIT"` etc. funcionen igual que sus formas en minúscula. Los tokens de un solo carácter se excluyen intencionalmente de este fallback para preservar la distinción case-sensitive (`"c"` ≠ `"C"`).
-4. **Sinónimos** — si todos los candidatos del mapa ambiguo comparten el mismo `longName` (ej. `l` y `L` son ambos "litre"), se normaliza al primer canónico sin marcar como ambiguo.
-5. **Ya canónico** — si el input ya es exactamente uno de los canónicos con distinto significado, se devuelve tal cual sin ambigüedad.
-6. **Verdaderamente ambiguo** — múltiples candidatos con distintos significados. Se devuelve el primero con `ambiguous: true` y la lista de candidatos para mostrar la pista al usuario. Ejemplo: `mg` colisiona con `Mg` (miligramo vs megagramo).
+| Situacion                       | Celdas visibles                                 |
+|---------------------------------|-------------------------------------------------|
+| Sin normalizacion del origen    | `[From] -> [To]`                                |
+| Con normalizacion SI del origen | `[From original] -> [From normalizado] -> [To]` |
 
-Las ambigüedades surgen casi siempre de la colisión entre pares de prefijos que solo se diferencian en case (`M`/`m`, `P`/`p`, `Z`/`z`, `Y`/`y`) aplicados a unidades del grupo SHORT.
+Ejemplo de normalizacion SI: el usuario escribe `0.001 V to mA`. El from original es `0.001 V`, pero math.js lo
+auto-simplifica a `1 mV`. Ambas formas se muestran.
 
-### Normalización de expresiones: `normalizeExpression`
+La celda seleccionada se puede navegar con las flechas izquierda/derecha. La celda por defecto es `To`. Al activar, se
+copia la celda seleccionada.
 
-Función JS en `mathjs-helpers.js` que: parsea el AST, elimina bloques y asignaciones, recorre los nodos aplicando resolución de unidades + `_evalSafeAliases` + normalización de funciones, detecta ambigüedades y monedas, y determina el `kind` de la expresión:
+> **Verificar en:** `ConversionResultItemViewModel` en `Yottacast.Core/ViewModels/ConversionResultItemViewModel.cs`;
+`EvaluateSimple()` y `EvaluateComplex()` en `MathJsEngine.cs`
 
-- **`calculation`**: expresión aritmética sin conversión de unidades.
-- **`unit_entry`**: `valor unidad` implícito con target por defecto conocido (ej. `10 km` → añade `to mile`). También se activa para unidades compuestas (ver más abajo).
-- **`simple_conversion`**: `valor unidad to unidad`.
-- **`complex_conversion`**: `expresión to unidad` — cualquier expresión que incluya `to` pero cuya parte izquierda no es un simple `número × símbolo`.
+### 3.4 Normalizacion del origen (From)
 
-El record C# es `NormalizedExpression` (en `MathJsEngine.cs`).
+Existen tres mecanismos que pueden cambiar la unidad mostrada en el lado "From":
 
-### Unidades compuestas (`número × unidad / unidad`)
+1. **Auto-simplificacion SI de math.js**: para unidades SI con coeficiente < 1, math.js reescribe al prefijo mas
+   conveniente (`0.001 V` -> `1 mV`). Solo ocurre hacia abajo; `1000 m` permanece como `1000 m`. Las imperiales nunca se
+   simplifican. Cuando ocurre, `FromWasNormalized = true` y se muestran tres celdas.
+2. **Forzado de unidad para compuestos**: para unidades compuestas (con `/`), se fuerza la unidad del usuario para
+   evitar que math.js auto-simplifique a una unidad custom registrada (ej. `kmh` o `mph`).
+3. **Intercept de normalizacion natural (tiempo/datos)**: se fuerza la unidad original con `to origUnit` para prevenir
+   la auto-simplificacion SI. `FromWasNormalized` siempre es `false` para estas unidades.
 
-Expresiones como `10 km/h` producen en el AST un `OperatorNode('/')` en el que el numerador es un `OperatorNode('*', implicit=true)` con un `ConstantNode` y un `SymbolNode`. El helper `_isCompoundUnitEntry(node)` en `mathjs-helpers.js` detecta este patrón exacto.
+> **Verificar en:** `EvaluateSimple()` y `EvaluateComplex()` en `MathJsEngine.cs`; `TryNormalize()` en `MathJsEngine.cs`
 
-Cuando se detecta una unidad compuesta sin `to` explícito:
+---
 
-1. Se construye `compoundUnit = "num / den"` (ej. `"km / h"`).
-2. Se busca en `defaultTargets` (directo) o en `_defaultUnitPairs` (matching dimensional). Si hay target → `kind = unit_entry`, `fromUnit = compoundUnit`.
-3. Si no hay target → `kind = calculation`.
+## 4. Normalizacion natural (tiempo y datos)
 
-El FROM se muestra siempre tal como lo escribió el usuario. Para el matching dimensional, `defaultPairs` incluye el par `["mi / h", "km / h"]` que cubre cualquier unidad de velocidad no listada en `defaultTargets` (ej. `10 Mm/min` → TO: `mi / h`; `10 mm/s` → TO: `mi / h`).
+Cuando el usuario escribe un valor con una unidad de tiempo o de datos sin destino explicito, el sistema intenta
+presentar el resultado en una forma mas legible antes de recurrir a la conversion por defecto.
 
-Para `complex_conversion` con LHS compuesto, `normalizeExpression` también extrae `fromUnit` del patrón `_isCompoundUnitEntry` sobre el nodo izquierdo.
+### 4.1 Modos
 
-### Nombres largos: `getUnitLongName` / `getExplicitLongName`
+| Modo                         | Aplica a | Comportamiento                                     | Ejemplo                         |
+|------------------------------|----------|----------------------------------------------------|---------------------------------|
+| Descomposicion (por defecto) | Tiempo   | Descompone en hasta 3 componentes de mayor a menor | `38000 s` -> `10 h 33 min 20 s` |
+| Mejor unidad (`best_unit`)   | Datos    | Encuentra la unidad mas alta donde el valor >= 1   | `1500 MB` -> `1.5 GB`           |
 
-Ambas funciones definidas en `mathjs-helpers.js`.
+### 4.2 Cuando la normalizacion es "interesante"
 
-`getUnitLongName(symbol)` busca el nombre largo derivado de math.js: descompone el símbolo con `math.Unit.parse`, localiza el prefijo en `PREFIXES.LONG` y la unidad base en `math.Unit.UNITS` con prefijos LONG, y combina los nombres. Retorna el símbolo si no encuentra forma larga.
+El resultado de la normalizacion solo se usa si es diferente de la entrada. Si el resultado es trivial (misma unidad,
+mismo valor), se descarta y se aplica la conversion por defecto normal (`defaultTargets`).
 
-`getExplicitLongName(symbol)` solo consulta `_longNames` (cargado de `unit-config.json`) y retorna vacío si no hay entrada.
+Las unidades normalizables incluyen tanto las listadas explicitamente en la cadena (ej. `s`, `h`, `MB`) como cualquier
+unidad dimensionalmente compatible (ej. `Ms`, `ks`, `PB`, `EB`), salvo aquellas que ya tienen un `defaultTarget`
+explicito (ej. `decade` -> `year`, `week` -> `day`).
 
-En C#, `GetUnitLongName` (`MathJsEngine.cs`) aplica la siguiente cadena:
+> **Verificar en:** `TryNormalize()`, `ComputeNormalization()`, `IsNormalizableUnit()` en `MathJsEngine.cs`;
+`computeNormalization()`, `isNormalizableUnit()` en `mathjs-helpers.js`; `normalizeUnits` en `unit-config.json`
 
-1. **Override explícito** — llama a `getExplicitLongName`. Si hay entrada en `longNames`, la usa.
-2. **Derivación para compuestos** — si el símbolo contiene ` / ` (ej. `"km / h"`), delega en `GetComponentLongName` para cada parte (`"km"` → "kilometer", `"h"` → "hour") y construye `"kilometer per hour"`. Así cualquier unidad compuesta tiene nombre largo automáticamente sin necesitar entrada explícita en `longNames`.
-3. **Derivación math.js** — llama a `getUnitLongName`; descarta el resultado si es igual al símbolo.
+---
 
-`GetComponentLongName` aplica los mismos pasos 1 y 3 sobre un componente individual.
+## 5. Resolucion de unidades y case-insensitivity
 
-`LongForm()` en `CalculatorSearch.cs` pluraliza el nombre largo y lo compara con la forma corta; devuelve `null` si no añade información. La pluralización vive en `UnitPluralizer` (`Yottacast.Core/Search/Calculator/UnitPluralizer.cs`), helper compartido por `CalculatorSearch.LongForm` y `MathJsEngine.FormatNormalizedLong`. Maneja compuestos "X per Y" pluralizando solo la primera palabra, familias invariantes como `hertz` (`kilohertz`, `megahertz`…) y casos especiales para "foot" → "feet" e "inch" → "inches".
+math.js es case-sensitive: `kg` y `KG` son tokens distintos. Para que el usuario pueda escribir en cualquier case, el
+sistema mantiene un pipeline de resolucion que se aplica sobre cada token del AST.
 
-## Snapshot de unidades y detección de cambios al actualizar math.js
+### 5.1 Orden de resolucion de un token
 
-Hay dos archivos generados automáticamente y verificados por tests:
+| Paso                                    | Fuente                                     | Ejemplo                                          |
+|-----------------------------------------|--------------------------------------------|--------------------------------------------------|
+| 1. Token bloqueado                      | `blocked` en `unit-config.json`            | `li`, `BTU` -- descartados                       |
+| 2. Override exacto (case-sensitive)     | `tokenAliases` en `unit-config.json`       | `c` -> `degC`, `C` -> `degC`, `F` -> `degF`      |
+| 3. Override lowercase (solo multi-char) | `tokenAliases` en `unit-config.json`       | `HOUR` -> `h`, `CELSIUS` -> `degC`               |
+| 4. Sinonimos (mismo longName)           | Datos precomputados                        | `l` y `L` -> ambos "litre" -> `L` sin ambiguedad |
+| 5. Ya canonico                          | Registry de math.js                        | Token exacto reconocido -> sin cambio            |
+| 6. Override de ambiguedad               | `ambiguityOverrides` en `unit-config.json` | `pa` -> `Pa` (pascal, no petaamperio)            |
+| 7. Override forzado con aviso           | `forceAmbiguous` en `unit-config.json`     | `mS` -> `ms` con aviso de ambiguedad             |
+| 8. Verdaderamente ambiguo               | Multiples candidatos sin override          | Primer candidato + hint al usuario               |
+| 9. Token no ambiguo                     | `mathjs-precomputed.json`                  | `KG` -> `kg` via mapa lowercase                  |
 
-- **`Yottacast.Core.Tests/Search/mathjs-unit-snapshot.json`** — baseline de regresión. Captura la versión, lista de unidades, grupos de prefijos y tokens ambiguos del registry de math.js.
-- **`Yottacast.Core/Search/Calculator/mathjs-precomputed.json`** — resource embebido usado en runtime. Contiene `symbols`, `ambiguous` y `functionNames`.
+Los tokens de un solo caracter se excluyen del paso 3 para preservar la distincion case-sensitive.
 
-Ambos los genera `extractPrecomputedData()` y `extractUnitSnapshot()` en `mathjs-precompute.js`, que carga `math.min.js` y `mathjs-helpers.js` (en ese orden — `mathjs-precompute.js` llama a `getUnitLongName()` que está definida en helpers).
+> **Verificar en:** `resolveUnitToken()` en `mathjs-helpers.js`
 
-El test `MathJsGeneratedFilesTests.GeneratedFiles_MatchCommittedBaseline` (clase en `Yottacast.Core.Tests/Search/MathJsUnitSnapshotTests.cs`, colección `"MathJsSnapshot"`) regenera ambos archivos en memoria y los compara con los comprometidos. Si difieren, falla con un diff legible:
+### 5.2 Aliases de entrada con caracteres especiales
 
-```
-math.js unit data changed. Delete the snapshot files and re-run tests to regenerate.
-  Version: 11.12.0 → 11.13.0
-  New units (2): furlong, league
-  New ambiguous tokens (regression): mpa, pa
-```
+Antes de que la expresion llegue al parser de math.js, se aplican reemplazos de texto para caracteres especiales que el
+AST no maneja:
 
-**Fixture dedicada**: el test usa `MathJsSnapshotFixture` con `EmptyCurrencyRateProvider` para no contaminar el snapshot con divisas registradas por otros tests.
+| Alias      | Canonico |
+|------------|----------|
+| `°c`, `oc` | `degC`   |
+| `°f`, `of` | `degF`   |
 
-**Workflow al actualizar math.js**:
-1. Cambiar la URL de descarga en `Yottacast.Core/Yottacast.Core.csproj` a la nueva versión
-2. Borrar `Yottacast.Core/Search/Calculator/math.min.js` (se redescarga en el siguiente build)
+> **Verificar en:** `inputAliases` en `unit-config.json`; `NormalizeExpressionCore()` en `MathJsEngine.cs`
+
+### 5.3 Aliases eval-safe
+
+Algunos simbolos de unidad colisionan con funciones de math.js. Para evitar conflictos, se sustituyen en el AST antes de
+evaluar y se restauran en el display:
+
+| El usuario escribe | Se evalua como | Se muestra como |
+|--------------------|----------------|-----------------|
+| `min`              | `minute`       | `min`           |
+
+> **Verificar en:** `evalSafeAliases` y `displayNames` en `unit-config.json`
+
+---
+
+## 6. Nombres de display y nombres largos
+
+### 6.1 Nombre de display (forma corta)
+
+Los nombres de display transforman simbolos internos en formas legibles: `degC` -> `°C`, `degF` -> `°F`, `minute` ->
+`min`. Para unidades compuestas, se aplica el lookup a cada componente: `mi / minute` -> `mi/min`.
+
+> **Verificar en:** `DisplayUnit()` en `MathJsEngine.cs`; `displayNames` en `unit-config.json`
+
+### 6.2 Nombre largo
+
+Los nombres largos se resuelven en este orden:
+
+1. **Override explicito** en `longNames` de `unit-config.json` (ej. `h` -> `hour`, `degC` -> `celsius`).
+2. **Derivacion para compuestos**: si la unidad contiene ` / `, se construye automaticamente a partir de los
+   componentes (`km / h` -> `kilometer per hour`).
+3. **Derivacion automatica** desde el registry de math.js via prefijos LONG (ej. `km` -> `kilometer`).
+
+Las entradas en `longNames` donde clave y valor son iguales (ej. `"day": "day"`) sirven para habilitar la
+pluralizacion (`10 days`). Los mappings inversos se generan automaticamente (ej. `longNames["h"] = "hour"` genera
+`_unitOverrides["hour"] = "h"`).
+
+### 6.3 Pluralizacion
+
+La pluralizacion se aplica sobre los nombres largos segun el valor numerico:
+
+| Regla                                             | Ejemplo                  |
+|---------------------------------------------------|--------------------------|
+| Valor absoluto == 1 -> singular                   | `1 meter`                |
+| Irregulares: `foot` -> `feet`, `inch` -> `inches` | `10 feet`                |
+| Invariantes: terminados en `hertz`                | `10 kilohertz`           |
+| Compuestos `X per Y`: solo se pluraliza X         | `10 kilometers per hour` |
+| Terminados en `s` o `heit`: invariantes           | `10 fahrenheit`          |
+| Resto: se anade `s`                               | `10 meters`              |
+
+> **Verificar en:** `GetUnitLongName()` y `GetComponentLongName()` en `MathJsEngine.cs`; `getUnitLongName()` y
+`getExplicitLongName()` en `mathjs-helpers.js`; `UnitPluralizer` en `Yottacast.Core/Search/Calculator/UnitPluralizer.cs`
+
+---
+
+## 7. Unidades custom
+
+Al arrancar, el motor registra unidades que math.js no incluye por defecto:
+
+| Categoria      | Unidades                              | Definicion                      |
+|----------------|---------------------------------------|---------------------------------|
+| Velocidad      | `kmh`, `mph`                          | En la dimension `m/s`           |
+| Rotacion       | `rpm`                                 | En la dimension `1/s`           |
+| Tasas de datos | `bps`, `kbps`, `Mbps`, `Gbps`, `Tbps` | Cadena de `1000x` sobre `bit/s` |
+
+> **Verificar en:** primeras lineas de `mathjs-helpers.js`
+
+---
+
+## 8. Divisas
+
+Las tasas de cambio se proporcionan via `ICurrencyRateProvider`. Se registran dinamicamente en el motor en cada llamada
+a `Evaluate()`, actualizandose si la tasa ha cambiado. Los codigos de divisa se normalizan a mayusculas en el AST.
+
+Al escribir solo una divisa (ej. `10 USD`), se convierte al otro miembro del par por defecto EUR/USD.
+
+Las tasas son relativas a USD: `EUR = 0.92` significa `1 USD = 0.92 EUR`.
+
+> **Verificar en:** `Evaluate()` y `registerCurrency()` en `MathJsEngine.cs` / `mathjs-helpers.js`;
+`ICurrencyRateProvider` en `Yottacast.Core/Search/Calculator/ICurrencyRateProvider.cs`
+
+---
+
+## 9. Formateo de resultados
+
+Los resultados numericos se formatean con precision adaptativa:
+
+| Tipo de numero      | Regla por defecto       | Ejemplo                               |
+|---------------------|-------------------------|---------------------------------------|
+| Entero              | Sin cambio              | `600 min`                             |
+| Valor absoluto >= 1 | 2 decimales             | `6.213711922 mi` -> `6.21 mi`         |
+| Valor absoluto < 1  | 3 cifras significativas | `0.001450377377 psi` -> `0.00145 psi` |
+
+La precision base es de 10 cifras significativas (parametro `BasePrecision` de `FormatConfig`). Los valores de decimales
+y cifras significativas son configurables.
+
+> **Verificar en:** `smartFormat()` en `mathjs-helpers.js`; `FormatConfig` en `MathJsEngine.cs`
+
+---
+
+## 10. Manejo de errores
+
+Los errores de evaluacion se clasifican en:
+
+| Tipo                | Comportamiento en la UI                                  |
+|---------------------|----------------------------------------------------------|
+| `IncompatibleUnits` | Se muestra como hint debajo del campo de busqueda        |
+| `UnknownSymbol`     | Se descarta silenciosamente (evita ruido en texto plano) |
+| `Syntax`            | Sin resultado                                            |
+| `Other`             | Sin resultado                                            |
+
+El motivo de descartar `UnknownSymbol` es que cualquier texto no matematico (`safari to km`) genera este error, y
+mostrarlo seria contraproducente. `BuildErrorHint` soporta ambos tipos por si en el futuro la UI quisiera exponer el
+aviso condicionalmente.
+
+> **Verificar en:** `classifyError()` en `mathjs-helpers.js`; `CalculatorSearch.Search()` en `CalculatorSearch.cs`
+
+---
+
+## 11. Configuracion: unit-config.json
+
+El fichero `unit-config.json` es un embedded resource que centraliza la configuracion manual del sistema de unidades. C#
+solo deserializa `inputAliases` y `displayNames`; el resto se reenvia integro al motor JS.
+
+| Campo                | Proposito                                                                |
+|----------------------|--------------------------------------------------------------------------|
+| `inputAliases`       | Reemplazos de texto antes del parseo (caracteres especiales)             |
+| `tokenAliases`       | Overrides de tokens en el AST (case, plurales, aliases)                  |
+| `evalSafeAliases`    | Sustituciones para evitar colisiones con funciones de math.js            |
+| `displayNames`       | Nombres de display para la forma corta del resultado                     |
+| `longNames`          | Nombres largos explicitos + generacion automatica de reversos            |
+| `defaultTargets`     | Destinos por defecto para conversion implicita (prioridad maxima)        |
+| `defaultPairs`       | Pares dimensionales de fallback                                          |
+| `forceAmbiguous`     | Canonicos que deben resolverse a otro simbolo con aviso (case-sensitive) |
+| `ambiguityOverrides` | Preferencia de resolucion para tokens ambiguos (lowercase)               |
+| `normalizeUnits`     | Unidades que activan la normalizacion natural (tiempo/datos)             |
+| `blocked`            | Tokens excluidos de la resolucion de ambiguedades                        |
+
+> **Verificar en:** `Yottacast.Core/Search/Calculator/unit-config.json`; `loadAliasData()` en `mathjs-helpers.js`;
+> record `UnitConfig` en `MathJsEngine.cs`
+
+---
+
+## 12. Datos precomputados
+
+`mathjs-precomputed.json` es un embedded resource generado automaticamente que contiene:
+
+- `symbols`: lista de todos los tokens canonicos del registry de math.js.
+- `ambiguous`: mapa `lowercase -> [{symbol, longName}]` para tokens con multiples formas canonicas.
+- `functionNames`: mapa `lowercase -> canonical` de funciones de math.js.
+- `longToShort`: mapa de nombres largos a simbolos cortos.
+
+Sin este recurso, el sistema de normalizacion de case no funciona. Se construye a partir de `mathjs-precompute.js`.
+
+> **Verificar en:** `Yottacast.Core/Search/Calculator/mathjs-precomputed.json`; `loadPrecomputedData()` en
+`mathjs-helpers.js`; `Yottacast.Core/Search/Calculator/mathjs-precompute.js`
+
+---
+
+## 13. Snapshot de regresion y actualizacion de math.js
+
+### 13.1 Proteccion contra regresiones
+
+Existe un test (`GeneratedFiles_MatchCommittedBaseline`) que regenera los archivos precomputados en memoria y los
+compara con los comprometidos en el repositorio. Si difieren, falla con un diff detallado indicando unidades nuevas,
+eliminadas, y tokens ambiguos nuevos o resueltos.
+
+La fixture del test usa un provider de divisas vacio para no contaminar el snapshot con divisas registradas por otros
+tests.
+
+### 13.2 Workflow al actualizar math.js
+
+1. Cambiar la URL de descarga en el `.csproj` a la nueva version.
+2. Borrar `math.min.js` (se redescarga en el siguiente build).
 3. `dotnet build`
-4. Borrar `Yottacast.Core.Tests/Search/mathjs-unit-snapshot.json` y `Yottacast.Core/Search/Calculator/mathjs-precomputed.json`
-5. `dotnet test --filter GeneratedFiles_MatchCommittedBaseline` — los regenera
-6. `dotnet build` para re-embedder el nuevo `mathjs-precomputed.json`
-7. `dotnet test` para verificar que todo pasa
+4. Borrar `mathjs-unit-snapshot.json` y `mathjs-precomputed.json`.
+5. `dotnet test --filter GeneratedFiles_MatchCommittedBaseline` (los regenera).
+6. `dotnet build` (re-embebe el nuevo `mathjs-precomputed.json`).
+7. `dotnet test` (verificacion completa).
 
-## Normalización natural (`normalizeUnits`)
+### 13.3 Incompatibilidad conocida con Jint
 
-Cuando el usuario escribe un único valor con unidad (`unit_entry`) y esa unidad pertenece a `normalizeUnits`, `MathJsEngine.EvaluateSimple` intercepta la evaluación antes de usar `defaultTargets` y llama a `TryNormalize`. Si el resultado es "interesante" (unidad o componentes distintos a la entrada), se devuelve directamente; si es trivial (misma unidad, mismo valor), `TryNormalize` retorna `null` y la evaluación cae al comportamiento habitual de `defaultTargets`.
+Versiones recientes de math.js lanzan "Assignment to constant variable" dentro de Jint 3.x. La version embebida esta
+fijada (11.12.0). Si se actualiza Jint a una version con soporte ES2022+, se puede probar una version mas reciente de
+math.js.
 
-### Modos de normalización
+### 13.4 Riesgo del EmbeddedResource condicional
 
-Hay dos modos, configurados por el campo `mode` de cada cadena en `_normalizeChains` (`mathjs-helpers.js`):
+El recurso `math.min.js` tiene `Condition="Exists(...)"` en el `.csproj`. Si `curl` falla en el build, la compilacion
+termina correctamente pero el recurso no queda embebido. En ese caso la app lanza `InvalidOperationException` en
+runtime.
 
-**`decompose` (tiempo)** — descompone el valor en hasta 3 componentes, de mayor a menor (año → día → hora → minuto → segundo → milisegundo). Ejemplos: `38000s → 10h 33min 20s`, `49h → 2 day 1 h`. El resultado multi-componente usa `ToUnit=""` y `ToUnitLong` como string largo pre-formateado; `CalculatorSearch` lo detecta y lo usa directamente en el `toLong`.
+> **Verificar en:** `MathJsGeneratedFilesTests` en `Yottacast.Core.Tests/Search/MathJsUnitSnapshotTests.cs`; target
+`DownloadMathJs` en `Yottacast.Core/Yottacast.Core.csproj`
 
-**`best_unit` (datos)** — encuentra la unidad más alta donde el valor ≥ 1 y lo expresa con hasta 3 decimales. Ejemplos: `1500 MB → 1.5 GB`, `0.01 GB → 10 MB`. El resultado es siempre un único componente.
+---
 
-### Implementación
+## 14. Thread safety y Dispose
 
-- **JS**: `computeNormalization(valueStr, unit)` en `mathjs-helpers.js` — convierte el valor a la unidad base de la cadena (ej. segundos para tiempo, bytes para datos) y aplica el algoritmo según el `mode`. `formatMaxDec(value, maxDec)` formatea con máx `maxDec` decimales eliminando ceros finales.
-- **C#**: `TryNormalize(normalized, hints)` en `MathJsEngine.cs` — llama a `EvalJs($"{lhsExpr} to {origUnit}")` (con target explícito para evitar la auto-normalización SI de math.js en el from), invoca `computeNormalization` vía JS y construye el `ConversionResult`. `FormatNormalizedShort` / `FormatNormalizedLong` componen el string multi-componente; la pluralización se delega en `UnitPluralizer.Pluralize` (helper compartido con `CalculatorSearch.LongForm`, ver "Nombres largos").
+- El acceso al motor esta protegido por un `lock` en cada llamada a `Evaluate()` y `NormalizeExpression()`. Es seguro
+  llamarlo desde multiples hilos.
+- `Evaluate()` comprueba `_engine == null` antes y despues de adquirir el lock (double-checked null guard): la
+  comprobacion exterior evita contension cuando el engine aun no esta listo; la interior garantiza corrección ante una
+  carrera con `Dispose()`.
+- `Dispose()` espera la finalizacion de la tarea de inicializacion, adquiere el lock, dispone el engine y pone
+  `_engine = null`. Esto garantiza que no haya evaluaciones en curso cuando se libera el engine.
 
-### Preservación del from-side
+> **Verificar en:** `Evaluate()`, `NormalizeExpression()`, `Dispose()` en `MathJsEngine.cs`
 
-El intercept usa `EvalJs("... to origUnit")` en lugar de `EvalJs("...")`. Esto fija la unidad de salida e impide que math.js elija un prefijo SI automáticamente. Como resultado, el `fromShort` refleja siempre la entrada literal del usuario (`0.001 s` → from: `"0.001 s"`, to: `"1 ms"`), a diferencia de unidades SI estándar fuera de `normalizeUnits` donde el from se auto-normaliza hacia abajo (`0.001 V` → from: `"1 mV"`).
+---
 
-## CalculatorSearch
+## 15. Portapapeles
 
-**Detección de expresiones**: la clasificación la hace `normalizeExpression()` vía análisis del AST. El `kind` determina el camino de evaluación: `calculation` para aritmética, `unit_entry` para un valor con unidad que tiene conversión por defecto, `simple_conversion` y `complex_conversion` para expresiones con `to`/`in`.
+El modulo Core no depende de Avalonia. `ClipboardService` es un bridge que se inicializa en `App.axaml.cs` con un
+delegate que despacha la operacion al hilo UI. Antes de la inicializacion, las copias se descartan silenciosamente (en
+la practica nunca ocurre porque la UI no es interactiva hasta que las fuentes estan listas).
 
-**Conversiones de unidades**:
-- Formato explícito: `NÚMERO UNIDAD (to|in) UNIDAD` — ej. `10 kg to lbs`, `100 F to C`, `10 mi/s to km/h`
-- Formato implícito: `NÚMERO UNIDAD` — ej. `10 km`, `60 km/h` se convierte automáticamente usando `defaultTargets`
-- math.js las evalúa nativamente; `normalizeExpression` normaliza el case antes de evaluar
+En tests, se inicializa con un delegate de captura, sin necesidad de Avalonia.
 
-**Divisas**: soportadas vía `ICurrencyRateProvider`. Las tasas se registran dinámicamente en el engine con `registerCurrency()` en cada llamada a `Evaluate()`, actualizándose si la tasa ha cambiado. Los códigos de divisa (ej. `USD`, `EUR`) se normalizan a mayúsculas en el AST. Al escribir una sola divisa (ej. `10 USD`), se convierte al par por defecto definido en `_defaultCurrencyPair` en `mathjs-helpers.js` (`['EUR', 'USD']`).
+> **Verificar en:** `ClipboardService` en `Yottacast.Core/Services/ClipboardService.cs`
 
-**`ConversionResultItemViewModel`** (`Yottacast.Core/ViewModels/ConversionResultItemViewModel.cs`): resultado de conversión con tres pares de campos (from original, from normalizado, to), navegación de celdas y `INotifyPropertyChanged`:
+---
 
-- `FromShort` / `FromLong`: from tal como lo escribió el usuario, bien formateado (ej. `"0.001 V"` / `"0.001 volts"`). `FromLong` es `null` si no añade información.
-- `NormFromShort` / `NormFromLong`: from auto-simplificado por math.js (ej. `"1 mV"` / `"1 millivolt"`); `null` si no hubo simplificación.
-- `ToShort` / `ToLong`: destino de la conversión (ej. `"6.213711922 mile"` / `"6.213711922 miles"`). `ToLong` es `null` si no añade información.
-- `FromWasNormalized`: `true` cuando `NormFrom*` está presente — activa la navegación ←/→ y los highlights de celda.
-- `SelectedCell` (`ConversionCell` enum: `To`, `NormFrom`, `OrigFrom`): celda con el foco actual; por defecto `To`. Al cambiar, dispara `PropertyChanged` para las tres propiedades `Is*Highlighted`.
-- `MoveCellLeft()` / `MoveCellRight()`: desplazan la selección y devuelven `true` si el movimiento fue consumido, `false` si ya estaban en la celda extrema (lo que permite que el TextBox mueva el cursor de texto).
+## 16. Tests
 
-**Display en la UI**: cuando `FromWasNormalized = false`, el resultado muestra dos celdas (`[From] → [To]`). Cuando `FromWasNormalized = true`, muestra tres celdas (`[From original] → [From normalizado] → [To]`); la celda NormFrom y la segunda flecha tienen `IsVisible` enlazado a `FromWasNormalized` y se colapsan automáticamente cuando no hay simplificación.
+Los tests usan `MathJsEngineFixture` (coleccion `"MathJs"`) para compartir una sola instancia del engine, y
+`MathJsSnapshotFixture` (coleccion `"MathJsSnapshot"`) para tests de snapshot con provider de divisas vacio.
 
-**Normalización del FROM**: hay varios mecanismos que pueden cambiar la unidad mostrada en FROM:
+| Clase de test                         | Cobertura                                         |
+|---------------------------------------|---------------------------------------------------|
+| `CalculatorSearchTests.cs`            | Aritmetica y funciones                            |
+| `UnitConverterSearchTests.cs`         | Conversiones de unidades                          |
+| `DefaultConversionTests.cs`           | Conversiones por defecto y nombres largos         |
+| `DefaultConversionTestsFormatting.cs` | Formateo de resultados de conversion              |
+| `ClassifyErrorTests.cs`               | Clasificacion de errores                          |
+| `NormalizeExpressionTests.cs`         | Normalizacion de expresiones y deteccion de kinds |
+| `CurrencyRateUpdateTests.cs`          | Actualizacion dinamica de tasas de cambio         |
+| `MathJsUnitSnapshotTests.cs`          | Snapshot de regresion y casing de unidades        |
 
-1. **Auto-simplificación SI de math.js** — para unidades SI simples con coeficiente < 1, math.js reescribe al prefijo más conveniente (`0.001 V` → `1 mV`). Solo ocurre hacia abajo; `1000 m` permanece como `1000 m`. Las imperiales y no-SI nunca se simplifican. Cuando ocurre, `FromValue`/`FromUnit` preservan el original del usuario y `NormFromValue`/`NormFromUnit` almacenan la forma simplificada; `FromWasNormalized = true`.
-2. **Forzado `to {fromUnit}` para compuestos** — en `EvaluateSimple` e `EvaluateComplex`, si `fromUnit` contiene ` / `, se evalúa el LHS forzando la unidad (`EvalJs("10 km/h to km / h")`). Esto evita que math.js auto-simplifique a una unidad custom registrada de la misma dimensión (ej. `kmh` o `mph`). El usuario ve la unidad exactamente como la escribió.
-3. **`TryNormalize` (tiempo/datos)** — previene la auto-simplificación SI forzando la unidad original con `to origUnit`. `FromWasNormalized` siempre es `false` para estas unidades.
-
-**`ISearchHintProvider` / `LastHint`**: `CalculatorSearch` implementa `ISearchHintProvider`. Solo se establece `LastHint` para errores `IncompatibleUnits` (ej. `1 kg to m`). Los `UnknownSymbol` se descartan en silencio porque cualquier texto plano no matemático (`safari to km`) los dispararía y generaría ruido. `BuildErrorHint` conoce ambos tipos por si en el futuro la UI quisiera exponer uno condicionalmente.
-
-**No-result cuando el resultado coincide con la query**: si `Evaluate()` devuelve exactamente la misma cadena que la query de entrada (por ejemplo, al escribir sólo un número como `42`), `Search` no devuelve ningún resultado.
-
-**Display contract**: el `Title` del resultado es el valor de destino en formato corto; el `Subtitle` es la query normalizada (`NormalizedQuery`), opcionalmente seguida del hint de ambigüedad. El icono es "🧮" para calculadora y "📐" para conversor.
-
-`CalculatorSearch` tiene un score de 4, mayor que otras fuentes, por lo que sus resultados aparecen cerca de la cima cuando la query es reconocida.
-
-**`Start()` es no-op**: a diferencia de otras instant sources, `CalculatorSearch.Start()` no inicia ningún proceso. `WhenReady()` delega directamente en `engine.WhenReady()`.
-
-**Activación**: al activar un resultado se copia al portapapeles — el resultado aritmético (`RawValue`) para calculadora. Para conversiones, se copia la celda seleccionada: `OrigFrom` copia `fromShort`, `NormFrom` copia `normFromShort` (o `toShort` si el normalizado no está disponible), `To` copia `toShort`. La celda por defecto es `To`, de modo que sin navegar, Enter copia el destino como antes.
-
-**El parámetro `limit` se ignora**: `CalculatorSearch.Search()` acepta `limit` por contrato de `IInstantSearchSource` pero nunca lo usa. La fuente devuelve como máximo un elemento.
-
-**Tests**: repartidos en varias clases xUnit que usan `MathJsEngineFixture` (colección `"MathJs"`) para inicializar el engine una sola vez:
-- `Yottacast.Core.Tests/Search/Calculator/CalculatorSearchTests.cs` — aritmética y funciones
-- `Yottacast.Core.Tests/Search/Calculator/UnitConverterSearchTests.cs` — conversiones de unidades
-- `Yottacast.Core.Tests/Search/Calculator/DefaultConversionTests.cs` — conversiones por defecto y nombres largos
-- `Yottacast.Core.Tests/Search/Calculator/ClassifyErrorTests.cs` — clasificación de errores
-- `Yottacast.Core.Tests/Search/Calculator/NormalizeExpressionTests.cs` — normalización de expresiones y detección de kinds
-
-## ClipboardService
-
-Core no depende de Avalonia. `App.axaml.cs` llama `clipboardService.Initialize(...)` una vez al arranque, pasando un delegate que envuelve la operación en `Dispatcher.UIThread.InvokeAsync()` para garantizar que el acceso al portapapeles ocurra en el hilo UI, y luego llama `TopLevel.GetTopLevel(mainWindow)?.Clipboard?.SetTextAsync(text)`.
-
-**No-op antes de inicializar**: `CopyText()` invoca `_copy?.Invoke(text)` — si se llama antes de que `App.axaml.cs` haya ejecutado `Initialize()`, el texto se descarta silenciosamente. En la práctica esto nunca ocurre porque la UI no es interactiva hasta que las instant sources están `Ready`.
-
-**Testabilidad**: en tests, `ClipboardService` se instancia directamente y se inicializa con un delegate de captura (`clipboard.Initialize(text => copied = text)`), sin necesidad de Avalonia. Esto permite verificar que `OnActivate` copia el valor correcto sin levantar la UI.
+> **Verificar en:** `Yottacast.Core.Tests/Search/Calculator/` y `Yottacast.Core.Tests/Search/MathJsUnitSnapshotTests.cs`

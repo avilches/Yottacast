@@ -1,4 +1,4 @@
-# Definición del proyecto
+# Definicion del proyecto
 
 Yottacast es un lanzador de aplicaciones para macOS/Windows — similar a Spotlight, Alfred o Raycast.
 
@@ -6,112 +6,163 @@ Yottacast es un lanzador de aplicaciones para macOS/Windows — similar a Spotli
 
 ## Arquitectura clave
 
-- Es una ventana sin marco, transparente, con una única entrada de texto donde el usuario escribe para buscar en múltiples fuentes.
-- El flujo principal de búsqueda: el usuario escribe → debounce → `GlobalSearch` lanza en paralelo todas las sources registradas → las instant devuelven resultados síncronamente desde memoria; las deferred emiten resultados vía `IAsyncEnumerable` en streaming → `GlobalSearch` combina y ordena los resultados → el ViewModel actualiza la UI.
-- Hay dos tipos de search sources: **instant** (responden en memoria: apps, calculadora, emoji) y **deferred** (requieren I/O: búsqueda de ficheros). Cada tipo tiene su propia interfaz con ciclo de vida `Start/WhenReady/Stop`.
-- Cada fuente una devuelve uno o más elementos, cada uno con un score, que luego son mezclados, opcionalmente filtrados, ordenados por score y mostrados
-  al usuario, y donde éste podrá usar las teclas de flecha + Enter para hacer acciones en los elementos (abrir, copiar, lanzar un comando).
-- Hay algunos elementos de una sola línea y otros en forma de grid. En los de grid se podrá navegar con los cursores arriba abajo izquierda derecha dentro del elemento (por ejemplo un selector de Emojis).
-- El usuario podrá pulsar enter y otras teclas para ejecutar acciones sobre cada elemento.
+- Es una ventana sin marco, transparente, con una unica entrada de texto donde el usuario escribe para buscar en
+  multiples fuentes.
+- El flujo principal de busqueda: el usuario escribe -> debounce -> `GlobalSearch` lanza en paralelo todas las sources
+  registradas -> las instant devuelven resultados sincronamente desde memoria; las deferred emiten resultados via
+  `IAsyncEnumerable` en streaming -> `GlobalSearch` combina y ordena los resultados -> el ViewModel actualiza la UI.
+- Hay dos tipos de search sources: **instant** (responden en memoria: apps, calculadora, emoji, busqueda web) y *
+  *deferred** (requieren I/O: busqueda de ficheros). Cada tipo tiene su propia interfaz con ciclo de vida
+  `Start/WhenReady/Stop`.
+- Cada fuente devuelve uno o mas elementos, cada uno con un score, que luego son mezclados, opcionalmente filtrados,
+  ordenados por score y mostrados al usuario, y donde este podra usar las teclas de flecha + Enter para hacer acciones
+  en los elementos (abrir, copiar, lanzar un comando).
+- Hay algunos elementos de una sola linea y otros en forma de grid. En los de grid se podra navegar con los cursores
+  arriba abajo izquierda derecha dentro del elemento (por ejemplo un selector de Emojis).
+- El usuario podra pulsar enter y otras teclas para ejecutar acciones sobre cada elemento.
 
-Los temas visuales son ficheros JSON que se aplican en runtime vía `ThemeService`. La hotkey global (mostrar/ocultar la ventana) se captura con SharpHook.
+Los temas visuales son ficheros JSON que se aplican en runtime via `ThemeService`. La hotkey global (mostrar/ocultar la
+ventana) se captura con SharpHook.
 
 ## Comportamiento de la ventana
 
-Yottacast es una **app accesoria**: no muestra icono en el Dock (macOS) ni en la taskbar (Windows), y no tiene barra de menú. En macOS esto se logra con `NSApplicationActivationPolicyAccessory` vía P/Invoke a Objective-C.
+Yottacast es una **app accesoria**: no muestra icono en el Dock (macOS) ni en la taskbar (Windows), y no tiene barra de
+menu. En macOS esto se logra con `NSApplicationActivationPolicyAccessory` via P/Invoke a Objective-C.
 
 La ventana nunca se cierra realmente — se oculta y se muestra con una hotkey global (toggle).
-Al mostrarse, captura la referencia a la app que tenía el foco en ese momento.
+Al mostrarse, captura la referencia a la app que tenia el foco en ese momento.
 Al ocultarse, restaura el foco a esa app. La ventana se posiciona centrada en pantalla.
 
 ## Search sources
 
-Yottacast busca en varias fuentes simultáneamente. Cada source tiene un propósito concreto:
+Yottacast busca en varias fuentes simultaneamente. Cada source tiene un proposito concreto:
 
-- **Apps**: escanea las aplicaciones instaladas del sistema, las cachea en memoria y vigila cambios en el sistema de archivos para mantener la caché actualizada.
-- **Calculadora**: evalúa expresiones matemáticas y conversiones de unidades usando math.js (ejecutado en Jint). Responde en línea mientras el usuario escribe.
-- **Emoji**: se activa con el prefijo `:`. Muestra los resultados en un grid navegable con cursores. Tras seleccionar un emoji, lo copia y lo pega automáticamente en la app anterior.
-- **Búsqueda de documentos**: busca archivos en las carpetas configuradas del usuario usando indexación nativa del sistema operativo. Los resultados llegan progresivamente (deferred source).
-- **Google suggestion**: permite abrir una búsqueda web en el navegador configurado. En modo normal, siempre está presente usando la query completa. En modo emoji (query empieza por `:`), usa el texto tras `:` como término de búsqueda; si la query es solo `:`, el ítem no se muestra.
+- **Apps**: escanea las aplicaciones instaladas del sistema, las cachea en memoria y vigila cambios en el sistema de
+  archivos para mantener la cache actualizada. Si una aplicación se acaba de instalar, aparece directamente.
+- **Calculadora/Conversor**: evalua expresiones matematicas y conversiones de unidades usando math.js (ejecutado en Jint).
+  Responde en linea mientras el usuario escribe. Si se usa una unidad (c, kg) siempre tiene otra unidad a la que convertir.
+- **Emoji**: se activa con el prefijo `:`. Muestra los resultados en un grid navegable con cursores. Tras seleccionar un
+  emoji, lo copia y lo pega automaticamente en la app anterior.
+- **Busqueda de documentos**: busca archivos en las carpetas configuradas del usuario usando indexacion nativa del
+  sistema operativo. Los resultados llegan progresivamente (deferred source).
+- **Busqueda web**: permite abrir una busqueda web en el navegador configurado con el motor seleccionado por el
+  usuario (Google, DuckDuckGo, etc.). En modo normal, siempre esta presente usando la query completa. En modo emoji (
+  query empieza por `:`), usa el texto tras `:` como termino de busqueda; si la query es solo `:`, el item no se
+  muestra.
 
 ## Acciones
 
-Cada tipo de resultado tiene una acción por defecto al activarlo (Enter):
+Cada tipo de resultado tiene una accion por defecto al activarlo (Enter):
 
-- **Apps** → lanzar la aplicación.
-- **Calculadora** → copiar el resultado al portapapeles.
-- **Emoji** → copiar al portapapeles + ocultar ventana + restaurar app anterior + simular paste (Cmd+V / Ctrl+V con delay).
-- **Google** → abrir la URL de búsqueda en el navegador configurado.
-- **Documentos** → abrir el archivo con la aplicación por defecto del sistema.
+- **Apps** -> lanzar la aplicacion.
+- **Calculadora** -> copiar el resultado al portapapeles.
+- **Emoji** -> copiar al portapapeles + ocultar ventana + restaurar app anterior + simular paste (Cmd+V / Ctrl+V con
+  delay).
+- **Busqueda web** -> abrir la URL de busqueda en el navegador configurado.
+- **Documentos** -> abrir el archivo con la aplicacion por defecto del sistema.
 
 ## Settings
 
-La configuración del usuario incluye: hotkey global, navegador preferido, terminal, tema visual, carpetas de búsqueda, directorios de apps, y toggles para features individuales (calculadora, clipboard, emoji) — los toggles se persisten en `UserSettings` y se muestran en Settings, pero aún no tienen efecto funcional sobre los resultados de búsqueda (pendiente de implementación).
+La configuracion del usuario incluye: hotkey global, navegador preferido, terminal, tema visual, carpetas de busqueda,
+directorios de apps, motor de busqueda web, y toggles para features individuales (calculadora, clipboard, emoji) — los
+toggles se persisten en `UserSettings` y se muestran en Settings, pero aun no tienen efecto funcional sobre los
+resultados de busqueda (pendiente de implementacion).
 
-La ventana de settings es una ventana modal separada, accesible con Cmd+, (macOS) o Ctrl+, (Windows).
+La ventana de settings es una ventana modal separada, accesible con Cmd+, (macOS).
 
-**Auto-reparación**: si el navegador o terminal configurado desaparece del sistema, Yottacast selecciona automáticamente el primero disponible.
+**Auto-reparacion**: si el navegador o terminal configurado desaparece del sistema, Yottacast selecciona automaticamente
+el primero disponible.
 
 ## Temas
 
-Los temas son ficheros JSON que definen colores, fuentes y parámetros de layout. Se aplican en runtime inyectando recursos en el árbol de Avalonia y son hot-swappable (cambiar de tema no requiere reiniciar).
-Yottacast detecta automáticamente el modo dark/light del sistema operativo y selecciona el tema acorde.
+Los temas son ficheros JSON que definen colores, fuentes y parametros de layout. Se aplican en runtime inyectando
+recursos en el arbol de Avalonia y son hot-swappable (cambiar de tema no requiere reiniciar).
+Yottacast detecta automaticamente el modo dark/light del sistema operativo y selecciona el tema acorde.
 
 ## Startup no bloqueante
 
 La ventana es interactiva inmediatamente al arrancar.
 Las search sources se inicializan en background mediante su ciclo de vida `Start/WhenReady`.
-La UI no se arranca hasta que las instant sources están todas Ready.
-Se abre la UI y se acepta input del usuario, la búsqueda nunca espera: las instant sources ya estarán listas, mientras que las deferred siempre responden al momento de la búsqueda, solo que quizá tarden más en devolver resultados.
+La UI no se arranca hasta que las instant sources estan todas Ready.
+Se abre la UI y se acepta input del usuario, la busqueda nunca espera: las instant sources ya estaran listas, mientras
+que las deferred siempre responden al momento de la busqueda, solo que quiza tarden mas en devolver resultados.
 
 ## Recursos embebidos
 
-math.js y emoji-data se descargan automáticamente durante el build si no existen localmente.
-El caché compacto de emojis se genera en runtime y se copia al source tree en build.
-El build es autosuficiente: no requiere pasos manuales de descarga ni preparación.
+math.js y emoji-data se descargan automaticamente durante el build si no existen localmente.
+El cache compacto de emojis se genera en runtime y se copia al source tree en build.
+El build es autosuficiente: no requiere pasos manuales de descarga ni preparacion.
 
 ## Actualizaciones y versiones
 
-La versión de la aplicación se define en ambos `.csproj` (Yottacast y Yottacast.Core). 
+La version de la aplicacion se define en ambos `.csproj` (Yottacast y Yottacast.Core).
 Un `UpdateChecker` consulta un endpoint remoto para detectar nuevas versiones.
-Existe un sistema de migraciones basado en `LastLaunchedVersion` que ejecuta transformaciones al detectar que el usuario ha actualizado desde una versión anterior.
+Existe un sistema de migraciones basado en `LastLaunchedVersion` que ejecuta transformaciones al detectar que el usuario
+ha actualizado desde una version anterior.
 
-## Estructura de la solución
+## Estructura de la solucion
 
 ```
 Yottacast.sln
-├── Yottacast/                 ← GUI app (Avalonia, WinExe). Views, ViewModels, Themes, AppHandler (código OS-específico de UI)
-├── Yottacast.Core/            ← Shared library (sin UI). Search sources, PlatformProvider, Services, ViewModels base
-├── Yottacast.Cli/             ← CLI interactivo para probar servicios (browsers, terminals, apps, search, run)
-└── Yottacast.Core.Tests/      ← Tests xUnit
++-- Yottacast/                 <- GUI app (Avalonia, WinExe). Views, ViewModels, Themes, AppHandler (codigo OS-especifico de UI)
++-- Yottacast.Core/            <- Shared library (sin UI). Search sources, PlatformProvider, Services, ViewModels base
++-- Yottacast.Cli/             <- CLI interactivo para probar servicios (browsers, terminals, apps, search, run)
++-- Yottacast.Core.Tests/      <- Tests xUnit
 ```
 
 ## Fuentes de verdad
 
-`CLAUDE.md` es la **fuente de intención** del proyecto: describe qué debe hacer y cómo debe estar estructurado. Solo el desarrollador lo modifica. Si el código contradice algo descrito aquí, se considera un gap a resolver — no al revés.
+`CLAUDE.md` es la **fuente de intencion** del proyecto: describe que debe hacer y como debe estar estructurado. Solo el
+desarrollador lo modifica. Si el codigo contradice algo descrito aqui, se considera un gap a resolver — no al reves.
 
-`docs/` es la **descripción del código actual**: explica cómo funciona lo que ya está implementado. Claude lo mantiene sincronizado con el código vía `/audit`.
+`docs/` es la **especificacion de comportamiento**: describe como debe funcionar la aplicacion, con invariantes
+verificables y referencias al codigo para validacion. No describe la implementacion linea a linea, sino los contratos y
+comportamientos esperados. Si el codigo contradice un doc, el doc describe la intencion correcta y el codigo debe
+corregirse.
 
-El **código** es la fuente de verdad de la implementación. `docs/` se ajusta al código; el código se ajusta a `CLAUDE.md`.
+El **codigo** es la fuente de verdad de la implementacion. `docs/` valida que el codigo cumple los contratos; el codigo
+se ajusta a `CLAUDE.md`.
 
 ## Reglas
 
-**Mantenimiento**: describe siempre el estado actual del código. No documentes cambios respecto a versiones anteriores ni migraciones. Si al editar escribes algo como "ahora X en vez de Y", "ya no se usa Z", o "antes se hacía así", reformúlalo para describir solo el comportamiento actual. Los gotchas y precauciones sí se documentan, pero sin referenciar versiones pasadas.
+**Mantenimiento de docs**: cuando se modifique codigo que afecte al comportamiento descrito en `docs/`, actualizar el
+doc correspondiente manteniendo el mismo enfoque:
 
-**Código multiplataforma (UI)**: todo código OS-específico que dependa de Avalonia o de la capa de UI debe vivir en `Yottacast/Services/AppHandler` y sus subclases (`MacAppHandler`, `WindowsAppHandler`, `LinuxAppHandler`).
-- El código de las Views y ViewModels no debe contener `OperatingSystem.IsMacOS()` ni similares; en su lugar, delega en `AppHandler.Instance`.
-- La lógica OS-específica que no depende de UI (búsqueda de archivos, lanzar procesos, etc.) va en `Yottacast.Core/Platform/PlatformProvider` y sus subclases, para que sea reutilizable desde el CLI y los tests.
+- Describir **que debe hacer** la aplicacion y **por que**, no como lo implementa el codigo.
+- Estructurar por **comportamientos y contratos**, no por ficheros fuente.
+- Incluir **invariantes verificables** (ej: "el usuario nunca ve la ventana vacia", "Escape siempre tiene una salida").
+- Terminar cada seccion con un bloque `> **Verificar en:**` que apunte a los ficheros y metodos donde se puede validar
+  el comportamiento.
+- No duplicar valores concretos (constantes, rutas, scores) — referenciar donde viven en el codigo.
 
-**Inyección de dependencias**: no usar clases `static` para lógica de negocio o servicios.
-Las clases estáticas no permiten inyectar `ILogger`, `IConfiguration` ni otros servicios, lo que imposibilita el logging y el testing. En su lugar, usar clases instanciables registradas en el contenedor DI. Los métodos `static` solo son aceptables para utilidades puras sin dependencias (helpers de conversión, parsers sin estado, etc.).
+**Mantenimiento general**: describe siempre el estado actual del codigo. No documentes cambios respecto a versiones
+anteriores ni migraciones. Si al editar escribes algo como "ahora X en vez de Y", "ya no se usa Z", o "antes se hacia
+asi", reformulalo para describir solo el comportamiento actual. Los gotchas y precauciones si se documentan, pero sin
+referenciar versiones pasadas.
 
-**Centralización de constantes y rutas**: toda ruta de fichero o directorio que la app lee o escribe en runtime debe definirse en `AppPaths.cs`. Todo valor numérico o parámetro por defecto debe definirse en `AppDefaults.cs`. Nunca hardcodear rutas ni constantes en las clases que las consumen.
+**Codigo multiplataforma (UI)**: todo codigo OS-especifico que dependa de Avalonia o de la capa de UI debe vivir en
+`Yottacast/Services/AppHandler` y sus subclases (`MacAppHandler`, `WindowsAppHandler`, `LinuxAppHandler`).
 
-**Documentación**: los ficheros en `docs/` explican diseño, arquitectura y relaciones entre componentes.
-No duplican constantes concretas, listas completas de rutas, puntuaciones numéricas, patrones regex ni otros
-detalles de implementación que ya son legibles en el código; en su lugar, señalan dónde viven esos detalles (p. ej. "ver `ClassName.Method`" o "definido en `File.cs`").
-Esto evita que la documentación quede desactualizada cuando cambian los valores.
-Los docs responden "¿cómo funciona esto?" y "¿dónde lo busco?", no "¿cuáles son los valores exactos?".
+- El codigo de las Views y ViewModels no debe contener `OperatingSystem.IsMacOS()` ni similares; en su lugar, delega en
+  `AppHandler.Instance`.
+- La logica OS-especifica que no depende de UI (busqueda de archivos, lanzar procesos, etc.) va en
+  `Yottacast.Core/Platform/PlatformProvider` y sus subclases, para que sea reutilizable desde el CLI y los tests.
+
+**Inyeccion de dependencias**: no usar clases `static` para logica de negocio o servicios.
+Las clases estaticas no permiten inyectar `ILogger`, `IConfiguration` ni otros servicios, lo que imposibilita el logging
+y el testing. En su lugar, usar clases instanciables registradas en el contenedor DI. Los metodos `static` solo son
+aceptables para utilidades puras sin dependencias (helpers de conversion, parsers sin estado, etc.).
+
+**Centralizacion de constantes y rutas**: toda ruta de fichero o directorio que la app lee o escribe en runtime debe
+definirse en `AppPaths.cs`. Todo valor numerico o parametro por defecto debe definirse en `AppDefaults.cs`. Nunca
+hardcodear rutas ni constantes en las clases que las consumen.
+
+**Documentacion**: los ficheros en `docs/` especifican comportamientos esperados con invariantes verificables.
+No duplican constantes concretas, listas completas de rutas, puntuaciones numericas, patrones regex ni otros detalles de
+implementacion que ya son legibles en el codigo; en su lugar, señalan donde viven esos detalles (p. ej. "ver
+`ClassName.Method`" o "definido en `File.cs`").
+Esto evita que la documentacion quede desactualizada cuando cambian los valores.
+Los docs responden "que debe hacer esto?" y "donde lo verifico?", no "cuales son los valores exactos?".
 
 ## Build & Run
 
@@ -127,35 +178,54 @@ cd Yottacast.Cli && dotnet run
 cd Yottacast.Core.Tests && dotnet test
 ```
 
-## Documentación
+## Documentacion
 
-Las docs están en `docs/`. Léelas antes de trabajar en cualquier área:
+Los docs estan en `docs/`. Carga solo los necesarios segun el area de trabajo:
 
-Diseño general y fuentes de busqueda:
-- `docs/app-design.md`
-- Buscador de ficheros, documentos `docs/search-sources.md`
-- Calculadora y conversiones: `docs/search-calculator.md`
-- Selector de emojis: `docs/search-emoji.md`
-- `docs/search-scoring.md`
-- `docs/search-files.md`
+**Diseno general y arranque:**
 
-Internals:
-- Todas las rutas y ficheros deben ir aqui: `docs/app-paths.md`
-- `docs/release-workflow.md`
-- Todo lo que tenga que ver con Mac vs Linux vs Window se explica aqui `docs/multi-platform.md`
-- `docs/logging.md`
+- `docs/app-design.md` — Ciclo de vida de la aplicacion (arranque, mostrar/ocultar, cierre), arquitectura de busqueda en
+  dos fases, contratos de resultados, integracion multiplataforma. Es el punto de entrada para entender la app completa.
 
-Settings
-- `docs/user-settings.md`
-- `docs/user-settings-browser.md`
-- `docs/user-settings-terminal.md`
-- `docs/ui-themes.md`
-- `docs/ui-hotkeys.md`
-- `docs/ui-main-window.md`
+**Fuentes de busqueda:**
+
+- `docs/search-sources.md` — Interfaces de fuentes (instant/deferred), ciclo de vida Start/WhenReady/Stop, mecanismo de
+  merge por slots, flujo completo de busqueda con debounce.
+- `docs/search-calculator.md` — Motor de calculo (math.js en Jint), conversiones de unidades, formato de resultados,
+  seleccion automatica vs manual.
+- `docs/search-emoji.md` — Modo emoji (prefijo `:`), grid navegable, carga de datos, cache compacta, paste automatico.
+- `docs/search-files.md` — Busqueda de documentos del usuario, indexacion nativa (Spotlight/Windows Search), resultados
+  progresivos.
+- `docs/search-scoring.md` — Algoritmo de puntuacion y ordenacion de resultados entre fuentes.
+
+**Internals:**
+
+- `docs/app-paths.md` — Rutas centralizadas (AppPaths) y constantes numericas (AppDefaults). Convencion para anadir
+  nuevas.
+- `docs/release-workflow.md` — Versionado, migraciones, comprobacion de actualizaciones, flujo de publicacion.
+- `docs/multi-platform.md` — Diferencias por OS: PlatformProvider (Core) y AppHandler (UI), P/Invoke, escaneo de apps,
+  paste simulado.
+- `docs/logging.md` — Politica de logging, niveles por componente, rotacion de ficheros.
+
+**Settings y UI:**
+
+- `docs/user-settings.md` — Persistencia JSON, auto-reparacion, migraciones de settings, propiedades del modelo.
+- `docs/user-settings-browser.md` — Descubrimiento de navegadores, auto-reparacion, lanzamiento de URLs por plataforma.
+- `docs/user-settings-terminal.md` — Descubrimiento de terminales, ejecucion de comandos, escaping por plataforma.
+- `docs/ui-themes.md` — Temas JSON, deteccion dark/light, hot-swap, estructura de un tema.
+- `docs/ui-hotkeys.md` — Hotkey global configurable, supresion a nivel de OS, mapa de teclas soportadas.
+- `docs/ui-main-window.md` — Layout de la ventana, bindings, indicadores de busqueda, banner de actualizacion.
+- `docs/unit-catalog.md` — Catalogo de unidades soportadas por la calculadora.
 
 ## Gotchas (Avalonia / transversales)
 
-- **No animar `RenderTransform` con keyframes CSS** — No hay animator registrado para `ITransform`; lanza `InvalidOperationException`. Animar solo propiedades de tipo simple (`double`, `Color`, `Thickness`…). Para indicadores de carga, usar `Opacity` con `PlaybackDirection="Alternate"`. `AutoReverse` no existe en Avalonia — el equivalente es `PlaybackDirection="Alternate"`.
-- **No `BoxShadow` en el root Border** — Avalonia lo renderiza como rectángulo independientemente del `CornerRadius`. macOS provee sombra redondeada nativa vía la ventana frameless transparente.
-- **Compiled bindings** habilitados globalmente (`AvaloniaUseCompiledBindingsByDefault=true`) — los bindings deben ser type-resolvable en compile time.
-- **`DataAnnotationsValidationPlugin`** deshabilitado en `App.axaml.cs` para evitar conflictos con CommunityToolkit.Mvvm.
+- **No animar `RenderTransform` con keyframes CSS** — No hay animator registrado para `ITransform`; lanza
+  `InvalidOperationException`. Animar solo propiedades de tipo simple (`double`, `Color`, `Thickness`...). Para
+  indicadores de carga, usar `Opacity` con `PlaybackDirection="Alternate"`. `AutoReverse` no existe en Avalonia — el
+  equivalente es `PlaybackDirection="Alternate"`.
+- **No `BoxShadow` en el root Border** — Avalonia lo renderiza como rectangulo independientemente del `CornerRadius`.
+  macOS provee sombra redondeada nativa via la ventana frameless transparente.
+- **Compiled bindings** habilitados globalmente (`AvaloniaUseCompiledBindingsByDefault=true`) — los bindings deben ser
+  type-resolvable en compile time.
+- **`DataAnnotationsValidationPlugin`** deshabilitado en `App.axaml.cs` para evitar conflictos con
+  CommunityToolkit.Mvvm.
