@@ -210,7 +210,7 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
     // ── Error items ───────────────────────────────────────────────────────────
 
     // Unknown unit/symbol: intentionally no hint is surfaced. BuildErrorHint knows how to format
-    // UnknownSymbol, but CalculatorSearch.Search only propagates IncompatibleUnits to LastHint —
+    // UnknownSymbol, but CalculatorSearch.Search only propagates IncompatibleUnitsConvert/Op to LastHint —
     // an "unknown symbol" hint would add noise on non-math queries ("safari to km") without value.
     [Fact]
     public void UnknownUnit_InMathContext_ReturnsEmptyWithoutHint() {
@@ -219,12 +219,20 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
         Assert.Null(search.LastHint);
     }
 
-    // Incompatible units (mass vs length) → IncompatibleUnits hint
+    // Incompatible explicit conversion (mass vs length) → hint with long unit names
     [Fact]
-    public void IncompatibleUnits_ShowsErrorItem() {
+    public void IncompatibleUnitsConvert_ShowsHintWithLongNames() {
         var search = BuildSearch(out _);
         Assert.Empty(search.Search("1 kg to meter", 5));
-        Assert.NotNull(search.LastHint);
+        Assert.Equal("Can't convert kilogram to meter", search.LastHint);
+    }
+
+    // Incompatible arithmetic between units → hint with generic message
+    [Fact]
+    public void IncompatibleUnitsOp_ShowsHint() {
+        var search = BuildSearch(out _);
+        Assert.Empty(search.Search("1 km + 2 L", 5));
+        Assert.Equal("Units do not match", search.LastHint);
     }
 
     // Plain text without digits or operators → no error item shown

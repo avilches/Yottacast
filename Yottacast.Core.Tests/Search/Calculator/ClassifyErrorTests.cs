@@ -21,8 +21,11 @@ public class ClassifyErrorTests(MathJsEngineFixture fixture) {
         { "1 XYZUNIT to g", CalcErrorKind.UnknownSymbol,   "XYZUNIT" },
         { "10 USD to U",    CalcErrorKind.UnknownSymbol,   "U"       },
         { "10 USD to X",    CalcErrorKind.UnknownSymbol,   "X"       },
-        // IncompatibleUnits: both valid units but incompatible dimensions
-        { "1 kg to meter",  CalcErrorKind.IncompatibleUnits, null    },
+        // IncompatibleUnitsConvert: explicit "X to Y" conversion between incompatible dimensions
+        { "1 kg to meter",  CalcErrorKind.IncompatibleUnitsConvert, "kilogram|meter" },
+        { "10 km to L",     CalcErrorKind.IncompatibleUnitsConvert, "kilometer|liter" },
+        // IncompatibleUnitsOp: arithmetic between incompatible units
+        { "1 km + 2 L",     CalcErrorKind.IncompatibleUnitsOp, null },
         // Syntax: parse/syntax error
         { "1 +",            CalcErrorKind.Syntax,           null     },
         // Other: E = Euler's constant → "Unexpected type" → not matched by classifyError patterns
@@ -36,6 +39,19 @@ public class ClassifyErrorTests(MathJsEngineFixture fixture) {
         var err = Assert.IsType<ErrorResult>(r);
         Assert.Equal(expectedKind, err.ErrorKind);
         if (expectedToken is not null) Assert.Equal(expectedToken, err.ErrorToken);
+    }
+
+    [Theory]
+    [InlineData("10 km to L",        "Can't convert kilometer to liter")]
+    [InlineData("1 kg to meter",      "Can't convert kilogram to meter")]
+    public void IncompatibleUnitsConvert_TokenContainsLongNames(string expression, string expectedToken) {
+        var err = Assert.IsType<ErrorResult>(fixture.Engine.Evaluate(expression));
+        Assert.Equal(CalcErrorKind.IncompatibleUnitsConvert, err.ErrorKind);
+        // Token format is "fromLong|toLong"; verify round-trip matches the expected hint text
+        Assert.NotNull(err.ErrorToken);
+        var parts = err.ErrorToken!.Split('|');
+        Assert.Equal(2, parts.Length);
+        Assert.Equal(expectedToken, $"Can't convert {parts[0]} to {parts[1]}");
     }
 
     // ── MG resolves via ambiguityOverrides to mg (milligram), shows alternative hint ─

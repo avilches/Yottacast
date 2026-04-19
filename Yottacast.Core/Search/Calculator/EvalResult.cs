@@ -4,7 +4,8 @@ public enum CalcErrorKind {
     None,
     Syntax,           // Parse/syntax error
     UnknownSymbol,    // Unknown identifier not found in the unit registry
-    IncompatibleUnits,// Units are valid but incompatible for the operation (e.g. kg to meter)
+    IncompatibleUnitsConvert, // Units are valid but incompatible for explicit conversion (e.g. "10km to litres")
+    IncompatibleUnitsOp,      // Units are valid but incompatible for arithmetic (e.g. "1km + 2l")
     Other
 }
 

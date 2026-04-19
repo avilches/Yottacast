@@ -303,7 +303,8 @@ Los errores de evaluacion se clasifican en:
 
 | Tipo                | Comportamiento en la UI                                  |
 |---------------------|----------------------------------------------------------|
-| `IncompatibleUnits` | Se muestra como hint debajo del campo de busqueda        |
+| `IncompatibleUnitsConvert` | Hint "Can't convert X to Y" con nombres largos de unidad |
+| `IncompatibleUnitsOp`     | Hint "Units do not match" (operacion aritmetica)         |
 | `UnknownSymbol`     | Se descarta silenciosamente (evita ruido en texto plano) |
 | `Syntax`            | Sin resultado                                            |
 | `Other`             | Sin resultado                                            |

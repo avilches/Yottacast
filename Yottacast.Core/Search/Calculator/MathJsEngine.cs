@@ -312,7 +312,8 @@ public sealed class MathJsEngine : IDisposable {
         var root = doc.RootElement;
         var kind = root.GetProperty("type").GetString() switch {
             "unknown_symbol"    => CalcErrorKind.UnknownSymbol,
-            "incompatible_units"=> CalcErrorKind.IncompatibleUnits,
+            "incompatible_units_convert" => CalcErrorKind.IncompatibleUnitsConvert,
+            "incompatible_units_op"      => CalcErrorKind.IncompatibleUnitsOp,
             "syntax"            => CalcErrorKind.Syntax,
             _                   => CalcErrorKind.Other
         };

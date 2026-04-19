@@ -647,10 +647,24 @@ function computeNormalization(valueStr, unit) {
     return components;
 }
 
+// Strips a leading numeric value (e.g. "10 km" → "km", "20degC" → "degC", "km" → "km").
+function _extractUnit(s) {
+    return s.replace(/^[\d.,e+\-]+\s*/, '').trim();
+}
+
+// Returns the long display name for a unit symbol (e.g. "km" → "kilometer", "degC" → "celsius").
+// Falls back to the symbol itself when no long name is found.
+function _unitLongDisplayName(unit) {
+    var explicit = getExplicitLongName(unit);
+    if (explicit) return explicit;
+    var derived = getUnitLongName(unit);
+    return (derived && derived !== unit) ? derived : unit;
+}
+
 // Classifies a math.js error message into a structured object.
 // Returns { type, token, suggestions } where:
-//   type: 'unknown_symbol' | 'incompatible_units' | 'syntax' | 'other'
-//   token: the problematic identifier (for symbol errors), or null
+//   type: 'unknown_symbol' | 'incompatible_units_convert' | 'incompatible_units_op' | 'syntax' | 'other'
+//   token: for 'incompatible_units_convert', "fromLongName|toLongName"; for symbol errors, the token; otherwise null
 //   suggestions: always null (casing issues are resolved by normalizeExpression before evaluation)
 function classifyError(errorMessage) {
     // "Undefined symbol XYZ" or "Unit 'XYZ' not found"
@@ -661,9 +675,27 @@ function classifyError(errorMessage) {
         return { type: 'unknown_symbol', token: tokenMatch[1], suggestions: null };
     }
 
-    // Incompatible unit conversion (e.g. kg to meter)
-    if (/units do not match|cannot convert|unit mismatch/i.test(errorMessage)) {
-        return { type: 'incompatible_units', token: null, suggestions: null };
+    // Explicit conversion between incompatible units: "units do not match ('L' != 'km')"
+    // The captured groups may include a numeric prefix (e.g. "10 km") when math.js includes the quantity.
+    var unitsMismatch = /units do not match\s*\(\s*'([^']+)'\s*!=\s*'([^']+)'\s*\)/i.exec(errorMessage);
+    if (unitsMismatch) {
+        // [1] is the target side, [2] is the source side — strip any leading value, then resolve long name
+        var fromLong = _unitLongDisplayName(_extractUnit(unitsMismatch[2]));
+        var toLong   = _unitLongDisplayName(_extractUnit(unitsMismatch[1]));
+        return { type: 'incompatible_units_convert', token: fromLong + '|' + toLong, suggestions: null };
+    }
+
+    // "cannot convert VALUE? UNIT to UNIT"
+    var cannotConvert = /cannot convert\s+(.+?)\s+to\s+(\S+)/i.exec(errorMessage);
+    if (cannotConvert) {
+        var fromLong = _unitLongDisplayName(_extractUnit(cannotConvert[1]));
+        var toLong   = _unitLongDisplayName(_extractUnit(cannotConvert[2]));
+        return { type: 'incompatible_units_convert', token: fromLong + '|' + toLong, suggestions: null };
+    }
+
+    // Arithmetic between incompatible units: "units do not match" (no unit detail)
+    if (/units do not match|cannot convert/i.test(errorMessage)) {
+        return { type: 'incompatible_units_op', token: null, suggestions: null };
     }
 
     // Syntax / parse errors

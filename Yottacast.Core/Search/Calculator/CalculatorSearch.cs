@@ -78,7 +78,7 @@ public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard) :
                     OnActivate = () => clipboard.CopyText(captured),
                 }];
             }
-            case ErrorResult r when r.ErrorKind is CalcErrorKind.IncompatibleUnits:
+            case ErrorResult r when r.ErrorKind is CalcErrorKind.IncompatibleUnitsConvert or CalcErrorKind.IncompatibleUnitsOp:
                 LastHint = BuildErrorHint(r);
                 break;
         }
@@ -116,8 +116,15 @@ public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard) :
     private static string BuildErrorHint(ErrorResult r) => r.ErrorKind switch {
         CalcErrorKind.UnknownSymbol =>
             $"Unknown unit or variable: '{r.ErrorToken}'",
-        CalcErrorKind.IncompatibleUnits =>
-            r.ErrorMessage ?? "Incompatible units",
+        CalcErrorKind.IncompatibleUnitsConvert => BuildCantConvertMessage(r.ErrorToken),
+        CalcErrorKind.IncompatibleUnitsOp =>
+            "Units do not match",
         _ => r.ErrorMessage ?? "Error"
     };
+
+    private static string BuildCantConvertMessage(string? token) {
+        if (token == null) return "Can't convert between these units";
+        var parts = token.Split('|');
+        return parts.Length == 2 ? $"Can't convert {parts[0]} to {parts[1]}" : "Can't convert between these units";
+    }
 }
