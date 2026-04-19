@@ -143,8 +143,12 @@ public partial class MainWindowViewModel(
         if (ct.IsCancellationRequested) return;
         var (instantItems, hint) = globalSearch.SearchInstant(query, limit: SearchSourceLimit);
         _instantSnapshot = instantItems;
-        SearchHint = hint;
+        SearchHint = null;
         RefreshResults();
+
+        // Error hints (e.g. incompatible units) are shown after a delay so they don't flash on every keystroke
+        if (hint != null)
+            _ = ShowHintAfterDelayAsync(hint, ct);
 
         // Emoji mode: only instant sources, skip deferred search
         if (query.StartsWith(':')) return;
@@ -174,6 +178,13 @@ public partial class MainWindowViewModel(
         }
 
         if (completed) ShowNoResults = Results.Count == 0;
+    }
+
+    private async Task ShowHintAfterDelayAsync(string hint, CancellationToken ct) {
+        try {
+            await Task.Delay(AppDefaults.ErrorHintDelayMs, ct);
+            SearchHint = hint;
+        } catch (OperationCanceledException) { }
     }
 
     private void RefreshResults() {

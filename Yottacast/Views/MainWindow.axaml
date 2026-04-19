@@ -155,8 +155,24 @@
                            Foreground="#FF3B30"
                            FontSize="{DynamicResource Theme.FontSizeSmall}"
                            Margin="18,0,18,8"
+                           Opacity="0"
                            TextTrimming="CharacterEllipsis"
-                           IsVisible="{Binding SearchHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                           IsVisible="{Binding SearchHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <TextBlock.Styles>
+                        <Style Selector="TextBlock[IsVisible=true]">
+                            <Style.Animations>
+                                <Animation Duration="0:0:0.4" FillMode="Forward">
+                                    <KeyFrame Cue="0%">
+                                        <Setter Property="Opacity" Value="0"/>
+                                    </KeyFrame>
+                                    <KeyFrame Cue="100%">
+                                        <Setter Property="Opacity" Value="1"/>
+                                    </KeyFrame>
+                                </Animation>
+                            </Style.Animations>
+                        </Style>
+                    </TextBlock.Styles>
+                </TextBlock>
             </StackPanel>
 
             <!-- ── Divider ── -->
