@@ -34,7 +34,7 @@ public class UserDocumentSearchTests {
     // fileName | filePath | query | expectedCount | expectedScore
     public static TheoryData<string, string, string, int, double> SingleFileCases => new() {
         { "report.pdf", "/docs/report.pdf", "report",      1, 1.0  },  // exact stem match
-        { "report",     "/docs/report",     "report",      1, 1.0  },  // exact name match
+        { "report",     "/docs/report",     "report",      1, 0.85 },  // exact name match (no extension → 0.85)
         { "report.pdf", "/docs/report.pdf", "rep",         1, 0.75 },  // stem starts with
         { "report.pdf", "/docs/report.pdf", "epor",        1, 0.5  },  // substring only
         { "abc.txt",    "/abc.txt",         "a",           0, 0.0  },  // too short → empty

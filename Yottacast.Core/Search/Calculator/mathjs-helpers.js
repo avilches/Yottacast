@@ -412,7 +412,6 @@ function normalizeExpression(expression, knownCurrenciesCsv) {
             kind = 'calculation';
         }
     } else if (root.type === 'ConstantNode') {
-    } else if (root.type === 'ConstantNode') {
         // Bare number literal with no operator or unit (e.g. "2", "2.0") — no calculation performed
         return null;
     } else if (root.type === 'SymbolNode' && resolveUnitToken(root.name) !== null) {

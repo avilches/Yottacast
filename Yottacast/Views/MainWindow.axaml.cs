@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
+using Yottacast.Core;
 using Yottacast.Core.ViewModels;
 using Yottacast.Services;
 using Yottacast.ViewModels;
@@ -74,6 +75,16 @@ public partial class MainWindow : Window {
 
             case Key.Down when vm.SelectedResult?.OnDown is { } onDown:
                 e.Handled = onDown();
+                break;
+
+            case Key.Prior: // Page Up
+                SelectDelta(vm, -AppDefaults.SearchSourceLimit);
+                e.Handled = true;
+                break;
+
+            case Key.Next: // Page Down
+                SelectDelta(vm, +AppDefaults.SearchSourceLimit);
+                e.Handled = true;
                 break;
         }
     }
@@ -167,6 +178,14 @@ public partial class MainWindow : Window {
         vm.NotifyUserNavigated();
         var current = vm.SelectedResult is null ? -1 : vm.Results.IndexOf(vm.SelectedResult);
         var next = (current + delta + vm.Results.Count) % vm.Results.Count;
+        vm.SelectedResult = vm.Results[next];
+    }
+
+    private static void SelectDelta(MainWindowViewModel vm, int delta) {
+        if (vm.Results.Count == 0) return;
+        vm.NotifyUserNavigated();
+        var current = vm.SelectedResult is null ? 0 : vm.Results.IndexOf(vm.SelectedResult);
+        var next = Math.Clamp(current + delta, 0, vm.Results.Count - 1);
         vm.SelectedResult = vm.Results[next];
     }
 

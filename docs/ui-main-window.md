@@ -135,9 +135,12 @@ El atajo nativo de "cerrar ventana" se intercepta y se redirige a ocultar la ven
 
 ## 6. Navegacion de lista
 
-### Navegacion circular
+### Navegacion circular y por salto
 
-Las flechas arriba/abajo navegan la lista de forma circular: al llegar al final vuelve al principio y viceversa. La formula es `(current + delta + Count) % Count`.
+| Tecla | Comportamiento |
+|-------|----------------|
+| Arriba / Abajo | Circular entre todos los resultados: al llegar al extremo vuelve al opuesto. Formula: `(current + delta + Count) % Count`. |
+| Page Down / Page Up | Salta `AppDefaults.SearchSourceLimit` items hacia adelante/atras, detenienndose en el extremo sin circular. |
 
 ### Captura de flechas en fase tunnel
 
@@ -154,7 +157,7 @@ Cada item puede definir handlers opcionales (`OnLeft`, `OnRight`, `OnUp`, `OnDow
 | Izquierda/Derecha | Navegacion circular dentro de las celdas del grid (al llegar al final vuelve al principio). |
 | Arriba/Abajo | Si el movimiento saldria del grid (primera o ultima fila), devuelve `false` y delega la navegacion al nivel de lista. |
 
-> **Verificar en:** `MainWindow.axaml.cs` -- `OnTunnelKeyDown`, `SelectNext`. `EmojiGridResultViewModel.cs` -- `SelectDown`, `SelectUp`, `SelectNext`, `SelectPrevious`. `BaseResultItemViewModel.cs` -- `OnLeft`, `OnRight`, `OnUp`, `OnDown`.
+> **Verificar en:** `MainWindow.axaml.cs` -- `OnTunnelKeyDown`, `SelectNext`, `SelectDelta`. `AppDefaults.cs` -- `SearchSourceLimit`. `EmojiGridResultViewModel.cs` -- `SelectDown`, `SelectUp`, `SelectNext`, `SelectPrevious`. `BaseResultItemViewModel.cs` -- `OnLeft`, `OnRight`, `OnUp`, `OnDown`.
 
 ---
 
