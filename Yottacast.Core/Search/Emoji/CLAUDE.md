@@ -1,0 +1,1 @@
+@../../../../docs/search-emoji.md
