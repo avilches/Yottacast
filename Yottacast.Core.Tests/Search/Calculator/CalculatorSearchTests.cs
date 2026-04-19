@@ -111,6 +111,13 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
         { "d d"             },   // unit × unit (d→day, d→day)
         { "m km"            },   // unit × unit (m→meter, km→km)
         { "s kg"            },   // unit × unit (s→second, kg→kg)
+        // Bare number literals — no calculation performed
+        { "2.0"             },   // float literal normalization disabled
+        // Bare unit symbols — single unit token, no value
+        { "j"               },   // bare joule symbol
+        { "m"               },   // bare meter symbol
+        { "s"               },   // bare second symbol
+        { "J"               },   // bare joule (uppercase)
     };
 
     [Theory]

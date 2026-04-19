@@ -128,11 +128,11 @@ Cada resultado se presenta como un `ResultItemViewModel` con:
 
 ## 7. Iconos de fichero
 
-Los iconos de fichero se cargan de forma asincrona en `FileIconCache`. Si el icono no esta listo cuando se emite un snapshot, se muestra sin icono y se rellena en snapshots posteriores via `RefreshIconBytes`. En busquedas posteriores el icono ya esta en cache y aparece desde el primer snapshot.
+Los iconos se cargan mediante `FileIconCache`, que mantiene una cache en dos niveles (memoria y disco) indexada por extension de fichero. En el momento de emitir un snapshot, se intenta obtener el icono sincrona e instantaneamente desde cache; si no esta disponible, se encola una carga asincrona via NSWorkspace. Cuando la carga termina, `FileIconCache` dispara `IconLoaded` y la UI se actualiza sola.
 
-**Invariante:** la ausencia de icono nunca retrasa la emision de resultados. Los iconos se rellenan progresivamente.
+**Invariante:** la ausencia de icono nunca retrasa la emision de resultados. Los iconos aparecen en la UI en cuanto estan disponibles, sin que el usuario repita la busqueda.
 
-> **Verificar en:** `FileIconCache` (metodos `Get`, `PreloadAsync`), `UserDocumentSearch.RefreshIconBytes`.
+> **Verificar en:** `FileIconCache` (metodos `Get`, `GetOrPreload`, `Load`, evento `IconLoaded`), `UserDocumentSearch.SearchAsync` (uso de `GetOrPreload` en snapshots), `MainWindowViewModel.OnFileIconLoaded`. Ver `docs/search-file-icons.md` para la especificacion completa.
 
 ---
 

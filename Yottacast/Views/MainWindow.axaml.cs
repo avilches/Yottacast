@@ -87,6 +87,14 @@ public partial class MainWindow : Window {
             return;
         }
 
+        // On macOS, Cmd+Q quits the app entirely.
+        var quitShortcut = AppHandler.Instance.QuitShortcut;
+        if (quitShortcut is { } qs && e.Key == qs.Key && e.KeyModifiers == qs.Modifiers) {
+            Environment.Exit(0);
+            e.Handled = true;
+            return;
+        }
+
         base.OnKeyDown(e);
 
         var vm = DataContext as MainWindowViewModel;

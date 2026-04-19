@@ -67,6 +67,7 @@ public partial class App : Application {
                 }));
 
             var globalSearch = _services.GetRequiredService<GlobalSearch>();
+            desktop.ShutdownRequested += (_, _) => Environment.Exit(0);
             desktop.Exit += async (_, _) => await globalSearch.Stop();
             RegisterGlobalHotKey(desktop);
 

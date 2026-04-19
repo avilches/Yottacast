@@ -23,7 +23,7 @@ public class ClassifyErrorTests(MathJsEngineFixture fixture) {
         { "10 USD to X",    CalcErrorKind.UnknownSymbol,   "X"       },
         // IncompatibleUnitsConvert: explicit "X to Y" conversion between incompatible dimensions
         { "1 kg to meter",  CalcErrorKind.IncompatibleUnitsConvert, "kilogram|meter" },
-        { "10 km to L",     CalcErrorKind.IncompatibleUnitsConvert, "kilometer|liter" },
+        { "10 km to L",     CalcErrorKind.IncompatibleUnitsConvert, "kilometer|litre" },
         // IncompatibleUnitsOp: arithmetic between incompatible units
         { "1 km + 2 L",     CalcErrorKind.IncompatibleUnitsOp, null },
         // Syntax: parse/syntax error
@@ -42,7 +42,7 @@ public class ClassifyErrorTests(MathJsEngineFixture fixture) {
     }
 
     [Theory]
-    [InlineData("10 km to L",        "Can't convert kilometer to liter")]
+    [InlineData("10 km to L",        "Can't convert kilometer to litre")]
     [InlineData("1 kg to meter",      "Can't convert kilogram to meter")]
     public void IncompatibleUnitsConvert_TokenContainsLongNames(string expression, string expectedToken) {
         var err = Assert.IsType<ErrorResult>(fixture.Engine.Evaluate(expression));

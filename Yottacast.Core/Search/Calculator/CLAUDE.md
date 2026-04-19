@@ -1,6 +1,3 @@
-@../../../../docs/search-calculator.md
-@../../../../docs/unit-catalog.md
-
 ## Tests
 
 Al modificar esta area, actualizar los tests en `Yottacast.Core.Tests/Search/Calculator/`:

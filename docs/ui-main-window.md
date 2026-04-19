@@ -10,7 +10,7 @@ La ventana principal es persistente: nunca se destruye, solo se oculta y se vuel
 
 | Invariante | Detalle |
 |---|---|
-| La ventana nunca se cierra | Todo intento de cierre (nativo o programatico) se cancela y se traduce en `Hide()`. |
+| La ventana nunca se cierra salvo Cmd+Q | Todo intento de cierre se cancela y se traduce en `Hide()`, excepto cuando macOS envia `applicationShouldTerminate:` (Cmd+Q), que termina el proceso. |
 | Al mostrarse, el foco va al campo de busqueda | Tanto al abrir por primera vez como al volver a ser visible. |
 | Al ocultarse, el campo de busqueda se deshabilita | Evita que reciba input mientras la ventana no es visible. Se rehabilita al mostrarse. |
 | El estado de Alt se limpia al ocultar | `IsAltPressed` se pone a `false` cuando la ventana deja de ser visible. |
@@ -118,6 +118,10 @@ El atajo nativo de "cerrar ventana" se intercepta y se redirige a ocultar la ven
 | Windows | Ctrl+F4 |
 | Linux | Ctrl+W |
 
+### Salir de la aplicacion (solo macOS)
+
+`Cmd+Q` cierra el proceso completamente. macOS intercepta este atajo a nivel de `NSApplication` antes de que llegue al key handler; Avalonia lo expone como `ShutdownRequested` en el lifetime.
+
 ### Otros atajos
 
 | Atajo | Accion |
@@ -125,7 +129,7 @@ El atajo nativo de "cerrar ventana" se intercepta y se redirige a ocultar la ven
 | Cmd+, (macOS) | Abre la ventana de Settings |
 | Alt+Space | Se consume sin accion para evitar el beep nativo de macOS |
 
-> **Verificar en:** `MainWindow.axaml.cs` -- `OnKeyDown`. `MacAppHandler.cs`, `WindowsAppHandler.cs`, `LinuxAppHandler.cs` -- `CloseWindowShortcut`.
+> **Verificar en:** `MainWindow.axaml.cs` -- `OnKeyDown`. `App.axaml.cs` -- `ShutdownRequested`. `MacAppHandler.cs`, `WindowsAppHandler.cs`, `LinuxAppHandler.cs` -- `CloseWindowShortcut`.
 
 ---
 

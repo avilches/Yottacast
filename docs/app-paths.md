@@ -19,12 +19,14 @@ disco obtiene la ruta de una unica clase centralizada. Esto garantiza que:
 
 ### Ficheros concretos
 
-| Fichero     | Directorio base | Nombre             | Descripcion                                    |
-|-------------|-----------------|--------------------|------------------------------------------------|
-| Settings    | Configuracion   | `settings.json`    | Preferencias del usuario (JSON)                |
-| Emoji cache | Configuracion   | `emoji-cache.json` | Cache compacta de datos de emojis              |
-| Log pattern | Logs            | `yottacast-.log`   | Patron de Serilog para log diario              |
-| Icon cache  | Cache           | `app-icons/`       | Directorio con iconos de aplicaciones en disco |
+| Fichero      | Directorio base | Nombre             | Descripcion                                              |
+|--------------|-----------------|--------------------|----------------------------------------------------------|
+| Settings     | Configuracion   | `settings.json`    | Preferencias del usuario (JSON)                          |
+| Emoji cache  | Configuracion   | `emoji-cache.json` | Cache compacta de datos de emojis                        |
+| Log pattern  | Logs            | `yottacast-.log`   | Patron de Serilog para log diario                        |
+| App icons    | Cache           | `app-icons/`       | Iconos de aplicaciones instaladas                        |
+| File icons   | Cache           | `file-icons/`      | Iconos de tipo de fichero (por extension), cacheados     |
+| Badge icons  | Cache           | `badge-icons/`     | Iconos de la app predeterminada por extension de fichero |
 
 ### Invariantes
 
@@ -35,7 +37,7 @@ disco obtiene la ruta de una unica clase centralizada. Esto garantiza que:
   que la app no falla si el directorio no existe aun.
 
 > **Verificar en:** `Yottacast.Core/AppPaths.cs` (definiciones), consumidores: `App.axaml.cs`, `AppIconCache.cs`,
-`UserSettings.cs`, `EmojiDataLoader.cs`.
+`FileIconCache.cs`, `UserDocumentSearch.cs`, `UserSettings.cs`, `EmojiDataLoader.cs`.
 
 ## Todos los valores por defecto estan centralizados
 
@@ -84,7 +86,7 @@ en `.gitignore` y no se sube al repositorio.
 |----------|-------------------------------------------|-------------------------------------|
 | `config` | `~/Library/Application Support/Yottacast` | `settings.json`, `emoji-cache.json` |
 | `logs`   | `~/Library/Logs/Yottacast`                | Logs diarios (`yottacast-*.log`)    |
-| `cache`  | `~/.cache/yottacast`                      | `app-icons/` (cache de iconos)      |
+| `cache`  | `~/.cache/yottacast`                      | `app-icons/`, `file-icons/`, `badge-icons/` |
 
 Si los symlinks se pierden, ejecutar:
 

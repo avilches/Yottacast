@@ -101,6 +101,19 @@ Invariantes:
 
 ---
 
+## 6. Salir de la aplicacion (Cmd+Q en macOS)
+
+En macOS, `Cmd+Q` cierra la aplicacion completamente. macOS intercepta este atajo a nivel de `NSApplication` (via `applicationShouldTerminate:`) antes de que llegue al handler de teclado de la ventana. Avalonia traduce esta señal al evento `ShutdownRequested` del lifetime, que llama `Environment.Exit(0)` para terminar el proceso.
+
+Invariantes:
+
+- `Cmd+Q` termina el proceso; no se puede deshacer ni recuperar la ventana.
+- El resto de atajos de cierre (`Cmd+W`, `Escape`) siguen ocultando la ventana sin cerrar la aplicacion.
+
+> **Verificar en:** `App.axaml.cs` (handler de `desktop.ShutdownRequested`), `MacAppHandler.cs` (`QuitShortcut`)
+
+---
+
 ## 6. Abrir preferencias (Cmd+,)
 
 Pulsar `Cmd+,` mientras la ventana principal esta visible abre la ventana de preferencias. Si la SettingsWindow ya esta visible, simplemente se activa (se trae al frente) sin crear una nueva instancia. Si no esta visible, se crea una nueva instancia de `SettingsWindow` con un `SettingsWindowViewModel` transient.
@@ -155,3 +168,4 @@ El flujo para que el usuario cambie el atajo global desde la ventana de preferen
 | Enter                        | Ventana principal       | Activar resultado seleccionado            |
 | Cmd+, (macOS)                | Ventana principal       | Abrir preferencias                        |
 | Cmd+W / Ctrl+F4 / Ctrl+W    | Ventana principal       | Ocultar ventana (no cerrar)               |
+| Cmd+Q (macOS)               | Ventana principal       | Cerrar la aplicacion completamente        |

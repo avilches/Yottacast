@@ -33,6 +33,7 @@ internal sealed class MacAppHandler : AppHandler {
     }
 
     public override (KeyModifiers Modifiers, Key Key) CloseWindowShortcut => (KeyModifiers.Meta, Key.W);
+    public override (KeyModifiers Modifiers, Key Key)? QuitShortcut => (KeyModifiers.Meta, Key.Q);
 
     public override void HideCursor() =>
         ObjcMsgSendBool(ObjcGetClass("NSCursor"), SelRegisterName("setHiddenUntilMouseMoves:"), true);

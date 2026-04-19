@@ -21,6 +21,11 @@ internal abstract class AppHandler {
     public abstract (KeyModifiers Modifiers, Key Key) CloseWindowShortcut { get; }
 
     /// <summary>
+    /// Platform-specific "quit app" shortcut: Cmd+Q on macOS, null on other platforms.
+    /// </summary>
+    public virtual (KeyModifiers Modifiers, Key Key)? QuitShortcut => null;
+
+    /// <summary>
     /// Waits briefly for the previous app to activate, then simulates a paste shortcut (Cmd+V / Ctrl+V).
     /// Called after OnHide() when a result with PasteAfterActivate=true is confirmed.
     /// </summary>

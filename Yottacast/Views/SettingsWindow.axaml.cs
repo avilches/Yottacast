@@ -4,6 +4,7 @@ using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using System.Linq;
 using System.Threading.Tasks;
+using Yottacast.Services;
 using Yottacast.ViewModels;
 
 namespace Yottacast.Views;
@@ -11,6 +12,16 @@ namespace Yottacast.Views;
 public partial class SettingsWindow : Window {
     public SettingsWindow() {
         InitializeComponent();
+    }
+
+    protected override void OnKeyDown(KeyEventArgs e) {
+        var (closeMods, closeKey) = AppHandler.Instance.CloseWindowShortcut;
+        if (e.Key == closeKey && e.KeyModifiers == closeMods) {
+            Close();
+            e.Handled = true;
+            return;
+        }
+        base.OnKeyDown(e);
     }
 
     // Click on the hotkey border → start capture; e.Handled stops bubbling to the window handler below

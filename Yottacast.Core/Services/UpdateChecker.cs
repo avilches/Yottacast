@@ -3,25 +3,19 @@ using Microsoft.Extensions.Logging;
 
 namespace Yottacast.Core.Services;
 
-public class UpdateChecker {
+public class UpdateChecker(ILogger<UpdateChecker> logger) {
     // Reemplazar con el endpoint real cuando esté disponible.
     // Formato esperado de respuesta: { "version": "1.2.0" }
     private const string UpdateApiUrl = "https://example.com/yottacast/latest.json";
 
-    private readonly HttpClient _http;
-    private readonly ILogger<UpdateChecker> _logger;
+    private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(AppDefaults.UpdateCheckTimeoutSeconds) };
 
-    public string CurrentVersion { get; }
+    public string CurrentVersion { get; } = System.Reflection.Assembly
+        .GetExecutingAssembly()
+        .GetName().Version?.ToString(3) ?? "0.0.0";
+
     public string? LatestVersion { get; private set; }
     public bool UpdateAvailable { get; private set; }
-
-    public UpdateChecker(ILogger<UpdateChecker> logger) {
-        _logger = logger;
-        _http = new HttpClient { Timeout = TimeSpan.FromSeconds(AppDefaults.UpdateCheckTimeoutSeconds) };
-        CurrentVersion = System.Reflection.Assembly
-            .GetExecutingAssembly()
-            .GetName().Version?.ToString(3) ?? "0.0.0";
-    }
 
     public async Task CheckAsync() {
         try {
@@ -33,9 +27,9 @@ public class UpdateChecker {
             LatestVersion = latest;
             UpdateAvailable = IsNewer(latest, CurrentVersion);
             if (UpdateAvailable)
-                _logger.LogInformation("Update available: {Latest} (current: {Current})", latest, CurrentVersion);
+                logger.LogInformation("Update available: {Latest} (current: {Current})", latest, CurrentVersion);
         } catch (Exception ex) {
-            _logger.LogWarning("Update check failed: {Message}", ex.Message);
+            logger.LogWarning("Update check failed: {Message}", ex.Message);
         }
     }
 

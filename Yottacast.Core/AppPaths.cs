@@ -35,4 +35,10 @@ public static class AppPaths {
 
     /// <summary>App icon disk cache directory.</summary>
     public static readonly string AppIconCacheDir = Path.Combine(CacheDir, "app-icons");
+
+    /// <summary>File icon disk cache directory.</summary>
+    public static readonly string FileIconCacheDir = Path.Combine(CacheDir, "file-icons");
+
+    /// <summary>Badge icon disk cache directory (default app icon per file extension).</summary>
+    public static readonly string BadgeIconCacheDir = Path.Combine(CacheDir, "badge-icons");
 }

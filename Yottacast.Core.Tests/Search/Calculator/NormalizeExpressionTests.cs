@@ -212,4 +212,31 @@ public class NormalizeExpressionTests(MathJsEngineFixture fixture) {
         }
     }
 
+    // ── Bare literal and unit symbol rejection ────────────────────────────────
+
+    [Fact]
+    public void BareNumber_ReturnsNull() {
+        // Número literal sin operadores — no se normaliza (evita "2.0" → "2")
+        Assert.Null(Normalize("2"));
+        Assert.Null(Normalize("2.0"));
+        Assert.Null(Normalize("42"));
+    }
+
+    [Fact]
+    public void BareUnitSymbol_ReturnsNull() {
+        // Símbolos de unidad solos (sin número) no son expresiones útiles
+        Assert.Null(Normalize("j"));   // j → J (joule)
+        Assert.Null(Normalize("m"));   // metro, defaultTarget "ft"
+        Assert.Null(Normalize("s"));   // segundo, defaultTarget "ms"
+        Assert.Null(Normalize("J"));   // joule directo (uppercase)
+    }
+
+    [Fact]
+    public void MathConstant_Pi_IsNotRejected() {
+        // "pi" no es unidad → pasa al else → kind=calculation
+        var r = Normalize("pi");
+        Assert.NotNull(r);
+        Assert.Equal(ExprKind.Calculation, r!.Kind);
+    }
+
 }

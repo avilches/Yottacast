@@ -26,6 +26,39 @@ public class UserDocumentSearch(
     // Badge icon cache: keyed by lowercase extension; null means "no default app found"
     private readonly ConcurrentDictionary<string, byte[]?> _badgeByExtension = new();
     private readonly ConcurrentDictionary<string, byte> _badgePreloading = new();
+    private readonly string _badgeCacheDir = AppPaths.BadgeIconCacheDir;
+    private const string BadgeCacheVersion = "v1";
+
+    /// <summary>Fired (on a thread-pool thread) when a badge icon finishes loading for an extension.</summary>
+    public event Action? BadgeIconLoaded;
+
+    /// <summary>Returns the cached badge icon bytes for the file's extension, or null if suppressed/not yet loaded.</summary>
+    public byte[]? GetBadge(string filePath) {
+        var ext = Path.GetExtension(filePath).ToLowerInvariant();
+        return string.IsNullOrEmpty(ext) ? null : _badgeByExtension.GetValueOrDefault(ext);
+    }
+
+    /// <summary>Clears all badge icon caches (memory and disk). Called when installed apps change.</summary>
+    public void InvalidateAll() {
+        _badgeByExtension.Clear();
+        _badgePreloading.Clear();
+        if (!Directory.Exists(_badgeCacheDir)) return;
+        foreach (var f in Directory.GetFiles(_badgeCacheDir, $"*_{BadgeCacheVersion}.png")) {
+            try { File.Delete(f); } catch { /* best-effort */ }
+        }
+        logger.LogInformation("Badge icon cache fully invalidated");
+    }
+
+    private string BadgeDiskPath(string ext) =>
+        Path.Combine(_badgeCacheDir, $"{ext.TrimStart('.')}_{BadgeCacheVersion}.png");
+
+    private byte[]? TryBadgeDiskCache(string ext) {
+        var file = BadgeDiskPath(ext);
+        if (!File.Exists(file)) return null;
+        var bytes = File.ReadAllBytes(file);
+        logger.LogDebug("Badge disk-cache hit ({Bytes} bytes): {Ext}", bytes.Length, ext);
+        return bytes;
+    }
 
     public void Start() { }
     public Task WhenReady() => Task.CompletedTask;
@@ -98,7 +131,7 @@ public class UserDocumentSearch(
                             lastSnapshot = now;
                             var topItems = buffer.OrderByDescending(x => x.Score).Take(limit).ToList();
                             foreach (var item in topItems)
-                                fileIconCache.PreloadAsync(item.Subtitle);
+                                item.IconBytes ??= fileIconCache.GetOrPreload(item.Subtitle);
                             RefreshIconBytes(buffer);
                             channel.Writer.TryWrite(topItems);
                         }
@@ -116,7 +149,7 @@ public class UserDocumentSearch(
             if (buffer.Count > 0) {
                 var finalItems = buffer.OrderByDescending(x => x.Score).Take(limit).ToList();
                 foreach (var item in finalItems)
-                    fileIconCache.PreloadAsync(item.Subtitle);
+                    item.IconBytes ??= fileIconCache.GetOrPreload(item.Subtitle);
                 RefreshIconBytes(buffer);
                 channel.Writer.TryWrite(finalItems);
             }
@@ -142,6 +175,14 @@ public class UserDocumentSearch(
         var ext = Path.GetExtension(filePath).ToLowerInvariant();
         if (string.IsNullOrEmpty(ext)) return;
         if (_badgeByExtension.ContainsKey(ext)) return;
+
+        // Disk cache hit → load synchronously so the first snapshot already has the badge
+        var diskBytes = TryBadgeDiskCache(ext);
+        if (diskBytes != null) {
+            _badgeByExtension[ext] = diskBytes;
+            return;
+        }
+
         if (!_badgePreloading.TryAdd(ext, 0)) return;
         Task.Run(() => {
             var appPath = platform.GetDefaultAppPath(filePath);
@@ -167,6 +208,11 @@ public class UserDocumentSearch(
             var badgeBytes = platform.GetAppIconBytes(appPath);
             logger.LogDebug("Badge [{Ext}] loaded {N} bytes", ext, badgeBytes?.Length ?? -1);
             _badgeByExtension[ext] = badgeBytes;
+            if (badgeBytes is not null) {
+                Directory.CreateDirectory(_badgeCacheDir);
+                File.WriteAllBytes(BadgeDiskPath(ext), badgeBytes);
+                BadgeIconLoaded?.Invoke();
+            }
         });
     }
 }

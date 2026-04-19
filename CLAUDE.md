@@ -39,8 +39,10 @@ Yottacast busca en varias fuentes simultaneamente. Cada source tiene un proposit
 
 - **Apps**: escanea las aplicaciones instaladas del sistema, las cachea en memoria y vigila cambios en el sistema de
   archivos para mantener la cache actualizada. Si una aplicación se acaba de instalar, aparece directamente.
-- **Calculadora/Conversor**: evalua expresiones matematicas y conversiones de unidades usando math.js (ejecutado en Jint).
-  Responde en linea mientras el usuario escribe. Si se usa una unidad (c, kg) siempre tiene otra unidad a la que convertir.
+- **Calculadora/Conversor**: evalua expresiones matematicas y conversiones de unidades usando math.js (ejecutado en
+  Jint).
+  Responde en linea mientras el usuario escribe. Si se usa una unidad (c, kg) siempre tiene otra unidad a la que
+  convertir.
 - **Emoji**: se activa con el prefijo `:`. Muestra los resultados en un grid navegable con cursores. Tras seleccionar un
   emoji, lo copia y lo pega automaticamente en la app anterior.
 - **Busqueda de documentos**: busca archivos en las carpetas configuradas del usuario usando indexacion nativa del
@@ -110,30 +112,30 @@ Yottacast.sln
 +-- Yottacast.Core.Tests/      <- Tests xUnit
 ```
 
-## Fuentes de verdad
+## Build & Run
+
+```bash
+# GUI
+cd Yottacast && dotnet run
+dotnet publish -c Release -r osx-arm64 --self-contained
+
+# CLI (para probar servicios)
+cd Yottacast.Cli && dotnet run
+
+# Tests
+cd Yottacast.Core.Tests && dotnet test
+```
+
+## Reglas
 
 `CLAUDE.md` es la **fuente de intencion** del proyecto: describe que debe hacer y como debe estar estructurado. Solo el
 desarrollador lo modifica. Si el codigo contradice algo descrito aqui, se considera un gap a resolver — no al reves.
 
-`docs/` es la **especificacion de comportamiento**: describe como debe funcionar la aplicacion, con invariantes
-verificables y referencias al codigo para validacion. No describe la implementacion linea a linea, sino los contratos y
-comportamientos esperados. Si el codigo contradice un doc, el doc describe la intencion correcta y el codigo debe
-corregirse.
+`docs/` es la **especificacion de comportamiento**: contratos, invariantes y comportamientos esperados (ver seccion
+Documentacion).
 
 El **codigo** es la fuente de verdad de la implementacion. `docs/` valida que el codigo cumple los contratos; el codigo
 se ajusta a `CLAUDE.md`.
-
-## Reglas
-
-**Mantenimiento de docs**: cuando se modifique codigo que afecte al comportamiento descrito en `docs/`, actualizar el
-doc correspondiente manteniendo el mismo enfoque:
-
-- Describir **que debe hacer** la aplicacion y **por que**, no como lo implementa el codigo.
-- Estructurar por **comportamientos y contratos**, no por ficheros fuente.
-- Incluir **invariantes verificables** (ej: "el usuario nunca ve la ventana vacia", "Escape siempre tiene una salida").
-- Terminar cada seccion con un bloque `> **Verificar en:**` que apunte a los ficheros y metodos donde se puede validar
-  el comportamiento.
-- No duplicar valores concretos (constantes, rutas, scores) — referenciar donde viven en el codigo.
 
 **Mantenimiento general**: describe siempre el estado actual del codigo. No documentes cambios respecto a versiones
 anteriores ni migraciones. Si al editar escribes algo como "ahora X en vez de Y", "ya no se usa Z", o "antes se hacia
@@ -153,51 +155,60 @@ Las clases estaticas no permiten inyectar `ILogger`, `IConfiguration` ni otros s
 y el testing. En su lugar, usar clases instanciables registradas en el contenedor DI. Los metodos `static` solo son
 aceptables para utilidades puras sin dependencias (helpers de conversion, parsers sin estado, etc.).
 
-**Tests**: al modificar funcionalidad cubierta por tests, actualizar los tests correspondientes en `Yottacast.Core.Tests/`. Cada `CLAUDE.md` de paquete lista los ficheros de test relevantes para su area. Ejecutar `cd Yottacast.Core.Tests && dotnet test` para verificar que todo pasa antes de dar la tarea por terminada.
+**Tests**: al modificar funcionalidad cubierta por tests, actualizar los tests correspondientes en
+`Yottacast.Core.Tests/`.
+Cada `CLAUDE.md` de paquete lista los ficheros de test relevantes para su area. Ejecutar
+`cd Yottacast.Core.Tests && dotnet test` para verificar que todo pasa antes de dar la tarea por terminada.
 
 **Centralizacion de constantes y rutas**: toda ruta de fichero o directorio que la app lee o escribe en runtime debe
 definirse en `AppPaths.cs`. Todo valor numerico o parametro por defecto debe definirse en `AppDefaults.cs`. Nunca
 hardcodear rutas ni constantes en las clases que las consumen.
 
-**Documentacion**: los ficheros en `docs/` especifican comportamientos esperados con invariantes verificables.
-No duplican constantes concretas, listas completas de rutas, puntuaciones numericas, patrones regex ni otros detalles de
-implementacion que ya son legibles en el codigo; en su lugar, señalan donde viven esos detalles (p. ej. "ver
-`ClassName.Method`" o "definido en `File.cs`").
-Esto evita que la documentacion quede desactualizada cuando cambian los valores.
-Los docs responden "que debe hacer esto?" y "donde lo verifico?", no "cuales son los valores exactos?".
-
-## Build & Run
-
-```bash
-# GUI
-cd Yottacast && dotnet run
-dotnet publish -c Release -r osx-arm64 --self-contained
-
-# CLI (para probar servicios)
-cd Yottacast.Cli && dotnet run
-
-# Tests
-cd Yottacast.Core.Tests && dotnet test
-```
-
 ## Documentacion
 
-Los docs estan en `docs/`. Carga solo los necesarios segun el area de trabajo:
+Los docs estan en `docs/`. **Antes de modificar cualquier feature o area del codigo, leer SI O SI los ficheros
+relacionados de esta lista. No se puede tocar codigo sin haber leido primero los contratos y comportamientos
+documentados de esa area.**
+
+Si el codigo contradice un doc, el doc describe la intencion correcta y el codigo debe corregirse. Si no queda claroa,
+PREGUNTA
+
+Cuando se modifique codigo que afecte al comportamiento descrito en `docs/`, actualizar el doc correspondiente
+manteniendo el mismo enfoque:
+
+- Describir **que debe hacer** la aplicacion y **por que**, no como lo implementa el codigo.
+- Estructurar por **comportamientos y contratos**, no por ficheros fuente.
+- Incluir **invariantes verificables** (ej: "el usuario nunca ve la ventana vacia", "Escape siempre tiene una salida").
+- Terminar cada seccion con un bloque `> **Verificar en:**` que apunte a los ficheros y metodos donde se puede validar
+  el comportamiento.
+- Los docs no duplican constantes, rutas, scores ni otros detalles de implementacion — señalan donde viven en el codigo
+  (p. ej. "ver `ClassName.Method`"). Los docs responden "que debe hacer esto?" y "donde lo verifico?".
+
+Ficheros disponibles por area:
+
+RECUERDA LEERLOS ANTES DE HACER CUALQUIER CAMBIO. Si para lo que se pide, no queda claro que fichero leer, puedes leerlos
+todos hasta descrubir cual y luego actualizar CLAUDE.md para que sea mas facil buscarlo despues.
+
+Si un fichero de doc empieza a ser demasiado grande, sugiere dividirlo en dos.
 
 **Diseno general y arranque:**
 
-- `docs/app-design.md` — Ciclo de vida de la aplicacion (arranque, mostrar/ocultar, cierre), arquitectura de busqueda en
-  dos fases, contratos de resultados, integracion multiplataforma. Es el punto de entrada para entender la app completa.
+- `docs/app-design.md` — Debes leer este fichero cuando la feature tenga que ver con el ciclo de vida de la aplicacion
+  arranque, mostrar/ocultar, cierre), arquitectura de busqueda en dos fases, contratos de resultados, integracion
+  multiplataforma. Es el punto de entrada para entender la app completa.
 
 **Fuentes de busqueda:**
 
 - `docs/search-sources.md` — Interfaces de fuentes (instant/deferred), ciclo de vida Start/WhenReady/Stop, mecanismo de
   merge por slots, flujo completo de busqueda con debounce.
 - `docs/search-calculator.md` — Motor de calculo (math.js en Jint), conversiones de unidades, formato de resultados,
-  seleccion automatica vs manual.
+  seleccion automatica vs manual, clasificacion de errores (cuando ignorar la query vs mostrar hint), deteccion de
+  unidades sueltas y expresiones invalidas.
 - `docs/search-emoji.md` — Modo emoji (prefijo `:`), grid navegable, carga de datos, cache compacta, paste automatico.
 - `docs/search-files.md` — Busqueda de documentos del usuario, indexacion nativa (Spotlight/Windows Search), resultados
   progresivos.
+- `docs/search-file-icons.md` — Cache de iconos de ficheros: niveles de cache (memoria+disco), clave por extension,
+  carga sincrona/asincrona, actualizacion reactiva de UI via IconLoaded.
 - `docs/search-scoring.md` — Algoritmo de puntuacion y ordenacion de resultados entre fuentes.
 
 **Internals:**

@@ -29,6 +29,9 @@ public sealed class ApplicationSearch(
 
     public event Action<AppInfo>? AppAdded;
 
+    /// <summary>Fired when an app is installed, updated, or removed — subscribers can invalidate caches.</summary>
+    public event Action? AppsChanged;
+
     /// <summary>Fired when any app icon finishes loading — subscribers should re-run Search to pick up the new icon.</summary>
     public event Action? IconLoaded {
         add    => iconCache.IconLoaded += value;
@@ -99,7 +102,9 @@ public sealed class ApplicationSearch(
         await platform.ScanAppsAsync(AddApp, settings.ExpandedAppDirectories, _liveCts.Token);
         logger.LogInformation("AppSearch scan done apps={Count}", _apps.Count);
         _readyTcs.TrySetResult();
-        foreach (var w in platform.CreateAppWatchers(settings.ExpandedAppDirectories, AddApp, RemoveApp))
+        foreach (var w in platform.CreateAppWatchers(settings.ExpandedAppDirectories,
+            path => { AppsChanged?.Invoke(); AddApp(path); },
+            path => { AppsChanged?.Invoke(); RemoveApp(path); }))
             _watchers.Add(w);
     }
 

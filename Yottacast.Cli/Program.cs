@@ -27,6 +27,7 @@ internal static class Program {
 
     private static readonly UserSettings Settings = UserSettings.Load(Platform, LoggerFactory.CreateLogger<UserSettings>());
     private static readonly AppIconCache IconCache = new(Platform, LoggerFactory.CreateLogger<AppIconCache>());
+    private static readonly FileIconCache FileIconCache = new(Platform, LoggerFactory.CreateLogger<FileIconCache>());
     private static readonly ApplicationSearch AppSearch = new(Settings, Platform, IconCache, LoggerFactory.CreateLogger<ApplicationSearch>());
     private static readonly BrowserDiscovery Browsers = new(AppSearch, Platform, LoggerFactory.CreateLogger<BrowserDiscovery>());
     private static readonly TerminalDiscovery Terminals = new(AppSearch, Platform, LoggerFactory.CreateLogger<TerminalDiscovery>());

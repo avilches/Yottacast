@@ -10,6 +10,7 @@ using CommunityToolkit.Mvvm.Input;
 using Yottacast.Core;
 using Yottacast.Core.Search;
 using Yottacast.Core.Search.Application;
+using Yottacast.Core.Search.UserDocuments;
 using Yottacast.Core.Services;
 using Yottacast.Core.ViewModels;
 using Yottacast.Services;
@@ -20,6 +21,8 @@ public partial class MainWindowViewModel(
     UserSettings settings,
     GlobalSearch globalSearch,
     ApplicationSearch appSearch,
+    FileIconCache fileIconCache,
+    UserDocumentSearch userDocumentSearch,
     UpdateChecker updateChecker)
     : ViewModelBase {
 
@@ -56,6 +59,10 @@ public partial class MainWindowViewModel(
     public void Initialize() {
         _ = CheckForUpdateAsync();
         appSearch.IconLoaded += OnAppCacheChanged;
+        appSearch.AppsChanged += fileIconCache.InvalidateAll;
+        appSearch.AppsChanged += userDocumentSearch.InvalidateAll;
+        fileIconCache.IconLoaded += OnFileIconLoaded;
+        userDocumentSearch.BadgeIconLoaded += OnBadgeIconLoaded;
         _ = StartTrackingNewAppsAsync();
     }
 
@@ -95,6 +102,24 @@ public partial class MainWindowViewModel(
             var (items, hint) = globalSearch.SearchInstant(SearchText, limit: SearchSourceLimit);
             _instantSnapshot = items;
             SearchHint = hint;
+            RefreshResults();
+        });
+    }
+
+    private void OnFileIconLoaded() {
+        Dispatcher.UIThread.Post(() => {
+            foreach (var item in _deferredSnapshot)
+                if (item is ResultItemViewModel r && r.IconBytes is null)
+                    r.IconBytes = fileIconCache.Get(r.Subtitle);
+            RefreshResults();
+        });
+    }
+
+    private void OnBadgeIconLoaded() {
+        Dispatcher.UIThread.Post(() => {
+            foreach (var item in _deferredSnapshot)
+                if (item is ResultItemViewModel r && r.BadgeIconBytes is null)
+                    r.BadgeIconBytes = userDocumentSearch.GetBadge(r.Subtitle);
             RefreshResults();
         });
     }

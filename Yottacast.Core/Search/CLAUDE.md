@@ -1,7 +1,4 @@
-@../../../docs/search-sources.md
-@../../../docs/search-scoring.md
-
-## Tests
+la## Tests
 
 Al modificar esta area, actualizar los tests en `Yottacast.Core.Tests/Search/`:
 - `GlobalSearchTests.cs` — orquestacion de busqueda, merge y ordenacion de resultados
