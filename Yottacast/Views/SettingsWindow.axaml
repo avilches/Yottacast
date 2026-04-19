@@ -3,6 +3,7 @@
         xmlns:vm="using:Yottacast.ViewModels"
         xmlns:svc="using:Yottacast.Services"
         xmlns:sys="using:System"
+        xmlns:styles="using:Avalonia.Styling"
         x:Class="Yottacast.Views.SettingsWindow"
         x:DataType="vm:SettingsWindowViewModel"
         Title="Yottacast Settings"
@@ -11,6 +12,47 @@
         CanResize="False"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource Theme.WindowBackground}">
+
+    <!-- Colores nativos macOS: se aplican solo a esta ventana y tienen prioridad
+         sobre Application.Resources, desacoplando Settings del tema del buscador. -->
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="{x:Static styles:ThemeVariant.Light}">
+                    <SolidColorBrush x:Key="Theme.WindowBackground"   Color="#ECECEC"/>
+                    <SolidColorBrush x:Key="Theme.ItemIconBackground" Color="#E0E0E0"/>
+                    <SolidColorBrush x:Key="Theme.Divider"            Color="#CCCCCC"/>
+                    <SolidColorBrush x:Key="Theme.ItemTitle"          Color="#1A1A1A"/>
+                    <SolidColorBrush x:Key="Theme.ItemSubtitle"       Color="#666666"/>
+                    <SolidColorBrush x:Key="Theme.ItemCategory"       Color="#888888"/>
+                    <SolidColorBrush x:Key="Theme.ItemSelection"      Color="#3A8BFF"/>
+                    <SolidColorBrush x:Key="Theme.ItemSelectionText"  Color="#FFFFFF"/>
+                    <SolidColorBrush x:Key="Theme.ItemHover"          Color="#0D000000"/>
+                    <SolidColorBrush x:Key="Theme.FooterText"         Color="#999999"/>
+                    <SolidColorBrush x:Key="Theme.SearchCaret"        Color="#3A8BFF"/>
+                    <x:Double x:Key="Theme.FontSizeTitle">13</x:Double>
+                    <x:Double x:Key="Theme.FontSizeSmall">11</x:Double>
+                    <x:Double x:Key="Theme.FontSizeNoResults">14</x:Double>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="{x:Static styles:ThemeVariant.Dark}">
+                    <SolidColorBrush x:Key="Theme.WindowBackground"   Color="#232323"/>
+                    <SolidColorBrush x:Key="Theme.ItemIconBackground" Color="#2A2A2A"/>
+                    <SolidColorBrush x:Key="Theme.Divider"            Color="#3A3A3A"/>
+                    <SolidColorBrush x:Key="Theme.ItemTitle"          Color="#EAEAEA"/>
+                    <SolidColorBrush x:Key="Theme.ItemSubtitle"       Color="#888888"/>
+                    <SolidColorBrush x:Key="Theme.ItemCategory"       Color="#606060"/>
+                    <SolidColorBrush x:Key="Theme.ItemSelection"      Color="#2563EB"/>
+                    <SolidColorBrush x:Key="Theme.ItemSelectionText"  Color="#FFFFFF"/>
+                    <SolidColorBrush x:Key="Theme.ItemHover"          Color="#14FFFFFF"/>
+                    <SolidColorBrush x:Key="Theme.FooterText"         Color="#505050"/>
+                    <SolidColorBrush x:Key="Theme.SearchCaret"        Color="#5E8FFF"/>
+                    <x:Double x:Key="Theme.FontSizeTitle">13</x:Double>
+                    <x:Double x:Key="Theme.FontSizeSmall">11</x:Double>
+                    <x:Double x:Key="Theme.FontSizeNoResults">14</x:Double>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
 
     <Window.Styles>
 

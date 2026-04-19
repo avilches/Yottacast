@@ -1,7 +1,10 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Platform;
 using Avalonia.Platform.Storage;
+using Avalonia.Styling;
 using System.Linq;
 using System.Threading.Tasks;
 using Yottacast.Services;
@@ -12,6 +15,13 @@ namespace Yottacast.Views;
 public partial class SettingsWindow : Window {
     public SettingsWindow() {
         InitializeComponent();
+
+        // Fijar el ThemeVariant según el OS, ignorando el tema del buscador.
+        // Window.RequestedThemeVariant prevalece sobre Application.RequestedThemeVariant.
+        var osTheme = Application.Current?.PlatformSettings?.GetColorValues().ThemeVariant;
+        RequestedThemeVariant = osTheme == PlatformThemeVariant.Dark
+            ? ThemeVariant.Dark
+            : ThemeVariant.Light;
     }
 
     protected override void OnKeyDown(KeyEventArgs e) {

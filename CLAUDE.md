@@ -186,7 +186,8 @@ manteniendo el mismo enfoque:
 
 Ficheros disponibles por area:
 
-RECUERDA LEERLOS ANTES DE HACER CUALQUIER CAMBIO. Si para lo que se pide, no queda claro que fichero leer, puedes leerlos
+RECUERDA LEERLOS ANTES DE HACER CUALQUIER CAMBIO. Si para lo que se pide, no queda claro que fichero leer, puedes
+leerlos
 todos hasta descrubir cual y luego actualizar CLAUDE.md para que sea mas facil buscarlo despues.
 
 Si un fichero de doc empieza a ser demasiado grande, sugiere dividirlo en dos.
@@ -225,7 +226,10 @@ Si un fichero de doc empieza a ser demasiado grande, sugiere dividirlo en dos.
 - `docs/user-settings.md` — Persistencia JSON, auto-reparacion, migraciones de settings, propiedades del modelo.
 - `docs/user-settings-browser.md` — Descubrimiento de navegadores, auto-reparacion, lanzamiento de URLs por plataforma.
 - `docs/user-settings-terminal.md` — Descubrimiento de terminales, ejecucion de comandos, escaping por plataforma.
-- `docs/ui-themes.md` — Temas JSON, deteccion dark/light, hot-swap, estructura de un tema.
+- `docs/ui-themes.md` — Temas JSON, deteccion dark/light, hot-swap, estructura de un tema, IMPORTANTE: themes solo
+  aplican al buscador, los colores nativos de Settings estan hardcodeados en `Yottacast/Views/SettingsWindow.axaml`. 
+  Si se pide algun cambio de fuente o color o theme en los settings, hay que buscarlo hardcodeado ahi. 
+  dentro de `Window.Resources > ResourceDictionary.ThemeDictionaries` (dos diccionarios: Light y Dark).
 - `docs/ui-hotkeys.md` — Hotkey global configurable, supresion a nivel de OS, mapa de teclas soportadas.
 - `docs/ui-main-window.md` — Layout de la ventana, bindings, indicadores de busqueda, banner de actualizacion.
 - `docs/unit-catalog.md` — Catalogo de unidades soportadas por la calculadora.
