@@ -1,10 +1,14 @@
 using System;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Platform;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
+using Microsoft.Extensions.Logging;
 using Yottacast.Core;
+using Yottacast.Core.Services;
 using Yottacast.Core.ViewModels;
 using Yottacast.Services;
 using Yottacast.ViewModels;
@@ -13,11 +17,19 @@ using Yottacast;
 namespace Yottacast.Views;
 
 public partial class MainWindow : Window {
+    private readonly UserSettings _settings;
+    private readonly ILogger<MainWindow> _logger;
     private bool _cursorHidden;
+    private bool _dragging;
     private PixelPoint _screenPosAtHide;
     private bool _screenPosKnown;
 
-    public MainWindow() {
+    // Required by Avalonia's XAML resource loader; the app always uses the parameterized constructor.
+    public MainWindow() : this(null!, null!) { }
+
+    public MainWindow(UserSettings settings, ILogger<MainWindow> logger) {
+        _settings = settings;
+        _logger = logger;
         InitializeComponent();
         Opened += (_, _) => SearchBox.Focus();
         // Intercept LEFT/RIGHT in the tunnel phase so items with OnLeft/OnRight
@@ -26,20 +38,107 @@ public partial class MainWindow : Window {
         AddHandler(PointerMovedEvent, OnTunnelPointerMoved, RoutingStrategies.Tunnel);
         ResultsList.AddHandler(PointerMovedEvent, OnResultsPointerMoved, RoutingStrategies.Bubble);
         ResultsList.AddHandler(Gestures.TappedEvent, OnResultsTapped, RoutingStrategies.Bubble);
+        PositionChanged += (_, _) => UpdatePositionInMemory();
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change) {
         base.OnPropertyChanged(change);
         if (change.Property == IsVisibleProperty) {
+            Log($"[Property] IsVisible → {change.NewValue}");
             var isVisible = change.GetNewValue<bool>();
             SearchBox.IsEnabled = isVisible;
             if (isVisible) {
+                ApplyPositionOnShow();
                 _screenPosKnown = false;
                 SearchBox.Focus();
-            } else if (DataContext is MainWindowViewModel vm) {
-                vm.IsAltPressed = false;
+            } else {
+                SavePosition(); // flush to disk on hide
+                if (DataContext is MainWindowViewModel vm)
+                    vm.IsAltPressed = false;
             }
         }
+    }
+
+    private void ApplyPositionOnShow() {
+        var mousePos = AppHandler.Instance.GetMousePosition();
+        var targetScreen = (mousePos.HasValue ? Screens.ScreenFromPoint(mousePos.Value) : null)
+                           ?? Screens.Primary
+                           ?? Screens.All.FirstOrDefault();
+
+        Log($"[Position] ApplyPositionOnShow: mousePos={mousePos}, screens={Screens.All.Count}, targetScreen={ScreenDesc(targetScreen)}");
+
+        if (targetScreen == null) {
+            Log("[Position] No screen found, skipping position");
+            return;
+        }
+
+        if (_settings.WindowX.HasValue && _settings.WindowY.HasValue) {
+            var saved = new PixelPoint(_settings.WindowX.Value, _settings.WindowY.Value);
+            var fits = targetScreen.WorkingArea.Contains(saved);
+            Log($"[Position] Saved={saved}, WorkingArea={targetScreen.WorkingArea}, fits={fits}");
+            if (fits) {
+                Position = saved;
+                Log($"[Position] Restored saved position → {Position}");
+                return;
+            }
+        } else {
+            Log($"[Position] No saved position (WindowX={_settings.WindowX}, WindowY={_settings.WindowY})");
+        }
+
+        CenterOnScreen(targetScreen);
+    }
+
+    private void CenterOnScreen(Screen screen) {
+        var wa = screen.WorkingArea;
+        var scaledWidth  = (int)(Width * RenderScaling);
+        var scaledHeight = Bounds.Height > 0 ? (int)(Bounds.Height * RenderScaling) : 0;
+        var pos = new PixelPoint(
+            wa.X + (wa.Width  - scaledWidth)  / 2,
+            wa.Y + (wa.Height - scaledHeight) / 3);
+        Position = pos;
+        Log($"[Position] Centered on screen {ScreenDesc(screen)}: Bounds={Bounds}, scaling={RenderScaling}, scaledW={scaledWidth}, scaledH={scaledHeight} → {pos}");
+    }
+
+    // Keeps WindowX/Y in sync in memory on every move (no disk I/O).
+    private void UpdatePositionInMemory() {
+        _settings.WindowX = Position.X;
+        _settings.WindowY = Position.Y;
+    }
+
+    // Persists the current position to disk. Called on Hide() and on app quit.
+    internal void SavePosition() {
+        Log($"[Position] SavePosition: current Position={Position}");
+        UpdatePositionInMemory();
+        _settings.Save();
+    }
+
+    private static string ScreenDesc(Screen? s) =>
+        s == null ? "null" : $"WorkingArea={s.WorkingArea} Scaling={s.Scaling}";
+
+    private void Log(string msg) => _logger.LogDebug("{Msg}", msg);
+
+    private void OnRootPointerPressed(object? sender, PointerPressedEventArgs e) {
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        if (IsOverInteractiveElement(e.Source as Visual)) return;
+        _dragging = true;
+        BeginMoveDrag(e);
+    }
+
+    protected override void OnPointerReleased(PointerReleasedEventArgs e) {
+        base.OnPointerReleased(e);
+        if (_dragging) {
+            _dragging = false;
+            SavePosition();
+        }
+    }
+
+    private static bool IsOverInteractiveElement(Visual? visual) {
+        while (visual != null) {
+            if (visual is TextBox or ListBox or ListBoxItem or Button or ScrollViewer)
+                return true;
+            visual = visual.GetVisualParent();
+        }
+        return false;
     }
 
     protected override void OnKeyUp(KeyEventArgs e) {

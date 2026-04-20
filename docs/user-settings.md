@@ -40,6 +40,8 @@ El fichero de preferencias se crea automaticamente en la primera ejecucion y se 
 | EnableEmoji | `true` | Toggle de la fuente emoji |
 | LastLaunchedVersion | `""` | Version del ultimo arranque (para migraciones) |
 | WebSearchEngines | Lista predeterminada de 20 motores | Configuracion por motor de busqueda web |
+| WindowX | `null` | Posicion X de la ventana principal en coordenadas de pantalla (pixels fisicos) |
+| WindowY | `null` | Posicion Y de la ventana principal en coordenadas de pantalla (pixels fisicos) |
 
 **Nota sobre los toggles** (`EnableCalculator`, `EnableClipboard`, `EnableEmoji`): se exponen en la ventana de Settings y se persisten en el JSON, pero actualmente no tienen efecto funcional. Las fuentes de busqueda correspondientes se registran siempre en DI, independientemente del valor de estos toggles.
 

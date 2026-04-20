@@ -220,6 +220,43 @@ Cuando una fuente instant proporciona un hint (ej. la calculadora detecta un err
 
 ---
 
+## 14. Posicionamiento y arrastre
+
+### Arrastre con el raton
+
+El usuario puede mover la ventana arrastrando cualquier zona que no sea un control interactivo (SearchBox, ListBox, Button, ScrollViewer). El arrastre se inicia con clic izquierdo y delega en el mecanismo nativo de la plataforma via `BeginMoveDrag`.
+
+### Posicion al mostrar la ventana
+
+Cada vez que la ventana se hace visible, se aplica la logica siguiente:
+
+1. Se obtiene la posicion actual del cursor del raton (via P/Invoke a la plataforma).
+2. Se determina en que pantalla esta el cursor (`targetScreen`).
+3. Si hay una posicion guardada en `UserSettings.WindowX/Y` Y esa posicion esta dentro del area de trabajo de `targetScreen` → se restaura la posicion guardada.
+4. En caso contrario → la ventana se centra en `targetScreen`.
+
+Esto garantiza que la ventana siempre aparece en la pantalla donde esta el cursor. Si el usuario la ha posicionado en una pantalla concreta, esa posicion se respeta mientras siga siendo visible en la pantalla actual.
+
+### Guardado de posicion
+
+La posicion se actualiza en memoria en cada movimiento via `PositionChanged` (sin I/O). Se escribe a disco en tres momentos:
+
+| Momento | Mecanismo |
+|---|---|
+| Al soltar el raton tras un drag | `OnPointerReleased` detecta el flag `_dragging` |
+| Al ocultar la ventana | `Hide()` → `IsVisibleProperty = false` → `SavePosition()` |
+| Al cerrar la app | `ShutdownRequested` → `SavePosition()` antes de `Environment.Exit` |
+
+| Invariante | Detalle |
+|---|---|
+| La ventana siempre aparece en la pantalla con el cursor | Si la posicion guardada no es visible en esa pantalla, se centra |
+| Un `kill -9` durante el drag puede perder la posicion | Es el unico caso no cubierto; se acepta |
+| `windowX`/`windowY` ausentes en JSON antiguo | Se cargan como `null` y la ventana se centra (retrocompatible) |
+
+> **Verificar en:** `MainWindow.axaml.cs` -- `ApplyPositionOnShow`, `CenterOnScreen`, `SavePosition`, `UpdatePositionInMemory`, `OnRootPointerPressed`, `OnPointerReleased`, `IsOverInteractiveElement`. `App.axaml.cs` -- `ShutdownRequested`. `AppHandler.cs` -- `GetMousePosition`. `MacAppHandler.cs` / `WindowsAppHandler.cs` -- implementacion de `GetMousePosition`. `UserSettings.cs` -- `WindowX`, `WindowY`.
+
+---
+
 ## 13. Layout de la ventana
 
 | Propiedad | Valor |

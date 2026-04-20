@@ -48,7 +48,6 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [ObservableProperty] private string? _selectedBrowser;
     [ObservableProperty] private string? _selectedTerminal;
     [ObservableProperty] private ThemeOption? _selectedTheme;
-    [ObservableProperty] private string _hotkeyText = "";
     [ObservableProperty] private bool _isCapturingHotkey;
 
     public IReadOnlyList<string> Browsers  { get; }
@@ -94,7 +93,6 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _selectedBrowser  = Browsers.Contains(settings.Browser) ? settings.Browser : Browsers.FirstOrDefault();
         _selectedTerminal = Terminals.Contains(settings.Terminal) ? settings.Terminal : Terminals.FirstOrDefault();
         _selectedTheme    = Themes.FirstOrDefault(t => t.Id == settings.Theme) ?? Themes.FirstOrDefault();
-        _hotkeyText       = settings.Hotkey;
 
         _enableCalculator = settings.EnableCalculator;
         _enableClipboard  = settings.EnableClipboard;
@@ -127,21 +125,51 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     public void RemoveAppDirectory(string path) => AppDirectories.Remove(path);
 
     // ── Hotkey capture ────────────────────────────────────────────────────────
-    public string HotkeyDisplayText => IsCapturingHotkey ? "Press keys\u2026" : HotkeyText;
 
-    partial void OnIsCapturingHotkeyChanged(bool value) => OnPropertyChanged(nameof(HotkeyDisplayText));
-    partial void OnHotkeyTextChanged(string value)      => OnPropertyChanged(nameof(HotkeyDisplayText));
+    // Modifier symbols — OS-specific, fixed at runtime
+    public string CtrlSymbol  => AppHandler.Instance.CtrlSymbol;
+    public string AltSymbol   => AppHandler.Instance.AltSymbol;
+    public string ShiftSymbol => AppHandler.Instance.ShiftSymbol;
+    public string MetaSymbol  => AppHandler.Instance.MetaSymbol;
 
-    public void StartHotkeyCapture() => IsCapturingHotkey = true;
+    // Real-time modifier state during capture (updated on every KeyDown/KeyUp)
+    private KeyModifiers _capturingModifiers = KeyModifiers.None;
+
+    // Badge active state: during capture reflects physically-held mods; otherwise reflects saved hotkey
+    public bool BadgeCtrlActive  => IsCapturingHotkey ? _capturingModifiers.HasFlag(KeyModifiers.Control) : _settings.ParsedHotkey.Ctrl;
+    public bool BadgeAltActive   => IsCapturingHotkey ? _capturingModifiers.HasFlag(KeyModifiers.Alt)     : _settings.ParsedHotkey.Alt;
+    public bool BadgeShiftActive => IsCapturingHotkey ? _capturingModifiers.HasFlag(KeyModifiers.Shift)   : _settings.ParsedHotkey.Shift;
+    public bool BadgeMetaActive  => IsCapturingHotkey ? _capturingModifiers.HasFlag(KeyModifiers.Meta)    : _settings.ParsedHotkey.Meta;
+
+    // Central key text: key name when idle; "Press a key" if a modifier is held; else "Press a modifier"
+    public string HotkeyKeyText {
+        get {
+            if (!IsCapturingHotkey) return _settings.ParsedHotkey.KeyName;
+            return _capturingModifiers != KeyModifiers.None ? "Press a key\u2026" : "Press a modifier\u2026";
+        }
+    }
+
+    public void StartHotkeyCapture() {
+        _capturingModifiers = KeyModifiers.None;
+        IsCapturingHotkey   = true;
+        NotifyBadgesAndKey();
+    }
 
     public void CancelHotkeyCapture() {
-        IsCapturingHotkey = false;
-        HotkeyText = _settings.Hotkey;
+        _capturingModifiers = KeyModifiers.None;
+        IsCapturingHotkey   = false;
+        NotifyBadgesAndKey();
+    }
+
+    // Called from code-behind on every KeyDown/KeyUp during capture to update modifier badges
+    public void UpdateCapturingModifiers(KeyModifiers mods) {
+        _capturingModifiers = mods;
+        NotifyBadgesAndKey();
     }
 
     public void ProcessKeyCapture(Key key, KeyModifiers mods) {
-        if (IsModifierOnly(key)) return;
         if (key == Key.Escape) { CancelHotkeyCapture(); return; }
+        if (mods == KeyModifiers.None) return;  // require at least one modifier held
 
         var config = new HotkeyConfig(
             Alt:     mods.HasFlag(KeyModifiers.Alt),
@@ -150,15 +178,22 @@ public partial class SettingsWindowViewModel : ViewModelBase {
             Meta:    mods.HasFlag(KeyModifiers.Meta),
             KeyName: AvaloniaKeyToName(key));
 
+        if (AppHandler.Instance.IsForbidden(config)) return;  // ignore silently
+
         _settings.Hotkey = config.ToString();
         _settings.Save();
-        HotkeyText = _settings.Hotkey;
-        IsCapturingHotkey = false;
+        _capturingModifiers = KeyModifiers.None;
+        IsCapturingHotkey   = false;
+        NotifyBadgesAndKey();
     }
 
-    private static bool IsModifierOnly(Key k) =>
-        k is Key.LeftAlt or Key.RightAlt or Key.LeftCtrl or Key.RightCtrl
-          or Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin;
+    private void NotifyBadgesAndKey() {
+        OnPropertyChanged(nameof(BadgeCtrlActive));
+        OnPropertyChanged(nameof(BadgeAltActive));
+        OnPropertyChanged(nameof(BadgeShiftActive));
+        OnPropertyChanged(nameof(BadgeMetaActive));
+        OnPropertyChanged(nameof(HotkeyKeyText));
+    }
 
     private static string AvaloniaKeyToName(Key k) => k switch {
         Key.Space => "Space",

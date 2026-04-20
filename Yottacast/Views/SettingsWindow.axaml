@@ -3,7 +3,6 @@
         xmlns:vm="using:Yottacast.ViewModels"
         xmlns:svc="using:Yottacast.Services"
         xmlns:sys="using:System"
-        xmlns:styles="using:Avalonia.Styling"
         x:Class="Yottacast.Views.SettingsWindow"
         x:DataType="vm:SettingsWindowViewModel"
         Title="Yottacast Settings"
@@ -11,49 +10,20 @@
         SizeToContent="Manual"
         CanResize="False"
         WindowStartupLocation="CenterScreen"
-        FontFamily=".AppleSystemUIFont, SF Pro Text, Helvetica Neue, Segoe UI"
         Background="{DynamicResource Theme.WindowBackground}">
 
-    <!-- Colores nativos macOS: se aplican solo a esta ventana y tienen prioridad
-         sobre Application.Resources, desacoplando Settings del tema del buscador. -->
+    <!-- Colores inyectados en runtime por AppHandler.ApplySettingsTheme() según el OS.
+         Solo se definen aquí los recursos independientes del tema (iconos vectoriales). -->
     <Window.Resources>
         <ResourceDictionary>
-            <ResourceDictionary.ThemeDictionaries>
-                <!-- Colores nativos macOS light: NSColor equivalents -->
-                <ResourceDictionary x:Key="{x:Static styles:ThemeVariant.Light}">
-                    <SolidColorBrush x:Key="Theme.WindowBackground"   Color="#F5F5F5"/>  <!-- windowBackgroundColor -->
-                    <SolidColorBrush x:Key="Theme.ItemIconBackground" Color="#E8E8E8"/>  <!-- sidebarBackground -->
-                    <SolidColorBrush x:Key="Theme.Divider"            Color="#D1D1D6"/>  <!-- separatorColor -->
-                    <SolidColorBrush x:Key="Theme.ItemTitle"          Color="#1C1C1E"/>  <!-- labelColor -->
-                    <SolidColorBrush x:Key="Theme.ItemSubtitle"       Color="#636366"/>  <!-- secondaryLabelColor -->
-                    <SolidColorBrush x:Key="Theme.ItemCategory"       Color="#8E8E93"/>  <!-- tertiaryLabelColor -->
-                    <SolidColorBrush x:Key="Theme.ItemSelection"      Color="#007AFF"/>  <!-- systemBlueColor -->
-                    <SolidColorBrush x:Key="Theme.ItemSelectionText"  Color="#FFFFFF"/>
-                    <SolidColorBrush x:Key="Theme.ItemHover"          Color="#14000000"/>
-                    <SolidColorBrush x:Key="Theme.FooterText"         Color="#8E8E93"/>
-                    <SolidColorBrush x:Key="Theme.SearchCaret"        Color="#007AFF"/>
-                    <x:Double x:Key="Theme.FontSizeTitle">13</x:Double>
-                    <x:Double x:Key="Theme.FontSizeSmall">11</x:Double>
-                    <x:Double x:Key="Theme.FontSizeNoResults">14</x:Double>
-                </ResourceDictionary>
-                <!-- Colores nativos macOS dark: NSColor equivalents dark -->
-                <ResourceDictionary x:Key="{x:Static styles:ThemeVariant.Dark}">
-                    <SolidColorBrush x:Key="Theme.WindowBackground"   Color="#282828"/>  <!-- windowBackgroundColor dark -->
-                    <SolidColorBrush x:Key="Theme.ItemIconBackground" Color="#1E1E1E"/>  <!-- sidebarBackground dark -->
-                    <SolidColorBrush x:Key="Theme.Divider"            Color="#3A3A3C"/>  <!-- separatorColor dark -->
-                    <SolidColorBrush x:Key="Theme.ItemTitle"          Color="#FFFFFF"/>  <!-- labelColor dark -->
-                    <SolidColorBrush x:Key="Theme.ItemSubtitle"       Color="#ABABAB"/>  <!-- secondaryLabelColor dark -->
-                    <SolidColorBrush x:Key="Theme.ItemCategory"       Color="#6C6C70"/>  <!-- tertiaryLabelColor dark -->
-                    <SolidColorBrush x:Key="Theme.ItemSelection"      Color="#0A84FF"/>  <!-- systemBlueColor dark -->
-                    <SolidColorBrush x:Key="Theme.ItemSelectionText"  Color="#FFFFFF"/>
-                    <SolidColorBrush x:Key="Theme.ItemHover"          Color="#1AFFFFFF"/>
-                    <SolidColorBrush x:Key="Theme.FooterText"         Color="#6C6C70"/>
-                    <SolidColorBrush x:Key="Theme.SearchCaret"        Color="#0A84FF"/>
-                    <x:Double x:Key="Theme.FontSizeTitle">13</x:Double>
-                    <x:Double x:Key="Theme.FontSizeSmall">11</x:Double>
-                    <x:Double x:Key="Theme.FontSizeNoResults">14</x:Double>
-                </ResourceDictionary>
-            </ResourceDictionary.ThemeDictionaries>
+            <!-- Iconos vectoriales para la navegación (Bootstrap Icons 16×16, MIT) -->
+            <StreamGeometry x:Key="Icon.General">M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872l-.1-.34zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.858z</StreamGeometry>
+            <StreamGeometry x:Key="Icon.AppSearch">M2 1a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H2zm5 0a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H7zm-5 5a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1H2zm5 0a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1H7z</StreamGeometry>
+            <StreamGeometry x:Key="Icon.WebSearch">M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm7.5-6.923c-.67.204-1.335.82-1.887 1.855A7.97 7.97 0 0 0 5.145 4H7.5V1.077zM4.09 4a9.267 9.267 0 0 1 .64-1.539 6.7 6.7 0 0 1 .597-.933A7.025 7.025 0 0 0 2.255 4H4.09zm-.582 3.5c.03-.877.138-1.718.312-2.5H1.674a6.958 6.958 0 0 0-.656 2.5h2.49zM4.847 5a12.5 12.5 0 0 0-.338 2.5H7.5V5H4.847zM8.5 5v2.5h2.99a12.495 12.495 0 0 0-.337-2.5H8.5zM4.51 8.5a12.5 12.5 0 0 0 .337 2.5H7.5V8.5H4.51zm3.99 0V11h2.653c.187-.765.306-1.608.338-2.5H8.5zM5.145 12c.138.386.295.744.468 1.068.552 1.035 1.218 1.65 1.887 1.855V12H5.145zm.182 2.472a6.696 6.696 0 0 1-.597-.933A9.268 9.268 0 0 1 4.09 12H2.255a7.024 7.024 0 0 0 3.072 2.472zM3.82 11a13.652 13.652 0 0 1-.312-2.5h-2.49c.062.89.291 1.733.656 2.5H3.82zm6.853 3.472A7.024 7.024 0 0 0 13.745 12H11.91a9.27 9.27 0 0 1-.64 1.539 6.688 6.688 0 0 1-.597.933zM8.5 12v2.923c.67-.204 1.335-.82 1.887-1.855.173-.324.33-.682.468-1.068H8.5zm3.68-1h2.146c.365-.767.594-1.61.656-2.5h-2.49a13.65 13.65 0 0 1-.312 2.5zm2.802-3.5a6.959 6.959 0 0 0-.656-2.5H12.18c.174.782.282 1.623.312 2.5h2.49zM11.27 2.461c.247.464.462.98.64 1.539h1.835a7.024 7.024 0 0 0-3.072-2.472c.218.284.418.598.597.933zM10.855 4a7.966 7.966 0 0 0-.468-1.068C9.835 1.897 9.17 1.282 8.5 1.077V4h2.355z</StreamGeometry>
+            <StreamGeometry x:Key="Icon.FileSearch">M9.828 3h3.982a2 2 0 0 1 1.992 2.181l-.637 7A2 2 0 0 1 13.174 14H2.826a2 2 0 0 1-1.991-1.819l-.637-7a1.99 1.99 0 0 1 .342-1.31L.5 3a2 2 0 0 1 2-2h3.672a2 2 0 0 1 1.414.586l.828.828A2 2 0 0 0 9.828 3zm-8.322.12C1.72 3.042 1.95 3 2.19 3h5.396l-.707-.707A1 1 0 0 0 6.172 2H2.5a1 1 0 0 0-1 .981l.006.139z</StreamGeometry>
+            <StreamGeometry x:Key="Icon.Calculator">M4 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H4zm0 1h8a1 1 0 0 1 1 1v2H3V4a1 1 0 0 1 1-1zM3 7h2v2H3V7zm0 3h2v2H3v-2zm3-3h2v2H6V7zm0 3h2v2H6v-2zm3-3h2v5H9V7z</StreamGeometry>
+            <StreamGeometry x:Key="Icon.Clipboard">M5 1a1 1 0 0 0-1 1H3a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2h-1a1 1 0 0 0-1-1H5zm0 1h6v1H5V2zM3 4h10v9H3V4zm2 2v1h6V6H5zm0 2v1h6V8H5z</StreamGeometry>
+            <StreamGeometry x:Key="Icon.Emoji">M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16zM4.285 9.567a.5.5 0 0 1 .683.183A3.498 3.498 0 0 0 8 11.5a3.498 3.498 0 0 0 3.032-1.75.5.5 0 1 1 .866.5A4.498 4.498 0 0 1 8 12.5a4.498 4.498 0 0 1-3.898-2.25.5.5 0 0 1 .183-.683zM7 6.5C7 7.328 6.552 8 6 8s-1-.672-1-1.5S5.448 5 6 5s1 .672 1 1.5zm4 0c0 .828-.448 1.5-1 1.5s-1-.672-1-1.5S9.448 5 10 5s1 .672 1 1.5z</StreamGeometry>
         </ResourceDictionary>
     </Window.Resources>
 
@@ -121,7 +91,24 @@
             <Setter Property="Cursor"          Value="Hand"/>
         </Style>
         <Style Selector="Border.hotkey-field.capturing">
-            <Setter Property="BorderBrush" Value="{DynamicResource Theme.ItemTitle}"/>
+            <Setter Property="BorderBrush" Value="#FF3B30"/>
+        </Style>
+
+        <!-- Modifier badge inside hotkey field -->
+        <Style Selector="Border.modifier-badge">
+            <Setter Property="CornerRadius" Value="3"/>
+            <Setter Property="Padding"      Value="5,2"/>
+            <Setter Property="Background"   Value="{DynamicResource Theme.ItemIconBackground}"/>
+            <Setter Property="Margin"       Value="0,0,3,0"/>
+            <Setter Property="Opacity"      Value="0.3"/>
+        </Style>
+        <Style Selector="Border.modifier-badge.active">
+            <Setter Property="Opacity" Value="1.0"/>
+        </Style>
+        <Style Selector="Border.modifier-badge TextBlock">
+            <Setter Property="FontSize"   Value="{DynamicResource Theme.FontSizeSmall}"/>
+            <Setter Property="Foreground" Value="{DynamicResource Theme.ItemTitle}"/>
+            <Setter Property="FontWeight" Value="Medium"/>
         </Style>
 
         <!-- Remove button -->
@@ -246,38 +233,66 @@
 
                 <Button Classes="nav-item"
                         Classes.nav-selected="{Binding IsGeneralSelected}"
-                        Command="{Binding SelectGeneralCommand}"
-                        Content="General"/>
+                        Command="{Binding SelectGeneralCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <PathIcon Data="{StaticResource Icon.General}" Width="14" Height="14" VerticalAlignment="Center"/>
+                        <TextBlock Text="General" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
 
                 <Button Classes="nav-item"
                         Classes.nav-selected="{Binding IsAppSearchSelected}"
-                        Command="{Binding SelectAppSearchCommand}"
-                        Content="App Search"/>
+                        Command="{Binding SelectAppSearchCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <PathIcon Data="{StaticResource Icon.AppSearch}" Width="14" Height="14" VerticalAlignment="Center"/>
+                        <TextBlock Text="App Search" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
 
                 <Button Classes="nav-item"
                         Classes.nav-selected="{Binding IsWebSearchSelected}"
-                        Command="{Binding SelectWebSearchCommand}"
-                        Content="Web Search"/>
+                        Command="{Binding SelectWebSearchCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <PathIcon Data="{StaticResource Icon.WebSearch}" Width="14" Height="14" VerticalAlignment="Center"/>
+                        <TextBlock Text="Web Search" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
 
                 <Button Classes="nav-item"
                         Classes.nav-selected="{Binding IsFileSearchSelected}"
-                        Command="{Binding SelectFileSearchCommand}"
-                        Content="File Search"/>
+                        Command="{Binding SelectFileSearchCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <PathIcon Data="{StaticResource Icon.FileSearch}" Width="14" Height="14" VerticalAlignment="Center"/>
+                        <TextBlock Text="File Search" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
 
                 <Button Classes="nav-item"
                         Classes.nav-selected="{Binding IsCalculatorSelected}"
-                        Command="{Binding SelectCalculatorCommand}"
-                        Content="Calculator"/>
+                        Command="{Binding SelectCalculatorCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <PathIcon Data="{StaticResource Icon.Calculator}" Width="14" Height="14" VerticalAlignment="Center"/>
+                        <TextBlock Text="Calculator" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
 
                 <Button Classes="nav-item"
                         Classes.nav-selected="{Binding IsClipboardSelected}"
-                        Command="{Binding SelectClipboardCommand}"
-                        Content="Clipboard"/>
+                        Command="{Binding SelectClipboardCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <PathIcon Data="{StaticResource Icon.Clipboard}" Width="14" Height="14" VerticalAlignment="Center"/>
+                        <TextBlock Text="Clipboard" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
 
                 <Button Classes="nav-item"
                         Classes.nav-selected="{Binding IsEmojiSelected}"
-                        Command="{Binding SelectEmojiCommand}"
-                        Content="Emoji"/>
+                        Command="{Binding SelectEmojiCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <PathIcon Data="{StaticResource Icon.Emoji}" Width="14" Height="14" VerticalAlignment="Center"/>
+                        <TextBlock Text="Emoji" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
 
             </StackPanel>
         </Border>
@@ -312,8 +327,50 @@
                         <Border Classes="hotkey-field"
                                 Classes.capturing="{Binding IsCapturingHotkey}"
                                 PointerPressed="OnHotkeyAreaPointerPressed">
-                            <TextBlock Text="{Binding HotkeyDisplayText}"
-                                       Foreground="{DynamicResource Theme.ItemTitle}"/>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="0">
+
+                                <!-- Modifier badges -->
+                                <Border Classes="modifier-badge" Classes.active="{Binding BadgeCtrlActive}">
+                                    <TextBlock Text="{Binding CtrlSymbol}"/>
+                                </Border>
+                                <Border Classes="modifier-badge" Classes.active="{Binding BadgeAltActive}">
+                                    <TextBlock Text="{Binding AltSymbol}"/>
+                                </Border>
+                                <Border Classes="modifier-badge" Classes.active="{Binding BadgeShiftActive}">
+                                    <TextBlock Text="{Binding ShiftSymbol}"/>
+                                </Border>
+                                <Border Classes="modifier-badge" Classes.active="{Binding BadgeMetaActive}">
+                                    <TextBlock Text="{Binding MetaSymbol}"/>
+                                </Border>
+
+                                <!-- Separator -->
+                                <Rectangle Width="1" Height="14"
+                                           Fill="{DynamicResource Theme.Divider}"
+                                           VerticalAlignment="Center"
+                                           Margin="5,0,8,0"/>
+
+                                <!-- Key name (normal state) -->
+                                <TextBlock Text="{Binding HotkeyKeyText}"
+                                           Foreground="{DynamicResource Theme.ItemTitle}"
+                                           IsVisible="{Binding !IsCapturingHotkey}"
+                                           VerticalAlignment="Center"/>
+
+                                <!-- Instruction text (capturing state) -->
+                                <TextBlock Text="{Binding HotkeyKeyText}"
+                                           Foreground="{DynamicResource Theme.ItemSubtitle}"
+                                           FontStyle="Italic"
+                                           IsVisible="{Binding IsCapturingHotkey}"
+                                           VerticalAlignment="Center"/>
+
+                                <!-- Cancel button (only visible while capturing) -->
+                                <Button Classes="remove-btn"
+                                        Content="✕"
+                                        IsVisible="{Binding IsCapturingHotkey}"
+                                        Click="OnCancelHotkeyCaptureClicked"
+                                        Margin="8,0,0,0"
+                                        VerticalAlignment="Center"/>
+
+                            </StackPanel>
                         </Border>
                     </StackPanel>
 

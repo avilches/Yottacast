@@ -32,6 +32,7 @@ namespace Yottacast;
 public partial class App : Application {
     private IGlobalHook? _globalHook;
     private SettingsWindow? _settingsWindow;
+    private SettingsWindowViewModel? _settingsVm;
     private IServiceProvider _services = null!;
     public override void Initialize() {
         AvaloniaXamlLoader.Load(this);
@@ -55,7 +56,7 @@ public partial class App : Application {
 
             var mainWindowViewModel = _services.GetRequiredService<MainWindowViewModel>();
             mainWindowViewModel.Initialize();
-            var mainWindow = new MainWindow { DataContext = mainWindowViewModel };
+            var mainWindow = new MainWindow(userSettings, _services.GetRequiredService<ILogger<MainWindow>>()) { DataContext = mainWindowViewModel };
             desktop.MainWindow = mainWindow;
 
             // Wire up clipboard so Core code can copy results without depending on Avalonia
@@ -67,8 +68,19 @@ public partial class App : Application {
                 }));
 
             var globalSearch = _services.GetRequiredService<GlobalSearch>();
-            desktop.ShutdownRequested += (_, _) => Environment.Exit(0);
+            desktop.ShutdownRequested += (_, _) => {
+                (desktop.MainWindow as MainWindow)?.SavePosition();
+                Environment.Exit(0);
+            };
             desktop.Exit += async (_, _) => await globalSearch.Stop();
+
+            // Auto-repair: if the saved hotkey is platform-forbidden (e.g. user edited JSON by hand),
+            // reset it to the default before registering the global hook.
+            if (AppHandler.Instance.IsForbidden(userSettings.ParsedHotkey)) {
+                userSettings.Hotkey = HotkeyConfig.Default.ToString();
+                userSettings.Save();
+            }
+
             RegisterGlobalHotKey(desktop);
 
             base.OnFrameworkInitializationCompleted();
@@ -98,8 +110,9 @@ public partial class App : Application {
         }
         var appSearch = _services.GetRequiredService<ApplicationSearch>();
         await appSearch.WhenReady();
+        _settingsVm = _services.GetRequiredService<SettingsWindowViewModel>();
         _settingsWindow = new SettingsWindow {
-            DataContext = _services.GetRequiredService<SettingsWindowViewModel>(),
+            DataContext = _settingsVm,
         };
         _settingsWindow.Show();
     }
@@ -235,6 +248,12 @@ public partial class App : Application {
             if (e.Data.KeyCode == KeyNameToKeyCode(hotkey.KeyName)
                 && hasAlt == hotkey.Alt && hasCtrl == hotkey.Ctrl
                 && hasShift == hotkey.Shift && hasMeta == hotkey.Meta) {
+                // If Settings is capturing a new hotkey, let the event reach SettingsWindow
+                // so it can record the key combination (including the current hotkey itself).
+                // _settingsVm is a plain field; IsCapturingHotkey is a bool — safe to read from the hook thread.
+                if (_settingsVm?.IsCapturingHotkey == true)
+                    return;
+
                 // Suppress the event at OS level so it is not delivered to any app.
                 // This prevents beeps in both Yottacast and the previously focused app.
                 // Requires Accessibility permission on macOS; silently ignored without it.

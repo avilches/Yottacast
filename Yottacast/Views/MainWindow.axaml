@@ -10,7 +10,6 @@
         Title="Yottacast"
         Width="{DynamicResource Theme.WindowWidth}"
         SizeToContent="Height"
-        WindowStartupLocation="CenterScreen"
         SystemDecorations="None"
         TransparencyLevelHint="Transparent"
         Background="Transparent"
@@ -98,7 +97,8 @@
 
     <Border Margin="28"
             CornerRadius="{DynamicResource Theme.CornerRadiusWindow}"
-            Background="{DynamicResource Theme.WindowBackground}">
+            Background="{DynamicResource Theme.WindowBackground}"
+            PointerPressed="OnRootPointerPressed">
         <DockPanel>
 
             <!-- ── Search row + hint ── -->

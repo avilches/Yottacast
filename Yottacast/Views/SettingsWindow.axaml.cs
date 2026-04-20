@@ -22,9 +22,19 @@ public partial class SettingsWindow : Window {
         RequestedThemeVariant = osTheme == PlatformThemeVariant.Dark
             ? ThemeVariant.Dark
             : ThemeVariant.Light;
+
+        // Inyectar colores y fuente nativos del OS (definidos en AppHandler de cada plataforma).
+        AppHandler.Instance.ApplySettingsTheme(this);
     }
 
     protected override void OnKeyDown(KeyEventArgs e) {
+        if (DataContext is SettingsWindowViewModel { IsCapturingHotkey: true } vm) {
+            vm.UpdateCapturingModifiers(e.KeyModifiers);
+            if (!IsModifierKey(e.Key))
+                vm.ProcessKeyCapture(e.Key, e.KeyModifiers);
+            e.Handled = true;
+            return;
+        }
         var (closeMods, closeKey) = AppHandler.Instance.CloseWindowShortcut;
         if (e.Key == closeKey && e.KeyModifiers == closeMods) {
             Close();
@@ -34,10 +44,29 @@ public partial class SettingsWindow : Window {
         base.OnKeyDown(e);
     }
 
-    // Click on the hotkey border → start capture; e.Handled stops bubbling to the window handler below
+    protected override void OnKeyUp(KeyEventArgs e) {
+        if (DataContext is SettingsWindowViewModel { IsCapturingHotkey: true } vm && IsModifierKey(e.Key)) {
+            vm.UpdateCapturingModifiers(e.KeyModifiers);
+            e.Handled = true;
+            return;
+        }
+        base.OnKeyUp(e);
+    }
+
+    private static bool IsModifierKey(Key k) =>
+        k is Key.LeftAlt or Key.RightAlt or Key.LeftCtrl or Key.RightCtrl
+          or Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin;
+
+    // Click on the hotkey border → start capture only if not already capturing
+    // (prevents restarting when the cancel button inside is clicked)
     private void OnHotkeyAreaPointerPressed(object? sender, PointerPressedEventArgs e) {
-        (DataContext as SettingsWindowViewModel)?.StartHotkeyCapture();
-        e.Handled = true;
+        if (DataContext is SettingsWindowViewModel { IsCapturingHotkey: false } vm)
+            vm.StartHotkeyCapture();
+        e.Handled = true;  // always stop bubble so OnPointerPressed doesn't also cancel
+    }
+
+    private void OnCancelHotkeyCaptureClicked(object? sender, RoutedEventArgs e) {
+        (DataContext as SettingsWindowViewModel)?.CancelHotkeyCapture();
     }
 
     // Click anywhere else in the window → cancel capture

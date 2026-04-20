@@ -27,6 +27,8 @@ public class UserSettings {
     public bool EnableEmoji { get; set; } = true;
     public string LastLaunchedVersion { get; set; } = "";
     public List<WebSearchEngineSettings> WebSearchEngines { get; set; } = [];
+    public int? WindowX { get; set; }
+    public int? WindowY { get; set; }
 
     private string _hotkey = "Alt+Space";
     private HotkeyConfig? _parsedHotkey;
@@ -117,6 +119,12 @@ public class UserSettings {
         [JsonPropertyName("enableEmoji")] public bool EnableEmoji { get; init; } = true;
         [JsonPropertyName("lastLaunchedVersion")] public string LastLaunchedVersion { get; init; } = "";
         [JsonPropertyName("webSearchEngines")] public List<WebSearchEngineSettingsData>? WebSearchEngines { get; init; }
+        [JsonPropertyName("windowX")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? WindowX { get; init; }
+        [JsonPropertyName("windowY")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? WindowY { get; init; }
     }
 
     public static UserSettings Load(PlatformProvider platform, ILogger<UserSettings>? logger = null, string? settingsPath = null) {
@@ -143,6 +151,8 @@ public class UserSettings {
                     EnableEmoji = data.EnableEmoji,
                     LastLaunchedVersion = data.LastLaunchedVersion,
                     WebSearchEngines = MergeWebSearchEngines(data.WebSearchEngines),
+                    WindowX = data.WindowX,
+                    WindowY = data.WindowY,
                 };
             }
         } catch (Exception ex) {
@@ -203,6 +213,8 @@ public class UserSettings {
                 EnableClipboard = EnableClipboard,
                 EnableEmoji = EnableEmoji,
                 LastLaunchedVersion = LastLaunchedVersion,
+                WindowX = WindowX,
+                WindowY = WindowY,
                 WebSearchEngines = WebSearchEngines
                     .Select(s => new WebSearchEngineSettingsData {
                         Id = s.Id,

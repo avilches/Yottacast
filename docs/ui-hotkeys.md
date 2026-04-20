@@ -145,15 +145,25 @@ Invariantes:
 
 ## 9. Captura de hotkey en preferencias
 
-El flujo para que el usuario cambie el atajo global desde la ventana de preferencias es:
+El campo hotkey muestra siempre 4 badges de modificadores (⌃/Ctrl, ⌥/Alt, ⇧, ⌘/Meta con simbolos especificos por OS) y el nombre de la tecla. Los badges activos (el modificador forma parte del hotkey guardado) se muestran con opacidad plena; los inactivos, atenuados.
 
-1. Click sobre el area del hotkey: inicia la captura (`IsCapturingHotkey = true`). El texto cambia a "Press keys...".
-2. Click fuera del area: cancela la captura y restaura el valor guardado.
-3. Pulsar una tecla durante la captura: si es solo un modificador (Alt, Ctrl, Shift, Meta), se ignora. Si es Escape, se cancela. Cualquier otra combinacion construye un `HotkeyConfig`, lo serializa, lo guarda en `UserSettings` y finaliza la captura.
+El flujo de captura:
 
-**Nota:** El metodo `ProcessKeyCapture` en `SettingsWindowViewModel` implementa la logica del paso 3, pero actualmente no esta conectado desde la vista (`SettingsWindow` no invoca este metodo en ningun handler de teclado). El paso 3 no esta funcional hasta que se conecte.
+1. **Inicio** — Click sobre el campo: borde se pone rojo (`#FF3B30`), todos los badges se apagan, texto central pasa a "Press a modifier…". Aparece un botón ✕ para cancelar.
+2. **Modificador pulsado** — El badge correspondiente se ilumina en tiempo real y el texto pasa a "Press a key…". Si se sueltan todos los modificadores, vuelve a "Press a modifier…".
+3. **Tecla pulsada** — Con al menos un modificador sostenido, se construye el `HotkeyConfig`, se valida (no prohibido), se guarda y termina la captura.
+4. **Cancelacion** — Escape, click en el botón ✕, o click fuera del campo: cancela sin guardar.
 
-> **Verificar en:** `SettingsWindow.axaml.cs` (`OnHotkeyAreaPointerPressed`, `OnPointerPressed`), `SettingsWindowViewModel.cs` (`StartHotkeyCapture`, `CancelHotkeyCapture`, `ProcessKeyCapture`)
+Combinaciones prohibidas (ignoradas silenciosamente, no se pueden capturar):
+- macOS: `Meta+Q` (Cmd+Q = salir), `Meta+W` (Cmd+W = cerrar ventana)
+- Windows: `Ctrl+F4`, `Alt+F4`
+- Linux: `Ctrl+W`
+
+Si el usuario pulsa el mismo hotkey que ya tenia, el hook global detecta que Settings esta capturando y no suprime el evento, dejando que llegue a `SettingsWindow.OnKeyDown`.
+
+**Auto-reparacion al inicio**: si el hotkey guardado en JSON coincide con una combinacion prohibida (p. ej. el usuario edito el fichero a mano), se reemplaza por `HotkeyConfig.Default` antes de registrar el hook global.
+
+> **Verificar en:** `SettingsWindow.axaml.cs` (`OnKeyDown`, `OnKeyUp`, `OnHotkeyAreaPointerPressed`, `OnPointerPressed`), `SettingsWindowViewModel.cs` (`StartHotkeyCapture`, `CancelHotkeyCapture`, `UpdateCapturingModifiers`, `ProcessKeyCapture`, `BadgeXxxActive`, `HotkeyKeyText`), `AppHandler.cs` (`ForbiddenHotkeys`, `IsForbidden`, `XxxSymbol`), `App.axaml.cs` (auto-repair antes de `RegisterGlobalHotKey`)
 
 ---
 

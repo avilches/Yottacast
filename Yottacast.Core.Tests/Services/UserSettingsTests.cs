@@ -675,6 +675,67 @@ public class UserSettingsTests : IDisposable {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
+    // WindowX / WindowY persistence
+    // ══════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void WindowPosition_DefaultsToNull_WhenNotInJson() {
+        WriteSettingsJson("""
+            {
+                "browser": "",
+                "terminal": "",
+                "theme": "dark-default",
+                "searchFolders": ["/docs"],
+                "appDirectories": ["/apps"]
+            }
+            """);
+
+        var settings = Load();
+
+        Assert.Null(settings.WindowX);
+        Assert.Null(settings.WindowY);
+    }
+
+    [Fact]
+    public void WindowPosition_SaveAndLoad_RoundTrips() {
+        var settings = Load();
+        settings.WindowX = 400;
+        settings.WindowY = 300;
+        settings.Save();
+
+        var reloaded = Load();
+
+        Assert.Equal(400, reloaded.WindowX);
+        Assert.Equal(300, reloaded.WindowY);
+    }
+
+    [Fact]
+    public void WindowPosition_Null_NotWrittenToJson() {
+        var settings = Load();
+        settings.WindowX = null;
+        settings.WindowY = null;
+        settings.Save();
+
+        var raw = File.ReadAllText(_settingsFile);
+        using var doc = JsonDocument.Parse(raw);
+        Assert.False(doc.RootElement.TryGetProperty("windowX", out _));
+        Assert.False(doc.RootElement.TryGetProperty("windowY", out _));
+    }
+
+    [Fact]
+    public void WindowPosition_WrittenToJson_WhenSet() {
+        var settings = Load();
+        settings.WindowX = 100;
+        settings.WindowY = 200;
+        settings.Save();
+
+        var raw = File.ReadAllText(_settingsFile);
+        using var doc = JsonDocument.Parse(raw);
+        Assert.Equal(100, doc.RootElement.GetProperty("windowX").GetInt32());
+        Assert.Equal(200, doc.RootElement.GetProperty("windowY").GetInt32());
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
     // Default theme detection
     // ══════════════════════════════════════════════════════════════════════════
 
