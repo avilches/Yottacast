@@ -770,6 +770,42 @@ public class UserSettingsTests : IDisposable {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
+    // StickyWindow persistence
+    // ══════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void StickyWindow_DefaultIsTrue() {
+        var settings = Load();
+        Assert.True(settings.StickyWindow);
+    }
+
+    [Fact]
+    public void StickyWindow_SaveAndLoad_RoundTrips() {
+        var settings = Load();
+        settings.StickyWindow = false;
+        settings.Save();
+
+        WaitForSettingsFile("stickyWindow");
+        var reloaded = Load();
+
+        Assert.False(reloaded.StickyWindow);
+    }
+
+    [Fact]
+    public void StickyWindow_MissingFromJson_DefaultsToTrue() {
+        WriteSettingsJson("""
+            {
+                "browser": "",
+                "terminal": ""
+            }
+            """);
+
+        var settings = Load();
+
+        Assert.True(settings.StickyWindow);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
     // Default theme detection
     // ══════════════════════════════════════════════════════════════════════════
 

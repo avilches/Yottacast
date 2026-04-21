@@ -2,13 +2,30 @@
 
 ## 1. Atajo global para mostrar/ocultar el launcher
 
-La aplicacion define un unico atajo de teclado global (por defecto `ALT+Space`) que funciona desde cualquier aplicacion. Su comportamiento depende del estado de la ventana:
+La aplicacion define un unico atajo de teclado global (por defecto `ALT+Space`) que funciona desde cualquier aplicacion. Su comportamiento depende del estado de la ventana y del modo **Sticky**:
+
+### Modo Sticky (default, `StickyWindow = true`)
 
 | Estado de la ventana          | Accion                                           |
 |-------------------------------|--------------------------------------------------|
 | Visible **y** activa (en foco) | Se oculta y devuelve el foco a la app anterior   |
 | Visible pero sin foco         | Se trae al frente y se activa                    |
 | Oculta                        | Se muestra y se activa                           |
+
+En modo sticky la ventana permanece visible cuando pierde el foco: el usuario puede hacer clic en otra app sin que el launcher desaparezca.
+
+### Modo no-sticky / Alfred-style (`StickyWindow = false`)
+
+| Estado de la ventana | Accion                                         |
+|----------------------|------------------------------------------------|
+| Visible              | Se oculta y devuelve el foco a la app anterior |
+| Oculta               | Se muestra y se activa                         |
+
+En modo no-sticky la ventana se oculta automaticamente en cuanto pierde el foco (comportamiento tipo Alfred). El hotkey siempre oculta si esta visible porque al perder el foco se habrá ocultado antes de que el usuario pueda pulsarlo.
+
+La ventana no se oculta automaticamente cuando quien toma el foco es la propia ventana de Settings de Yottacast.
+
+El setting se configura en Settings → General ("Sticky window") y se persiste en `UserSettings.StickyWindow`.
 
 Invariantes:
 
@@ -19,7 +36,7 @@ Invariantes:
 
 La combinacion de teclas configurable se almacena como `HotkeyConfig` (record con flags `Alt`, `Ctrl`, `Shift`, `Meta` y `KeyName`). La comparacion contra el evento del hook usa un diccionario estatico `KeyNameMap` que cubre A-Z, 0-9, F1-F12 y teclas especiales (Space, Enter, Tab, Backspace, Delete, Escape). Cualquier tecla no incluida en el mapa se trata como `KeyCode.VcUndefined` y nunca coincidira.
 
-> **Verificar en:** `App.axaml.cs` (`RegisterGlobalHotKey`, `BuildKeyNameMap`), `UserSettings.ParsedHotkey`, `HotkeyConfig` en `Yottacast.Core/Platform/HotkeyConfig.cs`
+> **Verificar en:** `App.axaml.cs` (`RegisterGlobalHotKey`, `BuildKeyNameMap`, handler `Deactivated`), `UserSettings.StickyWindow`, `UserSettings.ParsedHotkey`, `HotkeyConfig` en `Yottacast.Core/Platform/HotkeyConfig.cs`
 
 ---
 

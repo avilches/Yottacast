@@ -381,6 +381,14 @@
                                   SelectedItem="{Binding SelectedTerminal}"
                                   PlaceholderText="No terminals found"/>
                     </StackPanel>
+
+                    <!-- Sticky window -->
+                    <StackPanel Spacing="4">
+                        <CheckBox Content="Sticky window"
+                                  IsChecked="{Binding StickyWindow}"/>
+                        <TextBlock Classes="description"
+                                   Text="When enabled, the window stays visible when it loses focus."/>
+                    </StackPanel>
                 </StackPanel>
 
                 <!-- App Search -->

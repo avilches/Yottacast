@@ -165,7 +165,7 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
 
     public override void OpenUrl(string url, string browserName) {
         try {
-            System.Diagnostics.Process.Start(new ProcessStartInfo {
+            Process.Start(new ProcessStartInfo {
                 FileName = "open",
                 ArgumentList = { "-a", browserName, url },
                 UseShellExecute = false,

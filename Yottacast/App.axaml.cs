@@ -62,6 +62,17 @@ public partial class App : Application {
             var mainWindow = new MainWindow(userSettings, _services.GetRequiredService<ILogger<MainWindow>>()) { DataContext = mainWindowViewModel };
             desktop.MainWindow = mainWindow;
 
+            // Auto-hide when losing focus in non-sticky mode (Alfred-style).
+            // Guard: don't hide if our own Settings window is what took focus.
+            mainWindow.Deactivated += (_, _) => {
+                if (!userSettings.StickyWindow
+                    && mainWindow.IsVisible
+                    && _settingsWindow is not { IsVisible: true }) {
+                    mainWindow.Hide();
+                    AppHandler.Instance.OnHide();
+                }
+            };
+
             // Wire up clipboard so Core code can copy results without depending on Avalonia
             var clipboardService = _services.GetRequiredService<ClipboardService>();
             clipboardService.Initialize(text =>
@@ -286,8 +297,13 @@ public partial class App : Application {
                         var window = desktop.MainWindow;
                         if (window is null) return;
                         if (window.IsVisible) {
-                            window.Hide();
-                            AppHandler.Instance.OnHide();
+                            if (settings.StickyWindow && !AppHandler.Instance.IsWindowFocused(window)) {
+                                // Visible pero sin foco → traer al frente sin tocar _previousApp
+                                AppHandler.Instance.FocusWindow(window);
+                            } else {
+                                window.Hide();
+                                AppHandler.Instance.OnHide();
+                            }
                         } else {
                             AppHandler.Instance.ShowWindow(window);
                         }

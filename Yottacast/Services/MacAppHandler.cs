@@ -45,6 +45,17 @@ internal sealed class MacAppHandler : AppHandler {
             ObjcMsgSendVoid(nsWindow, SelRegisterName("makeKeyWindow"));
     }
 
+    // Brings the window to front and gives it key/focus status without touching _previousApp.
+    // activateIgnoringOtherApps:YES is required so macOS allows our window to rise above the
+    // current frontmost app's windows. makeKeyAndOrderFront: then orders and keys the window.
+    public override void FocusWindow(Window window) {
+        var nsApp = ObjcMsgSend(ObjcGetClass("NSApplication"), SelRegisterName("sharedApplication"));
+        ObjcMsgSendBool(nsApp, SelRegisterName("activateIgnoringOtherApps:"), true);
+        var nsWindow = GetNsWindow(window);
+        if (nsWindow != IntPtr.Zero)
+            ObjcMsgSendObject(nsWindow, SelRegisterName("makeKeyAndOrderFront:"), IntPtr.Zero);
+    }
+
     private static IntPtr GetNsWindow(Window window) {
         // TryGetPlatformHandle() on macOS returns the AvnWindow (NSWindow subclass) directly.
         return window.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
@@ -112,6 +123,16 @@ internal sealed class MacAppHandler : AppHandler {
     private static IntPtr GetFrontmostApp() {
         var workspace = ObjcMsgSend(ObjcGetClass("NSWorkspace"), SelRegisterName("sharedWorkspace"));
         return ObjcMsgSend(workspace, SelRegisterName("frontmostApplication"));
+    }
+
+    // Checks the NSWindow's isKeyWindow property to determine if our window has keyboard focus.
+    // More reliable than window.IsActive for accessory-mode apps where Avalonia's activation
+    // events may not fire as expected.
+    public override bool IsWindowFocused(Window window) {
+        var nsWindow = GetNsWindow(window);
+        if (nsWindow == IntPtr.Zero) return false;
+        // isKeyWindow returns BOOL (1 byte on ARM64) — use ObjcMsgSendInt to avoid marshaling issues.
+        return ObjcMsgSendInt(nsWindow, SelRegisterName("isKeyWindow")) != 0;
     }
 
     // Returns true if the given NSRunningApplication is this process.

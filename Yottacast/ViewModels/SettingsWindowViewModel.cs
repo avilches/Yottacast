@@ -70,6 +70,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [ObservableProperty] private bool _enableEmoji;
     [ObservableProperty] private bool _enableFileSearch;
     [ObservableProperty] private bool _fileSearchOnlySpecificFolders;
+    [ObservableProperty] private bool _stickyWindow;
 
     partial void OnEnableAppSearchChanged(bool v)               { _settings.EnableAppSearch              = v; _settings.Save(); }
     partial void OnEnableCalculatorChanged(bool v)              { _settings.EnableCalculator             = v; _settings.Save(); }
@@ -77,6 +78,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     partial void OnEnableEmojiChanged(bool v)                   { _settings.EnableEmoji                  = v; _settings.Save(); }
     partial void OnEnableFileSearchChanged(bool v)              { _settings.EnableFileSearch             = v; _settings.Save(); }
     partial void OnFileSearchOnlySpecificFoldersChanged(bool v) { _settings.FileSearchOnlySpecificFolders = v; _settings.Save(); }
+    partial void OnStickyWindowChanged(bool v)                  { _settings.StickyWindow                 = v; _settings.Save(); }
 
     // ── Infrastructure ───────────────────────────────────────────────────────
     private readonly UserSettings _settings;
@@ -111,6 +113,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _enableEmoji                     = settings.EnableEmoji;
         _enableFileSearch                = settings.EnableFileSearch;
         _fileSearchOnlySpecificFolders   = settings.FileSearchOnlySpecificFolders;
+        _stickyWindow                    = settings.StickyWindow;
 
         SearchFolders  = new ObservableCollection<SearchFolderItem>(settings.SearchFolders.Select(p => new SearchFolderItem(p)));
         AppDirectories = new ObservableCollection<string>(settings.AppDirectories);

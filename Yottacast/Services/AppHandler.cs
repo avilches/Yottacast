@@ -32,6 +32,22 @@ internal abstract class AppHandler {
     public abstract void OnHide();
 
     /// <summary>
+    /// Brings an already-visible window to the foreground and gives it keyboard focus,
+    /// without modifying the saved previous-app reference used for focus restoration on hide.
+    /// Used in sticky mode when the hotkey is pressed while the window is visible but unfocused.
+    /// Default implementation calls Activate(); macOS overrides with activateIgnoringOtherApps + makeKeyAndOrderFront:.
+    /// </summary>
+    public virtual void FocusWindow(Window window) {
+        window.Activate();
+    }
+
+    /// <summary>
+    /// Returns true if this app's window is currently in the foreground (has keyboard focus / is key window).
+    /// Default uses Avalonia's window.IsActive; macOS overrides with isKeyWindow check on the NSWindow.
+    /// </summary>
+    public virtual bool IsWindowFocused(Window window) => window.IsActive;
+
+    /// <summary>
     /// Platform-specific "close window" shortcut: Cmd+W on macOS, Ctrl+F4 on Windows, Ctrl+W on Linux.
     /// Used by SettingsWindow to close itself, and by MainWindow to consume the shortcut and prevent accidental close.
     /// </summary>

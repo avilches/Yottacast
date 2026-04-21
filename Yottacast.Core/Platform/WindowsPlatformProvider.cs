@@ -141,7 +141,7 @@ public sealed class WindowsPlatformProvider(ProcessRunner runner, ILogger<Window
         try {
             var exePath = GetBrowserPaths(browserName).FirstOrDefault(File.Exists);
             if (exePath is null) return;
-            System.Diagnostics.Process.Start(new ProcessStartInfo {
+            Process.Start(new ProcessStartInfo {
                 FileName = exePath,
                 ArgumentList = { url },
                 UseShellExecute = false,

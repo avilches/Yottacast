@@ -32,6 +32,7 @@ public class UserSettings {
     public List<WebSearchEngineSettings> WebSearchEngines { get; set; } = [];
     public int? WindowX { get; set; }
     public int? WindowY { get; set; }
+    public bool StickyWindow { get; set; } = true;
 
     private string _hotkey = "Alt+Space";
     private HotkeyConfig? _parsedHotkey;
@@ -131,6 +132,7 @@ public class UserSettings {
         [JsonPropertyName("windowY")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public int? WindowY { get; init; }
+        [JsonPropertyName("stickyWindow")] public bool StickyWindow { get; init; } = true;
     }
 
     public static UserSettings Load(PlatformProvider platform, ILogger<UserSettings>? logger = null, string? settingsPath = null) {
@@ -174,6 +176,7 @@ public class UserSettings {
                     WebSearchEngines = MergeWebSearchEngines(data.WebSearchEngines),
                     WindowX = data.WindowX,
                     WindowY = data.WindowY,
+                    StickyWindow = data.StickyWindow,
                 };
             }
         } catch (Exception ex) {
@@ -245,6 +248,7 @@ public class UserSettings {
                 LastLaunchedVersion = LastLaunchedVersion,
                 WindowX = WindowX,
                 WindowY = WindowY,
+                StickyWindow = StickyWindow,
                 WebSearchEngines = WebSearchEngines
                     .Select(s => new WebSearchEngineSettingsData {
                         Id = s.Id,
