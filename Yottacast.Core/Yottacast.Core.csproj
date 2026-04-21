@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <Version>1.0.0</Version>
+    <InformationalVersion>$(Version)+$(SourceRevisionId)</InformationalVersion>
   </PropertyGroup>
 
   <ItemGroup>

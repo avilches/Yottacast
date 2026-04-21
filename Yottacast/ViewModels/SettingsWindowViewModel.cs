@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using Avalonia.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -79,6 +80,10 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     partial void OnEnableFileSearchChanged(bool v)              { _settings.EnableFileSearch             = v; _settings.Save(); }
     partial void OnFileSearchOnlySpecificFoldersChanged(bool v) { _settings.FileSearchOnlySpecificFolders = v; _settings.Save(); }
     partial void OnStickyWindowChanged(bool v)                  { _settings.StickyWindow                 = v; _settings.Save(); }
+
+    // ── App version ──────────────────────────────────────────────────────────
+    public string AppVersion { get; } =
+        "Yottacast " + (Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "—");
 
     // ── Infrastructure ───────────────────────────────────────────────────────
     private readonly UserSettings _settings;

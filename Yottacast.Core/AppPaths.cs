@@ -41,4 +41,10 @@ public static class AppPaths {
 
     /// <summary>Badge icon disk cache directory (default app icon per file extension).</summary>
     public static readonly string BadgeIconCacheDir = Path.Combine(CacheDir, "badge-icons");
+
+    /// <summary>User-installed WebSearch plugin JSON files directory.</summary>
+    public static readonly string PluginsDir = Path.Combine(ConfigDir, "plugins");
+
+    /// <summary>Cached icons for WebSearch plugins.</summary>
+    public static readonly string PluginIconCacheDir = Path.Combine(CacheDir, "plugin-icons");
 }

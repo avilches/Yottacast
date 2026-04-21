@@ -246,78 +246,89 @@
 
         <!-- ── Sidebar ─────────────────────────────────────────────────────── -->
         <Border Grid.Column="0" Background="{DynamicResource Theme.ItemIconBackground}">
-            <StackPanel Spacing="2" Margin="10,16">
+            <DockPanel>
 
-                <TextBlock Text="Preferences"
-                           Foreground="{DynamicResource Theme.ItemTitle}"
-                           FontSize="{DynamicResource Theme.FontSizeSmall}"
-                           FontWeight="SemiBold"
-                           Margin="12,0,0,16"/>
+                <!-- Version at the bottom -->
+                <TextBlock DockPanel.Dock="Bottom"
+                           Text="{Binding AppVersion}"
+                           Foreground="{DynamicResource Theme.ItemSubtitle}"
+                           FontSize="11"
+                           HorizontalAlignment="Center"
+                           Margin="0,8,0,12"/>
 
-                <Button Classes="nav-item"
-                        Classes.nav-selected="{Binding IsGeneralSelected}"
-                        Command="{Binding SelectGeneralCommand}">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <PathIcon Data="{StaticResource Icon.General}" Width="14" Height="14" VerticalAlignment="Center"/>
-                        <TextBlock Text="General" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
+                <StackPanel Spacing="2" Margin="10,16">
 
-                <Button Classes="nav-item"
-                        Classes.nav-selected="{Binding IsAppSearchSelected}"
-                        Command="{Binding SelectAppSearchCommand}">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <PathIcon Data="{StaticResource Icon.AppSearch}" Width="14" Height="14" VerticalAlignment="Center"/>
-                        <TextBlock Text="App Search" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
+                    <TextBlock Text="Preferences"
+                               Foreground="{DynamicResource Theme.ItemTitle}"
+                               FontSize="{DynamicResource Theme.FontSizeSmall}"
+                               FontWeight="SemiBold"
+                               Margin="12,0,0,16"/>
 
-                <Button Classes="nav-item"
-                        Classes.nav-selected="{Binding IsWebSearchSelected}"
-                        Command="{Binding SelectWebSearchCommand}">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <PathIcon Data="{StaticResource Icon.WebSearch}" Width="14" Height="14" VerticalAlignment="Center"/>
-                        <TextBlock Text="Web Search" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
+                    <Button Classes="nav-item"
+                            Classes.nav-selected="{Binding IsGeneralSelected}"
+                            Command="{Binding SelectGeneralCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="{StaticResource Icon.General}" Width="14" Height="14" VerticalAlignment="Center"/>
+                            <TextBlock Text="General" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
 
-                <Button Classes="nav-item"
-                        Classes.nav-selected="{Binding IsFileSearchSelected}"
-                        Command="{Binding SelectFileSearchCommand}">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <PathIcon Data="{StaticResource Icon.FileSearch}" Width="14" Height="14" VerticalAlignment="Center"/>
-                        <TextBlock Text="File Search" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
+                    <Button Classes="nav-item"
+                            Classes.nav-selected="{Binding IsAppSearchSelected}"
+                            Command="{Binding SelectAppSearchCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="{StaticResource Icon.AppSearch}" Width="14" Height="14" VerticalAlignment="Center"/>
+                            <TextBlock Text="App Search" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
 
-                <Button Classes="nav-item"
-                        Classes.nav-selected="{Binding IsCalculatorSelected}"
-                        Command="{Binding SelectCalculatorCommand}">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <PathIcon Data="{StaticResource Icon.Calculator}" Width="14" Height="14" VerticalAlignment="Center"/>
-                        <TextBlock Text="Calculator" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
+                    <Button Classes="nav-item"
+                            Classes.nav-selected="{Binding IsWebSearchSelected}"
+                            Command="{Binding SelectWebSearchCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="{StaticResource Icon.WebSearch}" Width="14" Height="14" VerticalAlignment="Center"/>
+                            <TextBlock Text="Web Search" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
 
-                <Button Classes="nav-item"
-                        Classes.nav-selected="{Binding IsClipboardSelected}"
-                        Command="{Binding SelectClipboardCommand}">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <PathIcon Data="{StaticResource Icon.Clipboard}" Width="14" Height="14" VerticalAlignment="Center"/>
-                        <TextBlock Text="Clipboard" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
+                    <Button Classes="nav-item"
+                            Classes.nav-selected="{Binding IsFileSearchSelected}"
+                            Command="{Binding SelectFileSearchCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="{StaticResource Icon.FileSearch}" Width="14" Height="14" VerticalAlignment="Center"/>
+                            <TextBlock Text="File Search" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
 
-                <Button Classes="nav-item"
-                        Classes.nav-selected="{Binding IsEmojiSelected}"
-                        Command="{Binding SelectEmojiCommand}">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <PathIcon Data="{StaticResource Icon.Emoji}" Width="14" Height="14" VerticalAlignment="Center"/>
-                        <TextBlock Text="Emoji" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
+                    <Button Classes="nav-item"
+                            Classes.nav-selected="{Binding IsCalculatorSelected}"
+                            Command="{Binding SelectCalculatorCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="{StaticResource Icon.Calculator}" Width="14" Height="14" VerticalAlignment="Center"/>
+                            <TextBlock Text="Calculator" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
 
-            </StackPanel>
+                    <Button Classes="nav-item"
+                            Classes.nav-selected="{Binding IsClipboardSelected}"
+                            Command="{Binding SelectClipboardCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="{StaticResource Icon.Clipboard}" Width="14" Height="14" VerticalAlignment="Center"/>
+                            <TextBlock Text="Clipboard" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button Classes="nav-item"
+                            Classes.nav-selected="{Binding IsEmojiSelected}"
+                            Command="{Binding SelectEmojiCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="{StaticResource Icon.Emoji}" Width="14" Height="14" VerticalAlignment="Center"/>
+                            <TextBlock Text="Emoji" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                </StackPanel>
+            </DockPanel>
         </Border>
 
         <!-- ── Vertical divider ────────────────────────────────────────────── -->
