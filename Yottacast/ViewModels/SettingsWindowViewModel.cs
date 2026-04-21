@@ -1,6 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.IO;
 using System.Linq;
 using Avalonia.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -55,32 +57,41 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     public IReadOnlyList<ThemeOption> Themes { get; }
 
     // ── Folder lists ─────────────────────────────────────────────────────────
-    public ObservableCollection<string> SearchFolders  { get; }
+    public ObservableCollection<SearchFolderItem> SearchFolders { get; }
     public ObservableCollection<string> AppDirectories { get; }
 
     // ── Web Search engines ───────────────────────────────────────────────────
     public IReadOnlyList<WebSearchEngineRowViewModel> WebSearchEngines { get; }
 
     // ── Feature toggles ──────────────────────────────────────────────────────
+    [ObservableProperty] private bool _enableAppSearch;
     [ObservableProperty] private bool _enableCalculator;
     [ObservableProperty] private bool _enableClipboard;
     [ObservableProperty] private bool _enableEmoji;
+    [ObservableProperty] private bool _enableFileSearch;
+    [ObservableProperty] private bool _fileSearchOnlySpecificFolders;
 
-    partial void OnEnableCalculatorChanged(bool v) { _settings.EnableCalculator = v; _settings.Save(); }
-    partial void OnEnableClipboardChanged(bool v)  { _settings.EnableClipboard  = v; _settings.Save(); }
-    partial void OnEnableEmojiChanged(bool v)      { _settings.EnableEmoji      = v; _settings.Save(); }
+    partial void OnEnableAppSearchChanged(bool v)               { _settings.EnableAppSearch              = v; _settings.Save(); }
+    partial void OnEnableCalculatorChanged(bool v)              { _settings.EnableCalculator             = v; _settings.Save(); }
+    partial void OnEnableClipboardChanged(bool v)               { _settings.EnableClipboard              = v; _settings.Save(); }
+    partial void OnEnableEmojiChanged(bool v)                   { _settings.EnableEmoji                  = v; _settings.Save(); }
+    partial void OnEnableFileSearchChanged(bool v)              { _settings.EnableFileSearch             = v; _settings.Save(); }
+    partial void OnFileSearchOnlySpecificFoldersChanged(bool v) { _settings.FileSearchOnlySpecificFolders = v; _settings.Save(); }
 
     // ── Infrastructure ───────────────────────────────────────────────────────
     private readonly UserSettings _settings;
     private readonly ThemeService _themeService;
+    private readonly PlatformProvider _platform;
 
     public SettingsWindowViewModel(
         UserSettings settings,
         BrowserDiscovery browserDiscovery,
         TerminalDiscovery terminalDiscovery,
-        ThemeService themeService) {
+        ThemeService themeService,
+        PlatformProvider platform) {
         _settings    = settings;
         _themeService = themeService;
+        _platform    = platform;
 
         Browsers  = browserDiscovery.Discover().Select(b => b.Name).ToList();
         Terminals = terminalDiscovery.Discover().Select(t => t.Name).ToList();
@@ -94,15 +105,22 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _selectedTerminal = Terminals.Contains(settings.Terminal) ? settings.Terminal : Terminals.FirstOrDefault();
         _selectedTheme    = Themes.FirstOrDefault(t => t.Id == settings.Theme) ?? Themes.FirstOrDefault();
 
-        _enableCalculator = settings.EnableCalculator;
-        _enableClipboard  = settings.EnableClipboard;
-        _enableEmoji      = settings.EnableEmoji;
+        _enableAppSearch                 = settings.EnableAppSearch;
+        _enableCalculator                = settings.EnableCalculator;
+        _enableClipboard                 = settings.EnableClipboard;
+        _enableEmoji                     = settings.EnableEmoji;
+        _enableFileSearch                = settings.EnableFileSearch;
+        _fileSearchOnlySpecificFolders   = settings.FileSearchOnlySpecificFolders;
 
-        SearchFolders  = new ObservableCollection<string>(settings.SearchFolders);
+        SearchFolders  = new ObservableCollection<SearchFolderItem>(settings.SearchFolders.Select(p => new SearchFolderItem(p)));
         AppDirectories = new ObservableCollection<string>(settings.AppDirectories);
 
-        SearchFolders.CollectionChanged  += (_, _) => { settings.SearchFolders  = SearchFolders.ToList();  settings.Save(); };
-        AppDirectories.CollectionChanged += (_, _) => { settings.AppDirectories = AppDirectories.ToList(); settings.Save(); };
+        SearchFolders.CollectionChanged  += (_, _) => { settings.SearchFolders  = SearchFolders.Select(f => f.RawPath).ToList(); settings.Save(); };
+        AppDirectories.CollectionChanged += (_, _) => {
+            settings.AppDirectories = AppDirectories.ToList();
+            settings.Save();
+            OnPropertyChanged(nameof(HasMissingCommonAppDirectories));
+        };
 
         WebSearchEngines = WebSearchDefaults.Engines.Select(engine => {
             var cfg = settings.WebSearchEngines.FirstOrDefault(s => s.Id == engine.Id)
@@ -113,16 +131,56 @@ public partial class SettingsWindowViewModel : ViewModelBase {
 
     // ── Folder mutators (called from code-behind) ─────────────────────────────
     public void AddSearchFolder(string path) {
-        if (!SearchFolders.Contains(path)) SearchFolders.Add(path);
+        var item = new SearchFolderItem(path);
+        var expandedNew = item.DisplayPath;
+        if (SearchFolders.All(f => f.DisplayPath != expandedNew))
+            SearchFolders.Add(item);
     }
 
-    public void RemoveSearchFolder(string path) => SearchFolders.Remove(path);
+    public void RemoveSearchFolder(SearchFolderItem item) => SearchFolders.Remove(item);
+
+    public void AddCommonFolders() {
+        foreach (var raw in _platform.DefaultSearchFolders()) {
+            var expanded = PlatformProvider.ExpandPath(raw);
+            if (Directory.Exists(expanded) && SearchFolders.All(f => f.RawPath != raw))
+                SearchFolders.Add(new SearchFolderItem(raw));
+        }
+    }
+
+    public bool HasMissingCommonAppDirectories {
+        get {
+            var currentExpanded = AppDirectories
+                .Select(p => PlatformProvider.ExpandPath(p.TrimEnd('/', '\\')))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            return _platform.DefaultAppDirectories().Any(raw => {
+                var expanded = PlatformProvider.ExpandPath(raw.TrimEnd('/', '\\'));
+                return Directory.Exists(expanded) && !currentExpanded.Contains(expanded);
+            });
+        }
+    }
 
     public void AddAppDirectory(string path) {
-        if (!AppDirectories.Contains(path)) AppDirectories.Add(path);
+        var normalized = path.TrimEnd('/', '\\');
+        var normalizedExpanded = PlatformProvider.ExpandPath(normalized);
+        if (AppDirectories.All(d => PlatformProvider.ExpandPath(d.TrimEnd('/', '\\')) != normalizedExpanded))
+            AppDirectories.Add(normalized);
     }
 
     public void RemoveAppDirectory(string path) => AppDirectories.Remove(path);
+
+    public void AddCommonAppDirectories() {
+        var currentExpanded = AppDirectories
+            .Select(p => PlatformProvider.ExpandPath(p.TrimEnd('/', '\\')))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var raw in _platform.DefaultAppDirectories()) {
+            var normalized = raw.TrimEnd('/', '\\');
+            var expanded = PlatformProvider.ExpandPath(normalized);
+            if (Directory.Exists(expanded) && !currentExpanded.Contains(expanded)) {
+                AppDirectories.Add(normalized);
+                currentExpanded.Add(expanded);
+            }
+        }
+    }
 
     // ── Hotkey capture ────────────────────────────────────────────────────────
 
@@ -234,5 +292,18 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _settings.Theme = value.Id;
         _settings.Save();
         _themeService.Apply(value.Id);
+    }
+}
+
+public record SearchFolderItem {
+    public string RawPath { get; }
+    public string DisplayPath { get; }
+    public bool Exists { get; }
+    public bool DoesNotExist => !Exists;
+
+    public SearchFolderItem(string rawPath) {
+        RawPath = rawPath.TrimEnd('/', '\\');
+        DisplayPath = PlatformProvider.ExpandPath(RawPath);
+        Exists = Directory.Exists(DisplayPath);
     }
 }

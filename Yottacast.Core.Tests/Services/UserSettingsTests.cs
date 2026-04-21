@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Threading;
 using Xunit;
 using Yottacast.Core.Platform;
 using Yottacast.Core.Search.UserDocuments;
@@ -40,13 +41,22 @@ public class UserSettingsTests : IDisposable {
     /// <summary>Platform provider with no browsers/terminals and a fixed default theme.</summary>
     private sealed class MinimalPlatform : PlatformProvider {
         private readonly string _defaultTheme;
-        public MinimalPlatform(string defaultTheme = "dark-default") => _defaultTheme = defaultTheme;
+        private readonly string _searchFolderDefault;
+
+        /// <summary>
+        /// The search folder passed to the constructor must be a path that exists on disk,
+        /// because UserSettings filters defaults to existing directories on first launch.
+        /// </summary>
+        public MinimalPlatform(string defaultTheme = "dark-default", string? searchFolderDefault = null) {
+            _defaultTheme = defaultTheme;
+            _searchFolderDefault = searchFolderDefault
+                ?? $"{Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}/Documents";
+        }
 
         public override bool? IsSystemDarkMode() => null;
         public override string DefaultTheme() => _defaultTheme;
         public override List<string> DefaultAppDirectories() => ["/apps"];
-        public override List<string> DefaultSearchFolders() =>
-            [$"{Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}/Documents"];
+        public override List<string> DefaultSearchFolders() => [_searchFolderDefault];
 
         public override Task ScanAppsAsync(Action<string> addApp, IReadOnlyList<string> dirs, CancellationToken ct) => Task.CompletedTask;
         public override IReadOnlyList<FileSystemWatcher> CreateAppWatchers(IReadOnlyList<string> dirs, Action<string> onAdded, Action<string> onRemoved) => [];
@@ -138,6 +148,21 @@ public class UserSettingsTests : IDisposable {
         File.WriteAllText(_settingsFile, json);
     }
 
+    // ── Helper: wait for the settings file to exist and contain the expected key ──
+
+    private string WaitForSettingsFile(string? containsKey = null, int timeoutMs = 2000) {
+        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
+        while (DateTime.UtcNow < deadline) {
+            if (File.Exists(_settingsFile)) {
+                var raw = File.ReadAllText(_settingsFile);
+                if (containsKey == null || raw.Contains(containsKey))
+                    return raw;
+            }
+            Thread.Sleep(20);
+        }
+        return File.Exists(_settingsFile) ? File.ReadAllText(_settingsFile) : "";
+    }
+
     // ══════════════════════════════════════════════════════════════════════════
     // Load() — missing file → creates defaults
     // ══════════════════════════════════════════════════════════════════════════
@@ -148,6 +173,7 @@ public class UserSettingsTests : IDisposable {
 
         Load();
 
+        WaitForSettingsFile();
         Assert.True(File.Exists(_settingsFile), "Load should create the settings file");
     }
 
@@ -160,7 +186,9 @@ public class UserSettingsTests : IDisposable {
 
     [Fact]
     public void Load_WhenFileDoesNotExist_UsesDefaultSearchFoldersFromPlatform() {
-        var platform = new MinimalPlatform();
+        // Use _tempDir as the default search folder because it exists on disk.
+        // UserSettings filters defaults to existing directories on first launch.
+        var platform = new MinimalPlatform(searchFolderDefault: _tempDir);
         var settings = Load(platform);
 
         Assert.Equal(platform.DefaultSearchFolders(), settings.SearchFolders);
@@ -276,7 +304,9 @@ public class UserSettingsTests : IDisposable {
                 "appDirectories": ["/apps"]
             }
             """);
-        var platform = new MinimalPlatform();
+        // Use _tempDir as default search folder because it exists on disk.
+        // UserSettings filters defaults to existing directories on empty/missing list.
+        var platform = new MinimalPlatform(searchFolderDefault: _tempDir);
 
         var settings = Load(platform);
 
@@ -304,7 +334,9 @@ public class UserSettingsTests : IDisposable {
     [Fact]
     public void Load_MalformedJson_CreatesDefaultsInstead() {
         WriteSettingsJson("{ this is not valid json }}}");
-        var platform = new MinimalPlatform("dark-default");
+        // Use _tempDir as default search folder because it exists on disk.
+        // UserSettings filters defaults to existing directories when falling back to defaults.
+        var platform = new MinimalPlatform("dark-default", searchFolderDefault: _tempDir);
 
         var settings = Load(platform);
 
@@ -328,7 +360,7 @@ public class UserSettingsTests : IDisposable {
 
         settings.Save();
 
-        var raw = File.ReadAllText(_settingsFile);
+        var raw = WaitForSettingsFile("dark-raycast");
         using var doc = JsonDocument.Parse(raw);
         var root = doc.RootElement;
         Assert.Equal("Safari",        root.GetProperty("browser").GetString());
@@ -349,6 +381,7 @@ public class UserSettingsTests : IDisposable {
         settings.AppDirectories = ["/home/user/bin"];
         settings.Save();
 
+        WaitForSettingsFile("light-blue");
         var reloaded = Load();
 
         Assert.Equal("Chrome",             reloaded.Browser);
@@ -365,6 +398,7 @@ public class UserSettingsTests : IDisposable {
 
         Load();
 
+        WaitForSettingsFile();
         Assert.True(File.Exists(_settingsFile), "Load must persist (Save) the settings file");
     }
 
@@ -539,7 +573,7 @@ public class UserSettingsTests : IDisposable {
         Assert.Equal("Chrome", settings.Browser);   // self-healed
 
         // Verify the self-heal was persisted to disk
-        var savedJson = File.ReadAllText(_settingsFile);
+        var savedJson = WaitForSettingsFile("Chrome");
         using var doc = JsonDocument.Parse(savedJson);
         Assert.Equal("Chrome", doc.RootElement.GetProperty("browser").GetString());
     }
@@ -623,8 +657,7 @@ public class UserSettingsTests : IDisposable {
         Assert.NotNull(result);
         Assert.Equal("iTerm", result.Name);
         Assert.Equal("iTerm", settings.Terminal);
-
-        var savedJson = File.ReadAllText(_settingsFile);
+        var savedJson = WaitForSettingsFile("iTerm");
         using var doc = JsonDocument.Parse(savedJson);
         Assert.Equal("iTerm", doc.RootElement.GetProperty("terminal").GetString());
     }
@@ -703,6 +736,7 @@ public class UserSettingsTests : IDisposable {
         settings.WindowY = 300;
         settings.Save();
 
+        WaitForSettingsFile("windowX");
         var reloaded = Load();
 
         Assert.Equal(400, reloaded.WindowX);
@@ -716,7 +750,7 @@ public class UserSettingsTests : IDisposable {
         settings.WindowY = null;
         settings.Save();
 
-        var raw = File.ReadAllText(_settingsFile);
+        var raw = WaitForSettingsFile("browser");
         using var doc = JsonDocument.Parse(raw);
         Assert.False(doc.RootElement.TryGetProperty("windowX", out _));
         Assert.False(doc.RootElement.TryGetProperty("windowY", out _));
@@ -729,7 +763,7 @@ public class UserSettingsTests : IDisposable {
         settings.WindowY = 200;
         settings.Save();
 
-        var raw = File.ReadAllText(_settingsFile);
+        var raw = WaitForSettingsFile("windowX");
         using var doc = JsonDocument.Parse(raw);
         Assert.Equal(100, doc.RootElement.GetProperty("windowX").GetInt32());
         Assert.Equal(200, doc.RootElement.GetProperty("windowY").GetInt32());
@@ -764,5 +798,224 @@ public class UserSettingsTests : IDisposable {
         // PlatformProvider.DefaultTheme() is a virtual with concrete logic — test it directly
         var platform = new DarkModePlatform(isDark);
         Assert.Equal(expectedTheme, platform.DefaultTheme());
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // EnableFileSearch / FileSearchOnlySpecificFolders
+    // ══════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void EnableFileSearch_DefaultsToTrue() {
+        var settings = Load();
+
+        Assert.True(settings.EnableFileSearch);
+    }
+
+    [Fact]
+    public void FileSearchOnlySpecificFolders_DefaultsToFalse() {
+        var settings = Load();
+
+        Assert.False(settings.FileSearchOnlySpecificFolders);
+    }
+
+    [Fact]
+    public void EnableFileSearch_SaveAndLoad_RoundTrips() {
+        var settings = Load();
+        settings.EnableFileSearch = false;
+        settings.Save();
+
+        WaitForSettingsFile("enableFileSearch");
+        var reloaded = Load();
+
+        Assert.False(reloaded.EnableFileSearch);
+    }
+
+    [Fact]
+    public void FileSearchOnlySpecificFolders_SaveAndLoad_RoundTrips() {
+        var settings = Load();
+        settings.FileSearchOnlySpecificFolders = true;
+        settings.Save();
+
+        WaitForSettingsFile("fileSearchOnlySpecificFolders");
+        var reloaded = Load();
+
+        Assert.True(reloaded.FileSearchOnlySpecificFolders);
+    }
+
+    [Fact]
+    public void EnableFileSearch_WrittenToJson() {
+        var settings = Load();
+        settings.EnableFileSearch = false;
+        settings.Save();
+
+        var raw = WaitForSettingsFile("enableFileSearch");
+        using var doc = JsonDocument.Parse(raw);
+        Assert.False(doc.RootElement.GetProperty("enableFileSearch").GetBoolean());
+    }
+
+    [Fact]
+    public void FileSearchOnlySpecificFolders_WrittenToJson() {
+        var settings = Load();
+        settings.FileSearchOnlySpecificFolders = true;
+        settings.Save();
+
+        var raw = WaitForSettingsFile("fileSearchOnlySpecificFolders");
+        using var doc = JsonDocument.Parse(raw);
+        Assert.True(doc.RootElement.GetProperty("fileSearchOnlySpecificFolders").GetBoolean());
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // EnableAppSearch
+    // ══════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void EnableAppSearch_DefaultsToTrue() {
+        var settings = Load();
+
+        Assert.True(settings.EnableAppSearch);
+    }
+
+    [Fact]
+    public void EnableAppSearch_SaveAndLoad_RoundTrips() {
+        var settings = Load();
+        settings.EnableAppSearch = false;
+        settings.Save();
+
+        WaitForSettingsFile("enableAppSearch");
+        var reloaded = Load();
+
+        Assert.False(reloaded.EnableAppSearch);
+    }
+
+    [Fact]
+    public void EnableAppSearch_WrittenToJson() {
+        var settings = Load();
+        settings.EnableAppSearch = false;
+        settings.Save();
+
+        var raw = WaitForSettingsFile("enableAppSearch");
+        using var doc = JsonDocument.Parse(raw);
+        Assert.False(doc.RootElement.GetProperty("enableAppSearch").GetBoolean());
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // Path normalization — trailing slash removal and deduplication
+    // ══════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void Load_ExistingFile_SearchFolders_TrimsTrailingSlash() {
+        WriteSettingsJson("""
+            {
+                "browser": "",
+                "terminal": "",
+                "theme": "dark-default",
+                "searchFolders": ["/folder1/"],
+                "appDirectories": ["/apps"]
+            }
+            """);
+
+        var settings = Load();
+
+        Assert.Equal("/folder1", settings.SearchFolders[0]);
+    }
+
+    [Fact]
+    public void Load_ExistingFile_AppDirectories_TrimsTrailingSlash() {
+        WriteSettingsJson("""
+            {
+                "browser": "",
+                "terminal": "",
+                "theme": "dark-default",
+                "searchFolders": ["/docs"],
+                "appDirectories": ["/Applications/"]
+            }
+            """);
+
+        var settings = Load();
+
+        Assert.Equal("/Applications", settings.AppDirectories[0]);
+    }
+
+    [Fact]
+    public void Load_ExistingFile_SearchFolders_DeduplicatesTrailingSlashVariants() {
+        WriteSettingsJson("""
+            {
+                "browser": "",
+                "terminal": "",
+                "theme": "dark-default",
+                "searchFolders": ["/folder1", "/folder1/"],
+                "appDirectories": ["/apps"]
+            }
+            """);
+
+        var settings = Load();
+
+        Assert.Single(settings.SearchFolders);
+        Assert.Equal("/folder1", settings.SearchFolders[0]);
+    }
+
+    [Fact]
+    public void Load_ExistingFile_AppDirectories_DeduplicatesTrailingSlashVariants() {
+        WriteSettingsJson("""
+            {
+                "browser": "",
+                "terminal": "",
+                "theme": "dark-default",
+                "searchFolders": ["/docs"],
+                "appDirectories": ["/Applications", "/Applications/"]
+            }
+            """);
+
+        var settings = Load();
+
+        Assert.Single(settings.AppDirectories);
+        Assert.Equal("/Applications", settings.AppDirectories[0]);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // SearchFolders defaults — filtered to existing directories
+    // ══════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void Load_WhenFileDoesNotExist_FiltersDefaultSearchFoldersToExisting() {
+        // Default platform returns two folders: one that exists (tempDir) and one that doesn't.
+        var nonExistent = Path.Combine(_tempDir, "does_not_exist_subfolder");
+        var platform = new PlatformWithSearchFolders([_tempDir, nonExistent]);
+
+        var settings = Load(platform);
+
+        // Only the existing folder should be in the defaults
+        Assert.Equal([_tempDir], settings.SearchFolders);
+    }
+
+    [Fact]
+    public void Load_WhenFileDoesNotExist_AllDefaultFoldersMissing_ReturnsEmptyList() {
+        var nonExistent1 = Path.Combine(_tempDir, "ghost1");
+        var nonExistent2 = Path.Combine(_tempDir, "ghost2");
+        var platform = new PlatformWithSearchFolders([nonExistent1, nonExistent2]);
+
+        var settings = Load(platform);
+
+        Assert.Empty(settings.SearchFolders);
+    }
+
+    /// <summary>Platform provider with configurable default search folders (no browsers/terminals).</summary>
+    private sealed class PlatformWithSearchFolders(List<string> searchFolders) : PlatformProvider {
+        public override bool? IsSystemDarkMode() => null;
+        public override string DefaultTheme() => "dark-default";
+        public override List<string> DefaultAppDirectories() => [];
+        public override List<string> DefaultSearchFolders() => searchFolders;
+        public override Task ScanAppsAsync(Action<string> addApp, IReadOnlyList<string> dirs, CancellationToken ct) => Task.CompletedTask;
+        public override IReadOnlyList<FileSystemWatcher> CreateAppWatchers(IReadOnlyList<string> dirs, Action<string> onAdded, Action<string> onRemoved) => [];
+        public override void LaunchApp(string path) { }
+        public override Task SearchFilesAsync(string query, Action<FileResult> onResult, int maxResults, IReadOnlyList<string>? folders, CancellationToken ct) => Task.CompletedTask;
+        public override string[] KnownBrowserNames => [];
+        public override IReadOnlyDictionary<string, string[]> BrowserFallbackPaths => new Dictionary<string, string[]>();
+        public override void OpenUrl(string url, string browserName) { }
+        public override string[] GetBrowserPaths(string name) => [];
+        public override string[] KnownTerminalNames => [];
+        public override IReadOnlyDictionary<string, string[]> TerminalFallbackPaths => new Dictionary<string, string[]>();
+        public override void ExecuteCommand(string command, string terminalName) { }
+        public override string[] GetTerminalPaths(string name) => [];
     }
 }

@@ -22,9 +22,12 @@ public class UserSettings {
     public string Theme { get; set; } = "dark-default";
     public List<string> SearchFolders { get; set; } = [];
     public List<string> AppDirectories { get; set; } = [];
+    public bool EnableAppSearch { get; set; } = true;
     public bool EnableCalculator { get; set; } = true;
     public bool EnableClipboard { get; set; } = true;
     public bool EnableEmoji { get; set; } = true;
+    public bool EnableFileSearch { get; set; } = true;
+    public bool FileSearchOnlySpecificFolders { get; set; } = false;
     public string LastLaunchedVersion { get; set; } = "";
     public List<WebSearchEngineSettings> WebSearchEngines { get; set; } = [];
     public int? WindowX { get; set; }
@@ -114,9 +117,12 @@ public class UserSettings {
         [JsonPropertyName("hotkey")] public string Hotkey { get; init; } = "Alt+Space";
         [JsonPropertyName("searchFolders")] public List<string>? SearchFolders { get; init; }
         [JsonPropertyName("appDirectories")] public List<string>? AppDirectories { get; init; }
+        [JsonPropertyName("enableAppSearch")] public bool EnableAppSearch { get; init; } = true;
         [JsonPropertyName("enableCalculator")] public bool EnableCalculator { get; init; } = true;
         [JsonPropertyName("enableClipboard")] public bool EnableClipboard { get; init; } = true;
         [JsonPropertyName("enableEmoji")] public bool EnableEmoji { get; init; } = true;
+        [JsonPropertyName("enableFileSearch")] public bool EnableFileSearch { get; init; } = true;
+        [JsonPropertyName("fileSearchOnlySpecificFolders")] public bool FileSearchOnlySpecificFolders { get; init; } = false;
         [JsonPropertyName("lastLaunchedVersion")] public string LastLaunchedVersion { get; init; } = "";
         [JsonPropertyName("webSearchEngines")] public List<WebSearchEngineSettingsData>? WebSearchEngines { get; init; }
         [JsonPropertyName("windowX")]
@@ -144,8 +150,23 @@ public class UserSettings {
                     Terminal = data.Terminal,
                     Theme = string.IsNullOrEmpty(data.Theme) ? platform.DefaultTheme() : data.Theme,
                     Hotkey = string.IsNullOrEmpty(data.Hotkey) ? "Alt+Space" : data.Hotkey,
-                    SearchFolders = data.SearchFolders?.Count > 0 ? data.SearchFolders : platform.DefaultSearchFolders(),
-                    AppDirectories = data.AppDirectories?.Count > 0 ? data.AppDirectories : platform.DefaultAppDirectories(),
+                    EnableAppSearch = data.EnableAppSearch,
+                    EnableFileSearch = data.EnableFileSearch,
+                    FileSearchOnlySpecificFolders = data.FileSearchOnlySpecificFolders,
+                    SearchFolders = (data.SearchFolders?.Count > 0
+                            ? data.SearchFolders
+                            : platform.DefaultSearchFolders()
+                                .Where(f => Directory.Exists(PlatformProvider.ExpandPath(f)))
+                                .ToList())
+                        .Select(p => p.TrimEnd('/', '\\'))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList(),
+                    AppDirectories = (data.AppDirectories?.Count > 0
+                            ? data.AppDirectories
+                            : platform.DefaultAppDirectories())
+                        .Select(p => p.TrimEnd('/', '\\'))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList(),
                     EnableCalculator = data.EnableCalculator,
                     EnableClipboard = data.EnableClipboard,
                     EnableEmoji = data.EnableEmoji,
@@ -192,8 +213,15 @@ public class UserSettings {
     private static UserSettings CreateDefaultUserSettings(PlatformProvider platform, ILogger<UserSettings>? logger, string? settingsPath = null) {
         return new UserSettings(platform, logger, settingsPath) {
             Theme = platform.DefaultTheme(),
-            SearchFolders = platform.DefaultSearchFolders(),
-            AppDirectories = platform.DefaultAppDirectories(),
+            SearchFolders = platform.DefaultSearchFolders()
+                .Where(f => Directory.Exists(PlatformProvider.ExpandPath(f)))
+                .Select(p => p.TrimEnd('/', '\\'))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList(),
+            AppDirectories = platform.DefaultAppDirectories()
+                .Select(p => p.TrimEnd('/', '\\'))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList(),
             WebSearchEngines = MergeWebSearchEngines(null),
         };
     }
@@ -201,7 +229,6 @@ public class UserSettings {
     public void Save() {
         try {
             var dir = Path.GetDirectoryName(_settingsPath)!;
-            Directory.CreateDirectory(dir);
             var data = new UserSettingsData {
                 Browser = Browser,
                 Terminal = Terminal,
@@ -209,9 +236,12 @@ public class UserSettings {
                 Hotkey = Hotkey,
                 SearchFolders = SearchFolders,
                 AppDirectories = AppDirectories,
+                EnableAppSearch = EnableAppSearch,
                 EnableCalculator = EnableCalculator,
                 EnableClipboard = EnableClipboard,
                 EnableEmoji = EnableEmoji,
+                EnableFileSearch = EnableFileSearch,
+                FileSearchOnlySpecificFolders = FileSearchOnlySpecificFolders,
                 LastLaunchedVersion = LastLaunchedVersion,
                 WindowX = WindowX,
                 WindowY = WindowY,
@@ -225,6 +255,7 @@ public class UserSettings {
                     })
                     .ToList(),
             };
+            Directory.CreateDirectory(dir);
             File.WriteAllText(_settingsPath, JsonSerializer.Serialize(data, JsonOptions));
             _logger?.LogDebug("Settings saved to {Path}", _settingsPath);
         } catch (Exception ex) {

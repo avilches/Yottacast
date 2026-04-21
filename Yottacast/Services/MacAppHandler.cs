@@ -125,6 +125,7 @@ internal sealed class MacAppHandler : AppHandler {
     [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
     private static extern void ObjcMsgSendBool(IntPtr receiver, IntPtr selector, bool value);
 
+
     [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
     private static extern void ObjcMsgSendObject(IntPtr receiver, IntPtr selector, IntPtr obj);
     [DllImport("libobjc.dylib", EntryPoint = "objc_retain")]

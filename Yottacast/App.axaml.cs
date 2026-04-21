@@ -34,6 +34,7 @@ public partial class App : Application {
     private SettingsWindow? _settingsWindow;
     private SettingsWindowViewModel? _settingsVm;
     private IServiceProvider _services = null!;
+    private volatile bool _isToggling = false;
     public override void Initialize() {
         AvaloniaXamlLoader.Load(this);
     }
@@ -264,19 +265,23 @@ public partial class App : Application {
                 if (_settingsVm?.IsCapturingHotkey == true)
                     return;
 
+                if (_isToggling) return;
+                _isToggling = true;
+
                 // Suppress the event at OS level so it is not delivered to any app.
                 // This prevents beeps in both Yottacast and the previously focused app.
                 // Requires Accessibility permission on macOS; silently ignored without it.
                 e.SuppressEvent = true;
                 Dispatcher.UIThread.InvokeAsync(() => {
                     var window = desktop.MainWindow;
-                    if (window is null) return;
+                    if (window is null) { _isToggling = false; return; }
                     if (window.IsVisible) {
                         window.Hide();
                         AppHandler.Instance.OnHide();
                     } else {
                         AppHandler.Instance.ShowWindow(window);
                     }
+                    _isToggling = false;
                 });
             }
         };

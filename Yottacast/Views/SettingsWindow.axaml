@@ -157,6 +157,11 @@
             <Setter Property="Foreground" Value="{DynamicResource Theme.ItemTitle}"/>
         </Style>
 
+        <!-- Folder missing indicator -->
+        <Style Selector="TextBlock.folder-missing">
+            <Setter Property="Opacity" Value="0.4"/>
+        </Style>
+
         <!-- Description text -->
         <Style Selector="TextBlock.description">
             <Setter Property="Foreground"   Value="{DynamicResource Theme.ItemSubtitle}"/>
@@ -379,34 +384,45 @@
                 </StackPanel>
 
                 <!-- App Search -->
-                <StackPanel Spacing="0" IsVisible="{Binding IsAppSearchSelected}">
+                <StackPanel Spacing="16" IsVisible="{Binding IsAppSearchSelected}">
                     <TextBlock Classes="section-heading" Text="App Search"/>
 
-                    <TextBlock Classes="description"
-                               Text="Directories where Yottacast looks for applications."/>
+                    <CheckBox Content="Enable app search"
+                              IsChecked="{Binding EnableAppSearch}"/>
 
-                    <ItemsControl ItemsSource="{Binding AppDirectories}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="sys:String">
-                                <Grid ColumnDefinitions="*,Auto" Margin="0,2">
-                                    <TextBlock Grid.Column="0"
-                                               Text="{Binding}"
-                                               Foreground="{DynamicResource Theme.ItemTitle}"
-                                               TextTrimming="CharacterEllipsis"
-                                               VerticalAlignment="Center"/>
-                                    <Button Grid.Column="1"
-                                            Classes="remove-btn"
-                                            Content="✕"
-                                            Tag="{Binding}"
-                                            Click="OnRemoveAppDirectoryClicked"/>
-                                </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                    <StackPanel Spacing="12" IsVisible="{Binding EnableAppSearch}">
+                        <TextBlock Classes="description"
+                                   Text="Directories where Yottacast looks for applications."/>
 
-                    <Button Classes="add-btn"
-                            Content="+ Add Directory"
-                            Click="OnAddAppDirectoryClicked"/>
+                        <ItemsControl ItemsSource="{Binding AppDirectories}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="sys:String">
+                                    <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding}"
+                                                   Foreground="{DynamicResource Theme.ItemTitle}"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center"/>
+                                        <Button Grid.Column="1"
+                                                Classes="remove-btn"
+                                                Content="✕"
+                                                Tag="{Binding}"
+                                                Click="OnRemoveAppDirectoryClicked"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Classes="add-btn"
+                                    Content="+ Add Directory"
+                                    Click="OnAddAppDirectoryClicked"/>
+                            <Button Classes="add-btn"
+                                    Content="Add common folders"
+                                    IsVisible="{Binding HasMissingCommonAppDirectories}"
+                                    Click="OnAddCommonAppDirectoriesClicked"/>
+                        </StackPanel>
+                    </StackPanel>
                 </StackPanel>
 
                 <!-- Web Search -->
@@ -492,34 +508,52 @@
                 </StackPanel>
 
                 <!-- File Search -->
-                <StackPanel Spacing="0" IsVisible="{Binding IsFileSearchSelected}">
+                <StackPanel Spacing="16" IsVisible="{Binding IsFileSearchSelected}">
                     <TextBlock Classes="section-heading" Text="File Search"/>
 
-                    <TextBlock Classes="description"
-                               Text="Folders where Yottacast searches for documents and files."/>
+                    <CheckBox Content="Enable file search"
+                              IsChecked="{Binding EnableFileSearch}"/>
 
-                    <ItemsControl ItemsSource="{Binding SearchFolders}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="sys:String">
-                                <Grid ColumnDefinitions="*,Auto" Margin="0,2">
-                                    <TextBlock Grid.Column="0"
-                                               Text="{Binding}"
-                                               Foreground="{DynamicResource Theme.ItemTitle}"
-                                               TextTrimming="CharacterEllipsis"
-                                               VerticalAlignment="Center"/>
-                                    <Button Grid.Column="1"
-                                            Classes="remove-btn"
-                                            Content="✕"
-                                            Tag="{Binding}"
-                                            Click="OnRemoveSearchFolderClicked"/>
-                                </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                    <StackPanel Spacing="12" IsVisible="{Binding EnableFileSearch}">
+                        <TextBlock Classes="description"
+                                   Text="Yottacast can search documents and files on your system."/>
 
-                    <Button Classes="add-btn"
-                            Content="+ Add Folder"
-                            Click="OnAddSearchFolderClicked"/>
+                        <CheckBox Content="Only in specific folders"
+                                  IsChecked="{Binding FileSearchOnlySpecificFolders}"/>
+
+                        <StackPanel Spacing="8" IsVisible="{Binding FileSearchOnlySpecificFolders}">
+                            <TextBlock Classes="description"
+                                       Text="Folders where Yottacast searches for documents and files."/>
+
+                            <ItemsControl ItemsSource="{Binding SearchFolders}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:SearchFolderItem">
+                                        <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                                            <TextBlock Grid.Column="0"
+                                                       Text="{Binding DisplayPath}"
+                                                       Classes.folder-missing="{Binding DoesNotExist}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       VerticalAlignment="Center"/>
+                                            <Button Grid.Column="1"
+                                                    Classes="remove-btn"
+                                                    Content="✕"
+                                                    Tag="{Binding}"
+                                                    Click="OnRemoveSearchFolderClicked"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Classes="add-btn"
+                                        Content="+ Add Folder"
+                                        Click="OnAddSearchFolderClicked"/>
+                                <Button Classes="add-btn"
+                                        Content="Add common folders"
+                                        Click="OnAddCommonFoldersClicked"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
                 </StackPanel>
 
                 <!-- Calculator -->

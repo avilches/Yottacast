@@ -58,6 +58,8 @@ la lista actualizada en tiempo real.
 **Invariante**: el escaneo en macOS es asincrono (envuelto en `Task.Run` porque Spotlight bloquea el hilo). En Windows y
 Linux el escaneo es sincrono y devuelve `Task.CompletedTask`.
 
+**Invariante**: si `UserSettings.EnableAppSearch` es `false`, `ApplicationSearch.Start()` marca la fuente como ready inmediatamente sin lanzar el escaneo, y `Search()` devuelve siempre una lista vacia.
+
 ### 3.2 Vigilancia de cambios (watchers)
 
 | Plataforma | Filtro del watcher | Eventos observados                                                          | Subdirectorios |

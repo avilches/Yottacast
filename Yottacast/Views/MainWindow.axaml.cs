@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Platform;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Microsoft.Extensions.Logging;
 using Yottacast.Core;
@@ -23,6 +24,7 @@ public partial class MainWindow : Window {
     private bool _dragging;
     private PixelPoint _screenPosAtHide;
     private bool _screenPosKnown;
+    private bool _positionDirty;
 
     // Required by Avalonia's XAML resource loader; the app always uses the parameterized constructor.
     public MainWindow() : this(null!, null!) { }
@@ -52,6 +54,7 @@ public partial class MainWindow : Window {
             SearchBox.IsEnabled = isVisible;
             if (isVisible) {
                 ApplyPositionOnShow();
+                _positionDirty = false; // positioning on show is not a user-driven change
                 _screenPosKnown = false;
                 SearchBox.Focus();
             } else {
@@ -59,6 +62,14 @@ public partial class MainWindow : Window {
                 if (DataContext is MainWindowViewModel vm)
                     vm.IsAltPressed = false;
             }
+        }
+        if (change.Property == BoundsProperty && !_dragging && IsVisible) {
+            var prevHeight = change.GetOldValue<Rect>().Height;
+            var newHeight  = change.GetNewValue<Rect>().Height;
+            // prevHeight > 0 evita disparar en el layout inicial (0 → h):
+            // ese caso lo gestiona ApplyPositionOnShow con clamp diferido.
+            if (prevHeight > 0 && newHeight > prevHeight)
+                ClampToScreen();
         }
     }
 
@@ -81,6 +92,9 @@ public partial class MainWindow : Window {
             Log($"[Position] Saved={saved}, WorkingArea={targetScreen.WorkingArea}, fits={fits}");
             if (fits) {
                 Position = saved;
+                // Defer clamp: en este punto Bounds.Height=0 (layout pendiente).
+                // Post a Background priority corre tras el layout, con los Bounds reales.
+                Dispatcher.UIThread.Post(() => ClampToScreen(targetScreen), DispatcherPriority.Background);
                 Log($"[Position] Restored saved position → {Position}");
                 return;
             }
@@ -102,17 +116,44 @@ public partial class MainWindow : Window {
         Log($"[Position] Centered on screen {ScreenDesc(screen)}: Bounds={Bounds}, scaling={RenderScaling}, scaledW={scaledWidth}, scaledH={scaledHeight} → {pos}");
     }
 
-    // Keeps WindowX/Y in sync in memory on every move (no disk I/O).
-    private void UpdatePositionInMemory() {
-        _settings.WindowX = Position.X;
-        _settings.WindowY = Position.Y;
+    private void ClampToScreen() {
+        var screen = Screens.ScreenFromPoint(Position)
+                     ?? Screens.ScreenFromPoint(new PixelPoint(
+                         Position.X + (int)(Bounds.Width * RenderScaling) / 2, Position.Y))
+                     ?? Screens.Primary
+                     ?? Screens.All.FirstOrDefault();
+        if (screen != null) ClampToScreen(screen);
     }
 
-    // Persists the current position to disk. Called on Hide() and on app quit.
+    private void ClampToScreen(Screen screen) {
+        if (Bounds.Height <= 0) return;
+        var wa = screen.WorkingArea;
+        var scaledWidth  = (int)(Bounds.Width  * RenderScaling);
+        var scaledHeight = (int)(Bounds.Height * RenderScaling);
+
+        var newX = Math.Clamp(Position.X, wa.X, Math.Max(wa.X, wa.X + wa.Width  - scaledWidth));
+        var newY = Math.Clamp(Position.Y, wa.Y, Math.Max(wa.Y, wa.Y + wa.Height - scaledHeight));
+
+        if (newX == Position.X && newY == Position.Y) return;
+        Log($"[Position] ClampToScreen: {Position} → ({newX},{newY}), wa={wa}, scaledH={scaledHeight}");
+        Position = new PixelPoint(newX, newY);
+    }
+
+    // Keeps WindowX/Y in sync in memory on every move (no disk I/O).
+    // Marks _positionDirty only when the position actually changes.
+    private void UpdatePositionInMemory() {
+        if (_settings.WindowX == Position.X && _settings.WindowY == Position.Y) return;
+        _settings.WindowX = Position.X;
+        _settings.WindowY = Position.Y;
+        _positionDirty = true;
+    }
+
+    // Persists the current position to disk only if the user moved the window since last save.
     internal void SavePosition() {
-        Log($"[Position] SavePosition: current Position={Position}");
-        UpdatePositionInMemory();
+        Log($"[Position] SavePosition: current Position={Position}, dirty={_positionDirty}");
+        if (!_positionDirty) return;
         _settings.Save();
+        _positionDirty = false;
     }
 
     private static string ScreenDesc(Screen? s) =>

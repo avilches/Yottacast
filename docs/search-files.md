@@ -18,7 +18,13 @@ La busqueda de ficheros no se ejecuta si la query tiene menos de 2 caracteres (`
 
 ## 2. Carpetas de busqueda
 
-Las carpetas donde se busca son las configuradas en `UserSettings.ExpandedSearchFolders`. Cada plataforma define carpetas por defecto distintas:
+La busqueda solo se ejecuta si `EnableFileSearch` es `true`. Si esta desactivado, `SearchAsync` hace early return sin contactar al sistema operativo.
+
+Cuando `FileSearchOnlySpecificFolders` es `false` (por defecto), la busqueda usa `null` como parametro de carpetas, lo que hace que cada plataforma busque en toda la home del usuario (Spotlight sin filtro de carpeta en macOS). Cuando es `true`, se usa `ExpandedSearchFolders` como scope explicito.
+
+Las carpetas por defecto solo se aplican en el primer arranque (sin settings previos) o si la lista guardada esta vacia. En ese caso se filtran a las que existen en disco en ese momento. A partir de ahi, la lista refleja exactamente lo que el usuario haya configurado, exista o no en disco.
+
+Cada plataforma define carpetas por defecto distintas:
 
 | Plataforma | Carpetas por defecto |
 |---|---|
@@ -30,9 +36,12 @@ Si ninguna de las carpetas configuradas existe en disco:
 - **macOS**: se usa `$HOME` como fallback (no produce error, solo warning en log).
 - **Windows/Linux**: la busqueda se ejecuta sin filtro de carpetas explicito.
 
-**Invariante:** un cambio en las carpetas de settings se aplica automaticamente en la siguiente busqueda, sin reiniciar.
+**Invariantes:**
+- Si `EnableFileSearch` es `false`, no se ejecuta ninguna busqueda de ficheros.
+- Si `FileSearchOnlySpecificFolders` es `false`, se busca en toda la home (comportamiento amplio por defecto).
+- Un cambio en las carpetas de settings se aplica automaticamente en la siguiente busqueda, sin reiniciar.
 
-> **Verificar en:** `MacOsPlatformProvider.SearchFilesAsync` (fallback a `home`), `MacOsPlatformProvider.DefaultSearchFolders`, `WindowsPlatformProvider.DefaultSearchFolders`, `LinuxPlatformProvider.DefaultSearchFolders`.
+> **Verificar en:** `UserDocumentSearch.SearchAsync` (guards `EnableFileSearch` y logica de `folders`), `MacOsPlatformProvider.SearchFilesAsync` (fallback a `home`), `MacOsPlatformProvider.DefaultSearchFolders`, `WindowsPlatformProvider.DefaultSearchFolders`, `LinuxPlatformProvider.DefaultSearchFolders`.
 
 ---
 

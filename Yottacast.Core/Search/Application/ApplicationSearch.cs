@@ -47,6 +47,10 @@ public sealed class ApplicationSearch(
     public void Start() {
         if (_started) return;
         _started = true;
+        if (!settings.EnableAppSearch) {
+            _readyTcs.TrySetResult();
+            return;
+        }
         _ = ScanAndWatchAsync();
     }
 
@@ -77,6 +81,7 @@ public sealed class ApplicationSearch(
     };
 
     public IReadOnlyList<BaseResultItemViewModel> Search(string query, int limit) {
+        if (!settings.EnableAppSearch) return [];
         var results = _apps.Values
             .Select(a => (app: a, score: NameMatcher.Score(a.Name, query)))
             .Where(x => x.score > 0)

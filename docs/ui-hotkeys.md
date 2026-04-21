@@ -15,6 +15,7 @@ Invariantes:
 - El atajo global nunca llega a otras aplicaciones: se suprime a nivel de sistema operativo. En macOS esto requiere permiso de Accesibilidad; sin el, la supresion se ignora silenciosamente.
 - Como mecanismo de respaldo, la ventana principal tambien marca `e.Handled = true` al detectar `Space + Alt` en su handler de teclado, evitando que macOS emita un beep cuando la supresion a nivel OS no esta disponible.
 - El hook global usa `SimpleGlobalHook` (sincrono). Esto es deliberado: `TaskPoolGlobalHook` ejecuta handlers en otros threads donde `e.SuppressEvent = true` no tiene efecto.
+- El handler usa un flag `_isToggling` para ignorar pulsaciones mientras el toggle anterior esta en curso. Esto evita encolar multiples operaciones show/hide antes de que macOS procese la anterior, lo que puede dejar el NSWindow en un estado donde `makeKeyWindow` ya no funciona.
 
 La combinacion de teclas configurable se almacena como `HotkeyConfig` (record con flags `Alt`, `Ctrl`, `Shift`, `Meta` y `KeyName`). La comparacion contra el evento del hook usa un diccionario estatico `KeyNameMap` que cubre A-Z, 0-9, F1-F12 y teclas especiales (Space, Enter, Tab, Backspace, Delete, Escape). Cualquier tecla no incluida en el mapa se trata como `KeyCode.VcUndefined` y nunca coincidira.
 

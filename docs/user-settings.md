@@ -17,6 +17,7 @@ El fichero de preferencias se crea automaticamente en la primera ejecucion y se 
 
 - El usuario nunca ve un error si el fichero de settings falta o es invalido; siempre se regenera con defaults.
 - El directorio padre se crea automaticamente si no existe.
+- Los settings se guardan en el momento en que cambian. La posición de la ventana (`WindowX`/`WindowY`) solo se persiste si el usuario la arrastró desde el último guardado — si la posición no cambió, el hide no genera ninguna escritura a disco.
 - Si la escritura a disco falla (permisos, disco lleno), los cambios se mantienen en memoria pero no se persisten hasta el siguiente guardado exitoso. No se propaga excepcion.
 - Solo existe una instancia de settings en toda la vida de la aplicacion (singleton). No hay recarga desde disco.
 - La unica via de creacion es el metodo de fabrica `Load()`; el constructor es privado.
@@ -35,15 +36,20 @@ El fichero de preferencias se crea automaticamente en la primera ejecucion y se 
 | Hotkey | `Alt+Space` | Atajo global para mostrar/ocultar el launcher |
 | SearchFolders | Carpetas por defecto de la plataforma | Directorios donde buscar archivos del usuario |
 | AppDirectories | Directorios por defecto de la plataforma | Directorios donde buscar aplicaciones |
+| EnableAppSearch | `true` | Activa/desactiva la busqueda de aplicaciones |
 | EnableCalculator | `true` | Toggle de la fuente calculadora |
 | EnableClipboard | `true` | Toggle de la fuente clipboard |
 | EnableEmoji | `true` | Toggle de la fuente emoji |
+| EnableFileSearch | `true` | Activa/desactiva la busqueda de ficheros |
+| FileSearchOnlySpecificFolders | `false` | Si `true`, solo busca en las carpetas configuradas en `SearchFolders`; si `false`, busca en toda la home |
 | LastLaunchedVersion | `""` | Version del ultimo arranque (para migraciones) |
 | WebSearchEngines | Lista predeterminada de 20 motores | Configuracion por motor de busqueda web |
 | WindowX | `null` | Posicion X de la ventana principal en coordenadas de pantalla (pixels fisicos) |
 | WindowY | `null` | Posicion Y de la ventana principal en coordenadas de pantalla (pixels fisicos) |
 
 **Nota sobre los toggles** (`EnableCalculator`, `EnableClipboard`, `EnableEmoji`): se exponen en la ventana de Settings y se persisten en el JSON, pero actualmente no tienen efecto funcional. Las fuentes de busqueda correspondientes se registran siempre en DI, independientemente del valor de estos toggles.
+
+**Nota sobre `EnableAppSearch`**: cuando es `false`, `ApplicationSearch.Start()` marca la fuente como ready inmediatamente (sin escanear) y `Search()` devuelve siempre una lista vacia.
 
 > **Verificar en:** campos de `UserSettings` y `UserSettingsData` en `Yottacast.Core/Services/UserSettings.cs`. Registro incondicional de fuentes en `App.BuildServices()` -- en `Yottacast/App.axaml.cs`.
 
@@ -57,20 +63,22 @@ Cuando se carga el fichero JSON, los defaults de plataforma se aplican de forma 
 |---|---|
 | Theme | Si el valor del JSON es `null` o `""` --> usa la deteccion automatica del SO |
 | Hotkey | Si el valor del JSON es `null` o `""` --> usa `"Alt+Space"` |
-| SearchFolders | Si la lista es `null` o vacia (0 elementos) --> usa los defaults de la plataforma |
+| SearchFolders | Si la lista es `null` o vacia (0 elementos) --> usa los defaults de la plataforma, filtrados a los que existen en disco en ese momento |
 | AppDirectories | Si la lista es `null` o vacia (0 elementos) --> usa los defaults de la plataforma |
 | Browser / Terminal | Sin default en la carga; se cargan tal cual del JSON. La seleccion del primero disponible ocurre al acceder a `ActiveBrowser`/`ActiveTerminal` |
 | WebSearchEngines | Se fusionan con la lista predeterminada: se conservan las personalizaciones del usuario y se anaden automaticamente los motores nuevos |
 
-**Invariante:** si el JSON contiene al menos un elemento en `SearchFolders` o `AppDirectories`, se respeta la lista tal cual, sin mezclar con defaults.
+**Invariantes:**
+- Si el JSON contiene al menos un elemento en `SearchFolders` o `AppDirectories`, se respeta esa lista como origen, sin mezclar con defaults.
+- Independientemente del origen (JSON o defaults), ambas listas se normalizan al cargar: se elimina la barra final (`/` o `\`) de cada ruta y se deduplicanen con comparacion case-insensitive.
 
 > **Verificar en:** `UserSettings.Load()` y `CreateDefaultUserSettings()` en `Yottacast.Core/Services/UserSettings.cs`. `PlatformProvider.DefaultTheme()` en `Yottacast.Core/Platform/PlatformProvider.cs`.
 
 ---
 
-## 4. Expansion de rutas
+## 4. Normalizacion y expansion de rutas
 
-Las rutas en `SearchFolders` y `AppDirectories` se almacenan en crudo en el JSON (con `$HOME`, `~`, o rutas absolutas). La expansion a rutas absolutas ocurre siempre en el momento de uso, nunca al cargar ni al guardar.
+Las rutas en `SearchFolders` y `AppDirectories` se almacenan en crudo en el JSON (con `$HOME`, `~`, o rutas absolutas). Al cargar, se aplica una normalizacion: se elimina la barra final y se deduplicanen (ver seccion 3). La expansion a rutas absolutas ocurre siempre en el momento de uso, nunca al cargar ni al guardar.
 
 | Entrada | Resultado |
 |---|---|
@@ -210,9 +218,20 @@ Tras la auto-reparacion (`EnsureIntegrity()`), el ViewModel aplica un segundo ni
 
 ### Listas de carpetas
 
-Las listas `SearchFolders` y `AppDirectories` son observables. Cualquier cambio (anadir, eliminar) se sincroniza inmediatamente a las preferencias y se guarda. La adicion deduplica: no se anade una ruta que ya exista en la lista. El selector de carpetas usa el picker nativo del SO.
+Las listas `SearchFolders` y `AppDirectories` son observables. Cualquier cambio (anadir, eliminar) se sincroniza inmediatamente a las preferencias y se guarda. La adicion deduplica: no se anade una ruta que ya exista en la lista (la comparacion se hace sobre la ruta expandida, para evitar duplicados entre `$HOME/X` y `/Users/user/X`). Las rutas se normalizan al cargar y al anadir: se elimina la barra final (`/` o `\`) y se deduplicaran con comparacion case-insensitive. El selector de carpetas usa el picker nativo del SO.
 
-> **Verificar en:** `SettingsWindowViewModel` en `Yottacast/ViewModels/SettingsWindowViewModel.cs`. `App.OpenSettings()` en `Yottacast/App.axaml.cs`. Code-behind en `Yottacast/Views/SettingsWindow.axaml.cs`.
+La seccion AppSearch tiene un checkbox adicional:
+- **Enable app search**: si se desactiva, oculta el resto de opciones, el escaneo no se realiza y la busqueda no devuelve resultados.
+
+La seccion AppSearch tambien tiene el boton **"Add common folders"**, que solo es visible cuando hay carpetas por defecto de la plataforma que existen en disco pero no estan aun en la lista. Al pulsarlo, se anaden todas esas carpetas de una vez.
+
+La seccion FileSearch tiene dos checkboxes adicionales:
+- **Enable file search**: si se desactiva, oculta el resto de opciones y la busqueda no devuelve resultados.
+- **Only in specific folders**: si se activa, muestra la lista de carpetas y la busqueda se acota a ellas; si esta desactivado, la busqueda usa toda la home.
+
+Las carpetas configuradas que ya no existen en disco se muestran atenuadas (opacidad reducida) en la lista, para que el usuario las identifique. Siguen guardadas en settings y vuelven a estar activas si el directorio se recrea. El boton "Add common folders" en FileSearch anade las carpetas por defecto de la plataforma que existen en disco en ese momento, sin duplicar las que ya esten en la lista.
+
+> **Verificar en:** `SettingsWindowViewModel` en `Yottacast/ViewModels/SettingsWindowViewModel.cs`. `SearchFolderItem` (mismo archivo). `App.OpenSettings()` en `Yottacast/App.axaml.cs`. Code-behind en `Yottacast/Views/SettingsWindow.axaml.cs`.
 
 ---
 

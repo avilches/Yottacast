@@ -68,6 +68,7 @@ public class UserDocumentSearch(
         string query, int limit, [EnumeratorCancellation] CancellationToken ct = default) {
 
         if (query.Length < AppDefaults.FileSearchMinQueryLength) yield break;
+        if (!settings.EnableFileSearch) yield break;
 
         const int SnapshotIntervalMs = AppDefaults.FileSearchSnapshotIntervalMs;
 
@@ -82,9 +83,12 @@ public class UserDocumentSearch(
             var queryTokens = hasWildcard ? [] : queryLower.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             var isMultiToken = queryTokens.Length > 1;
             var lastSnapshot = Environment.TickCount64 - SnapshotIntervalMs;
-            var folders = settings.ExpandedSearchFolders;
-            logger.LogDebug("DocSearch start query=\"{Query}\" timeout={TimeoutMs}ms folders=[{Folders}]",
-                query, timeoutMs, string.Join(", ", folders));
+            var folders = settings.FileSearchOnlySpecificFolders
+                ? settings.ExpandedSearchFolders
+                : (IReadOnlyList<string>?)null;
+            logger.LogDebug("DocSearch start query=\"{Query}\" timeout={TimeoutMs}ms enableFileSearch={Enable} onlySpecificFolders={OnlySpecific} folders=[{Folders}]",
+                query, timeoutMs, settings.EnableFileSearch, settings.FileSearchOnlySpecificFolders,
+                folders is null ? "(all)" : string.Join(", ", folders));
 
             try {
                 await fileSearch.SearchAsync(
