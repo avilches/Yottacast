@@ -17,7 +17,18 @@ internal abstract class AppHandler {
                                       new LinuxAppHandler();
 
     public abstract void OnFrameworkInitializationCompleted();
-    public abstract void OnShow();
+
+    /// <summary>
+    /// Shows the window using platform-appropriate activation behavior.
+    /// On macOS: shows the window, then re-activates the previous app so its traffic lights
+    /// stay colored, then makes the Yottacast window the key window via makeKeyAndOrderFront:.
+    /// On other platforms: calls window.Show() and window.Activate() (default behavior).
+    /// </summary>
+    public virtual void ShowWindow(Window window) {
+        window.Show();
+        window.Activate();
+    }
+
     public abstract void OnHide();
 
     /// <summary>

@@ -196,7 +196,26 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     }
 
     private static string AvaloniaKeyToName(Key k) => k switch {
-        Key.Space => "Space",
+        Key.Space          => "Space",
+        Key.Enter          => "Enter",
+        Key.Tab            => "Tab",
+        Key.Back           => "Backspace",
+        Key.Delete         => "Delete",
+        Key.Escape         => "Escape",
+        Key.OemComma       => ",",
+        Key.OemPeriod      => ".",
+        Key.OemMinus       => "-",
+        Key.OemPlus        => "=",
+        Key.OemSemicolon   => ";",
+        Key.OemQuestion    => "/",
+        Key.OemOpenBrackets  => "[",
+        Key.OemCloseBrackets => "]",
+        Key.OemPipe        => "\\",
+        Key.OemBackslash   => "\\",
+        Key.OemQuotes      => "'",
+        Key.OemTilde       => "`",
+        >= Key.D0 and <= Key.D9 => ((int)(k - Key.D0)).ToString(),
+        >= Key.F1 and <= Key.F12 => $"F{k - Key.F1 + 1}",
         _ => k.ToString(),
     };
 

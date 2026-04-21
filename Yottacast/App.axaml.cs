@@ -97,9 +97,8 @@ public partial class App : Application {
         // Block view until all instant search are ready
         await globalSearch.WhenInstantReady();
         await Dispatcher.UIThread.InvokeAsync(() => {
-            AppHandler.Instance.OnShow();
-            desktop.MainWindow?.Show();
-            desktop.MainWindow?.Activate();
+            if (desktop.MainWindow is { } mainWindow)
+                AppHandler.Instance.ShowWindow(mainWindow);
         });
     }
 
@@ -203,12 +202,23 @@ public partial class App : Application {
 
     private static Dictionary<string, KeyCode> BuildKeyNameMap() {
         var map = new Dictionary<string, KeyCode>(StringComparer.OrdinalIgnoreCase) {
-            ["Space"] = KeyCode.VcSpace,
-            ["Enter"] = KeyCode.VcEnter,
-            ["Tab"]   = KeyCode.VcTab,
+            ["Space"]     = KeyCode.VcSpace,
+            ["Enter"]     = KeyCode.VcEnter,
+            ["Tab"]       = KeyCode.VcTab,
             ["Backspace"] = KeyCode.VcBackspace,
-            ["Delete"] = KeyCode.VcDelete,
-            ["Escape"] = KeyCode.VcEscape,
+            ["Delete"]    = KeyCode.VcDelete,
+            ["Escape"]    = KeyCode.VcEscape,
+            [","]  = KeyCode.VcComma,
+            ["."]  = KeyCode.VcPeriod,
+            ["-"]  = KeyCode.VcMinus,
+            ["="]  = KeyCode.VcEquals,
+            [";"]  = KeyCode.VcSemicolon,
+            ["/"]  = KeyCode.VcSlash,
+            ["["]  = KeyCode.VcOpenBracket,
+            ["]"]  = KeyCode.VcCloseBracket,
+            ["\\"] = KeyCode.VcBackslash,
+            ["'"]  = KeyCode.VcQuote,
+            ["`"]  = KeyCode.VcBackQuote,
         };
         // A–Z
         var aCode = (int)KeyCode.VcA;
@@ -261,13 +271,11 @@ public partial class App : Application {
                 Dispatcher.UIThread.InvokeAsync(() => {
                     var window = desktop.MainWindow;
                     if (window is null) return;
-                    if (window is { IsVisible: true, IsActive: true }) {
+                    if (window.IsVisible) {
                         window.Hide();
                         AppHandler.Instance.OnHide();
                     } else {
-                        AppHandler.Instance.OnShow();
-                        window.Show();
-                        window.Activate();
+                        AppHandler.Instance.ShowWindow(window);
                     }
                 });
             }

@@ -20,12 +20,33 @@ internal sealed class MacAppHandler : AppHandler {
         ObjcMsgSendPolicy(nsApp, SelRegisterName("setActivationPolicy:"), 1);
     }
 
-    // Captures the current frontmost app and activates Yottacast.
-    public override void OnShow() {
+    // Shows the window while keeping the previous app visually active (colored traffic lights).
+    // This matches Alfred/Raycast behavior: the previous app remains the "active" application
+    // while Yottacast's window becomes the "key window" and receives keyboard events.
+    public override void ShowWindow(Window window) {
         if (_previousApp != IntPtr.Zero) ObjcRelease(_previousApp);
         _previousApp = ObjcRetain(GetFrontmostApp());
-        var nsApp = ObjcMsgSend(ObjcGetClass("NSApplication"), SelRegisterName("sharedApplication"));
-        ObjcMsgSendActivate(nsApp, SelRegisterName("activateIgnoringOtherApps:"), 1);
+
+        window.Show(); // Avalonia bookkeeping; may internally call activateIgnoringOtherApps:
+
+        // Re-activate the previous app so its traffic lights stay colored.
+        if (_previousApp != IntPtr.Zero)
+            ObjcMsgSendActivate(_previousApp, SelRegisterName("activateWithOptions:"), 2);
+
+        // Make Yottacast's window the key window (receives keyboard events).
+        // We use makeKeyWindow (not makeKeyAndOrderFront:) because makeKeyWindow does not
+        // reorder or re-activate the application — it only transfers key status to our window.
+        // With NSApplicationActivationPolicyAccessory, this does not activate Yottacast,
+        // so the previous app keeps its colored traffic lights.
+        // SearchBox focus is restored via MainWindow.Activated → SearchBox.Focus().
+        var nsWindow = GetNsWindow(window);
+        if (nsWindow != IntPtr.Zero)
+            ObjcMsgSendVoid(nsWindow, SelRegisterName("makeKeyWindow"));
+    }
+
+    private static IntPtr GetNsWindow(Window window) {
+        // TryGetPlatformHandle() on macOS returns the AvnWindow (NSWindow subclass) directly.
+        return window.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
     }
 
     // Restores focus to the app that was frontmost before Yottacast was shown.
@@ -99,6 +120,9 @@ internal sealed class MacAppHandler : AppHandler {
     private static extern void ObjcMsgSendActivate(IntPtr receiver, IntPtr selector, ulong options);
 
     [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
+    private static extern void ObjcMsgSendVoid(IntPtr receiver, IntPtr selector);
+
+    [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
     private static extern void ObjcMsgSendBool(IntPtr receiver, IntPtr selector, bool value);
 
     [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
@@ -147,7 +171,7 @@ internal sealed class MacAppHandler : AppHandler {
             ("Theme.FooterText",         Brush("#8E8E93")),
             ("Theme.SearchCaret",        Brush("#007AFF")),
             ("Theme.FontSizeTitle",      13d),
-            ("Theme.FontSizeSmall",      11d),
+            ("Theme.FontSizeSmall",      14d),
             ("Theme.FontSizeNoResults",  14d)
         );
         window.Resources.ThemeDictionaries[ThemeVariant.Dark] = MakeThemeDict(
@@ -156,14 +180,14 @@ internal sealed class MacAppHandler : AppHandler {
             ("Theme.Divider",            Brush("#3A3A3C")),  // separatorColor dark
             ("Theme.ItemTitle",          Brush("#FFFFFF")),  // labelColor dark
             ("Theme.ItemSubtitle",       Brush("#ABABAB")),  // secondaryLabelColor dark
-            ("Theme.ItemCategory",       Brush("#6C6C70")),  // tertiaryLabelColor dark
+            ("Theme.ItemCategory",       Brush("#8A8A8A")),  // tertiaryLabelColor dark
             ("Theme.ItemSelection",      Brush("#0A84FF")),  // systemBlueColor dark
             ("Theme.ItemSelectionText",  Brush("#FFFFFF")),
             ("Theme.ItemHover",          Brush("#1AFFFFFF")),
             ("Theme.FooterText",         Brush("#6C6C70")),
             ("Theme.SearchCaret",        Brush("#0A84FF")),
             ("Theme.FontSizeTitle",      13d),
-            ("Theme.FontSizeSmall",      11d),
+            ("Theme.FontSizeSmall",      14d),
             ("Theme.FontSizeNoResults",  14d)
         );
     }

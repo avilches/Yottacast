@@ -50,7 +50,7 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
             "$HOME/Box Sync",
             "$HOME/Box",
             "$HOME/Mega",
-            "$HOME/pCloud Drive",
+            "$HOME/Cloud Drive",
             "$HOME/Nextcloud",
             "$HOME/Adobe Creative Cloud",
             "$HOME/Amazon Drive"

@@ -29,7 +29,7 @@
 
     <Window.Styles>
 
-        <!-- Nav button base -->
+        <!-- Nav button base — template propio para eliminar efectos hover/pressed del FluentTheme -->
         <Style Selector="Button.nav-item">
             <Setter Property="Background"                Value="Transparent"/>
             <Setter Property="BorderThickness"           Value="0"/>
@@ -37,26 +37,33 @@
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
             <Setter Property="Padding"                   Value="12,9"/>
             <Setter Property="CornerRadius"              Value="6"/>
-            <Setter Property="Cursor"                    Value="Hand"/>
             <Setter Property="Foreground"                Value="{DynamicResource Theme.ItemSubtitle}"/>
             <Setter Property="FontSize"                  Value="{DynamicResource Theme.FontSizeTitle}"/>
-        </Style>
-        <Style Selector="Button.nav-item /template/ ContentPresenter">
-            <Setter Property="Background" Value="Transparent"/>
-        </Style>
-        <Style Selector="Button.nav-item:pointerover /template/ ContentPresenter">
-            <Setter Property="Background"  Value="{DynamicResource Theme.ItemHover}"/>
-            <Setter Property="CornerRadius" Value="6"/>
-        </Style>
-        <Style Selector="Button.nav-item.nav-selected /template/ ContentPresenter">
-            <Setter Property="Background"  Value="{DynamicResource Theme.ItemSelection}"/>
-            <Setter Property="CornerRadius" Value="6"/>
-        </Style>
-        <Style Selector="Button.nav-item.nav-selected">
-            <Setter Property="Foreground" Value="{DynamicResource Theme.ItemSelectionText}"/>
+            <Setter Property="Focusable"                 Value="False"/>
+            <Setter Property="Transitions"               Value="{x:Null}"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <ContentPresenter Name="NavContent"
+                                      Background="{TemplateBinding Background}"
+                                      BorderThickness="{TemplateBinding BorderThickness}"
+                                      BorderBrush="{TemplateBinding BorderBrush}"
+                                      CornerRadius="{TemplateBinding CornerRadius}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      Content="{TemplateBinding Content}"
+                                      Padding="{TemplateBinding Padding}"
+                                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                      VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                      Foreground="{TemplateBinding Foreground}"
+                                      FontSize="{TemplateBinding FontSize}"/>
+                </ControlTemplate>
+            </Setter>
         </Style>
         <Style Selector="Button.nav-item:pointerover">
-            <Setter Property="Foreground" Value="{DynamicResource Theme.ItemTitle}"/>
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="Button.nav-item.nav-selected">
+            <Setter Property="Background" Value="{DynamicResource Theme.ItemSelection}"/>
+            <Setter Property="Foreground" Value="{DynamicResource Theme.ItemSelectionText}"/>
         </Style>
 
         <!-- Section heading -->
@@ -71,7 +78,6 @@
         <Style Selector="TextBlock.label">
             <Setter Property="Foreground" Value="{DynamicResource Theme.ItemCategory}"/>
             <Setter Property="FontSize"   Value="{DynamicResource Theme.FontSizeSmall}"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Margin"     Value="0,0,0,6"/>
         </Style>
 
@@ -86,31 +92,44 @@
             <Setter Property="Padding"         Value="10,8"/>
             <Setter Property="CornerRadius"    Value="4"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush"     Value="{DynamicResource Theme.Divider}"/>
+            <Setter Property="BorderBrush"     Value="#868686"/>
             <Setter Property="Background"      Value="{DynamicResource Theme.WindowBackground}"/>
-            <Setter Property="Cursor"          Value="Hand"/>
         </Style>
         <Style Selector="Border.hotkey-field.capturing">
-            <Setter Property="BorderBrush" Value="#FF3B30"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush"     Value="#FF3B30"/>
         </Style>
+
 
         <!-- Modifier badge inside hotkey field -->
         <Style Selector="Border.modifier-badge">
             <Setter Property="CornerRadius" Value="3"/>
-            <Setter Property="Padding"      Value="5,2"/>
-            <Setter Property="Background"   Value="{DynamicResource Theme.ItemIconBackground}"/>
-            <Setter Property="Margin"       Value="0,0,3,0"/>
-            <Setter Property="Opacity"      Value="0.3"/>
-        </Style>
-        <Style Selector="Border.modifier-badge.active">
-            <Setter Property="Opacity" Value="1.0"/>
+            <Setter Property="Padding"      Value="3,1"/>
+            <Setter Property="Background"   Value="Transparent"/>
+            <Setter Property="Margin"       Value="0"/>
+            <Setter Property="Width"        Value="22"/>
         </Style>
         <Style Selector="Border.modifier-badge TextBlock">
-            <Setter Property="FontSize"   Value="{DynamicResource Theme.FontSizeSmall}"/>
-            <Setter Property="Foreground" Value="{DynamicResource Theme.ItemTitle}"/>
-            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="FontSize"           Value="13"/>
+            <Setter Property="Foreground"         Value="#565656"/>
+            <Setter Property="FontWeight"         Value="Bold"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Border.modifier-badge.active TextBlock">
+            <Setter Property="Foreground" Value="White"/>
         </Style>
 
+        <!-- Hotkey key text (single TextBlock, style changes with capturing state) -->
+        <Style Selector="TextBlock.hotkey-key">
+            <Setter Property="Foreground"        Value="{DynamicResource Theme.ItemTitle}"/>
+            <Setter Property="FontWeight"         Value="Bold"/>
+            <Setter Property="FontSize"           Value="13"/>
+            <Setter Property="VerticalAlignment"  Value="Center"/>
+        </Style>
+        <Style Selector="Border.hotkey-field.capturing TextBlock.hotkey-key">
+            <Setter Property="Foreground" Value="{DynamicResource Theme.ItemSubtitle}"/>
+            <Setter Property="FontWeight" Value="Normal"/>
+        </Style>
         <!-- Remove button -->
         <Style Selector="Button.remove-btn">
             <Setter Property="Background"      Value="Transparent"/>
@@ -150,7 +169,6 @@
         <Style Selector="TextBlock.table-col-header">
             <Setter Property="Foreground"  Value="{DynamicResource Theme.ItemCategory}"/>
             <Setter Property="FontSize"    Value="{DynamicResource Theme.FontSizeSmall}"/>
-            <Setter Property="FontWeight"  Value="SemiBold"/>
             <Setter Property="Margin"      Value="0,0,0,4"/>
         </Style>
 
@@ -310,7 +328,7 @@
 
                     <!-- Theme -->
                     <StackPanel Spacing="0">
-                        <TextBlock Classes="label" Text="THEME"/>
+                        <TextBlock Classes="label" Text="Theme"/>
                         <ComboBox ItemsSource="{Binding Themes}"
                                   SelectedItem="{Binding SelectedTheme}">
                             <ComboBox.ItemTemplate>
@@ -323,7 +341,7 @@
 
                     <!-- Global Hotkey -->
                     <StackPanel Spacing="0">
-                        <TextBlock Classes="label" Text="GLOBAL HOTKEY"/>
+                        <TextBlock Classes="label" Text="Global Hotkey"/>
                         <Border Classes="hotkey-field"
                                 Classes.capturing="{Binding IsCapturingHotkey}"
                                 PointerPressed="OnHotkeyAreaPointerPressed">
@@ -343,32 +361,9 @@
                                     <TextBlock Text="{Binding MetaSymbol}"/>
                                 </Border>
 
-                                <!-- Separator -->
-                                <Rectangle Width="1" Height="14"
-                                           Fill="{DynamicResource Theme.Divider}"
-                                           VerticalAlignment="Center"
-                                           Margin="5,0,8,0"/>
-
-                                <!-- Key name (normal state) -->
-                                <TextBlock Text="{Binding HotkeyKeyText}"
-                                           Foreground="{DynamicResource Theme.ItemTitle}"
-                                           IsVisible="{Binding !IsCapturingHotkey}"
-                                           VerticalAlignment="Center"/>
-
-                                <!-- Instruction text (capturing state) -->
-                                <TextBlock Text="{Binding HotkeyKeyText}"
-                                           Foreground="{DynamicResource Theme.ItemSubtitle}"
-                                           FontStyle="Italic"
-                                           IsVisible="{Binding IsCapturingHotkey}"
-                                           VerticalAlignment="Center"/>
-
-                                <!-- Cancel button (only visible while capturing) -->
-                                <Button Classes="remove-btn"
-                                        Content="✕"
-                                        IsVisible="{Binding IsCapturingHotkey}"
-                                        Click="OnCancelHotkeyCaptureClicked"
-                                        Margin="8,0,0,0"
-                                        VerticalAlignment="Center"/>
+                                <!-- Key text (style changes via Border.capturing descendant selector) -->
+                                <TextBlock Classes="hotkey-key"
+                                           Text="{Binding HotkeyKeyText}"/>
 
                             </StackPanel>
                         </Border>
@@ -376,17 +371,11 @@
 
                     <!-- Terminal -->
                     <StackPanel Spacing="0">
-                        <TextBlock Classes="label" Text="DEFAULT TERMINAL"/>
+                        <TextBlock Classes="label" Text="Default Terminal"/>
                         <ComboBox ItemsSource="{Binding Terminals}"
                                   SelectedItem="{Binding SelectedTerminal}"
                                   PlaceholderText="No terminals found"/>
                     </StackPanel>
-
-                    <TextBlock Text="Settings are saved automatically."
-                               Foreground="{DynamicResource Theme.FooterText}"
-                               FontSize="{DynamicResource Theme.FontSizeSmall}"
-                               HorizontalAlignment="Left"
-                               Margin="0,4,0,0"/>
                 </StackPanel>
 
                 <!-- App Search -->
@@ -425,7 +414,7 @@
                     <TextBlock Classes="section-heading" Text="Web Search"/>
 
                     <StackPanel Spacing="0">
-                        <TextBlock Classes="label" Text="DEFAULT BROWSER"/>
+                        <TextBlock Classes="label" Text="Default Browser"/>
                         <ComboBox ItemsSource="{Binding Browsers}"
                                   SelectedItem="{Binding SelectedBrowser}"
                                   PlaceholderText="No browsers found"/>
@@ -433,15 +422,15 @@
 
                     <!-- Engine table -->
                     <StackPanel Spacing="0">
-                        <TextBlock Classes="label" Text="SEARCH ENGINES"/>
+                        <TextBlock Classes="label" Text="Search Engines"/>
 
                         <!-- Header row -->
                         <Grid ColumnDefinitions="108,58,64,*,42" Margin="2,0,0,0">
-                            <TextBlock Grid.Column="0" Classes="table-col-header" Text="ENGINE"/>
-                            <TextBlock Grid.Column="1" Classes="table-col-header" Text="PREFIX"/>
-                            <TextBlock Grid.Column="2" Classes="table-col-header" Text="MODE" Margin="4,0,0,0"/>
-                            <TextBlock Grid.Column="3" Classes="table-col-header" Text="CUSTOM URL" Margin="8,0,0,0"/>
-                            <TextBlock Grid.Column="4" Classes="table-col-header" Text="ON"
+                            <TextBlock Grid.Column="0" Classes="table-col-header" Text="Engine"/>
+                            <TextBlock Grid.Column="1" Classes="table-col-header" Text="Prefix"/>
+                            <TextBlock Grid.Column="2" Classes="table-col-header" Text="Mode" Margin="4,0,0,0"/>
+                            <TextBlock Grid.Column="3" Classes="table-col-header" Text="Custom URL" Margin="8,0,0,0"/>
+                            <TextBlock Grid.Column="4" Classes="table-col-header" Text="On"
                                        HorizontalAlignment="Center"/>
                         </Grid>
 

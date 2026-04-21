@@ -259,16 +259,22 @@ pegado tras activar un resultado.
 | Windows    | No-op                                                                                            |
 | Linux      | No-op                                                                                            |
 
-### 10.2 Mostrar la ventana (`OnShow`)
+### 10.2 Mostrar la ventana (`ShowWindow`)
 
-| Plataforma | Comportamiento                                                                                                                   |
-|------------|----------------------------------------------------------------------------------------------------------------------------------|
-| macOS      | Captura `NSWorkspace.frontmostApplication` con `objc_retain`, la guarda. Luego activa Yottacast con `activateIgnoringOtherApps:` |
-| Windows    | No-op (Windows gestiona el foco automaticamente)                                                                                 |
-| Linux      | No-op                                                                                                                            |
+| Plataforma | Comportamiento                                                                                                                                                                                      |
+|------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| macOS      | Captura `NSWorkspace.frontmostApplication` con `objc_retain`. Llama `window.Show()`, re-activa la app anterior con `activateWithOptions:`, y hace la ventana de Yottacast key con `makeKeyAndOrderFront:` |
+| Windows    | `window.Show()` + `window.Activate()` (Windows gestiona el foco automaticamente)                                                                                                                    |
+| Linux      | `window.Show()` + `window.Activate()`                                                                                                                                                               |
 
-**Invariante (macOS)**: si habia una referencia previa a `_previousApp`, se libera con `objc_release` antes de retener
-la nueva.
+**Invariante (macOS)**: la app anterior permanece como la aplicacion "activa" del sistema (semaforos con color),
+mientras que la ventana de Yottacast es la "key window" y recibe los eventos de teclado. Esto evita que las ventanas
+de otras apps se desactiven visualmente al invocar Yottacast (comportamiento igual a Alfred/Raycast).
+
+Si habia una referencia previa a `_previousApp`, se libera con `objc_release` antes de retener la nueva.
+
+**Invariante (toggle)**: el hotkey global usa `window.IsVisible` (no `IsActive`) para decidir si ocultar o mostrar,
+porque con la nueva activacion macOS la ventana nunca tiene `IsActive = true`.
 
 ### 10.3 Ocultar la ventana (`OnHide`)
 

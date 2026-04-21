@@ -32,6 +32,9 @@ public partial class MainWindow : Window {
         _logger = logger;
         InitializeComponent();
         Opened += (_, _) => SearchBox.Focus();
+        // Restore focus to SearchBox when the window regains key status (e.g. after
+        // MacAppHandler's makeKeyWindow call re-makes us key without activating the app).
+        Activated += (_, _) => SearchBox.Focus();
         // Intercept LEFT/RIGHT in the tunnel phase so items with OnLeft/OnRight
         // can capture them before the TextBox moves its cursor.
         AddHandler(KeyDownEvent, OnTunnelKeyDown, RoutingStrategies.Tunnel);
