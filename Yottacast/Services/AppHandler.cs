@@ -86,6 +86,9 @@ internal abstract class AppHandler {
     /// <summary>Returns the current mouse cursor position in global screen coordinates (top-left origin), or null if unavailable.</summary>
     public virtual PixelPoint? GetMousePosition() => null;
 
+    /// <summary>Disables the minimize button on the native window chrome. No-op on platforms where this is not applicable.</summary>
+    public virtual void DisableMinimizeButton(Window window) { }
+
     /// <summary>
     /// Injects OS-native colors and font into the Settings window.
     /// Each platform defines its own Light/Dark palette independently.

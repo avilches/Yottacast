@@ -35,6 +35,8 @@ public partial class App : Application {
     private SettingsWindowViewModel? _settingsVm;
     private IServiceProvider _services = null!;
     private volatile bool _isToggling = false;
+    private volatile bool _hotkeyDown = false;
+
     public override void Initialize() {
         AvaloniaXamlLoader.Load(this);
     }
@@ -203,23 +205,23 @@ public partial class App : Application {
 
     private static Dictionary<string, KeyCode> BuildKeyNameMap() {
         var map = new Dictionary<string, KeyCode>(StringComparer.OrdinalIgnoreCase) {
-            ["Space"]     = KeyCode.VcSpace,
-            ["Enter"]     = KeyCode.VcEnter,
-            ["Tab"]       = KeyCode.VcTab,
+            ["Space"] = KeyCode.VcSpace,
+            ["Enter"] = KeyCode.VcEnter,
+            ["Tab"] = KeyCode.VcTab,
             ["Backspace"] = KeyCode.VcBackspace,
-            ["Delete"]    = KeyCode.VcDelete,
-            ["Escape"]    = KeyCode.VcEscape,
-            [","]  = KeyCode.VcComma,
-            ["."]  = KeyCode.VcPeriod,
-            ["-"]  = KeyCode.VcMinus,
-            ["="]  = KeyCode.VcEquals,
-            [";"]  = KeyCode.VcSemicolon,
-            ["/"]  = KeyCode.VcSlash,
-            ["["]  = KeyCode.VcOpenBracket,
-            ["]"]  = KeyCode.VcCloseBracket,
+            ["Delete"] = KeyCode.VcDelete,
+            ["Escape"] = KeyCode.VcEscape,
+            [","] = KeyCode.VcComma,
+            ["."] = KeyCode.VcPeriod,
+            ["-"] = KeyCode.VcMinus,
+            ["="] = KeyCode.VcEquals,
+            [";"] = KeyCode.VcSemicolon,
+            ["/"] = KeyCode.VcSlash,
+            ["["] = KeyCode.VcOpenBracket,
+            ["]"] = KeyCode.VcCloseBracket,
             ["\\"] = KeyCode.VcBackslash,
-            ["'"]  = KeyCode.VcQuote,
-            ["`"]  = KeyCode.VcBackQuote,
+            ["'"] = KeyCode.VcQuote,
+            ["`"] = KeyCode.VcBackQuote,
         };
         // A–Z
         var aCode = (int)KeyCode.VcA;
@@ -246,45 +248,64 @@ public partial class App : Application {
         var settings = _services.GetRequiredService<UserSettings>();
         _globalHook = new SimpleGlobalHook();
         _globalHook.KeyPressed += (_, e) => {
-
-            var mask   = e.RawEvent.Mask;
-            var hasAlt   = mask.HasFlag(EventMask.LeftAlt)   || mask.HasFlag(EventMask.RightAlt);
-            var hasCtrl  = mask.HasFlag(EventMask.LeftCtrl)  || mask.HasFlag(EventMask.RightCtrl);
+            
+            var mask = e.RawEvent.Mask;
+            var hasAlt = mask.HasFlag(EventMask.LeftAlt) || mask.HasFlag(EventMask.RightAlt);
+            var hasCtrl = mask.HasFlag(EventMask.LeftCtrl) || mask.HasFlag(EventMask.RightCtrl);
             var hasShift = mask.HasFlag(EventMask.LeftShift) || mask.HasFlag(EventMask.RightShift);
-            var hasMeta  = mask.HasFlag(EventMask.LeftMeta)  || mask.HasFlag(EventMask.RightMeta);
-
+            var hasMeta = mask.HasFlag(EventMask.LeftMeta) || mask.HasFlag(EventMask.RightMeta);
             var hotkey = settings.ParsedHotkey;
-
 
             if (e.Data.KeyCode == KeyNameToKeyCode(hotkey.KeyName)
                 && hasAlt == hotkey.Alt && hasCtrl == hotkey.Ctrl
                 && hasShift == hotkey.Shift && hasMeta == hotkey.Meta) {
                 // If Settings is capturing a new hotkey, let the event reach SettingsWindow
                 // so it can record the key combination (including the current hotkey itself).
-                // _settingsVm is a plain field; IsCapturingHotkey is a bool — safe to read from the hook thread.
                 if (_settingsVm?.IsCapturingHotkey == true)
                     return;
+
+                // Suppress every keydown (including repeats) so the OS never sees it.
+                e.SuppressEvent = true;
+
+                // Block key repeat: require the key to be released before accepting
+                // the next toggle. _hotkeyDown is cleared in KeyReleased.
+                if (_hotkeyDown) return;
+                _hotkeyDown = true;
 
                 if (_isToggling) return;
                 _isToggling = true;
 
-                // Suppress the event at OS level so it is not delivered to any app.
-                // This prevents beeps in both Yottacast and the previously focused app.
-                // Requires Accessibility permission on macOS; silently ignored without it.
-                e.SuppressEvent = true;
+                // All window state checks happen on the UI thread to avoid accessing
+                // Avalonia properties (IsVisible) from the hook thread.
                 Dispatcher.UIThread.InvokeAsync(() => {
-                    var window = desktop.MainWindow;
-                    if (window is null) { _isToggling = false; return; }
-                    if (window.IsVisible) {
-                        window.Hide();
-                        AppHandler.Instance.OnHide();
-                    } else {
-                        AppHandler.Instance.ShowWindow(window);
+                    try {
+                        // If Settings is open, close it and also hide the search window.
+                        if (_settingsWindow is { IsVisible: true })
+                            _settingsWindow.Close();
+
+                        var window = desktop.MainWindow;
+                        if (window is null) return;
+                        if (window.IsVisible) {
+                            window.Hide();
+                            AppHandler.Instance.OnHide();
+                        } else {
+                            AppHandler.Instance.ShowWindow(window);
+                        }
+                    } finally {
+                        _isToggling = false;
                     }
-                    _isToggling = false;
                 });
             }
         };
+
+        _globalHook.KeyReleased += (_, e) => {
+            var hotkey = settings.ParsedHotkey;
+            if (e.Data.KeyCode == KeyNameToKeyCode(hotkey.KeyName)) {
+                e.SuppressEvent = true;
+                _hotkeyDown = false;
+            }
+        };
+
         _ = _globalHook.RunAsync();
     }
 

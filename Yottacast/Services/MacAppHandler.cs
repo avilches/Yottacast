@@ -20,24 +20,25 @@ internal sealed class MacAppHandler : AppHandler {
         ObjcMsgSendPolicy(nsApp, SelRegisterName("setActivationPolicy:"), 1);
     }
 
-    // Shows the window while keeping the previous app visually active (colored traffic lights).
-    // This matches Alfred/Raycast behavior: the previous app remains the "active" application
-    // while Yottacast's window becomes the "key window" and receives keyboard events.
+    // Shows the window and captures the current frontmost app to restore focus on hide.
+    // We do NOT call activateWithOptions: here — doing so activates the other app before
+    // makeKeyWindow, creating a race where macOS restores that app's key window and our
+    // makeKeyWindow loses effect. Focus restoration happens entirely in OnHide.
+    // Trade-off: traffic lights of the previous app may go grey while Yottacast is open
+    // (Avalonia's window.Show() calls activateIgnoringOtherApps:YES internally).
     public override void ShowWindow(Window window) {
-        if (_previousApp != IntPtr.Zero) ObjcRelease(_previousApp);
-        _previousApp = ObjcRetain(GetFrontmostApp());
+        // Capture the frontmost app for later focus restoration, but only if it's not
+        // Yottacast itself (can happen during rapid toggle before macOS processes OnHide).
+        var frontmost = GetFrontmostApp();
+        if (!IsSelf(frontmost)) {
+            if (_previousApp != IntPtr.Zero) ObjcRelease(_previousApp);
+            _previousApp = ObjcRetain(frontmost);
+        }
 
-        window.Show(); // Avalonia bookkeeping; may internally call activateIgnoringOtherApps:
-
-        // Re-activate the previous app so its traffic lights stay colored.
-        if (_previousApp != IntPtr.Zero)
-            ObjcMsgSendActivate(_previousApp, SelRegisterName("activateWithOptions:"), 2);
+        window.Show(); // Avalonia bookkeeping; internally calls activateIgnoringOtherApps:YES
 
         // Make Yottacast's window the key window (receives keyboard events).
-        // We use makeKeyWindow (not makeKeyAndOrderFront:) because makeKeyWindow does not
-        // reorder or re-activate the application — it only transfers key status to our window.
-        // With NSApplicationActivationPolicyAccessory, this does not activate Yottacast,
-        // so the previous app keeps its colored traffic lights.
+        // makeKeyWindow transfers key status without reordering or activating the app.
         // SearchBox focus is restored via MainWindow.Activated → SearchBox.Focus().
         var nsWindow = GetNsWindow(window);
         if (nsWindow != IntPtr.Zero)
@@ -99,9 +100,25 @@ internal sealed class MacAppHandler : AppHandler {
         CFRelease(vUp);
     }
 
+    public override void DisableMinimizeButton(Window window) {
+        var nsWindow = GetNsWindow(window);
+        if (nsWindow == IntPtr.Zero) return;
+        // NSWindowMiniaturizeButton = 1
+        var button = ObjcMsgSendWithLong(nsWindow, SelRegisterName("standardWindowButton:"), 1);
+        if (button != IntPtr.Zero)
+            ObjcMsgSendBool(button, SelRegisterName("setEnabled:"), false);
+    }
+
     private static IntPtr GetFrontmostApp() {
         var workspace = ObjcMsgSend(ObjcGetClass("NSWorkspace"), SelRegisterName("sharedWorkspace"));
         return ObjcMsgSend(workspace, SelRegisterName("frontmostApplication"));
+    }
+
+    // Returns true if the given NSRunningApplication is this process.
+    // Uses processIdentifier (int/pid_t) comparison — reliable on ARM64, no BOOL marshaling issues.
+    private static bool IsSelf(IntPtr app) {
+        if (app == IntPtr.Zero) return false;
+        return ObjcMsgSendInt(app, SelRegisterName("processIdentifier")) == Environment.ProcessId;
     }
 
     [DllImport("libobjc.dylib", EntryPoint = "objc_getClass")]
@@ -124,6 +141,12 @@ internal sealed class MacAppHandler : AppHandler {
 
     [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
     private static extern void ObjcMsgSendBool(IntPtr receiver, IntPtr selector, bool value);
+
+    [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
+    private static extern int ObjcMsgSendInt(IntPtr receiver, IntPtr selector);
+
+    [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
+    private static extern IntPtr ObjcMsgSendWithLong(IntPtr receiver, IntPtr selector, long value);
 
 
     [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]

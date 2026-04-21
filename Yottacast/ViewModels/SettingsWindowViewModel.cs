@@ -157,7 +157,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
                 return Directory.Exists(expanded) && !currentExpanded.Contains(expanded);
             });
         }
-    }
+    }                                                                   
 
     public void AddAppDirectory(string path) {
         var normalized = path.TrimEnd('/', '\\');

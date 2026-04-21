@@ -25,6 +25,9 @@ public partial class SettingsWindow : Window {
 
         // Inyectar colores y fuente nativos del OS (definidos en AppHandler de cada plataforma).
         AppHandler.Instance.ApplySettingsTheme(this);
+
+        // El handle nativo solo está disponible tras Show(); deshabilitamos el botón en Opened.
+        Opened += (_, _) => AppHandler.Instance.DisableMinimizeButton(this);
     }
 
     protected override void OnKeyDown(KeyEventArgs e) {
