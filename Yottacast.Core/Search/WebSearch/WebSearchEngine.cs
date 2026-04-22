@@ -40,10 +40,11 @@ public static class WebSearchDefaults {
         new() { Id = "wolframalpha",  Name = "Wolfram Alpha",  QueryUrl = "https://www.wolframalpha.com/input?i={0}",                    IconResource = "Yottacast.Core.Search.WebSearch.Icons.wolframalpha.png" },
         // Dev
         new() { Id = "github",        Name = "GitHub",        QueryUrl = "https://github.com/search?q={0}",                              IconResource = "Yottacast.Core.Search.WebSearch.Icons.github.png" },
-        new() { Id = "stackoverflow", Name = "Stack Overflow", QueryUrl = "https://stackoverflow.com/search?q={0}",                     IconResource = "Yottacast.Core.Search.WebSearch.Icons.stackoverflow.png" },
-        new() { Id = "npm",           Name = "npm",           QueryUrl = "https://www.npmjs.com/search?q={0}",                            IconResource = "Yottacast.Core.Search.WebSearch.Icons.npm.png" },
+        new() { Id = "stackoverflow", Name = "Stack Overflow", QueryUrl = "https://stackoverflow.com/search?q={0}",                      IconResource = "Yottacast.Core.Search.WebSearch.Icons.stackoverflow.png" },
+        new() { Id = "npm",           Name = "npm",           QueryUrl = "https://www.npmjs.com/search?q={0}",                           IconResource = "Yottacast.Core.Search.WebSearch.Icons.npm.png" },
         new() { Id = "pypi",          Name = "PyPI",          QueryUrl = "https://pypi.org/search/?q={0}",                               IconResource = "Yottacast.Core.Search.WebSearch.Icons.pypi.png" },
-        new() { Id = "mdn",           Name = "MDN",           QueryUrl = "https://developer.mozilla.org/en-US/search?q={0}",             IconResource = "Yottacast.Core.Search.WebSearch.Icons.mdn.png" },
+        new() { Id = "mdn",           Name = "Mozilla Developer", QueryUrl = "https://developer.mozilla.org/en-US/search?q={0}",         IconResource = "Yottacast.Core.Search.WebSearch.Icons.mdn.png" },
+        new() { Id = "dh",            Name = "Docker Hub", QueryUrl = "https://hub.docker.com/search?q=pepe",                            IconResource = "Yottacast.Core.Search.WebSearch.Icons.docker.png" },
         // Entertainment
         new() { Id = "imdb",          Name = "IMDb",          QueryUrl = "https://www.imdb.com/find?q={0}",                              IconResource = "Yottacast.Core.Search.WebSearch.Icons.imdb.png" },
         new() { Id = "spotify",       Name = "Spotify",       QueryUrl = "https://open.spotify.com/search/{0}",                          IconResource = "Yottacast.Core.Search.WebSearch.Icons.spotify.png" },

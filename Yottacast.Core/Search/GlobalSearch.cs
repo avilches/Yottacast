@@ -26,11 +26,15 @@ public class GlobalSearch(IEnumerable<IInstantSearchSource> instantSources, IEnu
         .Concat(_deferredSources.Select(s => s.Stop())));
 
     public (IReadOnlyList<BaseResultItemViewModel> Items, string? Hint) SearchInstant(string query, int limit) {
-        var items = _instantSources
+        var allItems = _instantSources
             .SelectMany(s => s.Search(query, limit))
             .OrderByDescending(x => x.Score)
-            .Take(limit)
             .ToList();
+
+        var bypass = allItems.Where(x => x.BypassLimit).ToList();
+        var limited = allItems.Where(x => !x.BypassLimit).Take(limit).ToList();
+
+        var items = bypass.Concat(limited).OrderByDescending(x => x.Score).ToList();
         var hint = _instantSources.OfType<ISearchHintProvider>().Select(s => s.LastHint).FirstOrDefault(h => h != null);
         return (items, hint);
     }

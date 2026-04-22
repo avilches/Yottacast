@@ -64,6 +64,7 @@ public class WebSearchSource(
                 Subtitle   = "Open in browser",
                 Category   = "Web",
                 Score      = score,
+                BypassLimit = true,
                 OnActivate = () => {
                     var browser = settings.ActiveBrowser;
                     if (browser is null) return;

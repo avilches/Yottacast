@@ -33,6 +33,12 @@ public class UserSettings {
     public int? WindowX { get; set; }
     public int? WindowY { get; set; }
     public bool StickyWindow { get; set; } = true;
+    public string CalculatorCurrencyA { get; set; } = "EUR";
+    public string CalculatorCurrencyB { get; set; } = "USD";
+    public int CalculatorDecimalPlaces { get; set; } = 2;
+    public bool EnableDictionary { get; set; } = true;
+    public string DictionaryPrefix { get; set; } = AppDefaults.DictionaryDefaultPrefix;
+    public bool DictionaryShowAlways { get; set; } = false;
 
     private string _hotkey = "Alt+Space";
     private HotkeyConfig? _parsedHotkey;
@@ -133,6 +139,12 @@ public class UserSettings {
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public int? WindowY { get; init; }
         [JsonPropertyName("stickyWindow")] public bool StickyWindow { get; init; } = true;
+        [JsonPropertyName("calculatorCurrencyA")] public string CalculatorCurrencyA { get; init; } = "EUR";
+        [JsonPropertyName("calculatorCurrencyB")] public string CalculatorCurrencyB { get; init; } = "USD";
+        [JsonPropertyName("calculatorDecimalPlaces")] public int CalculatorDecimalPlaces { get; init; } = 2;
+        [JsonPropertyName("enableDictionary")] public bool EnableDictionary { get; init; } = true;
+        [JsonPropertyName("dictionaryPrefix")] public string DictionaryPrefix { get; init; } = AppDefaults.DictionaryDefaultPrefix;
+        [JsonPropertyName("dictionaryShowAlways")] public bool DictionaryShowAlways { get; init; } = false;
     }
 
     public static UserSettings Load(PlatformProvider platform, ILogger<UserSettings>? logger = null, string? settingsPath = null) {
@@ -177,6 +189,12 @@ public class UserSettings {
                     WindowX = data.WindowX,
                     WindowY = data.WindowY,
                     StickyWindow = data.StickyWindow,
+                    CalculatorCurrencyA = string.IsNullOrWhiteSpace(data.CalculatorCurrencyA) ? "EUR" : data.CalculatorCurrencyA.ToUpperInvariant(),
+                    CalculatorCurrencyB = string.IsNullOrWhiteSpace(data.CalculatorCurrencyB) ? "USD" : data.CalculatorCurrencyB.ToUpperInvariant(),
+                    CalculatorDecimalPlaces = data.CalculatorDecimalPlaces is >= 0 and <= 10 ? data.CalculatorDecimalPlaces : 2,
+                    EnableDictionary = data.EnableDictionary,
+                    DictionaryPrefix = string.IsNullOrWhiteSpace(data.DictionaryPrefix) ? AppDefaults.DictionaryDefaultPrefix : data.DictionaryPrefix,
+                    DictionaryShowAlways = data.DictionaryShowAlways,
                 };
             }
         } catch (Exception ex) {
@@ -249,6 +267,12 @@ public class UserSettings {
                 WindowX = WindowX,
                 WindowY = WindowY,
                 StickyWindow = StickyWindow,
+                CalculatorCurrencyA = CalculatorCurrencyA,
+                CalculatorCurrencyB = CalculatorCurrencyB,
+                CalculatorDecimalPlaces = CalculatorDecimalPlaces,
+                EnableDictionary = EnableDictionary,
+                DictionaryPrefix = DictionaryPrefix,
+                DictionaryShowAlways = DictionaryShowAlways,
                 WebSearchEngines = WebSearchEngines
                     .Select(s => new WebSearchEngineSettingsData {
                         Id = s.Id,

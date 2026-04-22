@@ -13,15 +13,19 @@ public record NormalizedExpression(
     HashSet<string> Currencies, List<AmbiguityHint> Ambiguities);
 
 /// <summary>
-/// Controls decimal formatting in <see cref="MathJsEngine"/>.
+/// Controls decimal formatting and default currency pair in <see cref="MathJsEngine"/>.
 /// </summary>
 /// <param name="LargeNumberDecimals">Decimal places for results where |n| ≥ 1 (e.g. "6.21 mi").</param>
 /// <param name="SmallNumberSigFigs">Significant figures for results where |n| &lt; 1 (e.g. "0.00145 psi").</param>
 /// <param name="BasePrecision">Significant figures passed to math.format() before rounding.</param>
+/// <param name="CurrencyA">Home currency: any other currency converts to this one (e.g. "EUR").</param>
+/// <param name="CurrencyB">Pair currency: CurrencyA converts to this one (e.g. "USD").</param>
 public record FormatConfig(
     int LargeNumberDecimals = 2,
     int SmallNumberSigFigs  = 3,
-    int BasePrecision       = 10);
+    int BasePrecision       = 10,
+    string CurrencyA        = "EUR",
+    string CurrencyB        = "USD");
 
 /// <summary>
 /// Wraps a Jint engine loaded with math.js (embedded resource).
@@ -68,6 +72,8 @@ public sealed class MathJsEngine : IDisposable {
         engine.SetValue("_FMT_SMALL_SIG_FIGS",  _formatConfig.SmallNumberSigFigs);
         engine.SetValue("_FMT_BASE_PRECISION",   _formatConfig.BasePrecision);
         engine.Execute(LoadResource("Yottacast.Core.Search.Calculator.mathjs-helpers.js"));
+        // Override default currency pair declared in mathjs-helpers.js with the user's config.
+        engine.Evaluate($"_defaultCurrencyPair = ['{_formatConfig.CurrencyA.ToUpperInvariant()}', '{_formatConfig.CurrencyB.ToUpperInvariant()}'];");
 
         // Inject pre-computed maps — required. If the resource is missing, the app cannot start.
         // Regenerate with: MATHJS_UPDATE_SNAPSHOT=1 dotnet test --project Yottacast.Core.Tests
@@ -490,6 +496,18 @@ public sealed class MathJsEngine : IDisposable {
             NormalizedQuery = normalized.Expr,
             AmbiguityHints = hints
         };
+    }
+
+    /// <summary>
+    /// Hot-updates format and currency settings without restarting the engine.
+    /// Safe to call from any thread; uses the same lock as <see cref="Evaluate"/>.
+    /// </summary>
+    public void UpdateConfig(FormatConfig config) {
+        lock (_lock) {
+            if (_engine == null) return;
+            _engine.Evaluate($"_FMT_LARGE_DECIMALS = {config.LargeNumberDecimals};");
+            _engine.Evaluate($"_defaultCurrencyPair = ['{config.CurrencyA.ToUpperInvariant()}', '{config.CurrencyB.ToUpperInvariant()}'];");
+        }
     }
 
     public void Dispose() {

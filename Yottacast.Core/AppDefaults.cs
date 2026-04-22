@@ -32,6 +32,12 @@ public static class AppDefaults {
     /// Delay before simulating Cmd+V / Ctrl+V after selecting an emoji.
     public const int PasteDelayMs = 150;
 
+    // ── Search — dictionary ────────────────────────────────────────────────
+    /// HTTP timeout for dictionary API requests.
+    public const int DictionaryTimeoutSeconds = 5;
+    /// Default prefix to activate dictionary lookup.
+    public const string DictionaryDefaultPrefix = "define";
+
     // ── Updates ───────────────────────────────────────────────────────────────
     /// HTTP timeout for the version check request.
     public const int UpdateCheckTimeoutSeconds = 10;

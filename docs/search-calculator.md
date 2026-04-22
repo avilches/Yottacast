@@ -271,7 +271,7 @@ Al arrancar, el motor registra unidades que math.js no incluye por defecto:
 Las tasas de cambio se proporcionan via `ICurrencyRateProvider`. Se registran dinamicamente en el motor en cada llamada
 a `Evaluate()`, actualizandose si la tasa ha cambiado. Los codigos de divisa se normalizan a mayusculas en el AST.
 
-Al escribir solo una divisa (ej. `10 USD`), se convierte al otro miembro del par por defecto EUR/USD.
+Al escribir solo una divisa (ej. `10 USD`), se convierte al otro miembro del par de divisas configurado. El par por defecto es EUR/USD y se puede cambiar en Settings → Calculator. La divisa "home" (izquierda del par) es el destino de cualquier divisa desconocida; la divisa "home" convierte a la de la derecha. El par se aplica en caliente sin reiniciar la app.
 
 Las tasas son relativas a USD: `EUR = 0.92` significa `1 USD = 0.92 EUR`.
 
@@ -287,11 +287,10 @@ Los resultados numericos se formatean con precision adaptativa:
 | Tipo de numero      | Regla por defecto       | Ejemplo                               |
 |---------------------|-------------------------|---------------------------------------|
 | Entero              | Sin cambio              | `600 min`                             |
-| Valor absoluto >= 1 | 2 decimales             | `6.213711922 mi` -> `6.21 mi`         |
-| Valor absoluto < 1  | 3 cifras significativas | `0.001450377377 psi` -> `0.00145 psi` |
+| Valor absoluto >= 1 | 2 decimales (configurable) | `6.213711922 mi` -> `6.21 mi`         |
+| Valor absoluto < 1  | 3 cifras significativas    | `0.001450377377 psi` -> `0.00145 psi` |
 
-La precision base es de 10 cifras significativas (parametro `BasePrecision` de `FormatConfig`). Los valores de decimales
-y cifras significativas son configurables.
+El numero de decimales para valores >= 1 se puede cambiar en Settings → Calculator (rango 0-6). La precision base es de 10 cifras significativas (parametro `BasePrecision` de `FormatConfig`). El cambio se aplica en caliente sin reiniciar la app.
 
 > **Verificar en:** `smartFormat()` en `mathjs-helpers.js`; `FormatConfig` en `MathJsEngine.cs`
 

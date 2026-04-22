@@ -108,6 +108,23 @@ public partial class SettingsWindow : Window {
         }
     }
 
+    private void OnFlyoutCloseClicked(object? sender, RoutedEventArgs e) {
+        if (sender is Control ctrl) {
+            // The Flyout content lives inside a FlyoutPresenter; walk up to find it
+            // and use FlyoutBase.GetAttachedFlyout-style closure via the presenter's
+            // visual root (a PopupRoot whose parent Popup we can close).
+            var presenter = ctrl.GetVisualAncestors().OfType<FlyoutPresenter>().FirstOrDefault();
+            if (presenter?.Parent is Popup popup)
+                popup.IsOpen = false;
+        }
+    }
+
+    private async void OnTestUrlClicked(object? sender, RoutedEventArgs e) {
+        // Give the browser time to launch, then bring settings back to front
+        await Task.Delay(500);
+        Activate();
+    }
+
     // ── Engine prefix inline editing ──────────────────────────────────────────
     private void OnPrefixDoubleTapped(object? sender, TappedEventArgs e) {
         if (sender is not TextBlock { DataContext: WebSearchEngineRowViewModel vm } tb) return;

@@ -1,6 +1,7 @@
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Yottacast.Core.Platform;
 using Yottacast.Core.Search.WebSearch;
 using Yottacast.Core.Services;
 
@@ -8,6 +9,7 @@ namespace Yottacast.ViewModels;
 
 public partial class WebSearchEngineRowViewModel : ViewModelBase {
     private readonly UserSettings _settings;
+    private readonly PlatformProvider _platform;
     private readonly string _defaultQueryUrl;
 
     public string   Id   { get; }
@@ -41,11 +43,12 @@ public partial class WebSearchEngineRowViewModel : ViewModelBase {
 
     public WebSearchEngineRowViewModel(
         string id, string name, string defaultQueryUrl, string? iconResource,
-        WebSearchEngineSettings cfg, UserSettings settings) {
+        WebSearchEngineSettings cfg, UserSettings settings, PlatformProvider platform) {
         Id               = id;
         Name             = name;
         _defaultQueryUrl = defaultQueryUrl;
         _settings        = settings;
+        _platform        = platform;
         _mode            = cfg.Mode;
         _prefix          = cfg.Prefix;
         _queryUrl        = cfg.QueryUrl ?? defaultQueryUrl;
@@ -64,6 +67,13 @@ public partial class WebSearchEngineRowViewModel : ViewModelBase {
 
     [RelayCommand]
     private void ResetUrl() => QueryUrl = _defaultQueryUrl;
+
+    [RelayCommand]
+    private void TestUrl() {
+        var url = string.IsNullOrEmpty(QueryUrl) ? _defaultQueryUrl : QueryUrl;
+        var testUrl = url.Replace("{0}", "test");
+        _platform.OpenUrl(testUrl, _settings.Browser);
+    }
 
     // Llamado desde code-behind al perder el foco el TextBox de URL.
     // Si el usuario dejó el campo vacío, lo restaura al valor por defecto para que

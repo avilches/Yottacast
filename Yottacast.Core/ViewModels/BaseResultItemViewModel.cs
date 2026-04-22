@@ -26,4 +26,9 @@ public abstract class BaseResultItemViewModel {
     /// Used by EmojiSearch so the copied emoji is immediately pasted into the target app.
     /// </summary>
     public bool PasteAfterActivate { get; init; }
+    /// <summary>
+    /// When true, this item is never dropped by the global result limit in GlobalSearch.
+    /// Used by WebSearch so all configured "ShowAlways" engines appear regardless of limit.
+    /// </summary>
+    public bool BypassLimit { get; init; }
 }

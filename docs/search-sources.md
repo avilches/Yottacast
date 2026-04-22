@@ -51,6 +51,7 @@ Yottacast permite lanzar busquedas web en multiples motores directamente desde e
 
 - Las queries que empiezan por `:` (modo emoji) nunca generan resultados web.
 - Cuando un motor con prefijo coincide, los motores `ShowAlways` se ocultan para evitar ruido. Solo se muestran los motores cuyo prefijo fue activado explicitamente.
+- Los resultados de busqueda web no estan sujetos al limite global de resultados (`SearchSourceLimit`). Todos los motores habilitados en modo `ShowAlways` aparecen siempre, independientemente de cuantos sean. Esto se logra marcando los items con `BypassLimit = true`.
 - Si el usuario ha personalizado la URL de un motor, se usa esa URL. Si no, se usa la URL por defecto del motor. Esto permite actualizar URLs por defecto entre versiones sin sobreescribir personalizaciones.
 - Si falta el icono PNG embebido de un motor, el hueco del icono queda vacio sin error.
 - Motores anadidos en versiones futuras aparecen automaticamente para usuarios existentes (merge de settings al cargar).

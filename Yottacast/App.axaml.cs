@@ -21,6 +21,7 @@ using Yottacast.Core.Search.Application;
 using Yottacast.Core.Search.Calculator;
 using Yottacast.Core.Search.Emoji;
 using Yottacast.Core.Search.UserDocuments;
+using Yottacast.Core.Search.Dictionary;
 using Yottacast.Core.Search.WebSearch;
 using Yottacast.Core.Services;
 using Yottacast.Services;
@@ -178,7 +179,14 @@ public partial class App : Application {
         services.AddSingleton<FileSearch>();
         services.AddSingleton<ClipboardService>();
         services.AddSingleton<ICurrencyRateProvider, StaticCurrencyRateProvider>();
-        services.AddSingleton<MathJsEngine>();
+        services.AddSingleton<MathJsEngine>(sp => {
+            var s = sp.GetRequiredService<UserSettings>();
+            var fmt = new FormatConfig(
+                LargeNumberDecimals: s.CalculatorDecimalPlaces,
+                CurrencyA: s.CalculatorCurrencyA,
+                CurrencyB: s.CalculatorCurrencyB);
+            return new MathJsEngine(sp.GetRequiredService<ICurrencyRateProvider>(), fmt);
+        });
         services.AddSingleton<CalculatorSearch>();
         services.AddSingleton<EmojiDataLoader>();
         services.AddSingleton<EmojiSearch>(sp => new EmojiSearch(
@@ -195,7 +203,9 @@ public partial class App : Application {
         services.AddSingleton<IInstantSearchSource>(sp => sp.GetRequiredService<CalculatorSearch>());
         services.AddSingleton<IInstantSearchSource>(sp => sp.GetRequiredService<EmojiSearch>());
         services.AddSingleton<IInstantSearchSource>(sp => sp.GetRequiredService<WebSearchSource>());
+        services.AddSingleton<DictionarySource>();
         services.AddSingleton<IDeferredSearchSource>(sp => sp.GetRequiredService<UserDocumentSearch>());
+        services.AddSingleton<IDeferredSearchSource>(sp => sp.GetRequiredService<DictionarySource>());
         // services.AddSingleton<IDeferredSearchSource>(sp => sp.GetRequiredService<RandomSearch>());
 
         services.AddSingleton<GlobalSearch>();

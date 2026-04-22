@@ -8,7 +8,9 @@ using System.Reflection;
 using Avalonia.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Yottacast.Core;
 using Yottacast.Core.Platform;
+using Yottacast.Core.Search.Calculator;
 using Yottacast.Core.Search.WebSearch;
 using Yottacast.Core.Services;
 using Yottacast.Services;
@@ -16,7 +18,7 @@ using Yottacast.Services;
 namespace Yottacast.ViewModels;
 
 public enum SettingsSection {
-    General, AppSearch, WebSearch, FileSearch, Calculator, Clipboard, Emoji
+    General, AppSearch, WebSearch, FileSearch, Calculator, Clipboard, Emoji, Dictionary
 }
 
 public partial class SettingsWindowViewModel : ViewModelBase {
@@ -29,6 +31,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [NotifyPropertyChangedFor(nameof(IsCalculatorSelected))]
     [NotifyPropertyChangedFor(nameof(IsClipboardSelected))]
     [NotifyPropertyChangedFor(nameof(IsEmojiSelected))]
+    [NotifyPropertyChangedFor(nameof(IsDictionarySelected))]
     private SettingsSection _selectedSection = SettingsSection.General;
 
     public bool IsGeneralSelected   => SelectedSection == SettingsSection.General;
@@ -38,6 +41,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     public bool IsCalculatorSelected => SelectedSection == SettingsSection.Calculator;
     public bool IsClipboardSelected  => SelectedSection == SettingsSection.Clipboard;
     public bool IsEmojiSelected      => SelectedSection == SettingsSection.Emoji;
+    public bool IsDictionarySelected => SelectedSection == SettingsSection.Dictionary;
 
     [RelayCommand] private void SelectGeneral()   => SelectedSection = SettingsSection.General;
     [RelayCommand] private void SelectAppSearch() => SelectedSection = SettingsSection.AppSearch;
@@ -46,6 +50,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [RelayCommand] private void SelectCalculator() => SelectedSection = SettingsSection.Calculator;
     [RelayCommand] private void SelectClipboard()  => SelectedSection = SettingsSection.Clipboard;
     [RelayCommand] private void SelectEmoji()      => SelectedSection = SettingsSection.Emoji;
+    [RelayCommand] private void SelectDictionary() => SelectedSection = SettingsSection.Dictionary;
 
     // ── General section ──────────────────────────────────────────────────────
     [ObservableProperty] private string? _selectedBrowser;
@@ -81,6 +86,43 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     partial void OnFileSearchOnlySpecificFoldersChanged(bool v) { _settings.FileSearchOnlySpecificFolders = v; _settings.Save(); }
     partial void OnStickyWindowChanged(bool v)                  { _settings.StickyWindow                 = v; _settings.Save(); }
 
+    // ── Dictionary config ────────────────────────────────────────────────────
+    [ObservableProperty] private bool _enableDictionary;
+    [ObservableProperty] private string _dictionaryPrefix = AppDefaults.DictionaryDefaultPrefix;
+    [ObservableProperty] private bool _dictionaryShowAlways;
+
+    partial void OnEnableDictionaryChanged(bool v)    { _settings.EnableDictionary    = v; _settings.Save(); }
+    partial void OnDictionaryPrefixChanged(string v)  { _settings.DictionaryPrefix    = v; _settings.Save(); }
+    partial void OnDictionaryShowAlwaysChanged(bool v) { _settings.DictionaryShowAlways = v; _settings.Save(); }
+
+    // ── Calculator config ────────────────────────────────────────────────────
+    [ObservableProperty] private string _calculatorCurrencyA = "EUR";
+    [ObservableProperty] private string _calculatorCurrencyB = "USD";
+    [ObservableProperty] private int _calculatorDecimalPlaces = 2;
+
+    partial void OnCalculatorCurrencyAChanged(string v) {
+        var upper = v.ToUpperInvariant();
+        _settings.CalculatorCurrencyA = upper;
+        _settings.Save();
+        _mathJsEngine.UpdateConfig(BuildFormatConfig());
+    }
+    partial void OnCalculatorCurrencyBChanged(string v) {
+        var upper = v.ToUpperInvariant();
+        _settings.CalculatorCurrencyB = upper;
+        _settings.Save();
+        _mathJsEngine.UpdateConfig(BuildFormatConfig());
+    }
+    partial void OnCalculatorDecimalPlacesChanged(int v) {
+        _settings.CalculatorDecimalPlaces = v;
+        _settings.Save();
+        _mathJsEngine.UpdateConfig(BuildFormatConfig());
+    }
+
+    private FormatConfig BuildFormatConfig() => new(
+        LargeNumberDecimals: _settings.CalculatorDecimalPlaces,
+        CurrencyA: _settings.CalculatorCurrencyA,
+        CurrencyB: _settings.CalculatorCurrencyB);
+
     // ── App version ──────────────────────────────────────────────────────────
     public string AppVersion { get; } =
         "Yottacast " + (Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "—");
@@ -89,16 +131,19 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     private readonly UserSettings _settings;
     private readonly ThemeService _themeService;
     private readonly PlatformProvider _platform;
+    private readonly MathJsEngine _mathJsEngine;
 
     public SettingsWindowViewModel(
         UserSettings settings,
         BrowserDiscovery browserDiscovery,
         TerminalDiscovery terminalDiscovery,
         ThemeService themeService,
-        PlatformProvider platform) {
+        PlatformProvider platform,
+        MathJsEngine mathJsEngine) {
         _settings    = settings;
         _themeService = themeService;
         _platform    = platform;
+        _mathJsEngine = mathJsEngine;
 
         Browsers  = browserDiscovery.Discover().Select(b => b.Name).ToList();
         Terminals = terminalDiscovery.Discover().Select(t => t.Name).ToList();
@@ -119,6 +164,12 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _enableFileSearch                = settings.EnableFileSearch;
         _fileSearchOnlySpecificFolders   = settings.FileSearchOnlySpecificFolders;
         _stickyWindow                    = settings.StickyWindow;
+        _calculatorCurrencyA             = settings.CalculatorCurrencyA;
+        _calculatorCurrencyB             = settings.CalculatorCurrencyB;
+        _calculatorDecimalPlaces         = settings.CalculatorDecimalPlaces;
+        _enableDictionary                = settings.EnableDictionary;
+        _dictionaryPrefix                = settings.DictionaryPrefix;
+        _dictionaryShowAlways            = settings.DictionaryShowAlways;
 
         SearchFolders  = new ObservableCollection<SearchFolderItem>(settings.SearchFolders.Select(p => new SearchFolderItem(p)));
         AppDirectories = new ObservableCollection<string>(settings.AppDirectories);
@@ -133,7 +184,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         var rows = WebSearchDefaults.Engines.Select(engine => {
             var cfg = settings.WebSearchEngines.FirstOrDefault(s => s.Id == engine.Id)
                       ?? WebSearchDefaults.DefaultSettingsFor(engine.Id);
-            return new WebSearchEngineRowViewModel(engine.Id, engine.Name, engine.QueryUrl, engine.IconResource, cfg, settings);
+            return new WebSearchEngineRowViewModel(engine.Id, engine.Name, engine.QueryUrl, engine.IconResource, cfg, settings, platform);
         });
         WebSearchEngines = new ObservableCollection<WebSearchEngineRowViewModel>(
             rows.OrderByDescending(e => e.Enabled).ThenBy(e => e.Name));
