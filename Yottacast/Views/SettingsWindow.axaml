@@ -218,6 +218,23 @@
             <Setter Property="Foreground"  Value="{DynamicResource Theme.ItemTitle}"/>
         </Style>
 
+        <!-- Edit URL button (inside engine table) -->
+        <Style Selector="Button.url-edit-btn">
+            <Setter Property="Background"      Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush"     Value="{DynamicResource Theme.Divider}"/>
+            <Setter Property="Padding"         Value="5,2"/>
+            <Setter Property="CornerRadius"    Value="3"/>
+            <Setter Property="Cursor"          Value="Hand"/>
+            <Setter Property="FontSize"        Value="10"/>
+            <Setter Property="Foreground"      Value="{DynamicResource Theme.ItemSubtitle}"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.url-edit-btn:pointerover">
+            <Setter Property="Foreground" Value="{DynamicResource Theme.ItemTitle}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Theme.ItemCategory}"/>
+        </Style>
+
         <!-- Mode toggle button -->
         <Style Selector="Button.mode-toggle">
             <Setter Property="Background"      Value="{DynamicResource Theme.ItemIconBackground}"/>
@@ -238,6 +255,42 @@
         </Style>
         <Style Selector="Button.mode-toggle:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource Theme.ItemHover}"/>
+        </Style>
+
+        <!-- Inputs dentro del flyout de edición de URL.
+             Usamos /template/ para sobreescribir los estilos internos de FluentTheme
+             que aplican background/border propios en hover y focus. -->
+        <Style Selector="TextBox.flyout-input">
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius"    Value="4"/>
+            <Setter Property="Padding"         Value="8,5,8,5"/>
+            <Setter Property="MinHeight"       Value="0"/>
+            <Setter Property="FontSize"        Value="12"/>
+        </Style>
+        <Style Selector="TextBox.flyout-input /template/ Border#PART_BorderElement">
+            <Setter Property="Background"   Value="Transparent"/>
+            <Setter Property="BorderBrush"  Value="#868686"/>
+        </Style>
+        <Style Selector="TextBox.flyout-input:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background"   Value="Transparent"/>
+            <Setter Property="BorderBrush"  Value="#868686"/>
+        </Style>
+        <Style Selector="TextBox.flyout-input:focus-within /template/ Border#PART_BorderElement">
+            <Setter Property="Background"       Value="Transparent"/>
+            <Setter Property="BorderBrush"      Value="#868686"/>
+            <Setter Property="BorderThickness"  Value="1"/>
+        </Style>
+
+        <!-- Checkboxes más compactos -->
+        <Style Selector="CheckBox">
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Padding"   Value="6,2,0,2"/>
+            <Setter Property="FontSize"  Value="13"/>
+        </Style>
+        <Style Selector="CheckBox /template/ Border#NormalRectangle">
+            <Setter Property="Width"        Value="14"/>
+            <Setter Property="Height"       Value="14"/>
+            <Setter Property="CornerRadius" Value="3"/>
         </Style>
 
     </Window.Styles>
@@ -459,31 +512,32 @@
                     <StackPanel Spacing="0">
                         <TextBlock Classes="label" Text="Search Engines"/>
 
-                        <!-- Header row -->
-                        <Grid ColumnDefinitions="108,58,64,*,42" Margin="2,0,0,0">
-                            <TextBlock Grid.Column="0" Classes="table-col-header" Text="Engine"/>
+                        <!-- Header row: col 0=icon(20) col 1=prefix(58) col 2=name(*) col 3=mode(Auto) col 4=edit(Auto) col 5=on(34) -->
+                        <Grid ColumnDefinitions="20,58,*,Auto,Auto,34">
                             <TextBlock Grid.Column="1" Classes="table-col-header" Text="Prefix"/>
-                            <TextBlock Grid.Column="2" Classes="table-col-header" Text="Mode" Margin="4,0,0,0"/>
-                            <TextBlock Grid.Column="3" Classes="table-col-header" Text="Custom URL" Margin="8,0,0,0"/>
-                            <TextBlock Grid.Column="4" Classes="table-col-header" Text="On"
+                            <TextBlock Grid.Column="2" Classes="table-col-header" Text="Engine"/>
+                            <TextBlock Grid.Column="3" Classes="table-col-header" Text="Mode" Margin="4,0,0,0"/>
+                            <TextBlock Grid.Column="4" Classes="table-col-header" Text="URL"
+                                       HorizontalAlignment="Center"/>
+                            <TextBlock Grid.Column="5" Classes="table-col-header" Text="On"
                                        HorizontalAlignment="Center"/>
                         </Grid>
 
-                        <Rectangle Height="1" Fill="{DynamicResource Theme.Divider}" Margin="0,0,0,2"/>
+                        <Rectangle Height="1" Fill="{DynamicResource Theme.Divider}" Margin="0,0,0,1"/>
 
                         <!-- Engine rows -->
                         <ItemsControl ItemsSource="{Binding WebSearchEngines}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:WebSearchEngineRowViewModel">
-                                    <Grid ColumnDefinitions="108,58,64,*,42" MinHeight="30">
+                                    <Grid ColumnDefinitions="20,58,*,Auto,Auto,34" MinHeight="24">
 
-                                        <!-- Engine name -->
-                                        <TextBlock Grid.Column="0"
-                                                   Text="{Binding Name}"
-                                                   Foreground="{DynamicResource Theme.ItemTitle}"
-                                                   FontSize="{DynamicResource Theme.FontSizeTitle}"
-                                                   VerticalAlignment="Center"
-                                                   Padding="2,0,4,0"/>
+                                        <!-- Icon -->
+                                        <Image Grid.Column="0"
+                                               Source="{Binding Icon}"
+                                               Width="14" Height="14"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Left"
+                                               IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNotNull}}"/>
 
                                         <!-- Prefix alias — label until double-click -->
                                         <Panel Grid.Column="1" Opacity="{Binding PrefixOpacity}">
@@ -498,24 +552,86 @@
                                                      KeyDown="OnPrefixKeyDown"/>
                                         </Panel>
 
+                                        <!-- Engine name -->
+                                        <TextBlock Grid.Column="2"
+                                                   Text="{Binding Name}"
+                                                   Foreground="{DynamicResource Theme.ItemTitle}"
+                                                   FontSize="{DynamicResource Theme.FontSizeTitle}"
+                                                   VerticalAlignment="Center"
+                                                   Padding="0,0,4,0"/>
+
                                         <!-- Mode toggle -->
-                                        <Button Grid.Column="2"
+                                        <Button Grid.Column="3"
                                                 Content="{Binding ModeLabel}"
                                                 Command="{Binding ToggleModeCommand}"
                                                 Classes="mode-toggle"
                                                 VerticalAlignment="Center"
                                                 Margin="4,0"/>
 
-                                        <!-- Custom query URL -->
-                                        <TextBox Grid.Column="3"
-                                                 Text="{Binding QueryUrl}"
-                                                 Watermark="{Binding QueryUrlWatermark}"
-                                                 Classes="engine-url"
-                                                 VerticalAlignment="Center"
-                                                 Margin="4,0"/>
+                                        <!-- Edit URL flyout -->
+                                        <Button Grid.Column="4"
+                                                Content="Edit"
+                                                Classes="mode-toggle"
+                                                VerticalAlignment="Center"
+                                                Margin="4,0">
+                                            <Button.Flyout>
+                                                <Flyout Placement="Left">
+                                                    <Flyout.FlyoutPresenterTheme>
+                                                        <ControlTheme TargetType="FlyoutPresenter"
+                                                                      BasedOn="{StaticResource {x:Type FlyoutPresenter}}">
+                                                            <Setter Property="BorderBrush"     Value="#707070"/>
+                                                            <Setter Property="BorderThickness" Value="1.5"/>
+                                                        </ControlTheme>
+                                                    </Flyout.FlyoutPresenterTheme>
+                                                    <StackPanel x:DataType="vm:WebSearchEngineRowViewModel"
+                                                                Width="380" Spacing="8" Margin="4">
+
+                                                        <!-- Cabecera: icono + nombre -->
+                                                        <StackPanel Orientation="Horizontal" Spacing="8"
+                                                                    Margin="0,0,0,4">
+                                                            <Image Source="{Binding Icon}"
+                                                                   Width="16" Height="16"
+                                                                   VerticalAlignment="Center"
+                                                                   IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                                            <TextBlock Text="{Binding Name}"
+                                                                       FontSize="13"
+                                                                       FontWeight="SemiBold"
+                                                                       VerticalAlignment="Center"/>
+                                                        </StackPanel>
+
+                                                        <TextBlock Text="Prefix"
+                                                                   FontSize="11"
+                                                                   Foreground="{DynamicResource Theme.ItemSubtitle}"/>
+                                                        <TextBox Text="{Binding Prefix}"
+                                                                 Classes="flyout-input"
+                                                                 KeyDown="OnFlyoutInputKeyDown"/>
+
+                                                        <TextBlock Text="Custom URL  ({0} = query)"
+                                                                   FontSize="11"
+                                                                   Foreground="{DynamicResource Theme.ItemSubtitle}"/>
+                                                        <Grid ColumnDefinitions="*,Auto">
+                                                            <TextBox Grid.Column="0"
+                                                                     Text="{Binding QueryUrl}"
+                                                                     Watermark="{Binding QueryUrlWatermark}"
+                                                                     Classes="flyout-input"
+                                                                     KeyDown="OnFlyoutInputKeyDown"
+                                                                     LostFocus="OnFlyoutUrlLostFocus"/>
+                                                            <Button Grid.Column="1"
+                                                                    Content="✕"
+                                                                    Command="{Binding ResetUrlCommand}"
+                                                                    Click="OnResetUrlClicked"
+                                                                    IsVisible="{Binding HasCustomUrl}"
+                                                                    Classes="remove-btn"
+                                                                    VerticalAlignment="Center"
+                                                                    Margin="4,0,0,0"/>
+                                                        </Grid>
+                                                    </StackPanel>
+                                                </Flyout>
+                                            </Button.Flyout>
+                                        </Button>
 
                                         <!-- Enabled -->
-                                        <CheckBox Grid.Column="4"
+                                        <CheckBox Grid.Column="5"
                                                   IsChecked="{Binding Enabled}"
                                                   HorizontalAlignment="Center"
                                                   VerticalAlignment="Center"/>

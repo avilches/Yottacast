@@ -62,7 +62,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     public ObservableCollection<string> AppDirectories { get; }
 
     // ── Web Search engines ───────────────────────────────────────────────────
-    public IReadOnlyList<WebSearchEngineRowViewModel> WebSearchEngines { get; }
+    public ObservableCollection<WebSearchEngineRowViewModel> WebSearchEngines { get; }
 
     // ── Feature toggles ──────────────────────────────────────────────────────
     [ObservableProperty] private bool _enableAppSearch;
@@ -130,11 +130,27 @@ public partial class SettingsWindowViewModel : ViewModelBase {
             OnPropertyChanged(nameof(HasMissingCommonAppDirectories));
         };
 
-        WebSearchEngines = WebSearchDefaults.Engines.Select(engine => {
+        var rows = WebSearchDefaults.Engines.Select(engine => {
             var cfg = settings.WebSearchEngines.FirstOrDefault(s => s.Id == engine.Id)
                       ?? WebSearchDefaults.DefaultSettingsFor(engine.Id);
-            return new WebSearchEngineRowViewModel(engine.Id, engine.Name, engine.QueryUrl, cfg, settings);
-        }).ToList();
+            return new WebSearchEngineRowViewModel(engine.Id, engine.Name, engine.QueryUrl, engine.IconResource, cfg, settings);
+        });
+        WebSearchEngines = new ObservableCollection<WebSearchEngineRowViewModel>(
+            rows.OrderByDescending(e => e.Enabled).ThenBy(e => e.Name));
+
+        foreach (var row in WebSearchEngines)
+            row.PropertyChanged += (_, e) => {
+                if (e.PropertyName == nameof(WebSearchEngineRowViewModel.Enabled))
+                    ReSortWebSearchEngines();
+            };
+    }
+
+    private void ReSortWebSearchEngines() {
+        var sorted = WebSearchEngines.OrderByDescending(e => e.Enabled).ThenBy(e => e.Name).ToList();
+        for (int i = 0; i < sorted.Count; i++) {
+            int current = WebSearchEngines.IndexOf(sorted[i]);
+            if (current != i) WebSearchEngines.Move(current, i);
+        }
     }
 
     // ── Folder mutators (called from code-behind) ─────────────────────────────

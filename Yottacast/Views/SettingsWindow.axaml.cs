@@ -1,10 +1,12 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform;
 using Avalonia.Platform.Storage;
 using Avalonia.Styling;
+using Avalonia.VisualTree;
 using System.Linq;
 using System.Threading.Tasks;
 using Yottacast.Services;
@@ -77,6 +79,33 @@ public partial class SettingsWindow : Window {
         if (DataContext is SettingsWindowViewModel { IsCapturingHotkey: true } vm)
             vm.CancelHotkeyCapture();
         base.OnPointerPressed(e);
+    }
+
+    // ── Engine URL flyout ─────────────────────────────────────────────────────
+    private void OnFlyoutInputKeyDown(object? sender, KeyEventArgs e) {
+        if (e.Key != Key.Enter || sender is not Control ctrl) return;
+        var popup = ctrl.GetVisualAncestors().OfType<Popup>().FirstOrDefault();
+        if (popup != null) {
+            popup.IsOpen = false;
+            e.Handled = true;
+        }
+    }
+
+    // Cuando el TextBox de URL pierde el foco: si está vacío, restaura el valor por defecto
+    // para que la próxima apertura del popup muestre la URL editable.
+    // Post() garantiza que ResetUrlCommand (si fue el X quien quitó el foco) ya se ejecutó.
+    private void OnFlyoutUrlLostFocus(object? sender, RoutedEventArgs e) {
+        if (sender is TextBox { DataContext: WebSearchEngineRowViewModel vm })
+            Avalonia.Threading.Dispatcher.UIThread.Post(vm.NormalizeQueryUrl);
+    }
+
+    // Command binding already calls ResetUrlCommand; this handler only sets focus on the URL TextBox.
+    private void OnResetUrlClicked(object? sender, RoutedEventArgs e) {
+        if (sender is Button { Parent: Grid grid }) {
+            var urlBox = grid.Children.OfType<TextBox>().FirstOrDefault();
+            if (urlBox != null)
+                Avalonia.Threading.Dispatcher.UIThread.Post(() => urlBox.Focus());
+        }
     }
 
     // ── Engine prefix inline editing ──────────────────────────────────────────
