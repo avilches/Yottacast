@@ -12,7 +12,11 @@
 
   <ItemGroup>
     <Folder Include="Models\" />
-    <AvaloniaResource Include="Assets\**" />
+    <AvaloniaResource Include="Assets\**" Exclude="Assets\AppIcon.png" />
+    <None Include="Assets\AppIcon.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>Assets\AppIcon.png</Link>
+    </None>
   </ItemGroup>
 
   <ItemGroup>

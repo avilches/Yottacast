@@ -59,8 +59,8 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
-# Copy .icns icon if it exists next to this script
-ICON_SRC="$SCRIPT_DIR/AppIcon.icns"
+# Copy .icns icon if it exists in the Assets directory
+ICON_SRC="$SCRIPT_DIR/../Yottacast/Assets/AppIcon.icns"
 if [[ -f "$ICON_SRC" ]]; then
     cp "$ICON_SRC" "$RESOURCES_DIR/AppIcon.icns"
     /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AppIcon" "$APP_BUNDLE/Contents/Info.plist"
@@ -85,8 +85,8 @@ CREATE_DMG_OPTS=(
     --no-internet-enable
 )
 
-if [[ -f "$SCRIPT_DIR/AppIcon.icns" ]]; then
-    CREATE_DMG_OPTS+=(--volicon "$SCRIPT_DIR/AppIcon.icns")
+if [[ -f "$ICON_SRC" ]]; then
+    CREATE_DMG_OPTS+=(--volicon "$ICON_SRC")
 fi
 
 create-dmg "${CREATE_DMG_OPTS[@]}" "$DMG_PATH" "$APP_BUNDLE"

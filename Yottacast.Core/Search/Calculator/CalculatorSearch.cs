@@ -10,7 +10,7 @@ namespace Yottacast.Core.Search.Calculator;
 /// When the expression fails with an actionable error (unknown unit, incompatible units) an
 /// informational error item is shown via LastHint.
 /// </summary>
-public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard) : IInstantSearchSource, ISearchHintProvider {
+public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard, UserSettings settings) : IInstantSearchSource, ISearchHintProvider {
     public string? LastHint { get; private set; }
 
     public void Start() { }
@@ -19,6 +19,7 @@ public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard) :
 
     public IReadOnlyList<BaseResultItemViewModel> Search(string query, int _) {
         LastHint = null;
+        if (!settings.EnableCalculator) return [];
         var q = query.Trim();
 
         switch (engine.Evaluate(q)) {

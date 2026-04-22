@@ -41,13 +41,14 @@ El fichero de preferencias se crea automaticamente en la primera ejecucion y se 
 | EnableClipboard | `true` | Toggle de la fuente clipboard |
 | EnableEmoji | `true` | Toggle de la fuente emoji |
 | EnableFileSearch | `true` | Activa/desactiva la busqueda de ficheros |
+| EnableWebSearch | `true` | Activa/desactiva la busqueda web; si `false`, `WebSearchSource.Search()` devuelve siempre lista vacia |
 | FileSearchOnlySpecificFolders | `false` | Si `true`, solo busca en las carpetas configuradas en `SearchFolders`; si `false`, busca en toda la home |
 | LastLaunchedVersion | `""` | Version del ultimo arranque (para migraciones) |
 | WebSearchEngines | Lista predeterminada de 20 motores | Configuracion por motor de busqueda web |
 | WindowX | `null` | Posicion X de la ventana principal en coordenadas de pantalla (pixels fisicos) |
 | WindowY | `null` | Posicion Y de la ventana principal en coordenadas de pantalla (pixels fisicos) |
 
-**Nota sobre los toggles** (`EnableCalculator`, `EnableClipboard`, `EnableEmoji`): se exponen en la ventana de Settings y se persisten en el JSON, pero actualmente no tienen efecto funcional. Las fuentes de busqueda correspondientes se registran siempre en DI, independientemente del valor de estos toggles.
+**Nota sobre `EnableClipboard`**: se expone en Settings y se persiste en JSON, pero no tiene efecto funcional porque no existe una fuente de búsqueda de clipboard todavía.
 
 **Nota sobre `EnableAppSearch`**: cuando es `false`, `ApplicationSearch.Start()` marca la fuente como ready inmediatamente (sin escanear) y `Search()` devuelve siempre una lista vacia.
 

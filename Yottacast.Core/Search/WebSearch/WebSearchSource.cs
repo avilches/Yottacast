@@ -16,6 +16,7 @@ public class WebSearchSource(
     public Task Stop() => Task.CompletedTask;
 
     public IReadOnlyList<BaseResultItemViewModel> Search(string query, int _limit) {
+        if (!settings.EnableWebSearch) return [];
         if (string.IsNullOrWhiteSpace(query) || query.StartsWith(':'))
             return [];
 

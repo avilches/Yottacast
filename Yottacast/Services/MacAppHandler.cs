@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Avalonia;
@@ -68,6 +69,31 @@ internal sealed class MacAppHandler : AppHandler {
         ObjcMsgSendActivate(_previousApp, SelRegisterName("activateWithOptions:"), 2);
         ObjcRelease(_previousApp);
         _previousApp = IntPtr.Zero;
+    }
+
+    public override void ShowDockIcon() {
+        var nsApp = ObjcMsgSend(ObjcGetClass("NSApplication"), SelRegisterName("sharedApplication"));
+        ObjcMsgSendPolicy(nsApp, SelRegisterName("setActivationPolicy:"), 0); // NSApplicationActivationPolicyRegular
+
+        // Set the Dock icon programmatically from the embedded PNG asset.
+        // This is needed because dotnet run doesn't produce a .app bundle with Info.plist,
+        // so macOS has no icon to show. In release builds (with AppIcon.icns in the bundle)
+        // this is redundant but harmless.
+        var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.png");
+        if (File.Exists(iconPath)) {
+            var nsString = ObjcMsgSend(ObjcGetClass("NSString"), SelRegisterName("alloc"));
+            var pathStr = ObjcMsgSendInitString(nsString, SelRegisterName("initWithUTF8String:"), iconPath);
+            var nsImage = ObjcMsgSend(ObjcGetClass("NSImage"), SelRegisterName("alloc"));
+            nsImage = ObjcMsgSendObject2(nsImage, SelRegisterName("initByReferencingFile:"), pathStr);
+            ObjcMsgSendObject(nsApp, SelRegisterName("setApplicationIconImage:"), nsImage);
+            ObjcRelease(nsImage);
+            ObjcRelease(pathStr);
+        }
+    }
+
+    public override void HideDockIcon() {
+        var nsApp = ObjcMsgSend(ObjcGetClass("NSApplication"), SelRegisterName("sharedApplication"));
+        ObjcMsgSendPolicy(nsApp, SelRegisterName("setActivationPolicy:"), 1); // NSApplicationActivationPolicyAccessory
     }
 
     public override (KeyModifiers Modifiers, Key Key) CloseWindowShortcut => (KeyModifiers.Meta, Key.W);
@@ -172,6 +198,14 @@ internal sealed class MacAppHandler : AppHandler {
 
     [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
     private static extern void ObjcMsgSendObject(IntPtr receiver, IntPtr selector, IntPtr obj);
+
+    [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
+    private static extern IntPtr ObjcMsgSendObject2(IntPtr receiver, IntPtr selector, IntPtr obj);
+
+    [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
+    private static extern IntPtr ObjcMsgSendInitString(IntPtr receiver, IntPtr selector,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string value);
+
     [DllImport("libobjc.dylib", EntryPoint = "objc_retain")]
     private static extern IntPtr ObjcRetain(IntPtr obj);
 

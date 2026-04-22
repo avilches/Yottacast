@@ -469,31 +469,47 @@
                 <StackPanel Spacing="16" IsVisible="{Binding IsAppSearchSelected}">
                     <TextBlock Classes="section-heading" Text="App Search"/>
 
-                    <CheckBox Content="Enable app search"
-                              IsChecked="{Binding EnableAppSearch}"/>
+                    <ToggleSwitch IsChecked="{Binding EnableAppSearch}"
+                                  OnContent="Enabled"
+                                  OffContent="Disabled"/>
+
+                    <TextBlock Classes="description"
+                               Text="Yottacast searches and launches applications installed on your system."/>
 
                     <StackPanel Spacing="12" IsVisible="{Binding EnableAppSearch}">
-                        <TextBlock Classes="description"
-                                   Text="Directories where Yottacast looks for applications."/>
 
-                        <ItemsControl ItemsSource="{Binding AppDirectories}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="sys:String">
-                                    <Grid ColumnDefinitions="*,Auto" Margin="0,2">
-                                        <TextBlock Grid.Column="0"
-                                                   Text="{Binding}"
-                                                   Foreground="{DynamicResource Theme.ItemTitle}"
-                                                   TextTrimming="CharacterEllipsis"
-                                                   VerticalAlignment="Center"/>
-                                        <Button Grid.Column="1"
-                                                Classes="remove-btn"
-                                                Content="✕"
-                                                Tag="{Binding}"
-                                                Click="OnRemoveAppDirectoryClicked"/>
-                                    </Grid>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                        <Border BorderThickness="1"
+                                BorderBrush="{DynamicResource Theme.Divider}"
+                                CornerRadius="4"
+                                Padding="0">
+                            <ItemsControl ItemsSource="{Binding AppDirectories}">
+                                <ItemsControl.Styles>
+                                    <Style Selector="ContentPresenter:last-child Border">
+                                        <Setter Property="BorderThickness" Value="0"/>
+                                    </Style>
+                                </ItemsControl.Styles>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="sys:String">
+                                        <Border BorderThickness="0,0,0,1"
+                                                BorderBrush="{DynamicResource Theme.Divider}"
+                                                Padding="10,7">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <TextBlock Grid.Column="0"
+                                                           Text="{Binding}"
+                                                           Foreground="{DynamicResource Theme.ItemTitle}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           VerticalAlignment="Center"/>
+                                                <Button Grid.Column="1"
+                                                        Classes="remove-btn"
+                                                        Content="✕"
+                                                        Tag="{Binding}"
+                                                        Click="OnRemoveAppDirectoryClicked"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Border>
 
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <Button Classes="add-btn"
@@ -510,6 +526,15 @@
                 <!-- Web Search -->
                 <StackPanel Spacing="16" IsVisible="{Binding IsWebSearchSelected}">
                     <TextBlock Classes="section-heading" Text="Web Search"/>
+
+                    <ToggleSwitch IsChecked="{Binding EnableWebSearch}"
+                                  OnContent="Enabled"
+                                  OffContent="Disabled"/>
+
+                    <TextBlock Classes="description"
+                               Text="Open web searches from the launcher using any search engine."/>
+
+                    <StackPanel Spacing="16" IsVisible="{Binding EnableWebSearch}">
 
                     <StackPanel Spacing="0">
                         <TextBlock Classes="label" Text="Default Browser"/>
@@ -665,18 +690,22 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </StackPanel>
+
+                    </StackPanel> <!-- /EnableWebSearch -->
                 </StackPanel>
 
                 <!-- File Search -->
                 <StackPanel Spacing="16" IsVisible="{Binding IsFileSearchSelected}">
                     <TextBlock Classes="section-heading" Text="File Search"/>
 
-                    <CheckBox Content="Enable file search"
-                              IsChecked="{Binding EnableFileSearch}"/>
+                    <ToggleSwitch IsChecked="{Binding EnableFileSearch}"
+                                  OnContent="Enabled"
+                                  OffContent="Disabled"/>
+
+                    <TextBlock Classes="description"
+                               Text="Search for documents and files on your system."/>
 
                     <StackPanel Spacing="12" IsVisible="{Binding EnableFileSearch}">
-                        <TextBlock Classes="description"
-                                   Text="Yottacast can search documents and files on your system."/>
 
                         <CheckBox Content="Only in specific folders"
                                   IsChecked="{Binding FileSearchOnlySpecificFolders}"/>
@@ -685,24 +714,38 @@
                             <TextBlock Classes="description"
                                        Text="Folders where Yottacast searches for documents and files."/>
 
-                            <ItemsControl ItemsSource="{Binding SearchFolders}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:SearchFolderItem">
-                                        <Grid ColumnDefinitions="*,Auto" Margin="0,2">
-                                            <TextBlock Grid.Column="0"
-                                                       Text="{Binding DisplayPath}"
-                                                       Classes.folder-missing="{Binding DoesNotExist}"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       VerticalAlignment="Center"/>
-                                            <Button Grid.Column="1"
-                                                    Classes="remove-btn"
-                                                    Content="✕"
-                                                    Tag="{Binding}"
-                                                    Click="OnRemoveSearchFolderClicked"/>
-                                        </Grid>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                            <Border BorderThickness="1"
+                                    BorderBrush="{DynamicResource Theme.Divider}"
+                                    CornerRadius="4"
+                                    Padding="0">
+                                <ItemsControl ItemsSource="{Binding SearchFolders}">
+                                    <ItemsControl.Styles>
+                                        <Style Selector="ContentPresenter:last-child Border">
+                                            <Setter Property="BorderThickness" Value="0"/>
+                                        </Style>
+                                    </ItemsControl.Styles>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:SearchFolderItem">
+                                            <Border BorderThickness="0,0,0,1"
+                                                    BorderBrush="{DynamicResource Theme.Divider}"
+                                                    Padding="10,7">
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <TextBlock Grid.Column="0"
+                                                               Text="{Binding DisplayPath}"
+                                                               Classes.folder-missing="{Binding DoesNotExist}"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               VerticalAlignment="Center"/>
+                                                    <Button Grid.Column="1"
+                                                            Classes="remove-btn"
+                                                            Content="✕"
+                                                            Tag="{Binding}"
+                                                            Click="OnRemoveSearchFolderClicked"/>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Border>
 
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <Button Classes="add-btn"
@@ -719,11 +762,13 @@
                 <!-- Calculator -->
                 <StackPanel Spacing="16" IsVisible="{Binding IsCalculatorSelected}">
                     <TextBlock Classes="section-heading" Text="Calculator"/>
-                    <TextBlock Classes="description"
-                               Text="Evaluate math expressions and unit conversions directly in the search bar."/>
                     <ToggleSwitch IsChecked="{Binding EnableCalculator}"
                                   OnContent="Enabled"
                                   OffContent="Disabled"/>
+                    <TextBlock Classes="description"
+                               Text="Evaluate math expressions and unit conversions directly in the search bar."/>
+
+                    <StackPanel Spacing="16" IsVisible="{Binding EnableCalculator}">
 
                     <!-- Currency pair -->
                     <StackPanel Spacing="6">
@@ -755,37 +800,38 @@
                                        Width="90"
                                        HorizontalAlignment="Left"/>
                     </StackPanel>
+
+                    </StackPanel> <!-- /EnableCalculator -->
                 </StackPanel>
 
                 <!-- Clipboard -->
                 <StackPanel Spacing="16" IsVisible="{Binding IsClipboardSelected}">
                     <TextBlock Classes="section-heading" Text="Clipboard"/>
-                    <TextBlock Classes="description"
-                               Text="Access your clipboard history from the search bar."/>
                     <ToggleSwitch IsChecked="{Binding EnableClipboard}"
                                   OnContent="Enabled"
                                   OffContent="Disabled"/>
+                    <TextBlock Classes="description"
+                               Text="Access your clipboard history from the search bar."/>
                 </StackPanel>
 
                 <!-- Emoji -->
                 <StackPanel Spacing="16" IsVisible="{Binding IsEmojiSelected}">
                     <TextBlock Classes="section-heading" Text="Emoji"/>
-                    <TextBlock Classes="description"
-                               Text="Search and copy emoji from the search bar."/>
                     <ToggleSwitch IsChecked="{Binding EnableEmoji}"
                                   OnContent="Enabled"
                                   OffContent="Disabled"/>
+                    <TextBlock Classes="description"
+                               Text="Search and copy emoji from the search bar. Type `:` to activate."/>
                 </StackPanel>
 
                 <!-- Dictionary -->
                 <StackPanel Spacing="16" IsVisible="{Binding IsDictionarySelected}">
                     <TextBlock Classes="section-heading" Text="Dictionary"/>
-                    <TextBlock Classes="description"
-                               Text="Look up word definitions from an online dictionary. Activate with a prefix or show definitions for every query."/>
-
                     <ToggleSwitch IsChecked="{Binding EnableDictionary}"
                                   OnContent="Enabled"
                                   OffContent="Disabled"/>
+                    <TextBlock Classes="description"
+                               Text="Look up word definitions from an online dictionary. Activate with a prefix or show definitions for every query."/>
 
                     <StackPanel Spacing="16" IsVisible="{Binding EnableDictionary}">
 

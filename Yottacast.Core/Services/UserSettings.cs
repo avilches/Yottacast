@@ -27,6 +27,7 @@ public class UserSettings {
     public bool EnableClipboard { get; set; } = true;
     public bool EnableEmoji { get; set; } = true;
     public bool EnableFileSearch { get; set; } = true;
+    public bool EnableWebSearch { get; set; } = true;
     public bool FileSearchOnlySpecificFolders { get; set; } = false;
     public string LastLaunchedVersion { get; set; } = "";
     public List<WebSearchEngineSettings> WebSearchEngines { get; set; } = [];
@@ -129,6 +130,7 @@ public class UserSettings {
         [JsonPropertyName("enableClipboard")] public bool EnableClipboard { get; init; } = true;
         [JsonPropertyName("enableEmoji")] public bool EnableEmoji { get; init; } = true;
         [JsonPropertyName("enableFileSearch")] public bool EnableFileSearch { get; init; } = true;
+        [JsonPropertyName("enableWebSearch")] public bool EnableWebSearch { get; init; } = true;
         [JsonPropertyName("fileSearchOnlySpecificFolders")] public bool FileSearchOnlySpecificFolders { get; init; } = false;
         [JsonPropertyName("lastLaunchedVersion")] public string LastLaunchedVersion { get; init; } = "";
         [JsonPropertyName("webSearchEngines")] public List<WebSearchEngineSettingsData>? WebSearchEngines { get; init; }
@@ -166,6 +168,7 @@ public class UserSettings {
                     Hotkey = string.IsNullOrEmpty(data.Hotkey) ? "Alt+Space" : data.Hotkey,
                     EnableAppSearch = data.EnableAppSearch,
                     EnableFileSearch = data.EnableFileSearch,
+                    EnableWebSearch = data.EnableWebSearch,
                     FileSearchOnlySpecificFolders = data.FileSearchOnlySpecificFolders,
                     SearchFolders = (data.SearchFolders?.Count > 0
                             ? data.SearchFolders
@@ -262,6 +265,7 @@ public class UserSettings {
                 EnableClipboard = EnableClipboard,
                 EnableEmoji = EnableEmoji,
                 EnableFileSearch = EnableFileSearch,
+                EnableWebSearch = EnableWebSearch,
                 FileSearchOnlySpecificFolders = FileSearchOnlySpecificFolders,
                 LastLaunchedVersion = LastLaunchedVersion,
                 WindowX = WindowX,

@@ -211,6 +211,7 @@ Si un fichero de doc empieza a ser demasiado grande, sugiere dividirlo en dos.
 - `docs/search-file-icons.md` — Cache de iconos de ficheros: niveles de cache (memoria+disco), clave por extension,
   carga sincrona/asincrona, actualizacion reactiva de UI via IconLoaded.
 - `docs/search-scoring.md` — Algoritmo de puntuacion y ordenacion de resultados entre fuentes.
+- `docs/search-dictionary.md` — Definiciones de diccionario online, modos prefix/showAlways, API, settings.
 
 **Internals:**
 

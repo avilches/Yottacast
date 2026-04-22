@@ -75,6 +75,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [ObservableProperty] private bool _enableClipboard;
     [ObservableProperty] private bool _enableEmoji;
     [ObservableProperty] private bool _enableFileSearch;
+    [ObservableProperty] private bool _enableWebSearch;
     [ObservableProperty] private bool _fileSearchOnlySpecificFolders;
     [ObservableProperty] private bool _stickyWindow;
 
@@ -83,6 +84,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     partial void OnEnableClipboardChanged(bool v)               { _settings.EnableClipboard              = v; _settings.Save(); }
     partial void OnEnableEmojiChanged(bool v)                   { _settings.EnableEmoji                  = v; _settings.Save(); }
     partial void OnEnableFileSearchChanged(bool v)              { _settings.EnableFileSearch             = v; _settings.Save(); }
+    partial void OnEnableWebSearchChanged(bool v)               { _settings.EnableWebSearch              = v; _settings.Save(); }
     partial void OnFileSearchOnlySpecificFoldersChanged(bool v) { _settings.FileSearchOnlySpecificFolders = v; _settings.Save(); }
     partial void OnStickyWindowChanged(bool v)                  { _settings.StickyWindow                 = v; _settings.Save(); }
 
@@ -162,6 +164,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _enableClipboard                 = settings.EnableClipboard;
         _enableEmoji                     = settings.EnableEmoji;
         _enableFileSearch                = settings.EnableFileSearch;
+        _enableWebSearch                 = settings.EnableWebSearch;
         _fileSearchOnlySpecificFolders   = settings.FileSearchOnlySpecificFolders;
         _stickyWindow                    = settings.StickyWindow;
         _calculatorCurrencyA             = settings.CalculatorCurrencyA;

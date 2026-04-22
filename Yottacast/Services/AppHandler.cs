@@ -105,6 +105,12 @@ internal abstract class AppHandler {
     /// <summary>Disables the minimize button on the native window chrome. No-op on platforms where this is not applicable.</summary>
     public virtual void DisableMinimizeButton(Window window) { }
 
+    /// <summary>Shows the app icon in the Dock/taskbar. No-op on platforms where this is not applicable.</summary>
+    public virtual void ShowDockIcon() { }
+
+    /// <summary>Hides the app icon from the Dock/taskbar. No-op on platforms where this is not applicable.</summary>
+    public virtual void HideDockIcon() { }
+
     /// <summary>
     /// Injects OS-native colors and font into the Settings window.
     /// Each platform defines its own Light/Dark palette independently.

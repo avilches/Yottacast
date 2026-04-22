@@ -128,6 +128,8 @@ public partial class App : Application {
         _settingsWindow = new SettingsWindow {
             DataContext = _settingsVm,
         };
+        _settingsWindow.Closed += (_, _) => AppHandler.Instance.HideDockIcon();
+        AppHandler.Instance.ShowDockIcon();
         _settingsWindow.Show();
     }
 
@@ -193,7 +195,8 @@ public partial class App : Application {
             sp.GetRequiredService<ClipboardService>(),
             AppPaths.EmojiCacheFile,
             sp.GetRequiredService<EmojiDataLoader>(),
-            sp.GetRequiredService<ILogger<EmojiSearch>>()));
+            sp.GetRequiredService<ILogger<EmojiSearch>>(),
+            sp.GetRequiredService<UserSettings>()));
 
         // Register IInstantSearchSource and IDeferredSearchSource implementations.
         services.AddSingleton<UserDocumentSearch>();
