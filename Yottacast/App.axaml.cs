@@ -290,15 +290,21 @@ public partial class App : Application {
                 // Avalonia properties (IsVisible) from the hook thread.
                 Dispatcher.UIThread.InvokeAsync(() => {
                     try {
-                        // If Settings is open, close it and also hide the search window.
-                        if (_settingsWindow is { IsVisible: true })
-                            _settingsWindow.Close();
-
                         var window = desktop.MainWindow;
                         if (window is null) return;
+
+                        var settingsOpen = _settingsWindow is { IsVisible: true };
+                        var windowFocused = AppHandler.Instance.IsWindowFocused(window);
+                        var settingsFocused = settingsOpen && AppHandler.Instance.IsWindowFocused(_settingsWindow!);
+
                         if (window.IsVisible) {
-                            if (settings.StickyWindow && !AppHandler.Instance.IsWindowFocused(window)) {
-                                // Visible pero sin foco → traer al frente sin tocar _previousApp
+                            if (!windowFocused && !settingsFocused) {
+                                // App lost focus → bring back to front, keep settings open
+                                AppHandler.Instance.FocusWindow(window);
+                                if (settingsOpen)
+                                    _settingsWindow!.Activate();
+                            } else if (settingsOpen) {
+                                // Settings is open → just focus main window, never close settings
                                 AppHandler.Instance.FocusWindow(window);
                             } else {
                                 window.Hide();
