@@ -5,6 +5,12 @@
              x:Class="Yottacast.Views.Results.EmojiGridResultView"
              x:DataType="viewModels:EmojiGridResultViewModel">
     <StackPanel Orientation="Vertical" Margin="4,8,4,8">
+        <TextBlock Text="{Binding PinnedSectionHeader}"
+                   IsVisible="{Binding HasPinnedSection}"
+                   Foreground="{DynamicResource Theme.Emoji.SectionHeader.Color}"
+                   FontSize="{DynamicResource Theme.Emoji.SectionHeader.Size}"
+                   Opacity="{DynamicResource Theme.Emoji.SectionHeader.Opacity}"
+                   Margin="6,0,0,4"/>
         <ItemsControl ItemsSource="{Binding VisibleCells}">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
@@ -35,12 +41,6 @@
             </ItemsControl.ItemTemplate>
         </ItemsControl>
         <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Margin="0,6,0,0" Spacing="2">
-            <!-- Section label (Favorite / Frequently Used) -->
-            <TextBlock Text="{Binding SelectedEmoji.SectionLabel}"
-                       Foreground="{DynamicResource Theme.Emoji.Keywords.Color}"
-                       FontSize="{DynamicResource Theme.Emoji.Keywords.Size}"
-                       HorizontalAlignment="Center"
-                       IsVisible="{Binding SelectedEmoji.SectionLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
             <!-- Group: name -->
             <TextBlock Foreground="{DynamicResource Theme.Emoji.Name.Color}"
                        FontSize="{DynamicResource Theme.Emoji.Name.Size}"

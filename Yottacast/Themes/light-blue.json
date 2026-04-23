@@ -60,7 +60,8 @@
     "cell":     { "size": 48, "cornerRadius": 8 },
     "char":     { "size": 28, "fontFamily": "Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji" },
     "name":     { "color": "#1E293B", "size": 14 },
-    "keywords": { "color": "#1E293B", "size": 11, "opacity": 0.55 }
+    "keywords": { "color": "#1E293B", "size": 11, "opacity": 0.55 },
+    "sectionHeader": { "color": "#1E293B", "size": 11, "opacity": 0.5 }
   },
 
   "noResults": {

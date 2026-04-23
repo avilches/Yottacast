@@ -12,11 +12,6 @@ public class EmojiCellViewModel : INotifyPropertyChanged {
     public EmojiSection Section { get; init; } = EmojiSection.Default;
 
     public string KeywordsText => Keywords.Length > 0 ? string.Join(", ", Keywords) : "";
-    public string SectionLabel => Section switch {
-        EmojiSection.Favorite => "★ Favorite",
-        EmojiSection.MostUsed => "Frequently Used",
-        _ => "",
-    };
 
     private bool _isFavorite;
     public bool IsFavorite {

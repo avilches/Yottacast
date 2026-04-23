@@ -250,6 +250,9 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
                 SetBrush(app,  "Theme.Emoji.Keywords.Color",   emoji["keywords"]?["color"]);
                 SetDouble(app, "Theme.Emoji.Keywords.Size",    emoji["keywords"]?["size"]);
                 SetOpacity(app, "Theme.Emoji.Keywords.Opacity", emoji["keywords"]?["opacity"]);
+                SetBrush(app,  "Theme.Emoji.SectionHeader.Color",   emoji["sectionHeader"]?["color"]);
+                SetDouble(app, "Theme.Emoji.SectionHeader.Size",    emoji["sectionHeader"]?["size"]);
+                SetOpacity(app, "Theme.Emoji.SectionHeader.Opacity", emoji["sectionHeader"]?["opacity"]);
             }
 
             // ── No Results ──
@@ -379,6 +382,9 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
         app.Resources["Theme.Emoji.Keywords.Color"]   = B("#EAEAEE");
         app.Resources["Theme.Emoji.Keywords.Size"]    = 12.0;
         app.Resources["Theme.Emoji.Keywords.Opacity"] = 0.55;
+        app.Resources["Theme.Emoji.SectionHeader.Color"]   = B("#EAEAEE");
+        app.Resources["Theme.Emoji.SectionHeader.Size"]    = 11.0;
+        app.Resources["Theme.Emoji.SectionHeader.Opacity"] = 0.5;
 
         // ── No Results ──
         app.Resources["Theme.NoResults.Title.Color"]    = B("#505055");

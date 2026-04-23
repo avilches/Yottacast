@@ -44,27 +44,32 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
 
     private IReadOnlyList<(EmojiEntry Entry, EmojiSection Section)> GetDefaultEmojis() {
         var charToEntry = _entries.ToDictionary(e => e.Char);
-        var seen = new HashSet<string>();
         var result = new List<(EmojiEntry, EmojiSection)>();
 
-        // Favorites first, capped at MaxFavoriteRows * Columns
-        var maxFavorites = AppDefaults.EmojiMaxFavoriteRows * AppDefaults.EmojiColumns;
-        foreach (var ch in usageStore.Favorites.Take(maxFavorites)) {
-            if (charToEntry.TryGetValue(ch, out var entry) && seen.Add(ch))
+        // Pinned section: favorites + most-used, combined cap of MaxFavoriteRows * Columns
+        var maxPinned = AppDefaults.EmojiMaxFavoriteRows * AppDefaults.EmojiColumns;
+        var pinnedChars = new HashSet<string>();
+
+        foreach (var ch in usageStore.Favorites.Take(maxPinned)) {
+            if (charToEntry.TryGetValue(ch, out var entry) && pinnedChars.Add(ch))
                 result.Add((entry, EmojiSection.Favorite));
         }
 
-        // Most-used next, capped at MaxMostUsedRows * Columns
-        var maxMostUsed = AppDefaults.EmojiMaxMostUsedRows * AppDefaults.EmojiColumns;
-        foreach (var ch in usageStore.GetMostUsed(maxMostUsed)) {
-            if (charToEntry.TryGetValue(ch, out var entry) && seen.Add(ch))
-                result.Add((entry, EmojiSection.MostUsed));
+        // Most-used fills remaining space, excluding favorites to avoid duplicates within pinned section
+        var remainingSlots = maxPinned - pinnedChars.Count;
+        if (remainingSlots > 0) {
+            foreach (var ch in usageStore.GetMostUsed(maxPinned)) {
+                if (remainingSlots <= 0) break;
+                if (charToEntry.TryGetValue(ch, out var entry) && pinnedChars.Add(ch)) {
+                    result.Add((entry, EmojiSection.MostUsed));
+                    remainingSlots--;
+                }
+            }
         }
 
-        // Remaining emojis in default sort order, excluding already-added
+        // All emojis in normal sort order (no exclusions — emojis appear in both pinned and normal sections)
         foreach (var entry in _entries.Where(e => e.SortOrder > 0).OrderBy(e => e.SortOrder)) {
-            if (seen.Add(entry.Char))
-                result.Add((entry, EmojiSection.Default));
+            result.Add((entry, EmojiSection.Default));
         }
 
         return result;
@@ -89,6 +94,8 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
             IsFavorite = usageStore.IsFavorite(x.Entry.Char),
         }).ToList();
 
+        var hasPinned = emojis.Any(x => x.Section is EmojiSection.Favorite or EmojiSection.MostUsed);
+
         EmojiGridResultViewModel grid = null!;
         grid = new EmojiGridResultViewModel {
             Cells    = cells,
@@ -96,6 +103,8 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
             Title    = cells.Count > 0 ? cells[0].Name : "",
             Category = "Emoji",
             Score    = 3.5,
+            HasPinnedSection = hasPinned,
+            PinnedSectionHeader = hasPinned ? "★ Favorites & most used" : "",
             PasteAfterActivate = true,
             OnActivate = () => {
                 var cell = grid.Cells[grid.SelectedEmojiIndex];
@@ -112,9 +121,11 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
             OnToggleFavorite = () => {
                 var cell = grid.Cells[grid.SelectedEmojiIndex];
                 usageStore.ToggleFavorite(cell.Char);
-                cell.IsFavorite = usageStore.IsFavorite(cell.Char);
+                var isFav = usageStore.IsFavorite(cell.Char);
+                foreach (var c in grid.Cells.Where(c => c.Char == cell.Char))
+                    c.IsFavorite = isFav;
                 logger.LogInformation("Emoji: favorite toggled {Char} ({Name}) -> {IsFav}",
-                    cell.Char, cell.Name, cell.IsFavorite);
+                    cell.Char, cell.Name, isFav);
             },
             OnLeft  = () => { grid.SelectPrevious(); return true; },
             OnRight = () => { grid.SelectNext(); return true; },

@@ -64,17 +64,18 @@ La propiedad `IsEmojiMode` en `MainWindowViewModel` se recalcula cada vez que ca
 
 ## Favoritos y mas usados
 
-Al escribir `:` sin termino de busqueda, el grid por defecto muestra tres secciones en orden:
+Al escribir `:` sin termino de busqueda, el grid por defecto muestra dos zonas:
 
-1. **Favoritos**: emojis marcados por el usuario con Cmd+Shift+F, en el orden en que fueron anadidos. Maximo `EmojiMaxFavoriteRows * EmojiColumns` emojis (ver `AppDefaults`).
-2. **Mas usados**: emojis ordenados por numero de usos descendente, excluyendo los que ya estan en favoritos. Maximo `EmojiMaxMostUsedRows * EmojiColumns` emojis.
-3. **Resto**: todos los emojis restantes en orden Unicode CLDR (`sort_order`), sin duplicados con las secciones anteriores.
+1. **Seccion fijada ("Favorites & most used")**: emojis favoritos (marcados con Cmd+Shift+F, seccion `Favorite`) seguidos de los mas usados (seccion `MostUsed`), excluyendo los que ya son favoritos. El total combinado esta limitado a `EmojiMaxFavoriteRows * EmojiColumns` celdas (los mas usados rellenan el espacio que no ocupan los favoritos). Cuando esta seccion tiene contenido, se muestra una cabecera "★ Favorites & most used" encima del grid (`HasPinnedSection`, `PinnedSectionHeader` en `EmojiGridResultViewModel`).
+2. **Todos los emojis**: la lista completa de emojis en orden Unicode CLDR (`sort_order`), sin exclusiones. Un emoji que aparezca en la seccion fijada tambien aparece en su posicion normal.
 
-Las celdas de emojis favoritos tienen `IsFavorite = true` en su `EmojiCellViewModel`, lo que permite feedback visual futuro.
+Las celdas de emojis favoritos tienen `IsFavorite = true` en su `EmojiCellViewModel`, mostrando una estrella (★) en la esquina. Si un emoji aparece en ambas zonas (fijada y normal), ambas celdas muestran la estrella.
 
-**Invariante:** nunca hay emojis duplicados entre las tres secciones. Un emoji favorito con uso alto solo aparece en la seccion de favoritos.
+Al alternar favorito con `OnToggleFavorite`, se actualiza `IsFavorite` en **todas** las celdas con el mismo caracter, no solo en la celda seleccionada.
 
-> **Verificar en:** `EmojiSearch.GetDefaultEmojis()` -- logica de merge; `EmojiUsageStore.Favorites`, `GetMostUsed()`; `AppDefaults.EmojiMaxFavoriteRows`, `EmojiMaxMostUsedRows`.
+**Invariante:** un emoji puede aparecer hasta dos veces en el grid (una en la seccion fijada y otra en la seccion normal). Dentro de la seccion fijada no hay duplicados: un emoji favorito con uso alto solo aparece como favorito.
+
+> **Verificar en:** `EmojiSearch.GetDefaultEmojis()` -- logica de merge; `EmojiSearch.MakeGrid()` -- `OnToggleFavorite` actualiza todas las celdas; `EmojiUsageStore.Favorites`, `GetMostUsed()`; `AppDefaults.EmojiMaxFavoriteRows`; `EmojiGridResultViewModel.HasPinnedSection`, `PinnedSectionHeader`.
 
 ---
 

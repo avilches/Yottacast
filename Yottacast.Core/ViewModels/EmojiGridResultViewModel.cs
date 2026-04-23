@@ -4,6 +4,8 @@ namespace Yottacast.Core.ViewModels;
 
 public class EmojiGridResultViewModel : ResultItemViewModel, INotifyPropertyChanged {
     public IReadOnlyList<EmojiCellViewModel> Cells { get; init; } = [];
+    public bool HasPinnedSection { get; init; }
+    public string PinnedSectionHeader { get; init; } = "";
 
     private int _viewportStartRow = 0;
 
