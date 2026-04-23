@@ -33,7 +33,7 @@ public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard, U
                 var toLong        = string.IsNullOrEmpty(r.ToUnit)
                     ? (r.ToUnitLong is not null && r.ToUnitLong != toShort ? r.ToUnitLong : null)
                     : LongForm(r.ToValue, r.ToUnitLong, r.ToUnit);
-                var ambiguityHint = BuildHints(r.AmbiguityHints);
+                LastHint = BuildHints(r.AmbiguityHints) is { Length: > 0 } h ? h : null;
 
                 string? normFromShort = null, normFromLong = null;
                 if (r.NormFromUnit != null && r.NormFromValue != null) {
@@ -58,13 +58,11 @@ public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard, U
                     NormFromLong      = normFromLong,
                     ToShort           = toShort,
                     ToLong            = toLong,
-                    AmbiguityHint     = string.IsNullOrEmpty(ambiguityHint) ? null : ambiguityHint,
                     FromWasNormalized = r.FromWasNormalized,
-                    OnLeft  = () => vm.MoveCellLeft(),
-                    OnRight = () => vm.MoveCellRight(),
+                    OnLeft  = r.FromWasNormalized ? () => vm.MoveCellLeft() : null,
+                    OnRight = r.FromWasNormalized ? () => vm.MoveCellRight() : null,
                     OnActivate = () => {
                         var copied = vm.SelectedCell switch {
-                            ConversionCell.OrigFrom => capturedOrig,
                             ConversionCell.NormFrom => capturedNorm ?? capturedTo,
                             _                       => capturedTo,
                         };
@@ -76,11 +74,16 @@ public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard, U
             }
             case CalcResult r when r.RawValue != q: {
                 logger.LogDebug("Calculator query=\"{Query}\" → result \"{Result}\"", q, r.RawValue);
-                var subtitle = BuildSubtitle(r.NormalizedQuery, r.AmbiguityHints);
+                LastHint = BuildHints(r.AmbiguityHints) is { Length: > 0 } ch ? ch : null;
+                var subtitle = r.NormalizedQuery;
                 var captured = r.RawValue;
+                var titleLong = r.Unit != null
+                    ? LongForm(r.RawValue.Replace($" {r.Unit}", "").Trim(), r.UnitLong, r.Unit)
+                    : null;
                 return [new CalculatorResultItemViewModel {
                     Icon = "🧮",
                     Title = r.RawValue,
+                    TitleLong = titleLong,
                     Subtitle = subtitle,
                     Category = "Calculator",
                     Score = 4,
@@ -97,11 +100,6 @@ public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard, U
         }
 
         return [];
-    }
-
-    private static string BuildSubtitle(string normalizedQuery, IReadOnlyList<AmbiguityHint>? hints) {
-        var hintText = BuildHints(hints);
-        return string.IsNullOrEmpty(hintText) ? normalizedQuery : $"{normalizedQuery}   {hintText}";
     }
 
     private static string BuildHints(IReadOnlyList<AmbiguityHint>? hints) {

@@ -37,7 +37,11 @@
     "small":     12,
     "noResults": 15,
     "calcValue": 20,
-    "convSubtitle": 13
+    "convSubtitle": 13,
+    "fontFamily": "",
+    "searchFontFamily": "",
+    "calcFontFamily": "",
+    "emojiFontFamily": "Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji"
   },
   "layout": {
     "windowCornerRadius":   16,

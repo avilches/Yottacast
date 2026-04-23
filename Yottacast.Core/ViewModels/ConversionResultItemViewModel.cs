@@ -26,9 +26,6 @@ public class ConversionResultItemViewModel : BaseResultItemViewModel, INotifyPro
     /// <summary>Forma larga del destino: "0.000225 miles" — null si no disponible o igual a ToShort</summary>
     public string? ToLong    { get; init; }
 
-    /// <summary>Aviso de ambigüedad — null si no hay ambigüedad</summary>
-    public string? AmbiguityHint { get; init; }
-
     /// <summary>True when math.js changed the from unit — enables left/right cell navigation.</summary>
     public bool FromWasNormalized { get; init; }
 
@@ -50,38 +47,22 @@ public class ConversionResultItemViewModel : BaseResultItemViewModel, INotifyPro
     public bool IsNormFromHighlighted => FromWasNormalized && SelectedCell == ConversionCell.NormFrom;
     public bool IsToHighlighted       => SelectedCell == ConversionCell.To;
 
-    /// <summary>Move selection one cell to the left. Returns true if consumed, false if already at leftmost.</summary>
+    /// <summary>Move selection one cell to the left (NormFrom ↔ To only). Returns true if consumed.</summary>
     public bool MoveCellLeft() {
-        switch (SelectedCell) {
-            case ConversionCell.To when FromWasNormalized:
-                SelectedCell = ConversionCell.NormFrom;
-                return true;
-            case ConversionCell.To:
-                SelectedCell = ConversionCell.OrigFrom;
-                return true;
-            case ConversionCell.NormFrom:
-                SelectedCell = ConversionCell.OrigFrom;
-                return true;
-            default:
-                return false;  // already at OrigFrom — let TextBox cursor move
+        if (SelectedCell == ConversionCell.To) {
+            SelectedCell = ConversionCell.NormFrom;
+            return true;
         }
+        return false;
     }
 
-    /// <summary>Move selection one cell to the right. Returns true if consumed, false if already at rightmost.</summary>
+    /// <summary>Move selection one cell to the right (NormFrom ↔ To only). Returns true if consumed.</summary>
     public bool MoveCellRight() {
-        switch (SelectedCell) {
-            case ConversionCell.NormFrom:
-                SelectedCell = ConversionCell.To;
-                return true;
-            case ConversionCell.OrigFrom when FromWasNormalized:
-                SelectedCell = ConversionCell.NormFrom;
-                return true;
-            case ConversionCell.OrigFrom:
-                SelectedCell = ConversionCell.To;
-                return true;
-            default:
-                return false;  // already at To — let TextBox cursor move
+        if (SelectedCell == ConversionCell.NormFrom) {
+            SelectedCell = ConversionCell.To;
+            return true;
         }
+        return false;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

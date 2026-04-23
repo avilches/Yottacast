@@ -21,7 +21,7 @@ public abstract record EvalResult {
     public string? Error => (this as ErrorResult)?.ErrorMessage;
 }
 
-public sealed record CalcResult(string RawValue) : EvalResult;
+public sealed record CalcResult(string RawValue, string? Unit = null, string? UnitLong = null) : EvalResult;
 
 /// <summary>
 /// Result of a unit conversion or currency conversion.

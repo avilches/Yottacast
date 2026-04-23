@@ -196,11 +196,13 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
 
     [Theory]
     [MemberData(nameof(HintCases))]
-    public void AmbiguousUnit_ShowsHintInSubtitle(string query, string sym1, string sym2) {
-        var item = StandardResult(BuildSearch(out _), query);
-        Assert.Contains("Maybe you meant", item.Subtitle);
-        Assert.Contains(sym1, item.Subtitle);
-        Assert.Contains(sym2, item.Subtitle);
+    public void AmbiguousUnit_ShowsHintInLastHint(string query, string sym1, string sym2) {
+        var search = BuildSearch(out _);
+        StandardResult(search, query);
+        Assert.NotNull(search.LastHint);
+        Assert.Contains("Maybe you meant", search.LastHint);
+        Assert.Contains(sym1, search.LastHint);
+        Assert.Contains(sym2, search.LastHint);
     }
 
     public static TheoryData<string> NoHintCases => new() {
@@ -211,9 +213,10 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
 
     [Theory]
     [MemberData(nameof(NoHintCases))]
-    public void UnambiguousQuery_NoHintInSubtitle(string query) {
-        var item = StandardResult(BuildSearch(out _), query);
-        Assert.DoesNotContain("Maybe you meant", item.Subtitle);
+    public void UnambiguousQuery_NoHintInLastHint(string query) {
+        var search = BuildSearch(out _);
+        StandardResult(search, query);
+        Assert.Null(search.LastHint);
     }
 
     // ── Error items ───────────────────────────────────────────────────────────
@@ -356,10 +359,11 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
     // "10 MG" → ambiguityOverrides resuelve a mg (milligram), hint con alternativa Mg (megagram)
     [Fact]
     public void AmbiguousUnit_WithOverride_ResolvesToExpectedUnit_WithAlternativeHint() {
-        var item = Assert.IsType<ConversionResultItemViewModel>(SearchResult(BuildSearch(out _), "10 MG"));
+        var search = BuildSearch(out _);
+        var item = Assert.IsType<ConversionResultItemViewModel>(SearchResult(search, "10 MG"));
         Assert.Contains("mg", item.FromShort);     // resuelto a milligram, no megagram
-        Assert.NotNull(item.AmbiguityHint);        // hint con alternativa
-        Assert.Contains("Mg", item.AmbiguityHint); // "Maybe you meant Mg (megagram)?"
+        Assert.NotNull(search.LastHint);            // hint con alternativa
+        Assert.Contains("Mg", search.LastHint);     // "Maybe you meant Mg (megagram)?"
     }
 
     // "10 gt" → sin override: Gt (gigatonne) con hint en formato "Maybe you meant GT (gigatesla)?"
@@ -367,18 +371,20 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
     // producir un ConversionResultItemViewModel en lugar de un ResultItemViewModel de calculadora.
     [Fact]
     public void AmbiguousUnit_WithoutOverride_ShowsMaybeYouMeantHint() {
-        var item = Assert.IsType<ConversionResultItemViewModel>(SearchResult(BuildSearch(out _), "10 gt"));
-        Assert.NotNull(item.AmbiguityHint);
-        Assert.Contains("Maybe you meant", item.AmbiguityHint);
-        Assert.Contains("GT", item.AmbiguityHint);
-        Assert.Contains("gigatesla", item.AmbiguityHint);
+        var search = BuildSearch(out _);
+        var item = Assert.IsType<ConversionResultItemViewModel>(SearchResult(search, "10 gt"));
+        Assert.NotNull(search.LastHint);
+        Assert.Contains("Maybe you meant", search.LastHint);
+        Assert.Contains("GT", search.LastHint);
+        Assert.Contains("gigatesla", search.LastHint);
     }
 
     // "10 kg" → unidad canónica, sin hint de ambigüedad
     [Fact]
     public void UnambiguousUnit_InConversion_NoAmbiguityHint() {
-        var item = Assert.IsType<ConversionResultItemViewModel>(SearchResult(BuildSearch(out _), "10 kg"));
-        Assert.Null(item.AmbiguityHint);
+        var search = BuildSearch(out _);
+        SearchResult(search, "10 kg");
+        Assert.Null(search.LastHint);
     }
 
     // ── defaultPairs: fallback dimensional para unidades exóticas no en defaultTargets ──────────

@@ -3,7 +3,8 @@
              xmlns:viewModels="clr-namespace:Yottacast.Core.ViewModels;assembly=Yottacast.Core"
              x:Class="Yottacast.Views.Results.ConversionResultItemView"
              x:DataType="viewModels:ConversionResultItemViewModel">
-    <Grid ColumnDefinitions="*" RowDefinitions="Auto,Auto" MinHeight="68">
+    <Grid ColumnDefinitions="*" MinHeight="68"
+          TextElement.FontFamily="{DynamicResource Theme.FontFamilyCalc}">
 
         <!-- 2-cell layout: From → To (when math.js did NOT simplify the from) -->
         <Grid Grid.Column="0"
@@ -13,8 +14,7 @@
               Margin="0,8">
             <!-- From -->
             <Border Grid.Column="0" CornerRadius="6" Padding="6,4"
-                    HorizontalAlignment="Stretch"
-                    Classes.conv-cell-selected="{Binding IsOrigFromHighlighted}">
+                    HorizontalAlignment="Stretch">
                 <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
                     <TextBlock Text="{Binding FromShort}"
                                Foreground="{DynamicResource Theme.ItemTitle}"
@@ -37,8 +37,7 @@
                        Margin="8,0"/>
             <!-- To -->
             <Border Grid.Column="2" CornerRadius="6" Padding="6,4"
-                    HorizontalAlignment="Stretch"
-                    Classes.conv-cell-selected="{Binding IsToHighlighted}">
+                    HorizontalAlignment="Stretch">
                 <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
                     <TextBlock Text="{Binding ToShort}"
                                Foreground="{DynamicResource Theme.ItemTitle}"
@@ -62,10 +61,9 @@
               ColumnDefinitions="*,Auto,*,Auto,*"
               VerticalAlignment="Center"
               Margin="0,8">
-            <!-- OrigFrom -->
+            <!-- OrigFrom (context only, not navigable) -->
             <Border Grid.Column="0" CornerRadius="6" Padding="6,4"
-                    HorizontalAlignment="Stretch"
-                    Classes.conv-cell-selected="{Binding IsOrigFromHighlighted}">
+                    HorizontalAlignment="Stretch">
                 <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
                     <TextBlock Text="{Binding FromShort}"
                                Foreground="{DynamicResource Theme.ItemTitle}"
@@ -130,14 +128,6 @@
                 </StackPanel>
             </Border>
         </Grid>
-
-        <!-- Ambiguity hint row -->
-        <TextBlock Grid.Row="1" Grid.Column="0"
-                   Text="{Binding AmbiguityHint}"
-                   Foreground="{DynamicResource Theme.ItemSubtitle}"
-                   FontSize="{DynamicResource Theme.FontSizeSubtitle}"
-                   IsVisible="{Binding AmbiguityHint, Converter={x:Static ObjectConverters.IsNotNull}}"
-                   Margin="0,2,0,4"/>
 
     </Grid>
 </UserControl>

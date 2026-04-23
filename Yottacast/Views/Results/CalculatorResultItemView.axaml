@@ -3,10 +3,12 @@
              xmlns:viewModels="clr-namespace:Yottacast.Core.ViewModels;assembly=Yottacast.Core"
              x:Class="Yottacast.Views.Results.CalculatorResultItemView"
              x:DataType="viewModels:CalculatorResultItemViewModel">
-    <Grid ColumnDefinitions="*,Auto,*" MinHeight="68" VerticalAlignment="Center" Margin="0,8">
+    <Grid ColumnDefinitions="*" MinHeight="68"
+          TextElement.FontFamily="{DynamicResource Theme.FontFamilyCalc}">
+    <Grid ColumnDefinitions="*,Auto,*" VerticalAlignment="Center" Margin="0,8">
 
         <!-- Left: formatted expression (what user typed) -->
-        <Border Grid.Column="0" Classes="calc-cell" CornerRadius="6" Padding="6,4"
+        <Border Grid.Column="0" CornerRadius="6" Padding="6,4"
                 HorizontalAlignment="Stretch" VerticalAlignment="Center">
             <TextBlock Text="{Binding Subtitle}"
                        Foreground="{DynamicResource Theme.ItemTitle}"
@@ -23,15 +25,24 @@
                    Margin="8,0"/>
 
         <!-- Right: result -->
-        <Border Grid.Column="2" Classes="calc-cell" CornerRadius="6" Padding="6,4"
+        <Border Grid.Column="2" CornerRadius="6" Padding="6,4"
                 HorizontalAlignment="Stretch" VerticalAlignment="Center">
-            <TextBlock Text="{Binding Title}"
-                       Foreground="{DynamicResource Theme.ItemTitle}"
-                       FontSize="{DynamicResource Theme.FontSizeCalcValue}"
-                       FontWeight="SemiBold"
-                       HorizontalAlignment="Center"
-                       TextAlignment="Center"/>
+            <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
+                <TextBlock Text="{Binding Title}"
+                           Foreground="{DynamicResource Theme.ItemTitle}"
+                           FontSize="{DynamicResource Theme.FontSizeCalcValue}"
+                           FontWeight="SemiBold"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center"/>
+                <TextBlock Classes="conv-subtitle"
+                           Text="{Binding TitleLong}"
+                           FontSize="{DynamicResource Theme.FontSizeConvSubtitle}"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center"
+                           IsVisible="{Binding TitleLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+            </StackPanel>
         </Border>
 
+    </Grid>
     </Grid>
 </UserControl>

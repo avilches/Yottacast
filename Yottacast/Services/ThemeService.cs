@@ -101,6 +101,10 @@ public sealed class ThemeService(ILogger<ThemeService> logger) {
                 SetDouble(app, "Theme.FontSizeNoResults",    fonts["noResults"]);
                 SetDouble(app, "Theme.FontSizeCalcValue",   fonts["calcValue"]);
                 SetDouble(app, "Theme.FontSizeConvSubtitle", fonts["convSubtitle"]);
+                SetFontFamily(app, "Theme.FontFamily",        fonts["fontFamily"]);
+                SetFontFamily(app, "Theme.FontFamilySearch",  fonts["searchFontFamily"]);
+                SetFontFamily(app, "Theme.FontFamilyCalc",    fonts["calcFontFamily"]);
+                SetFontFamily(app, "Theme.FontFamilyEmoji",   fonts["emojiFontFamily"]);
             }
 
             var layout = json["layout"];
@@ -166,6 +170,10 @@ public sealed class ThemeService(ILogger<ThemeService> logger) {
         app.Resources["Theme.FontSizeNoResults"]    = 16.0;
         app.Resources["Theme.FontSizeCalcValue"]   = 20.0;
         app.Resources["Theme.FontSizeConvSubtitle"] = 13.0;
+        app.Resources["Theme.FontFamily"]           = FontFamily.Default;
+        app.Resources["Theme.FontFamilySearch"]     = FontFamily.Default;
+        app.Resources["Theme.FontFamilyCalc"]       = FontFamily.Default;
+        app.Resources["Theme.FontFamilyEmoji"]      = new FontFamily("Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji");
 
         app.Resources["Theme.CornerRadiusWindow"]   = new CornerRadius(14);
         app.Resources["Theme.CornerRadiusItem"]     = new CornerRadius(8);
@@ -193,6 +201,14 @@ public sealed class ThemeService(ILogger<ThemeService> logger) {
     private static void SetInt(Application app, string key, JsonNode? node) {
         if (node == null) return;
         app.Resources[key] = node.GetValue<int>();
+    }
+
+    private static void SetFontFamily(Application app, string key, JsonNode? node) {
+        if (node == null) return;
+        var value = node.GetValue<string>();
+        app.Resources[key] = string.IsNullOrWhiteSpace(value)
+            ? FontFamily.Default
+            : new FontFamily(value);
     }
 
     private static void SetCornerRadius(Application app, string key, JsonNode? node) {

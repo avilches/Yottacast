@@ -19,7 +19,7 @@
                             Classes.emoji-selected="{Binding IsSelected}">
                         <TextBlock Text="{Binding Char}"
                                    FontSize="{DynamicResource Theme.EmojiFontSize}"
-                                   FontFamily="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji"
+                                   FontFamily="{DynamicResource Theme.FontFamilyEmoji}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                 </DataTemplate>

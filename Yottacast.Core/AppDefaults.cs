@@ -10,7 +10,7 @@ public static class AppDefaults {
     /// Debounce before hitting disk after the user stops typing.
     public const int SearchDebouncedMs = 250;
     /// Delay before showing a calculator error hint (e.g. incompatible units) after the user stops typing.
-    public const int ErrorHintDelayMs = 3_000;
+    public const int ErrorHintDelayMs = 1_000;
     /// Minimum query length before any file search is attempted.
     public const int FileSearchMinQueryLength = 2;
     /// Maximum results returned per search source.

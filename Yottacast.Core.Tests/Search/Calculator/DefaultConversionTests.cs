@@ -14,12 +14,17 @@ namespace Yottacast.Core.Tests.Search.Calculator;
 public class DefaultConversionTests(MathJsEngineFixture fixture) {
 
     private ConversionResultItemViewModel GetConversionItem(string query) {
+        var (item, _) = GetConversionItemWithSearch(query);
+        return item;
+    }
+
+    private (ConversionResultItemViewModel Item, CalculatorSearch Search) GetConversionItemWithSearch(string query) {
         var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
         var settings = UserSettings.Load(new FakePlatformProvider([]));
         var search = new CalculatorSearch(fixture.Engine, clipboard, settings, NullLogger<CalculatorSearch>.Instance);
         var results = search.Search(query, 5);
         var item = Assert.Single(results);
-        return Assert.IsType<ConversionResultItemViewModel>(item);
+        return (Assert.IsType<ConversionResultItemViewModel>(item), search);
     }
 
     // Formats both short and long forms: "10 km | 10 kilometers" or just "10 B" when long is null.
@@ -829,10 +834,10 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
     // Ver unit-config.json: "forceAmbiguous": { "mS": "ms", "MS": "ms" }.
     [Fact]
     public void ForceAmbiguous_mS_ResolvesToMilliseconds_WithAmbiguityHint() {
-        var item = GetConversionItem("10 mS");
+        var (item, search) = GetConversionItemWithSearch("10 mS");
         Assert.Equal("10 ms", item.FromShort);
-        Assert.NotNull(item.AmbiguityHint);
-        Assert.Contains("Maybe you meant", item.AmbiguityHint);
+        Assert.NotNull(search.LastHint);
+        Assert.Contains("Maybe you meant", search.LastHint);
     }
 
     // ── ambiguityOverrides: resuelve al símbolo canónico preferido ──────────────
@@ -842,18 +847,18 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
     // "10 pa" → Pa (pascal) vía override; con hint de PA/pA como alternativas.
     [Fact]
     public void AmbiguityOverride_pa_ResolvesToPascal() {
-        var item = GetConversionItem("10 pa");
+        var (item, search) = GetConversionItemWithSearch("10 pa");
         Assert.Equal("10 Pa", item.FromShort);
-        Assert.NotNull(item.AmbiguityHint);
+        Assert.NotNull(search.LastHint);
     }
 
     // "10 mhz" → MHz (megahertz) vía override; alternativa mHz (millihertz) en hint
     [Fact]
     public void AmbiguityOverride_mhz_ResolvesToMegahertz() {
-        var item = GetConversionItem("10 mhz");
+        var (item, search) = GetConversionItemWithSearch("10 mhz");
         Assert.Equal("10 MHz", item.FromShort);
-        Assert.NotNull(item.AmbiguityHint);
-        Assert.Contains("mHz", item.AmbiguityHint);
+        Assert.NotNull(search.LastHint);
+        Assert.Contains("mHz", search.LastHint);
     }
 
     // ── minute: display short "min" (displayNames) ──────────────────────────────

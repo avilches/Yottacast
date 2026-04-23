@@ -15,6 +15,7 @@ una conversion valida, aparece un resultado sin necesidad de pulsar Enter ni sel
 | Tipo de entrada       | Ejemplo                      | Que ve el usuario                        |
 |-----------------------|------------------------------|------------------------------------------|
 | Expresion aritmetica  | `2 + 3 * 4`                  | Resultado: `14`                          |
+| Aritmetica con unidad | `2 m + 3 m`                  | Resultado: `5 m` con nombre largo debajo (`5 metres`) |
 | Funciones matematicas | `sqrt(144)`, `sin(45 deg)`   | Resultado numerico                       |
 | Conversion explicita  | `10 kg to lbs`, `100 F to C` | Resultado con origen y destino           |
 | Conversion implicita  | `10 km`, `60 km/h`           | Conversion automatica al par por defecto |
@@ -30,7 +31,8 @@ una conversion valida, aparece un resultado sin necesidad de pulsar Enter ni sel
   ignora.
 - El resultado de la calculadora siempre tiene prioridad alta (score 4), por lo que aparece cerca de la cima de las
   sugerencias.
-- Los errores de unidades incompatibles (`1 kg to m`) se muestran como hint informativo debajo del campo de busqueda.
+- Los errores de unidades incompatibles (`1 kg to m`) y los avisos de ambiguedad de unidades (`Maybe you meant...`) se
+  muestran como hint informativo debajo del campo de busqueda via `LastHint`.
   Los errores de simbolos desconocidos se descartan silenciosamente para no generar ruido con texto plano (
   `safari to km`).
 - La activacion (Enter) **siempre copia al portapapeles**: el resultado aritmetico para calculos, o la celda
@@ -106,18 +108,19 @@ combinaciones mas comunes de velocidad y tasa de datos.
 
 ### 3.3 Presentacion del resultado de conversion
 
-Un resultado de conversion puede mostrar dos o tres celdas:
+Un resultado de conversion tiene dos modos de visualizacion:
 
-| Situacion                       | Celdas visibles                                 |
-|---------------------------------|-------------------------------------------------|
-| Sin normalizacion del origen    | `[From] -> [To]`                                |
-| Con normalizacion SI del origen | `[From original] -> [From normalizado] -> [To]` |
+| Situacion                       | Visualizacion                                   | Navegacion                         |
+|---------------------------------|-------------------------------------------------|------------------------------------|
+| Sin normalizacion del origen    | Item unico: `From → To`                         | Sin celdas. El item entero se resalta como un resultado normal. |
+| Con normalizacion SI del origen | `[From original] → [From normalizado] → [To]`   | Dos celdas navegables: `NormFrom` y `To`. `From original` es contexto sin celda. |
 
 Ejemplo de normalizacion SI: el usuario escribe `0.001 V to mA`. El from original es `0.001 V`, pero math.js lo
 auto-simplifica a `1 mV`. Ambas formas se muestran.
 
-La celda seleccionada se puede navegar con las flechas izquierda/derecha. La celda por defecto es `To`. Al activar, se
-copia la celda seleccionada.
+Sin normalizacion, al activar se copia siempre el valor `To`. Con normalizacion, las celdas `NormFrom` y `To` se navegan
+con flechas izquierda/derecha; la celda por defecto es `To` (derecha). Al activar, se copia la celda seleccionada.
+El fondo de seleccion del ListBoxItem se suprime para evitar doble resaltado (clase `conv-navigable`).
 
 > **Verificar en:** `ConversionResultItemViewModel` en `Yottacast.Core/ViewModels/ConversionResultItemViewModel.cs`;
 `EvaluateSimple()` y `EvaluateComplex()` en `MathJsEngine.cs`

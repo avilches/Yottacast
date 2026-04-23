@@ -179,7 +179,12 @@ public sealed class MathJsEngine : IDisposable {
         if (result == null) return new ErrorResult() { NormalizedQuery = normalized.Expr, AmbiguityHints = hints };
 
         if (normalized.Kind == ExprKind.Calculation) {
-            return new CalcResult(result) { NormalizedQuery = normalized.Expr, AmbiguityHints = hints };
+            var (_, calcUnit) = SplitValueUnit(result);
+            return new CalcResult(result,
+                Unit: string.IsNullOrEmpty(calcUnit) ? null : calcUnit,
+                UnitLong: string.IsNullOrEmpty(calcUnit) ? null : GetUnitLongName(calcUnit)) {
+                NormalizedQuery = normalized.Expr, AmbiguityHints = hints
+            };
         }
 
         // UnitEntry or SimpleConversion → ConversionResult
