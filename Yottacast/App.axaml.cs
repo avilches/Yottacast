@@ -50,6 +50,7 @@ public partial class App : Application {
             var userSettings = _services.GetRequiredService<UserSettings>();
             var themeService = _services.GetRequiredService<ThemeService>();
             themeService.Apply(userSettings.Theme);
+            themeService.StartWatching();
 
             var updateChecker = _services.GetRequiredService<UpdateChecker>();
             RunMigrations(userSettings, updateChecker, _services.GetRequiredService<ILogger<App>>());

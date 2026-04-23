@@ -70,7 +70,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [ObservableProperty] private IReadOnlyList<string> _terminals = [];
     [ObservableProperty] private bool _isBrowsersLoading;
     [ObservableProperty] private bool _isTerminalsLoading;
-    public IReadOnlyList<ThemeOption> Themes { get; }
+    [ObservableProperty] private IReadOnlyList<ThemeOption> _themes = [];
 
     // ── Folder lists ─────────────────────────────────────────────────────────
     public ObservableCollection<SearchFolderItem> SearchFolders { get; }
@@ -185,7 +185,8 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _logger             = logger;
         _logger.LogInformation("Settings: opened");
 
-        Themes = themeService.AvailableThemes();
+        _themes = themeService.AvailableThemes();
+        themeService.ThemesChanged += OnThemesChanged;
 
         // Self-heal stored browser/terminal before reading them for the picker.
         settings.EnsureIntegrity();
@@ -237,6 +238,15 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         settings.EnsurePluginSettings(pluginService.Plugins);
         WebSearchGroups = BuildWebSearchGroups();
         pluginService.PluginsChanged += OnPluginsReloaded;
+    }
+
+    private void OnThemesChanged() {
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => {
+            var currentId = SelectedTheme?.Id;
+            Themes = _themeService.AvailableThemes();
+            SelectedTheme = Themes.FirstOrDefault(t => t.Id == currentId)
+                            ?? Themes.FirstOrDefault();
+        });
     }
 
     private void OnPluginsReloaded() {

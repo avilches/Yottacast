@@ -250,10 +250,10 @@ Existe un fallback hardcodeado que replica exactamente el tema `dark-default.jso
 
 La lista de temas disponibles se construye a partir de los ficheros `*.json` en la carpeta `Themes/`, con las siguientes reglas:
 
-1. Se excluye `settings.json` (usado para configuracion, no es un tema).
-2. Los ficheros se ordenan alfabeticamente por nombre.
-3. Si dos ficheros producen el mismo ID (nombre sin extension), solo se incluye el primero. Esto puede ocurrir con copias de conflicto de iCloud como `dark-default 2.json`.
-4. El nombre para mostrar se extrae del campo `"name"` del JSON. Si falla el parsing, se usa el ID del fichero como nombre.
+1. Los ficheros se ordenan alfabeticamente por nombre.
+2. Si dos ficheros producen el mismo ID (nombre sin extension), solo se incluye el primero. Esto puede ocurrir con copias de conflicto de iCloud como `dark-default 2.json`.
+3. El nombre para mostrar se extrae del campo `"name"` del JSON. Si falla el parsing, se usa el ID del fichero como nombre.
+4. Despues de los temas built-in, se escanean los temas de usuario en `AppPaths.PluginsDir` (ver seccion "Temas de usuario").
 5. Si no se encuentra ningun tema, se anade un fallback `"dark-default"` / `"Dark Default"`.
 
 La carpeta de temas se resuelve relativa al directorio del ejecutable (`AppContext.BaseDirectory`), no al directorio de trabajo actual.
@@ -283,6 +283,34 @@ Los tokens que no se pueden interpretar se omiten silenciosamente, conservando e
 
 > **Verificar en:**
 > - `ThemeService.SetBrush()`, `ThemeService.SetDouble()`, `ThemeService.SetCornerRadius()`, `ThemeService.SetOpacity()`, `ThemeService.SetFontFamily()` -- comprobaciones de null y TryParse.
+
+---
+
+## Temas de usuario
+
+Los usuarios pueden instalar temas personalizados colocando ficheros JSON en `AppPaths.PluginsDir` (la carpeta `plugins/` dentro del directorio de configuracion de la app). El fichero debe incluir `"type": "theme"` (case-insensitive) para ser reconocido como tema.
+
+### Identificacion
+
+Los temas de usuario se identifican con el prefijo `user:` en su ID. Un fichero `my-theme.json` en la carpeta de plugins produce el ID `"user:my-theme"`. Esto evita colisiones con temas built-in.
+
+### Formato
+
+El formato es identico al de los temas built-in (mismas secciones y tokens), con la adicion obligatoria del campo `"type": "theme"` en el nivel raiz del JSON.
+
+### Recarga automatica del tema activo
+
+Si el tema seleccionado es de usuario, ThemeService vigila su fichero con un `FileSystemWatcher`. Al detectar un cambio (con debounce de 300ms), el tema se re-aplica automaticamente en el UI thread sin necesidad de reseleccionarlo.
+
+### Actualizacion del picker en Settings
+
+Un segundo watcher vigila la carpeta de plugins para detectar temas anadidos o eliminados. Cuando cambia la lista de ficheros, se dispara el evento `ThemesChanged` y el picker de temas en Settings se actualiza automaticamente, preservando la seleccion actual si sigue disponible.
+
+> **Verificar en:**
+> - `ThemeService.StartWatching()` -- creacion de watchers.
+> - `ThemeService.WatchActiveTheme()` -- watcher del fichero activo.
+> - `ThemeService.AvailableThemes()` -- escaneo de plugins con filtro `"type": "theme"`.
+> - `SettingsWindowViewModel.OnThemesChanged()` -- actualizacion del picker.
 
 ---
 

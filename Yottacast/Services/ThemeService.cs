@@ -3,9 +3,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json.Nodes;
+using System.Threading;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Media;
 using Avalonia.Styling;
+using Avalonia.Threading;
 using Microsoft.Extensions.Logging;
 using Yottacast.Core;
 
@@ -13,9 +16,23 @@ namespace Yottacast.Services;
 
 public record ThemeOption(string Id, string DisplayName);
 
-public sealed class ThemeService(ILogger<ThemeService> logger) {
+public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
+    private const string UserThemePrefix = "user:";
+
     private static string ThemesFolder =>
         Path.Combine(AppContext.BaseDirectory, "Themes");
+
+    private FileSystemWatcher? _activeThemeWatcher;
+    private FileSystemWatcher? _pluginsDirWatcher;
+    private CancellationTokenSource? _debounceCts;
+    private string? _activeThemeId;
+
+    public event Action? ThemesChanged;
+
+    public static bool IsUserTheme(string id) => id.StartsWith(UserThemePrefix);
+
+    private static string UserThemeFilePath(string id) =>
+        Path.Combine(AppPaths.PluginsDir, id[UserThemePrefix.Length..] + ".json");
 
     public IReadOnlyList<ThemeOption> AvailableThemes() {
         var themes = new List<ThemeOption>();
@@ -23,7 +40,6 @@ public sealed class ThemeService(ILogger<ThemeService> logger) {
         try {
             foreach (var file in Directory.GetFiles(ThemesFolder, "*.json").OrderBy(f => f)) {
                 var id = Path.GetFileNameWithoutExtension(file);
-                if (id == "settings") continue;
                 if (!seen.Add(id)) continue;
                 try {
                     var json = JsonNode.Parse(File.ReadAllText(file));
@@ -37,15 +53,88 @@ public sealed class ThemeService(ILogger<ThemeService> logger) {
             logger.LogWarning("Could not load themes: {Message}", ex.Message);
         }
 
+        // Scan user themes from plugins directory
+        try {
+            if (Directory.Exists(AppPaths.PluginsDir)) {
+                foreach (var file in Directory.GetFiles(AppPaths.PluginsDir, "*.json").OrderBy(f => f)) {
+                    var filename = Path.GetFileNameWithoutExtension(file);
+                    var id = UserThemePrefix + filename;
+                    if (!seen.Add(id)) continue;
+                    try {
+                        var json = JsonNode.Parse(File.ReadAllText(file));
+                        var type = json?["type"]?.GetValue<string>();
+                        if (!string.Equals(type, "theme", StringComparison.OrdinalIgnoreCase)) continue;
+                        var displayName = json?["name"]?.GetValue<string>() ?? filename;
+                        themes.Add(new ThemeOption(id, displayName));
+                    } catch {
+                        // Skip files that can't be parsed
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            logger.LogWarning("Could not load user themes: {Message}", ex.Message);
+        }
+
         if (themes.Count == 0)
             themes.Add(new ThemeOption("dark-default", "Dark Default"));
 
         return themes;
     }
 
+    public void StartWatching() {
+        Directory.CreateDirectory(AppPaths.PluginsDir);
+
+        _pluginsDirWatcher = new FileSystemWatcher(AppPaths.PluginsDir, "*.json") {
+            NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite,
+            EnableRaisingEvents = true
+        };
+        _pluginsDirWatcher.Created += (_, _) => DebouncedThemesChanged();
+        _pluginsDirWatcher.Deleted += (_, _) => DebouncedThemesChanged();
+        _pluginsDirWatcher.Renamed += (_, _) => DebouncedThemesChanged();
+
+        if (_activeThemeId != null)
+            WatchActiveTheme(_activeThemeId);
+    }
+
+    private void DebouncedThemesChanged() {
+        _debounceCts?.Cancel();
+        _debounceCts = new CancellationTokenSource();
+        var token = _debounceCts.Token;
+        Task.Delay(300, token).ContinueWith(_ => {
+            if (!token.IsCancellationRequested)
+                ThemesChanged?.Invoke();
+        }, token);
+    }
+
+    private void WatchActiveTheme(string themeId) {
+        _activeThemeWatcher?.Dispose();
+        _activeThemeWatcher = null;
+        _activeThemeId = themeId;
+
+        if (!IsUserTheme(themeId)) return;
+
+        var fileName = themeId[UserThemePrefix.Length..] + ".json";
+        _activeThemeWatcher = new FileSystemWatcher(AppPaths.PluginsDir, fileName) {
+            NotifyFilter = NotifyFilters.LastWrite,
+            EnableRaisingEvents = true
+        };
+        _activeThemeWatcher.Changed += (_, _) => {
+            var cts = new CancellationTokenSource();
+            var prevCts = Interlocked.Exchange(ref _debounceCts, cts);
+            prevCts?.Cancel();
+            var ct = cts.Token;
+            Task.Delay(300, ct).ContinueWith(_ => {
+                if (!ct.IsCancellationRequested)
+                    Dispatcher.UIThread.Post(() => Apply(themeId));
+            }, ct);
+        };
+    }
+
     public void Apply(string themeName) {
         try {
-            var themePath = Path.Combine(ThemesFolder, $"{themeName}.json");
+            var themePath = IsUserTheme(themeName)
+                ? UserThemeFilePath(themeName)
+                : Path.Combine(ThemesFolder, $"{themeName}.json");
             if (!File.Exists(themePath)) {
                 logger.LogWarning("Theme file not found: {Path}, using built-in default", themePath);
                 ApplyBuiltinDefault();
@@ -198,6 +287,7 @@ public sealed class ThemeService(ILogger<ThemeService> logger) {
             }
 
             logger.LogInformation("Theme applied: {ThemeName}", json["name"]?.GetValue<string>() ?? themeName);
+            WatchActiveTheme(themeName);
         } catch (Exception ex) {
             logger.LogWarning("Theme error applying '{ThemeName}': {Message}", themeName, ex.Message);
             ApplyBuiltinDefault();
@@ -345,5 +435,12 @@ public sealed class ThemeService(ILogger<ThemeService> logger) {
     private static void SetCornerRadius(Application app, string key, JsonNode? node) {
         if (node == null) return;
         app.Resources[key] = new CornerRadius(node.GetValue<double>());
+    }
+
+    public void Dispose() {
+        _activeThemeWatcher?.Dispose();
+        _pluginsDirWatcher?.Dispose();
+        _debounceCts?.Cancel();
+        _debounceCts?.Dispose();
     }
 }
