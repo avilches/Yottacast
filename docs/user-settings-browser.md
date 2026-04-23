@@ -17,8 +17,9 @@ Cuando el usuario abre la ventana de Settings, la aplicacion muestra un picker c
 **Comportamiento esperado:**
 
 - La lista solo contiene navegadores realmente instalados en el sistema.
-- Para determinar si un navegador esta instalado, se consulta primero la cache de aplicaciones (`ApplicationSearch`). Si no se encuentra ahi, se recurre a rutas de fallback conocidas (`BrowserFallbackPaths`) verificando existencia en disco con `File.Exists`.
-- La lista se genera de forma sincrona al construir el ViewModel de Settings.
+- Para determinar si un navegador esta instalado, se busca en las carpetas de apps del usuario (`ExpandedAppDirectories`), luego en las carpetas por defecto de la plataforma (`DefaultAppDirectories`), y por ultimo en rutas conocidas de la plataforma (`BrowserKnownPaths`, solo relevante en Windows). Las carpetas duplicadas se saltan automaticamente. La verificacion usa `Directory.Exists` / `File.Exists` y no depende de la cache de `ApplicationSearch`.
+- Los resultados del discovery se cachean en memoria. La cache se invalida al cambiar las carpetas de apps en Settings (diferido al salir de la seccion AppSearch o cerrar Settings).
+- La lista se carga de forma lazy al abrir el dropdown del combo en Settings.
 
 > **Verificar en:**
 > - `Yottacast/ViewModels/SettingsWindowViewModel.cs` -- constructor, llamada a `browserDiscovery.Discover()`
@@ -36,7 +37,7 @@ El navegador configurado puede dejar de existir (por ejemplo, si el usuario lo d
 - Si el navegador guardado ya no existe, se itera una lista ordenada de navegadores conocidos y se selecciona el primero que exista en disco.
 - Cuando se produce un cambio automatico de navegador, el nuevo valor se persiste inmediatamente (llamada a `Save()`).
 - Si ningun navegador conocido existe en disco, `ActiveBrowser` devuelve `null`.
-- La resolucion no depende de la cache de `ApplicationSearch`: usa directamente `Directory.Exists` o `File.Exists` sobre las rutas devueltas por `GetBrowserPaths`.
+- La resolucion no depende de la cache de `ApplicationSearch` ni de la cache de discovery: busca directamente en disco (carpetas del usuario, carpetas por defecto, rutas conocidas).
 - `EnsureIntegrity()` fuerza la resolucion de navegador (y terminal) como efecto secundario; esta pensado para llamarse en puntos naturales como al abrir Settings.
 
 **Logica de fallback de `Resolve`:**
@@ -77,19 +78,16 @@ Cuando el usuario activa un resultado de tipo Web Search, se abre la URL constru
 | Aspecto | Comportamiento |
 |---|---|
 | Lista de navegadores conocidos | Safari, Google Chrome, Firefox, Brave Browser, Microsoft Edge, Opera, Arc, Vivaldi, Chromium, Tor Browser, DuckDuckGo, Orion |
-| Fallback paths | Diccionario vacio: `Discover()` depende exclusivamente de la cache de `ApplicationSearch` |
-| Rutas de resolucion (`GetBrowserPaths`) | `/Applications/{name}.app` y `$HOME/Applications/{name}.app` |
+| Busqueda | Via `AppPathInDirectory` en las carpetas del usuario y las por defecto (`/Applications`, `~/Applications`, `/System/Applications`, `/System/Applications/Utilities`) |
 | Apertura de URL | Ejecuta `open -a <browserName> <url>`, delegando la resolucion del bundle al SO |
-
-**Nota sobre `$HOME` sin expandir:** `GetBrowserPaths` en macOS obtiene la variable `home` via `Environment.GetFolderPath` pero luego usa el literal `$HOME` en la ruta interpolada. La variable `home` queda sin usar. Como `Directory.Exists` y `File.Exists` no expanden `$HOME`, la segunda ruta (`$HOME/Applications/...`) nunca resolvera correctamente. En la practica, `Resolve()` solo funciona con navegadores instalados en `/Applications`.
 
 ### 5.2 Windows
 
 | Aspecto | Comportamiento |
 |---|---|
 | Lista de navegadores conocidos | Google Chrome, Mozilla Firefox, Microsoft Edge, Brave Browser, Opera, Vivaldi |
-| Fallback paths | Rutas absolutas a ejecutables conocidos (misma fuente que `GetBrowserPaths`) |
-| Apertura de URL | Resuelve la ruta del `.exe` desde `GetBrowserPaths` en el momento de la llamada (`File.Exists`). Si no se encuentra, retorna silenciosamente. Lanza el exe con la URL como argumento |
+| Busqueda | Primero carpetas del usuario, luego `BrowserKnownPaths` con rutas absolutas a ejecutables conocidos |
+| Apertura de URL | Resuelve la ruta del `.exe` desde `BrowserKnownPaths` en el momento de la llamada (`File.Exists`). Si no se encuentra, retorna silenciosamente. Lanza el exe con la URL como argumento |
 
 **Diferencia de nombres:** En Windows, Firefox se llama `"Mozilla Firefox"` (nombre completo); en macOS es `"Firefox"`.
 
@@ -98,7 +96,7 @@ Cuando el usuario activa un resultado de tipo Web Search, se abre la URL constru
 | Aspecto | Comportamiento |
 |---|---|
 | Lista de navegadores conocidos | Vacia |
-| Fallback paths | Vacio |
+| Busqueda | No hay navegadores conocidos |
 | Apertura de URL | No-op (metodo vacio) |
 
 La funcionalidad de navegador no esta implementada en Linux.

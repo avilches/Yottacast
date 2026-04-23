@@ -3,6 +3,7 @@ using Xunit;
 using Yottacast.Core.Search;
 using Yottacast.Core.Search.Emoji;
 using Yottacast.Core.Services;
+using Yottacast.Core.Tests.Fakes;
 using Yottacast.Core.ViewModels;
 
 namespace Yottacast.Core.Tests.Search;
@@ -14,7 +15,8 @@ public class EmojiSearchTests {
         Directory.CreateDirectory(dir);
         var cachePath = Path.Combine(dir, "emoji-cache.json");
         await File.WriteAllTextAsync(cachePath, compactJson);
-        var search = new EmojiSearch(new ClipboardService(NullLogger<ClipboardService>.Instance), cachePath, new EmojiDataLoader(NullLogger<EmojiDataLoader>.Instance), NullLogger<EmojiSearch>.Instance);
+        var settings = UserSettings.Load(new FakePlatformProvider([]));
+        var search = new EmojiSearch(new ClipboardService(NullLogger<ClipboardService>.Instance), cachePath, new EmojiDataLoader(NullLogger<EmojiDataLoader>.Instance), NullLogger<EmojiSearch>.Instance, settings);
         search.Start();
         await search.WhenReady();
         return search;
@@ -174,7 +176,8 @@ public class EmojiSearchTests {
         Directory.CreateDirectory(dir);
         var cachePath = Path.Combine(dir, "emoji-cache.json");
         await File.WriteAllTextAsync(cachePath, json);
-        var search = new EmojiSearch(clipboard, cachePath, new EmojiDataLoader(NullLogger<EmojiDataLoader>.Instance), NullLogger<EmojiSearch>.Instance);
+        var settings = UserSettings.Load(new FakePlatformProvider([]));
+        var search = new EmojiSearch(clipboard, cachePath, new EmojiDataLoader(NullLogger<EmojiDataLoader>.Instance), NullLogger<EmojiSearch>.Instance, settings);
         search.Start();
         await search.WhenReady();
 
@@ -209,9 +212,10 @@ public class RealEmojiDataFixture : IAsyncLifetime, IDisposable {
         // First call: loads from embedded resource and writes the cache.
         await loader.LoadAsync(cachePath);
         // EmojiSearch then reads the cache on Start(), so data loads quickly.
+        var settings = UserSettings.Load(new FakePlatformProvider([]));
         Search = new EmojiSearch(
             new ClipboardService(NullLogger<ClipboardService>.Instance), cachePath, loader,
-            NullLogger<EmojiSearch>.Instance);
+            NullLogger<EmojiSearch>.Instance, settings);
         Search.Start();
         await Search.WhenReady();
     }

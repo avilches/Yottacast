@@ -11,12 +11,18 @@ namespace Yottacast.Core.Tests.Search;
 /// <summary>
 /// PlatformProvider variant that populates apps during ScanAppsAsync,
 /// making ApplicationSearch testable without touching the filesystem.
+/// AppPaths is mutable so tests can change the list between scans.
 /// </summary>
-internal sealed class FakePlatformProviderWithApps(IReadOnlyList<string> appPaths)
-    : FakePlatformProvider([]) {
+internal sealed class FakePlatformProviderWithApps : FakePlatformProvider {
+    public IReadOnlyList<string> AppPaths { get; set; }
+
+    public FakePlatformProviderWithApps(IReadOnlyList<string> appPaths) : base([]) {
+        AppPaths = appPaths;
+    }
+
     public override async Task ScanAppsAsync(
         Action<string> addApp, IReadOnlyList<string> dirs, CancellationToken ct) {
-        foreach (var path in appPaths) {
+        foreach (var path in AppPaths) {
             ct.ThrowIfCancellationRequested();
             addApp(path);
         }
@@ -28,11 +34,17 @@ public class ApplicationSearchTests {
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private static ApplicationSearch BuildSearch(params string[] appPaths) {
+    private static (ApplicationSearch search, UserSettings settings, FakePlatformProviderWithApps platform) BuildSearchWithSettings(params string[] appPaths) {
         var platform = new FakePlatformProviderWithApps(appPaths);
         var settings = UserSettings.Load(platform);
         var iconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
-        return new ApplicationSearch(settings, platform, iconCache, NullLogger<ApplicationSearch>.Instance);
+        var search = new ApplicationSearch(settings, platform, iconCache, NullLogger<ApplicationSearch>.Instance);
+        return (search, settings, platform);
+    }
+
+    private static ApplicationSearch BuildSearch(params string[] appPaths) {
+        var (search, _, _) = BuildSearchWithSettings(appPaths);
+        return search;
     }
 
     private static async Task StartAndWaitAsync(ApplicationSearch search) {
@@ -336,5 +348,69 @@ public class ApplicationSearchTests {
         // Without Start(), WhenReady() should remain pending
         var completed = await Task.WhenAny(search.WhenReady(), Task.Delay(100)) == search.WhenReady();
         Assert.False(completed, "WhenReady() completed without Start() being called");
+    }
+
+    // ── Rescan ────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Rescan_AddedApps_AppearInSearch_OnlyNewFiresAppAdded() {
+        var (search, settings, platform) = BuildSearchWithSettings("/Applications/Safari.app");
+        var addedNames = new List<string>();
+        search.AppAdded += app => addedNames.Add(app.Name);
+        await StartAndWaitAsync(search);
+
+        addedNames.Clear(); // ignore initial scan events
+
+        // Simulate adding Chrome to the scanned apps
+        platform.AppPaths = ["/Applications/Safari.app", "/Applications/Chrome.app"];
+        settings.NotifyAppDirectoriesChanged();
+
+        // Give the async rescan time to complete
+        await Task.Delay(200);
+
+        // Chrome should now be findable
+        Assert.NotNull(search.Find("Chrome"));
+        // Safari should still be there
+        Assert.NotNull(search.Find("Safari"));
+        // Only Chrome should have fired AppAdded (not Safari again)
+        Assert.Single(addedNames);
+        Assert.Equal("Chrome", addedNames[0]);
+    }
+
+    [Fact]
+    public async Task Rescan_RemovedApps_DisappearFromSearch() {
+        var (search, settings, platform) = BuildSearchWithSettings(
+            "/Applications/Safari.app", "/Applications/Chrome.app");
+        await StartAndWaitAsync(search);
+
+        Assert.NotNull(search.Find("Chrome"));
+
+        // Simulate removing Chrome
+        platform.AppPaths = ["/Applications/Safari.app"];
+        settings.NotifyAppDirectoriesChanged();
+        await Task.Delay(200);
+
+        Assert.Null(search.Find("Chrome"));
+        Assert.NotNull(search.Find("Safari"));
+    }
+
+    [Fact]
+    public async Task Rescan_NoChange_NoAppAddedEvents() {
+        var (search, settings, platform) = BuildSearchWithSettings("/Applications/Safari.app");
+        var addedNames = new List<string>();
+        var appsChangedCount = 0;
+        search.AppAdded += app => addedNames.Add(app.Name);
+        search.AppsChanged += () => appsChangedCount++;
+        await StartAndWaitAsync(search);
+
+        addedNames.Clear();
+        appsChangedCount = 0;
+
+        // Notify without changing apps
+        settings.NotifyAppDirectoriesChanged();
+        await Task.Delay(200);
+
+        Assert.Empty(addedNames);
+        Assert.True(appsChangedCount > 0, "AppsChanged should fire even with no diff");
     }
 }

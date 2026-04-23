@@ -166,21 +166,15 @@ estatico via `NativeLibrary.Load` + `NativeLibrary.GetExport`.
 
 ## 8. Navegadores y terminales
 
-### 8.1 Descubrimiento de navegadores
+### 8.1 Descubrimiento de navegadores y terminales
 
-| Plataforma | Estrategia                                                                                                                                            | Fallback paths |
-|------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|
-| macOS      | Se apoya en la busqueda de apps (Spotlight); `BrowserFallbackPaths` vacio. `GetBrowserPaths` devuelve rutas en `/Applications` y `$HOME/Applications` | No hardcoded   |
-| Windows    | `BrowserFallbackPaths` con rutas conocidas de Chrome, Firefox, Edge, Brave, Opera, Vivaldi                                                            | Si, hardcoded  |
-| Linux      | `KnownBrowserNames` vacio; `OpenUrl()` es no-op                                                                                                       | No soportado   |
+El discovery busca en tres fuentes por orden de prioridad: carpetas de apps del usuario, carpetas por defecto de la plataforma (`DefaultAppDirectories`), y rutas conocidas de la plataforma (`BrowserKnownPaths`/`TerminalKnownPaths`). Las carpetas duplicadas se saltan automaticamente. Los resultados se cachean en memoria y la cache se invalida al cambiar las carpetas de apps en Settings.
 
-### 8.2 Descubrimiento de terminales
-
-| Plataforma | Terminales conocidos                                           | Fallback paths                                                                                                                     |
-|------------|----------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------|
-| macOS      | Terminal, iTerm, Warp, Alacritty, Kitty, Hyper, WezTerm, Tabby | `TerminalFallbackPaths` vacio; `GetTerminalPaths` busca en `/Applications`, `$HOME/Applications`, `/System/Applications/Utilities` |
-| Windows    | Windows Terminal, PowerShell, Command Prompt, Git Bash         | Hardcoded con rutas conocidas                                                                                                      |
-| Linux      | `KnownTerminalNames` vacio; `ExecuteCommand()` es no-op        | No soportado                                                                                                                       |
+| Plataforma | Navegadores conocidos | Terminales conocidos | Estrategia de busqueda |
+|---|---|---|---|
+| macOS | Safari, Chrome, Firefox, Brave, Edge, Opera, Arc, Vivaldi, Chromium, Tor, DuckDuckGo, Orion | Terminal, iTerm, Warp, Alacritty, Kitty, Hyper, WezTerm, Tabby | Via `AppPathInDirectory` en carpetas del usuario + por defecto. Sin rutas conocidas adicionales |
+| Windows | Chrome, Firefox, Edge, Brave, Opera, Vivaldi | Windows Terminal, PowerShell, Command Prompt, Git Bash | Carpetas del usuario + `BrowserKnownPaths`/`TerminalKnownPaths` con rutas absolutas a ejecutables |
+| Linux | (ninguno) | (ninguno) | No soportado |
 
 ### 8.3 Ejecucion de comandos en terminal (macOS)
 

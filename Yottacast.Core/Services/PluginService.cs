@@ -63,16 +63,14 @@ public class PluginService(ILogger<PluginService> logger) : IDisposable {
                     continue;
                 }
 
-                var mode = Enum.TryParse<WebSearchMode>(raw.DefaultMode, ignoreCase: true, out var m) ? m : WebSearchMode.PrefixOnly;
                 plugins.Add(new WebSearchPlugin {
                     Id                 = raw.Id,
                     Name               = raw.Name,
                     QueryUrl           = raw.QueryUrl,
                     IconUrl            = raw.IconUrl,
                     DefaultPrefix      = raw.DefaultPrefix ?? "",
-                    DefaultEnabled     = raw.DefaultEnabled,
-                    DefaultMode        = mode,
                     ShowAlwaysPattern  = raw.ShowAlwaysPattern,
+                    SourceFilePath     = file,
                 });
             } catch (Exception ex) {
                 logger.LogWarning("Plugin {File}: failed to parse ({Message}), skipping", Path.GetFileName(file), ex.Message);
@@ -142,8 +140,6 @@ public class PluginService(ILogger<PluginService> logger) : IDisposable {
         [JsonPropertyName("queryUrl")]           public string? QueryUrl          { get; init; }
         [JsonPropertyName("iconUrl")]            public string? IconUrl           { get; init; }
         [JsonPropertyName("defaultPrefix")]      public string? DefaultPrefix     { get; init; }
-        [JsonPropertyName("defaultEnabled")]     public bool DefaultEnabled       { get; init; } = true;
-        [JsonPropertyName("defaultMode")]        public string? DefaultMode       { get; init; }
         [JsonPropertyName("showAlwaysPattern")]  public string? ShowAlwaysPattern { get; init; }
     }
 }

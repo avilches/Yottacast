@@ -2,9 +2,8 @@
   "type": "WebSearch",
   "id": "hackernews",
   "name": "Hacker News",
+  "group": "dev",
   "queryUrl": "https://hn.algolia.com/?q={0}",
   "iconUrl": "https://news.ycombinator.com/favicon.ico",
-  "defaultPrefix": "hn",
-  "defaultEnabled": true,
-  "defaultMode": "PrefixOnly"
+  "defaultPrefix": "hn"
 }

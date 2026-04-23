@@ -35,11 +35,11 @@ Otros servicios (`BrowserDiscovery`, `TerminalDiscovery`) consultan el cache de 
 | `Find(name)` | Busqueda exacta por clave de nombre (case-insensitive). Devuelve `AppInfo?` |
 | `FindAll()` | Todas las apps en cache como `IReadOnlyList<AppInfo>` |
 
-### Limitacion conocida
+### Rescan al cambiar AppDirectories
 
-El cambio de `AppDirectories` en settings no recarga el cache de `ApplicationSearch`. Para que surta efecto, el usuario debe reiniciar la aplicacion.
+Al cambiar `AppDirectories` en Settings, la notificacion se difiere hasta que el usuario sale de la seccion AppSearch o cierra Settings. Esto evita refrescos innecesarios mientras el usuario añade/quita carpetas rapidamente. Cuando se notifica, `ApplicationSearch` re-escanea las carpetas nuevas mediante `RescanAsync()` y `BrowserDiscovery`/`TerminalDiscovery` invalidan su cache. El rescan hace un diff contra la cache actual: solo las apps genuinamente nuevas disparan `AppAdded`, las apps de carpetas eliminadas desaparecen de la cache, y las que ya existian se mantienen sin eventos.
 
-> **Verificar en:** `ApplicationSearch.cs` (Start, Stop, ScanAndWatchAsync, AddApp, Search, Find, FindAll), `PlatformProvider.cs` (ScanAppsAsync, CreateAppWatchers), `MacOsPlatformProvider.cs` (ScanAppsAsync, CreateAppWatchers), `SpotlightInterop.cs` (Query).
+> **Verificar en:** `ApplicationSearch.cs` (Start, Stop, ScanAndWatchAsync, RescanAsync, AddApp, Search, Find, FindAll), `UserSettings.cs` (AppDirectoriesChanged, NotifyAppDirectoriesChanged), `SettingsWindowViewModel.cs` (FlushAppDirectoryChanges), `PlatformProvider.cs` (ScanAppsAsync, CreateAppWatchers), `MacOsPlatformProvider.cs` (ScanAppsAsync, CreateAppWatchers), `SpotlightInterop.cs` (Query).
 
 ---
 

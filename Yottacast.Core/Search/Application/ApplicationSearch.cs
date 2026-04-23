@@ -14,7 +14,8 @@ namespace Yottacast.Core.Search.Application;
 /// Windows/Linux do a synchronous scan then FileSystemWatcher.
 ///
 /// Call <see cref="Start"/> to begin scanning. Call <see cref="Stop"/> to cancel it.
-/// BrowserDiscovery and TerminalDiscovery query this store instead of hitting the filesystem themselves.
+/// When the user changes AppDirectories in Settings, <see cref="RescanAsync"/> re-scans
+/// with a diff to avoid showing all apps as "new".
 /// </summary>
 public sealed class ApplicationSearch(
     UserSettings settings,
@@ -47,6 +48,7 @@ public sealed class ApplicationSearch(
     public void Start() {
         if (_started) return;
         _started = true;
+        settings.AppDirectoriesChanged += OnAppDirectoriesChanged;
         if (!settings.EnableAppSearch) {
             _readyTcs.TrySetResult();
             return;
@@ -58,6 +60,7 @@ public sealed class ApplicationSearch(
 
     public Task Stop() {
         _started = false;
+        settings.AppDirectoriesChanged -= OnAppDirectoriesChanged;
         _liveCts.Cancel();
         _liveCts.Dispose();
         _liveCts = new CancellationTokenSource();
@@ -107,13 +110,85 @@ public sealed class ApplicationSearch(
         await platform.ScanAppsAsync(AddApp, settings.ExpandedAppDirectories, _liveCts.Token);
         logger.LogInformation("AppSearch scan done apps={Count}", _apps.Count);
         _readyTcs.TrySetResult();
-        foreach (var w in platform.CreateAppWatchers(settings.ExpandedAppDirectories,
+        AppsChanged?.Invoke();
+        CreateWatchers(settings.ExpandedAppDirectories);
+    }
+
+    // ── Rescan (triggered by AppDirectories change in Settings) ──────────────
+
+    private void OnAppDirectoriesChanged() {
+        if (!_started || !settings.EnableAppSearch) return;
+        _ = RescanAsync();
+    }
+
+    private async Task RescanAsync() {
+        // 1. Cancel any in-flight scan and dispose old watchers
+        _liveCts.Cancel();
+        _liveCts.Dispose();
+        _liveCts = new CancellationTokenSource();
+        var ct = _liveCts.Token;
+
+        foreach (var w in _watchers) w.Dispose();
+        _watchers.Clear();
+
+        // 2. Scan new directories into a temporary dictionary (old cache stays searchable)
+        var newDirs = settings.ExpandedAppDirectories;
+        logger.LogInformation("AppSearch rescan start dirs=[{Dirs}]", string.Join(", ", newDirs));
+
+        var scanned = new ConcurrentDictionary<string, AppInfo>(StringComparer.OrdinalIgnoreCase);
+        await platform.ScanAppsAsync(path => {
+            var name = Path.GetFileNameWithoutExtension(path);
+            if (!string.IsNullOrEmpty(name))
+                scanned[name] = new AppInfo(name, path);
+        }, newDirs, ct);
+
+        if (ct.IsCancellationRequested) return;
+
+        // 3. Diff against current cache
+        var oldKeys = _apps.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var newKeys = scanned.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var added = newKeys.Except(oldKeys, StringComparer.OrdinalIgnoreCase).ToList();
+        var removed = oldKeys.Except(newKeys, StringComparer.OrdinalIgnoreCase).ToList();
+
+        // 4. Apply removals
+        foreach (var key in removed)
+            _apps.TryRemove(key, out _);
+
+        // 5. Apply additions (genuinely new apps)
+        foreach (var key in added) {
+            var app = scanned[key];
+            _apps[key] = app;
+            iconCache.PreloadAsync(app.Path);
+            AppAdded?.Invoke(app);
+        }
+
+        // 6. Update existing apps whose path changed (same name, different location)
+        foreach (var key in newKeys.Intersect(oldKeys, StringComparer.OrdinalIgnoreCase)) {
+            var newApp = scanned[key];
+            var oldApp = _apps[key];
+            if (!string.Equals(oldApp.Path, newApp.Path, StringComparison.OrdinalIgnoreCase)) {
+                _apps[key] = newApp;
+                iconCache.Reload(newApp.Path);
+            }
+        }
+
+        logger.LogInformation("AppSearch rescan done apps={Count} added={Added} removed={Removed}",
+            _apps.Count, added.Count, removed.Count);
+
+        // 7. Create new watchers and notify
+        CreateWatchers(newDirs);
+        AppsChanged?.Invoke();
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private void CreateWatchers(IReadOnlyList<string> dirs) {
+        foreach (var w in platform.CreateAppWatchers(dirs,
             path => { AppsChanged?.Invoke(); AddApp(path); },
             path => { AppsChanged?.Invoke(); RemoveApp(path); }))
             _watchers.Add(w);
     }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private void AddApp(string path) {
         var name = Path.GetFileNameWithoutExtension(path);
@@ -135,5 +210,8 @@ public sealed class ApplicationSearch(
         _apps.TryRemove(name, out _);
     }
 
-    public void Dispose() => Stop().GetAwaiter().GetResult();
+    public void Dispose() {
+        settings.AppDirectoriesChanged -= OnAppDirectoriesChanged;
+        Stop().GetAwaiter().GetResult();
+    }
 }

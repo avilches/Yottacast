@@ -44,6 +44,7 @@ El fichero de preferencias se crea automaticamente en la primera ejecucion y se 
 | EnableWebSearch | `true` | Activa/desactiva la busqueda web; si `false`, `WebSearchSource.Search()` devuelve siempre lista vacia |
 | FileSearchOnlySpecificFolders | `false` | Si `true`, solo busca en las carpetas configuradas en `SearchFolders`; si `false`, busca en toda la home |
 | LastLaunchedVersion | `""` | Version del ultimo arranque (para migraciones) |
+| ShowDisabledWebSearchEngines | `true` | Si muestra los motores deshabilitados en la UI de Settings |
 | WebSearchEngines | Lista predeterminada de 20 motores | Configuracion por motor de busqueda web |
 | WindowX | `null` | Posicion X de la ventana principal en coordenadas de pantalla (pixels fisicos) |
 | WindowY | `null` | Posicion Y de la ventana principal en coordenadas de pantalla (pixels fisicos) |
@@ -87,9 +88,11 @@ Las rutas en `SearchFolders` y `AppDirectories` se almacenan en crudo en el JSON
 | `$HOME/path` o `~/path` | Home + path |
 | Cualquier otro valor | Sin modificacion |
 
+**Colapso al anadir desde el picker**: cuando el usuario selecciona una carpeta con el picker nativo del SO, la ruta absoluta devuelta se colapsa automaticamente antes de guardar: si empieza por el directorio home del usuario, se sustituye por `$HOME`. Esto hace que el JSON sea portable y que la UI muestre el path colapsado. El colapso se aplica en `AddSearchFolder` y `AddAppDirectory` del ViewModel via `PlatformProvider.CollapseHomePath()`.
+
 Las propiedades `ExpandedSearchFolders` y `ExpandedAppDirectories` proporcionan las listas ya expandidas para uso directo por las fuentes de busqueda.
 
-> **Verificar en:** `PlatformProvider.ExpandPath()` en `Yottacast.Core/Platform/PlatformProvider.cs`. Propiedades `ExpandedSearchFolders`/`ExpandedAppDirectories` en `Yottacast.Core/Services/UserSettings.cs`.
+> **Verificar en:** `PlatformProvider.ExpandPath()` y `PlatformProvider.CollapseHomePath()` en `Yottacast.Core/Platform/PlatformProvider.cs`. `AddSearchFolder()` y `AddAppDirectory()` en `Yottacast/ViewModels/SettingsWindowViewModel.cs`. Propiedades `ExpandedSearchFolders`/`ExpandedAppDirectories` en `Yottacast.Core/Services/UserSettings.cs`.
 
 ---
 
@@ -165,13 +168,16 @@ Cada vez que se accede a estas propiedades:
 
 | Metodo | Proposito | Dependencia de ApplicationSearch |
 |---|---|---|
-| `Discover()` | Poblar los pickers de la UI | Si -- usa el cache de apps en memoria, con fallback a rutas conocidas en disco |
-| `Resolve()` | Auto-reparacion de settings | No -- solo comprueba existencia en disco con las rutas del PlatformProvider |
-| `GetCandidatePaths()` | Uso desde el CLI | Parcial -- combina cache con rutas primarias del PlatformProvider |
+| `Discover()` | Poblar los pickers de la UI | No -- comprueba existencia en disco. Resultados cacheados hasta invalidacion |
+| `Resolve()` | Auto-reparacion de settings | No -- mismo mecanismo de busqueda que `Discover()`, sin cache |
 
-`TerminalDiscovery.Discover()` filtra las rutas del fallback que contienen `*` (patrones glob), ya que algunas rutas de terminal de plataforma incluyen versiones variables. `BrowserDiscovery.Discover()` no tiene esta restriccion.
+Ambos metodos buscan en tres fuentes por orden de prioridad: primero las carpetas de apps del usuario (`AppDirectories`), luego las carpetas por defecto de la plataforma (`DefaultAppDirectories`), y por ultimo las rutas conocidas de la plataforma (`BrowserKnownPaths`/`TerminalKnownPaths`, solo relevantes en Windows). Las carpetas duplicadas se saltan automaticamente. En las carpetas se usa `PlatformProvider.AppPathInDirectory()` para construir la ruta candidata (ej: `{dir}/{name}.app` en macOS). En Windows, `AppPathInDirectory` no aplica y los ejecutables se encuentran via rutas conocidas.
 
-> **Verificar en:** `BrowserDiscovery` en `Yottacast.Core/Services/BrowserDiscovery.cs`. `TerminalDiscovery` en `Yottacast.Core/Services/TerminalDiscovery.cs`. Llamada a `EnsureIntegrity()` en el constructor de `SettingsWindowViewModel`.
+`TerminalDiscovery` filtra las rutas conocidas que contienen `*` (patrones glob), ya que algunas rutas de terminal de plataforma incluyen versiones variables.
+
+La cache de `Discover()` se invalida al cambiar `AppDirectories` en Settings (diferido al salir de la seccion AppSearch o cerrar Settings, via `FlushAppDirectoryChanges` en `SettingsWindowViewModel`).
+
+> **Verificar en:** `BrowserDiscovery` en `Yottacast.Core/Services/BrowserDiscovery.cs`. `TerminalDiscovery` en `Yottacast.Core/Services/TerminalDiscovery.cs`. `SettingsWindowViewModel.FlushAppDirectoryChanges()`. Llamada a `EnsureIntegrity()` en el constructor de `SettingsWindowViewModel`.
 
 ---
 
@@ -191,11 +197,21 @@ La aplicacion incluye 20 motores preconfigurados en las categorias: General, Sho
 
 Al cargar las preferencias, se fusionan los motores guardados con los predeterminados: las personalizaciones del usuario se conservan y los motores nuevos (anadidos en actualizaciones) aparecen automaticamente con sus defaults.
 
-La UI de edicion (seccion "Web Search" en Settings) permite: toggle Enabled, toggle Mode, editar Prefix por doble-clic, y editar QueryUrl. Los cambios se guardan automaticamente.
+La UI de edicion (seccion "Web Search" en Settings) agrupa los motores por categoria (General, Shopping, Video, Social, Knowledge, Dev, Entertainment, Maps), cada grupo en su propia tabla estilo lista. Cada fila muestra icono, nombre, prefijo, checkbox Enabled y boton de settings (icono engranaje) que abre un flyout con toggle Mode, editar Prefix y editar QueryUrl. Un checkbox "Show disabled engines" en la parte superior controla si se muestran los motores deshabilitados; si un grupo no tiene ningun motor visible, el grupo entero se oculta. Los motores mantienen siempre su posicion original (no se reordenan al deshabilitar). Los cambios se guardan automaticamente.
 
 **Invariante:** si el campo `Mode` del JSON contiene un valor no reconocido, se interpreta como `PrefixOnly`. El `QueryUrl` solo se escribe en el JSON si tiene un valor no vacio (se omite cuando es `null`, usando la URL por defecto del motor).
 
-> **Verificar en:** `WebSearchEngine`, `WebSearchEngineSettings`, `WebSearchDefaults` en `Yottacast.Core/Search/WebSearch/WebSearchEngine.cs`. Merge en `UserSettings.MergeWebSearchEngines()`. UI en `WebSearchEngineRowViewModel` y `SettingsWindow.axaml.cs`.
+### Plugins
+
+Ademas de los motores preconfigurados, el usuario puede instalar motores adicionales como plugins. Un plugin es un fichero JSON en `AppPaths.PluginsDir` (`~/Library/Application Support/Yottacast/plugins/` en macOS) con `"type": "WebSearch"`. `PluginService` los carga al arranque y vigila la carpeta para hot-reload.
+
+Los plugins aparecen en la UI de Settings igual que los motores built-in, pero con un icono de plugin (puzzle piece) junto al nombre. El flyout de cada plugin incluye dos botones adicionales: "Show plugin folder" (abre la carpeta de plugins en el gestor de archivos) y "Edit plugin source" (abre el JSON del plugin con la app por defecto).
+
+Al cargar un plugin nuevo, `UserSettings.EnsurePluginSettings()` crea su entrada en `WebSearchEngines` con defaults (`Enabled=true`, `Mode=PrefixOnly`, `Prefix` del plugin). A partir de ahi, la configuracion del plugin se persiste y personaliza igual que cualquier motor built-in.
+
+Ver `docs/examples/hackernews.json` para un ejemplo de plugin.
+
+> **Verificar en:** `WebSearchEngine`, `WebSearchEngineSettings`, `WebSearchDefaults` en `Yottacast.Core/Search/WebSearch/WebSearchEngine.cs`. Merge en `UserSettings.MergeWebSearchEngines()`. Plugins en `PluginService`, `WebSearchPlugin`. UI en `WebSearchEngineRowViewModel` y `SettingsWindow.axaml.cs`.
 
 ---
 
@@ -207,7 +223,7 @@ La ventana de Settings se divide en secciones navegables: General, AppSearch, We
 
 ### Flujo de apertura
 
-Antes de mostrar la ventana, la aplicacion espera a que `ApplicationSearch` haya completado su escaneo inicial (`await appSearch.WhenReady()`). Esto garantiza que los pickers de browser y terminal muestren datos completos. Si la ventana ya esta visible, simplemente se activa sin recrearla.
+Si la ventana ya esta visible, simplemente se activa sin recrearla. La apertura es sincrona — no necesita esperar a `ApplicationSearch` porque los pickers de browser y terminal usan sus propios mecanismos de deteccion en disco.
 
 ### Seguridad en los pickers
 

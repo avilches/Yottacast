@@ -32,15 +32,8 @@ internal class FakePlatformProvider(IReadOnlyList<FileResult> files) : PlatformP
     public override void LaunchApp(string path) { }
 
     public override string[] KnownBrowserNames => [];
-    public override IReadOnlyDictionary<string, string[]> BrowserFallbackPaths =>
-        new Dictionary<string, string[]>();
     public override void OpenUrl(string url, string browserName) { }
-    public override string[] GetBrowserPaths(string name) => [];
 
     public override string[] KnownTerminalNames => [];
-    public override IReadOnlyDictionary<string, string[]> TerminalFallbackPaths =>
-        new Dictionary<string, string[]>();
     public override void ExecuteCommand(string command, string terminalName) { }
-    public override string[] GetTerminalPaths(string name) => [];
-
 }

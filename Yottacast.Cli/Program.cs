@@ -29,8 +29,8 @@ internal static class Program {
     private static readonly AppIconCache IconCache = new(Platform, LoggerFactory.CreateLogger<AppIconCache>());
     private static readonly FileIconCache FileIconCache = new(Platform, LoggerFactory.CreateLogger<FileIconCache>());
     private static readonly ApplicationSearch AppSearch = new(Settings, Platform, IconCache, LoggerFactory.CreateLogger<ApplicationSearch>());
-    private static readonly BrowserDiscovery Browsers = new(AppSearch, Platform, LoggerFactory.CreateLogger<BrowserDiscovery>());
-    private static readonly TerminalDiscovery Terminals = new(AppSearch, Platform, LoggerFactory.CreateLogger<TerminalDiscovery>());
+    private static readonly BrowserDiscovery Browsers = new(Settings, Platform, LoggerFactory.CreateLogger<BrowserDiscovery>());
+    private static readonly TerminalDiscovery Terminals = new(Settings, Platform, LoggerFactory.CreateLogger<TerminalDiscovery>());
     private static readonly FileSearch FileSearch = new(Platform);
 
     private static async Task Main(string[] args) {
@@ -119,38 +119,26 @@ internal static class Program {
 
     static void CmdBrowsers() {
         Header("Browser Discovery");
-        var candidates = Browsers.GetCandidatePaths();
-        if (candidates.Count == 0) {
+        var installed = Browsers.Discover();
+        if (installed.Count == 0) {
             Warn("No browsers found.");
             return;
         }
-        var found = 0;
-        foreach (var (name, path) in candidates) {
-            var exists = Directory.Exists(path) || File.Exists(path);
-            if (exists) {
-                Ok($"{name,-20} → {path}");
-                found++;
-            } else Miss($"{name,-20} → {path}");
-        }
-        Console.WriteLine($"\n  {found}/{candidates.Count} installed");
+        foreach (var b in installed)
+            Ok($"{b.Name,-20} → {b.ExecutablePath}");
+        Console.WriteLine($"\n  {installed.Count} installed");
     }
 
     static void CmdTerminals() {
         Header("Terminal Discovery");
-        var candidates = Terminals.GetCandidatePaths();
-        if (candidates.Count == 0) {
+        var installed = Terminals.Discover();
+        if (installed.Count == 0) {
             Warn("No terminals found.");
             return;
         }
-        int found = 0;
-        foreach (var (name, path) in candidates) {
-            bool exists = Directory.Exists(path) || File.Exists(path);
-            if (exists) {
-                Ok($"{name,-20} → {path}");
-                found++;
-            } else Miss($"{name,-20} → {path}");
-        }
-        Console.WriteLine($"\n  {found}/{candidates.Count} installed");
+        foreach (var t in installed)
+            Ok($"{t.Name,-20} → {t.ExecutablePath}");
+        Console.WriteLine($"\n  {installed.Count} installed");
     }
 
     static async Task CmdRunAsync(string binary, string runArgs) {

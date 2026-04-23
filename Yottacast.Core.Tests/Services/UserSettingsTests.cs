@@ -64,14 +64,10 @@ public class UserSettingsTests : IDisposable {
         public override Task SearchFilesAsync(string query, Action<FileResult> onResult, int maxResults, IReadOnlyList<string>? folders, CancellationToken ct) => Task.CompletedTask;
 
         public override string[] KnownBrowserNames => [];
-        public override IReadOnlyDictionary<string, string[]> BrowserFallbackPaths => new Dictionary<string, string[]>();
         public override void OpenUrl(string url, string browserName) { }
-        public override string[] GetBrowserPaths(string name) => [];
 
         public override string[] KnownTerminalNames => [];
-        public override IReadOnlyDictionary<string, string[]> TerminalFallbackPaths => new Dictionary<string, string[]>();
         public override void ExecuteCommand(string command, string terminalName) { }
-        public override string[] GetTerminalPaths(string name) => [];
 
     }
 
@@ -101,16 +97,12 @@ public class UserSettingsTests : IDisposable {
         public override Task SearchFilesAsync(string query, Action<FileResult> onResult, int maxResults, IReadOnlyList<string>? folders, CancellationToken ct) => Task.CompletedTask;
 
         public override string[] KnownBrowserNames => [.. _browserPaths.Keys];
-        public override IReadOnlyDictionary<string, string[]> BrowserFallbackPaths => _browserPaths;
+        public override IReadOnlyDictionary<string, string[]> BrowserKnownPaths => _browserPaths;
         public override void OpenUrl(string url, string browserName) { }
-        public override string[] GetBrowserPaths(string name) =>
-            _browserPaths.TryGetValue(name, out var p) ? p : [];
 
         public override string[] KnownTerminalNames => [.. _terminalPaths.Keys];
-        public override IReadOnlyDictionary<string, string[]> TerminalFallbackPaths => _terminalPaths;
+        public override IReadOnlyDictionary<string, string[]> TerminalKnownPaths => _terminalPaths;
         public override void ExecuteCommand(string command, string terminalName) { }
-        public override string[] GetTerminalPaths(string name) =>
-            _terminalPaths.TryGetValue(name, out var p) ? p : [];
 
     }
 
@@ -124,13 +116,9 @@ public class UserSettingsTests : IDisposable {
         public override void LaunchApp(string path) { }
         public override Task SearchFilesAsync(string query, Action<FileResult> onResult, int maxResults, IReadOnlyList<string>? folders, CancellationToken ct) => Task.CompletedTask;
         public override string[] KnownBrowserNames => [];
-        public override IReadOnlyDictionary<string, string[]> BrowserFallbackPaths => new Dictionary<string, string[]>();
         public override void OpenUrl(string url, string browserName) { }
-        public override string[] GetBrowserPaths(string name) => [];
         public override string[] KnownTerminalNames => [];
-        public override IReadOnlyDictionary<string, string[]> TerminalFallbackPaths => new Dictionary<string, string[]>();
         public override void ExecuteCommand(string command, string terminalName) { }
-        public override string[] GetTerminalPaths(string name) => [];
     }
 
     // ── Helper: create a real temp file representing an installed app ──────────
@@ -1046,12 +1034,8 @@ public class UserSettingsTests : IDisposable {
         public override void LaunchApp(string path) { }
         public override Task SearchFilesAsync(string query, Action<FileResult> onResult, int maxResults, IReadOnlyList<string>? folders, CancellationToken ct) => Task.CompletedTask;
         public override string[] KnownBrowserNames => [];
-        public override IReadOnlyDictionary<string, string[]> BrowserFallbackPaths => new Dictionary<string, string[]>();
         public override void OpenUrl(string url, string browserName) { }
-        public override string[] GetBrowserPaths(string name) => [];
         public override string[] KnownTerminalNames => [];
-        public override IReadOnlyDictionary<string, string[]> TerminalFallbackPaths => new Dictionary<string, string[]>();
         public override void ExecuteCommand(string command, string terminalName) { }
-        public override string[] GetTerminalPaths(string name) => [];
     }
 }

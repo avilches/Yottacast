@@ -61,10 +61,14 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
 
     public override Task ScanAppsAsync(
         Action<string> addApp, IReadOnlyList<string> dirs, CancellationToken ct) {
+        if (dirs.Count == 0) return Task.CompletedTask;
         const string predicate = "kMDItemContentType == 'com.apple.application-bundle'";
         return Task.Run(() => SpotlightInterop.Query(
             predicate, dirs,
-            line => { if (!string.IsNullOrWhiteSpace(line)) addApp(line); return true; },
+            line => {
+                if (!string.IsNullOrWhiteSpace(line)) addApp(line);
+                return true;
+            },
             ct), ct);
     }
 
@@ -87,9 +91,23 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
 
     public override void LaunchApp(string path) {
         try {
-            System.Diagnostics.Process.Start(
-                new ProcessStartInfo("open", $"\"{path}\"") { UseShellExecute = false });
-        } catch { }
+            Process.Start(new ProcessStartInfo("open", $"\"{path}\"") { UseShellExecute = false });
+        } catch {
+        }
+    }
+
+    public override void RevealInFileManager(string directoryPath) {
+        try {
+            Process.Start(new ProcessStartInfo("open", $"\"{directoryPath}\"") { UseShellExecute = false });
+        } catch {
+        }
+    }
+
+    public override void OpenFile(string filePath) {
+        try {
+            Process.Start(new ProcessStartInfo("open", $"\"{filePath}\"") { UseShellExecute = false });
+        } catch {
+        }
     }
 
     // ── File search ───────────────────────────────────────────────────────────
@@ -135,6 +153,8 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
             sw.Elapsed.TotalMilliseconds, ct.IsCancellationRequested, count, error?.Message ?? "none");
     }
 
+    public override string? AppPathInDirectory(string dir, string appName) => $"{dir}/{appName}.app";
+
     // ── Browser ───────────────────────────────────────────────────────────────
 
     public override string[] KnownBrowserNames => [
@@ -152,17 +172,6 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
         "Orion",
     ];
 
-    public override IReadOnlyDictionary<string, string[]> BrowserFallbackPaths =>
-        new Dictionary<string, string[]>();
-
-    public override string[] GetBrowserPaths(string name) {
-        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        return [
-            $"/Applications/{name}.app",
-            $"$HOME/Applications/{name}.app",
-        ];
-    }
-
     public override void OpenUrl(string url, string browserName) {
         try {
             Process.Start(new ProcessStartInfo {
@@ -170,7 +179,8 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
                 ArgumentList = { "-a", browserName, url },
                 UseShellExecute = false,
             });
-        } catch { }
+        } catch {
+        }
     }
 
     // ── Terminal ──────────────────────────────────────────────────────────────
@@ -186,18 +196,6 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
         "Tabby",
     ];
 
-    public override IReadOnlyDictionary<string, string[]> TerminalFallbackPaths =>
-        new Dictionary<string, string[]>();
-
-    public override string[] GetTerminalPaths(string name) {
-        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        return [
-            $"/Applications/{name}.app",
-            $"$HOME/Applications/{name}.app",
-            $"/System/Applications/Utilities/{name}.app",
-        ];
-    }
-
     public override void ExecuteCommand(string command, string terminalName) {
         switch (terminalName) {
             case "Terminal":
@@ -205,10 +203,10 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
                 break;
             case "iTerm":
                 RunAppleScript($"""
-                    tell application "iTerm"
-                        create window with default profile command "{EscapeAppleScript(command)}"
-                    end tell
-                    """);
+                                tell application "iTerm"
+                                    create window with default profile command "{EscapeAppleScript(command)}"
+                                end tell
+                                """);
                 break;
             case "Warp":
                 var warpUrl = $"warp://action/new_tab?command={Uri.EscapeDataString(command)}";
@@ -257,8 +255,8 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
 
                 var docTypesKey = CfStringCreateWithCString(IntPtr.Zero, "CFBundleDocumentTypes", 0x08000100);
                 var iconFileKey = CfStringCreateWithCString(IntPtr.Zero, "CFBundleTypeIconFile", 0x08000100);
-                var extListKey  = CfStringCreateWithCString(IntPtr.Zero, "CFBundleTypeExtensions", 0x08000100);
-                var cfExt       = CfStringCreateWithCString(IntPtr.Zero, ext, 0x08000100);
+                var extListKey = CfStringCreateWithCString(IntPtr.Zero, "CFBundleTypeExtensions", 0x08000100);
+                var cfExt = CfStringCreateWithCString(IntPtr.Zero, ext, 0x08000100);
                 try {
                     var docTypes = ObjcMsgSendArg(plist, SelRegisterName("objectForKey:"), docTypesKey);
                     if (docTypes == IntPtr.Zero) return false;
@@ -282,8 +280,10 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
                         }
                     }
                 } finally {
-                    CfRelease(docTypesKey); CfRelease(iconFileKey);
-                    CfRelease(extListKey);  CfRelease(cfExt);
+                    CfRelease(docTypesKey);
+                    CfRelease(iconFileKey);
+                    CfRelease(extListKey);
+                    CfRelease(cfExt);
                 }
             } finally {
                 CfRelease(cfPlistPath);
@@ -301,9 +301,9 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
         if (rep1 == IntPtr.Zero || rep2 == IntPtr.Zero) return double.MaxValue;
 
         var bpr = (int)ObjcMsgSendNint(rep1, SelRegisterName("bytesPerRow"));
-        var h   = (int)ObjcMsgSendNint(rep1, SelRegisterName("pixelsHigh"));
+        var h = (int)ObjcMsgSendNint(rep1, SelRegisterName("pixelsHigh"));
         var bpr2 = (int)ObjcMsgSendNint(rep2, SelRegisterName("bytesPerRow"));
-        var h2   = (int)ObjcMsgSendNint(rep2, SelRegisterName("pixelsHigh"));
+        var h2 = (int)ObjcMsgSendNint(rep2, SelRegisterName("pixelsHigh"));
         if (bpr != bpr2 || h != h2) return double.MaxValue;
 
         var total = bpr * h;
@@ -377,14 +377,23 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
         var name = Path.GetFileNameWithoutExtension(appPath);
         try {
             var workspace = ObjcMsgSend(ObjcGetClass("NSWorkspace"), SelRegisterName("sharedWorkspace"));
-            if (workspace == IntPtr.Zero) { logger.LogWarning("Icon [{App}]: NSWorkspace.sharedWorkspace returned zero", name); return null; }
+            if (workspace == IntPtr.Zero) {
+                logger.LogWarning("Icon [{App}]: NSWorkspace.sharedWorkspace returned zero", name);
+                return null;
+            }
 
             var cfPath = CfStringCreateWithCString(IntPtr.Zero, appPath, 0x08000100);
-            if (cfPath == IntPtr.Zero) { logger.LogWarning("Icon [{App}]: CFStringCreateWithCString returned zero", name); return null; }
+            if (cfPath == IntPtr.Zero) {
+                logger.LogWarning("Icon [{App}]: CFStringCreateWithCString returned zero", name);
+                return null;
+            }
 
             try {
                 var nsImage = ObjcMsgSendArg(workspace, SelRegisterName("iconForFile:"), cfPath);
-                if (nsImage == IntPtr.Zero) { logger.LogWarning("Icon [{App}]: iconForFile: returned zero", name); return null; }
+                if (nsImage == IntPtr.Zero) {
+                    logger.LogWarning("Icon [{App}]: iconForFile: returned zero", name);
+                    return null;
+                }
 
                 // Draw into a new NSImage at exact targetSize×targetSize points (lockFocus pattern from
                 // Quicksilver's prepareImageForIcon:). AppKit picks the best available .icns representation.
@@ -393,11 +402,17 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
                 // and imageRepWithData: picking any one of them unpredictably.
                 const int targetSize = 64;
                 var alloc = ObjcMsgSend(ObjcGetClass("NSImage"), SelRegisterName("alloc"));
-                if (alloc == IntPtr.Zero) { logger.LogWarning("Icon [{App}]: NSImage alloc returned zero", name); return null; }
+                if (alloc == IntPtr.Zero) {
+                    logger.LogWarning("Icon [{App}]: NSImage alloc returned zero", name);
+                    return null;
+                }
 
                 var scaledImage = ObjcMsgSendSizeReturn(alloc, SelRegisterName("initWithSize:"),
                     new NSSize { Width = targetSize, Height = targetSize });
-                if (scaledImage == IntPtr.Zero) { logger.LogWarning("Icon [{App}]: NSImage initWithSize: returned zero", name); return null; }
+                if (scaledImage == IntPtr.Zero) {
+                    logger.LogWarning("Icon [{App}]: NSImage initWithSize: returned zero", name);
+                    return null;
+                }
 
                 ObjcMsgSend(scaledImage, SelRegisterName("lockFocus"));
                 ObjcMsgSendRectVoid(nsImage, SelRegisterName("drawInRect:"),
@@ -406,23 +421,38 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
 
                 var tiffData = ObjcMsgSend(scaledImage, SelRegisterName("TIFFRepresentation"));
                 CfRelease(scaledImage);
-                if (tiffData == IntPtr.Zero) { logger.LogWarning("Icon [{App}]: TIFFRepresentation returned zero", name); return null; }
+                if (tiffData == IntPtr.Zero) {
+                    logger.LogWarning("Icon [{App}]: TIFFRepresentation returned zero", name);
+                    return null;
+                }
 
                 var bitmapRep = ObjcMsgSendArg(ObjcGetClass("NSBitmapImageRep"),
                     SelRegisterName("imageRepWithData:"), tiffData);
-                if (bitmapRep == IntPtr.Zero) { logger.LogWarning("Icon [{App}]: imageRepWithData: returned zero", name); return null; }
+                if (bitmapRep == IntPtr.Zero) {
+                    logger.LogWarning("Icon [{App}]: imageRepWithData: returned zero", name);
+                    return null;
+                }
 
                 var emptyDict = ObjcMsgSend(ObjcGetClass("NSDictionary"), SelRegisterName("dictionary"));
                 // NSBitmapImageFileTypePNG = 4
                 var pngData = ObjcMsgSendRepresentation(bitmapRep,
                     SelRegisterName("representationUsingType:properties:"), 4, emptyDict);
-                if (pngData == IntPtr.Zero) { logger.LogWarning("Icon [{App}]: representationUsingType:properties: returned zero", name); return null; }
+                if (pngData == IntPtr.Zero) {
+                    logger.LogWarning("Icon [{App}]: representationUsingType:properties: returned zero", name);
+                    return null;
+                }
 
                 var length = (int)ObjcMsgSendNint(pngData, SelRegisterName("length"));
-                if (length <= 0) { logger.LogWarning("Icon [{App}]: NSData.length={Length}", name, length); return null; }
+                if (length <= 0) {
+                    logger.LogWarning("Icon [{App}]: NSData.length={Length}", name, length);
+                    return null;
+                }
 
                 var bytesPtr = ObjcMsgSend(pngData, SelRegisterName("bytes"));
-                if (bytesPtr == IntPtr.Zero) { logger.LogWarning("Icon [{App}]: NSData.bytes returned zero", name); return null; }
+                if (bytesPtr == IntPtr.Zero) {
+                    logger.LogWarning("Icon [{App}]: NSData.bytes returned zero", name);
+                    return null;
+                }
 
                 var bytes = new byte[length];
                 Marshal.Copy(bytesPtr, bytes, 0, length);
@@ -459,10 +489,18 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
     private static extern void ObjcMsgSendSize(IntPtr receiver, IntPtr selector, NSSize size);
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct NSSize { public double Width; public double Height; }
+    private struct NSSize {
+        public double Width;
+        public double Height;
+    }
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct NSRect { public double X; public double Y; public double Width; public double Height; }
+    private struct NSRect {
+        public double X;
+        public double Y;
+        public double Width;
+        public double Height;
+    }
 
     [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
     private static extern IntPtr ObjcMsgSendSizeReturn(IntPtr receiver, IntPtr selector, NSSize size);

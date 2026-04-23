@@ -24,6 +24,9 @@
             <StreamGeometry x:Key="Icon.Calculator">M4 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H4zm0 1h8a1 1 0 0 1 1 1v2H3V4a1 1 0 0 1 1-1zM3 7h2v2H3V7zm0 3h2v2H3v-2zm3-3h2v2H6V7zm0 3h2v2H6v-2zm3-3h2v5H9V7z</StreamGeometry>
             <StreamGeometry x:Key="Icon.Clipboard">M5 1a1 1 0 0 0-1 1H3a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2h-1a1 1 0 0 0-1-1H5zm0 1h6v1H5V2zM3 4h10v9H3V4zm2 2v1h6V6H5zm0 2v1h6V8H5z</StreamGeometry>
             <StreamGeometry x:Key="Icon.Emoji">M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16zM4.285 9.567a.5.5 0 0 1 .683.183A3.498 3.498 0 0 0 8 11.5a3.498 3.498 0 0 0 3.032-1.75.5.5 0 1 1 .866.5A4.498 4.498 0 0 1 8 12.5a4.498 4.498 0 0 1-3.898-2.25.5.5 0 0 1 .183-.683zM7 6.5C7 7.328 6.552 8 6 8s-1-.672-1-1.5S5.448 5 6 5s1 .672 1 1.5zm4 0c0 .828-.448 1.5-1 1.5s-1-.672-1-1.5S9.448 5 10 5s1 .672 1 1.5z</StreamGeometry>
+            <StreamGeometry x:Key="Icon.Plugin">M6 0a.5.5 0 0 1 .5.5V3h3V.5a.5.5 0 0 1 1 0V3h1a.5.5 0 0 1 .5.5v3A3.5 3.5 0 0 1 8.5 10H8v2.5a.5.5 0 0 1-1 0V10h-.5A3.5 3.5 0 0 1 3 6.5v-3A.5.5 0 0 1 3.5 3h2V.5A.5.5 0 0 1 6 0zM4 4v2.5A2.5 2.5 0 0 0 6.5 9h3A2.5 2.5 0 0 0 12 6.5V4H4z</StreamGeometry>
+            <StreamGeometry x:Key="Icon.Folder">M1 3.5A1.5 1.5 0 0 1 2.5 2h2.764c.958 0 1.76.56 2.311 1.184C7.985 3.648 8.48 4 9 4h4.5A1.5 1.5 0 0 1 15 5.5v7a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 12.5v-9z</StreamGeometry>
+            <StreamGeometry x:Key="Icon.Edit">M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5L13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5z</StreamGeometry>
             <StreamGeometry x:Key="Icon.Dictionary">M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811V2.828zm7.5-.141c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492V2.687zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783z</StreamGeometry>
         </ResourceDictionary>
     </Window.Resources>
@@ -82,10 +85,89 @@
             <Setter Property="Margin"     Value="0,0,0,6"/>
         </Style>
 
-        <!-- ComboBox stretch -->
+        <!-- ComboBox: stretch + borde coherente con flyout-input -->
         <Style Selector="ComboBox">
             <Setter Property="HorizontalAlignment" Value="Stretch"/>
             <Setter Property="Padding"             Value="10,8"/>
+            <Setter Property="Background"          Value="{DynamicResource Theme.WindowBackground}"/>
+            <Setter Property="BorderBrush"         Value="#868686"/>
+            <Setter Property="BorderThickness"     Value="1"/>
+            <Setter Property="CornerRadius"        Value="4"/>
+        </Style>
+        <Style Selector="ComboBox /template/ Border#Background">
+            <Setter Property="Background"      Value="{DynamicResource Theme.WindowBackground}"/>
+            <Setter Property="BorderBrush"     Value="#868686"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius"    Value="4"/>
+        </Style>
+        <Style Selector="ComboBox:pointerover /template/ Border#Background">
+            <Setter Property="Background"  Value="{DynamicResource Theme.WindowBackground}"/>
+            <Setter Property="BorderBrush" Value="#868686"/>
+        </Style>
+        <Style Selector="ComboBox:focus /template/ Border#Background,
+                         ComboBox:focus-within /template/ Border#Background">
+            <Setter Property="Background"  Value="{DynamicResource Theme.WindowBackground}"/>
+            <Setter Property="BorderBrush" Value="#868686"/>
+        </Style>
+
+        <!-- numeric-field: Border wrapper para NumericUpDown.
+             Delegamos el borde al Border exterior para evitar que el ControlTheme
+             interno de ButtonSpinner sobreescriba el color en el estado :focus-within. -->
+        <Style Selector="Border.numeric-field">
+            <Setter Property="BorderBrush"     Value="#868686"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius"    Value="4"/>
+            <Setter Property="Background"      Value="{DynamicResource Theme.WindowBackground}"/>
+        </Style>
+        <!-- El NumericUpDown interior no tiene borde propio.
+             Todos los fondos interiores son Transparent: el Border exterior aporta el color.
+             Usar Theme.WindowBackground causaría que el fondo interior tape los píxeles
+             de las esquinas redondeadas del Border exterior al cambiar de color en focus. -->
+        <Style Selector="NumericUpDown">
+            <Setter Property="Background"      Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="NumericUpDown /template/ ButtonSpinner#PART_Spinner /template/ Border#PART_BorderElement">
+            <Setter Property="Background"      Value="Transparent"/>
+            <Setter Property="BorderBrush"     Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="NumericUpDown:focus-within /template/ ButtonSpinner#PART_Spinner /template/ Border#PART_BorderElement">
+            <Setter Property="Background"      Value="Transparent"/>
+            <Setter Property="BorderBrush"     Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <!-- TextBox interior: padding y altura iguales a flyout-input, sin borde propio -->
+        <Style Selector="NumericUpDown TextBox">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="MinHeight"  Value="0"/>
+            <Setter Property="Padding"    Value="8,5,8,5"/>
+            <Setter Property="FontSize"   Value="12"/>
+        </Style>
+        <Style Selector="NumericUpDown TextBox /template/ Border#PART_BorderElement">
+            <Setter Property="Background"      Value="Transparent"/>
+            <Setter Property="BorderBrush"     Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="NumericUpDown TextBox:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background"      Value="Transparent"/>
+            <Setter Property="BorderBrush"     Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="NumericUpDown TextBox:focus-within /template/ Border#PART_BorderElement">
+            <Setter Property="Background"      Value="Transparent"/>
+            <Setter Property="BorderBrush"     Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <!-- Suprimir el mensaje de error de validación con un template vacío -->
+        <Style Selector="NumericUpDown /template/ DataValidationErrors">
+            <Setter Property="ErrorTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <Panel/>
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <!-- Hotkey field -->
@@ -162,6 +244,9 @@
         <Style Selector="TextBlock.folder-missing">
             <Setter Property="Opacity" Value="0.4"/>
         </Style>
+        <Style Selector="PathIcon.folder-missing">
+            <Setter Property="Opacity" Value="0.4"/>
+        </Style>
 
         <!-- Description text -->
         <Style Selector="TextBlock.description">
@@ -234,6 +319,26 @@
         <Style Selector="Button.url-edit-btn:pointerover">
             <Setter Property="Foreground" Value="{DynamicResource Theme.ItemTitle}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource Theme.ItemCategory}"/>
+        </Style>
+
+        <!-- Icon-only button — sin borde, sin reborde cuadrado de hover -->
+        <Style Selector="Button.icon-btn">
+            <Setter Property="Background"      Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding"         Value="6"/>
+            <Setter Property="CornerRadius"    Value="4"/>
+            <Setter Property="Cursor"          Value="Hand"/>
+            <Setter Property="Foreground"      Value="{DynamicResource Theme.ItemSubtitle}"/>
+        </Style>
+        <Style Selector="Button.icon-btn /template/ ContentPresenter">
+            <Setter Property="Background"    Value="Transparent"/>
+            <Setter Property="CornerRadius"  Value="4"/>
+        </Style>
+        <Style Selector="Button.icon-btn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource Theme.ItemHover}"/>
+        </Style>
+        <Style Selector="Button.icon-btn:pointerover">
+            <Setter Property="Foreground" Value="{DynamicResource Theme.ItemTitle}"/>
         </Style>
 
         <!-- Mode toggle button -->
@@ -453,7 +558,11 @@
                         <TextBlock Classes="label" Text="Default Terminal"/>
                         <ComboBox ItemsSource="{Binding Terminals}"
                                   SelectedItem="{Binding SelectedTerminal}"
-                                  PlaceholderText="No terminals found"/>
+                                  PlaceholderText="No terminals found"
+                                  DropDownOpened="OnTerminalDropDownOpened"/>
+                        <TextBlock Text="Searching in application folders…"
+                                   FontSize="11" Opacity="0.5" Margin="2,4,0,0"
+                                   IsVisible="{Binding IsTerminalsLoading}"/>
                     </StackPanel>
 
                     <!-- Sticky window -->
@@ -481,7 +590,8 @@
                         <Border BorderThickness="1"
                                 BorderBrush="{DynamicResource Theme.Divider}"
                                 CornerRadius="4"
-                                Padding="0">
+                                Padding="0"
+                                IsVisible="{Binding HasAppDirectories}">
                             <ItemsControl ItemsSource="{Binding AppDirectories}">
                                 <ItemsControl.Styles>
                                     <Style Selector="ContentPresenter:last-child Border">
@@ -493,13 +603,18 @@
                                         <Border BorderThickness="0,0,0,1"
                                                 BorderBrush="{DynamicResource Theme.Divider}"
                                                 Padding="10,7">
-                                            <Grid ColumnDefinitions="*,Auto">
-                                                <TextBlock Grid.Column="0"
+                                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6">
+                                                <PathIcon Grid.Column="0"
+                                                          Data="{StaticResource Icon.FileSearch}"
+                                                          Width="13" Height="13"
+                                                          Foreground="{DynamicResource Theme.ItemTitle}"
+                                                          VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="1"
                                                            Text="{Binding}"
                                                            Foreground="{DynamicResource Theme.ItemTitle}"
                                                            TextTrimming="CharacterEllipsis"
                                                            VerticalAlignment="Center"/>
-                                                <Button Grid.Column="1"
+                                                <Button Grid.Column="2"
                                                         Classes="remove-btn"
                                                         Content="✕"
                                                         Tag="{Binding}"
@@ -540,156 +655,216 @@
                         <TextBlock Classes="label" Text="Default Browser"/>
                         <ComboBox ItemsSource="{Binding Browsers}"
                                   SelectedItem="{Binding SelectedBrowser}"
-                                  PlaceholderText="No browsers found"/>
+                                  PlaceholderText="No browsers found"
+                                  DropDownOpened="OnBrowserDropDownOpened"/>
+                        <TextBlock Text="Searching in application folders…"
+                                   FontSize="11" Opacity="0.5" Margin="2,4,0,0"
+                                   IsVisible="{Binding IsBrowsersLoading}"/>
                     </StackPanel>
 
-                    <!-- Engine table -->
-                    <StackPanel Spacing="0">
-                        <TextBlock Classes="label" Text="Search Engines"/>
+                    <!-- Show disabled toggle: texto + checkbox alineados a la derecha -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
+                        <TextBlock Text="Show disabled engines"
+                                   FontSize="13"
+                                   Foreground="{DynamicResource Theme.ItemTitle}"
+                                   VerticalAlignment="Center"/>
+                        <CheckBox IsChecked="{Binding ShowDisabledWebSearchEngines}"
+                                  Padding="0"/>
+                    </StackPanel>
 
-                        <!-- Header row: col 0=icon(20) col 1=prefix(58) col 2=name(*) col 3=mode(Auto) col 4=edit(Auto) col 5=on(34) -->
-                        <Grid ColumnDefinitions="20,58,*,Auto,Auto,34">
-                            <TextBlock Grid.Column="1" Classes="table-col-header" Text="Prefix"/>
-                            <TextBlock Grid.Column="2" Classes="table-col-header" Text="Engine"/>
-                            <TextBlock Grid.Column="3" Classes="table-col-header" Text="Mode" Margin="4,0,0,0"/>
-                            <TextBlock Grid.Column="4" Classes="table-col-header" Text="URL"
-                                       HorizontalAlignment="Center"/>
-                            <TextBlock Grid.Column="5" Classes="table-col-header" Text="On"
-                                       HorizontalAlignment="Center"/>
-                        </Grid>
+                    <!-- Engine groups -->
+                    <ItemsControl ItemsSource="{Binding WebSearchGroups}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:WebSearchGroupViewModel">
+                                <StackPanel Spacing="0" Margin="0,0,0,12"
+                                            IsVisible="{Binding IsVisible}">
+                                    <TextBlock Classes="label" Text="{Binding Title}"/>
 
-                        <Rectangle Height="1" Fill="{DynamicResource Theme.Divider}" Margin="0,0,0,1"/>
+                                    <Border BorderThickness="1"
+                                            BorderBrush="{DynamicResource Theme.Divider}"
+                                            CornerRadius="4"
+                                            Padding="0">
+                                        <ItemsControl ItemsSource="{Binding Engines}">
+                                            <ItemsControl.Styles>
+                                                <Style Selector="ContentPresenter:last-child Border">
+                                                    <Setter Property="BorderThickness" Value="0"/>
+                                                </Style>
+                                            </ItemsControl.Styles>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:WebSearchEngineRowViewModel">
+                                                    <Border BorderThickness="0,0,0,1"
+                                                            BorderBrush="{DynamicResource Theme.Divider}"
+                                                            Padding="6,4"
+                                                            IsVisible="{Binding IsVisible}">
+                                                        <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
 
-                        <!-- Engine rows -->
-                        <ItemsControl ItemsSource="{Binding WebSearchEngines}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vm:WebSearchEngineRowViewModel">
-                                    <Grid ColumnDefinitions="26,58,*,Auto,Auto,34" MinHeight="24">
+                                                            <!-- Enabled checkbox -->
+                                                            <CheckBox Grid.Column="0"
+                                                                      IsChecked="{Binding Enabled}"
+                                                                      VerticalAlignment="Center"
+                                                                      Margin="0,0,6,0"/>
 
-                                        <!-- Icon -->
-                                        <Image Grid.Column="0"
-                                               Source="{Binding Icon}"
-                                               Width="20" Height="20"
-                                               VerticalAlignment="Center"
-                                               HorizontalAlignment="Left"
-                                               IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-
-                                        <!-- Prefix alias — label until double-click -->
-                                        <Panel Grid.Column="1" Opacity="{Binding PrefixOpacity}">
-                                            <TextBlock Text="{Binding Prefix}"
-                                                       Classes="engine-alias-label"
-                                                       IsVisible="{Binding IsPrefixNotEditing}"
-                                                       DoubleTapped="OnPrefixDoubleTapped"/>
-                                            <TextBox Text="{Binding Prefix}"
-                                                     Classes="engine-alias-edit"
-                                                     IsVisible="{Binding IsPrefixEditing}"
-                                                     LostFocus="OnPrefixLostFocus"
-                                                     KeyDown="OnPrefixKeyDown"/>
-                                        </Panel>
-
-                                        <!-- Engine name -->
-                                        <TextBlock Grid.Column="2"
-                                                   Text="{Binding Name}"
-                                                   Foreground="{DynamicResource Theme.ItemTitle}"
-                                                   FontSize="{DynamicResource Theme.FontSizeTitle}"
-                                                   VerticalAlignment="Center"
-                                                   Padding="0,0,4,0"/>
-
-                                        <!-- Mode toggle -->
-                                        <Button Grid.Column="3"
-                                                Content="{Binding ModeLabel}"
-                                                Command="{Binding ToggleModeCommand}"
-                                                Classes="mode-toggle"
-                                                VerticalAlignment="Center"
-                                                Margin="4,0"/>
-
-                                        <!-- Edit URL flyout -->
-                                        <Button Grid.Column="4"
-                                                Content="Edit"
-                                                Classes="mode-toggle"
-                                                VerticalAlignment="Center"
-                                                Margin="4,0">
-                                            <Button.Flyout>
-                                                <Flyout Placement="Left">
-                                                    <Flyout.FlyoutPresenterTheme>
-                                                        <ControlTheme TargetType="FlyoutPresenter"
-                                                                      BasedOn="{StaticResource {x:Type FlyoutPresenter}}">
-                                                            <Setter Property="BorderBrush"     Value="#707070"/>
-                                                            <Setter Property="BorderThickness" Value="1.5"/>
-                                                        </ControlTheme>
-                                                    </Flyout.FlyoutPresenterTheme>
-                                                    <StackPanel x:DataType="vm:WebSearchEngineRowViewModel"
-                                                                Width="380" Spacing="8" Margin="4">
-
-                                                        <!-- Cabecera: icono + nombre -->
-                                                        <StackPanel Orientation="Horizontal" Spacing="8"
-                                                                    Margin="0,0,0,4">
-                                                            <Image Source="{Binding Icon}"
-                                                                   Width="32" Height="32"
+                                                            <!-- Icon -->
+                                                            <Image Grid.Column="1"
+                                                                   Source="{Binding Icon}"
+                                                                   Width="20" Height="20"
                                                                    VerticalAlignment="Center"
+                                                                   Margin="0,0,8,0"
                                                                    IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                                                            <TextBlock Text="{Binding Name}"
-                                                                       FontSize="13"
-                                                                       FontWeight="SemiBold"
-                                                                       VerticalAlignment="Center"/>
-                                                        </StackPanel>
 
-                                                        <TextBlock Text="Prefix"
-                                                                   FontSize="11"
-                                                                   Foreground="{DynamicResource Theme.ItemSubtitle}"/>
-                                                        <TextBox Text="{Binding Prefix}"
-                                                                 Classes="flyout-input"
-                                                                 KeyDown="OnFlyoutInputKeyDown"/>
+                                                            <!-- Engine name + Plugin badge + Prefix -->
+                                                            <StackPanel Grid.Column="2"
+                                                                        Orientation="Horizontal"
+                                                                        Spacing="8"
+                                                                        VerticalAlignment="Center">
+                                                                <TextBlock Text="{Binding Name}"
+                                                                           Foreground="{DynamicResource Theme.ItemTitle}"
+                                                                           FontSize="{DynamicResource Theme.FontSizeTitle}"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           VerticalAlignment="Center"/>
+                                                                <PathIcon Data="{StaticResource Icon.Plugin}"
+                                                                          Width="15" Height="15"
+                                                                          MinWidth="15" MinHeight="15"
+                                                                          Foreground="{DynamicResource Theme.ItemSubtitle}"
+                                                                          VerticalAlignment="Center"
+                                                                          IsVisible="{Binding IsPlugin}"
+                                                                          ToolTip.Tip="Plugin"/>
+                                                                <TextBlock Text="{Binding Prefix}"
+                                                                           Foreground="{DynamicResource Theme.ItemSubtitle}"
+                                                                           FontSize="{DynamicResource Theme.FontSizeTitle}"
+                                                                           VerticalAlignment="Center"
+                                                                           IsVisible="{Binding IsPrefixEnabled}"/>
+                                                            </StackPanel>
 
-                                                        <TextBlock Text="Custom URL  ({0} = query)"
-                                                                   FontSize="11"
-                                                                   Foreground="{DynamicResource Theme.ItemSubtitle}"/>
-                                                        <Grid ColumnDefinitions="*,Auto">
-                                                            <TextBox Grid.Column="0"
-                                                                     Text="{Binding QueryUrl}"
-                                                                     Watermark="{Binding QueryUrlWatermark}"
-                                                                     Classes="flyout-input"
-                                                                     KeyDown="OnFlyoutInputKeyDown"
-                                                                     LostFocus="OnFlyoutUrlLostFocus"/>
-                                                            <Button Grid.Column="1"
-                                                                    Content="✕"
-                                                                    Command="{Binding ResetUrlCommand}"
-                                                                    Click="OnResetUrlClicked"
-                                                                    IsVisible="{Binding HasCustomUrl}"
-                                                                    Classes="remove-btn"
+                                                            <!-- Mode toggle button -->
+                                                            <Button Grid.Column="3"
+                                                                    Content="{Binding ModeLabel}"
+                                                                    Command="{Binding ToggleModeCommand}"
+                                                                    Classes="mode-toggle"
                                                                     VerticalAlignment="Center"
-                                                                    Margin="4,0,0,0"/>
-                                                        </Grid>
+                                                                    Margin="4,0"/>
 
-                                                        <!-- Action buttons -->
-                                                        <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,4,0,0">
-                                                            <Button Grid.Column="0"
-                                                                    Content="Test URL"
-                                                                    Command="{Binding TestUrlCommand}"
-                                                                    Click="OnTestUrlClicked"
-                                                                    Classes="mode-toggle"
-                                                                    FontSize="11"/>
-                                                            <Button Grid.Column="2"
-                                                                    Content="✕  Close"
-                                                                    Click="OnFlyoutCloseClicked"
-                                                                    Classes="mode-toggle"
-                                                                    FontSize="11"/>
-                                                        </Grid>
-                                                    </StackPanel>
-                                                </Flyout>
-                                            </Button.Flyout>
-                                        </Button>
+                                                            <!-- Settings flyout button (icono, sin borde) -->
+                                                            <Button Grid.Column="4"
+                                                                    Classes="icon-btn"
+                                                                    VerticalAlignment="Center">
+                                                                <PathIcon Data="{StaticResource Icon.General}"
+                                                                          Width="14" Height="14"/>
+                                                                <Button.Flyout>
+                                                                    <Flyout Placement="Left"
+                                                                           Opened="OnEngineFlyoutOpened">
+                                                                        <Flyout.FlyoutPresenterTheme>
+                                                                            <ControlTheme TargetType="FlyoutPresenter"
+                                                                                          BasedOn="{StaticResource {x:Type FlyoutPresenter}}">
+                                                                                <Setter Property="BorderBrush"     Value="#707070"/>
+                                                                                <Setter Property="BorderThickness" Value="1.5"/>
+                                                                            </ControlTheme>
+                                                                        </Flyout.FlyoutPresenterTheme>
+                                                                        <StackPanel x:DataType="vm:WebSearchEngineRowViewModel"
+                                                                                    Width="380" Spacing="8" Margin="4">
 
-                                        <!-- Enabled -->
-                                        <CheckBox Grid.Column="5"
-                                                  IsChecked="{Binding Enabled}"
-                                                  HorizontalAlignment="Center"
-                                                  VerticalAlignment="Center"/>
-                                    </Grid>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
+                                                                            <!-- Cabecera: icono + nombre -->
+                                                                            <StackPanel Orientation="Horizontal" Spacing="8"
+                                                                                        Margin="0,0,0,4">
+                                                                                <Image Source="{Binding Icon}"
+                                                                                       Width="32" Height="32"
+                                                                                       VerticalAlignment="Center"
+                                                                                       IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                                                                <TextBlock Text="{Binding Name}"
+                                                                                           FontSize="13"
+                                                                                           FontWeight="SemiBold"
+                                                                                           VerticalAlignment="Center"/>
+                                                                            </StackPanel>
+
+                                                                            <!-- Mode toggle -->
+                                                                            <StackPanel Spacing="4">
+                                                                                <TextBlock Text="Mode"
+                                                                                           FontSize="11"
+                                                                                           Foreground="{DynamicResource Theme.ItemSubtitle}"/>
+                                                                                <Button Content="{Binding ModeLabel}"
+                                                                                        Command="{Binding ToggleModeCommand}"
+                                                                                        Classes="mode-toggle"/>
+                                                                            </StackPanel>
+
+                                                                            <TextBlock Text="Prefix"
+                                                                                       FontSize="11"
+                                                                                       Foreground="{DynamicResource Theme.ItemSubtitle}"/>
+                                                                            <TextBox Text="{Binding Prefix}"
+                                                                                     Classes="flyout-input"
+                                                                                     KeyDown="OnFlyoutInputKeyDown"/>
+
+                                                                            <TextBlock Text="Custom URL  ({0} = query)"
+                                                                                       FontSize="11"
+                                                                                       Foreground="{DynamicResource Theme.ItemSubtitle}"/>
+                                                                            <Grid ColumnDefinitions="*,Auto">
+                                                                                <TextBox Grid.Column="0"
+                                                                                         Text="{Binding QueryUrl}"
+                                                                                         Watermark="{Binding QueryUrlWatermark}"
+                                                                                         Classes="flyout-input"
+                                                                                         KeyDown="OnFlyoutInputKeyDown"
+                                                                                         LostFocus="OnFlyoutUrlLostFocus"/>
+                                                                                <Button Grid.Column="1"
+                                                                                        Content="✕"
+                                                                                        Command="{Binding ResetUrlCommand}"
+                                                                                        Click="OnResetUrlClicked"
+                                                                                        IsVisible="{Binding HasCustomUrl}"
+                                                                                        Classes="remove-btn"
+                                                                                        VerticalAlignment="Center"
+                                                                                        Margin="4,0,0,0"/>
+                                                                            </Grid>
+
+                                                                            <!-- Action buttons -->
+                                                                            <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,4,0,0">
+                                                                                <Button Grid.Column="0"
+                                                                                        Content="Test URL"
+                                                                                        Command="{Binding TestUrlCommand}"
+                                                                                        Click="OnTestUrlClicked"
+                                                                                        Classes="mode-toggle"
+                                                                                        FontSize="11"/>
+                                                                                <Button Grid.Column="2"
+                                                                                        Content="✕  Close"
+                                                                                        Click="OnFlyoutCloseClicked"
+                                                                                        Classes="mode-toggle"
+                                                                                        FontSize="11"/>
+                                                                            </Grid>
+
+                                                                            <!-- Plugin-only actions -->
+                                                                            <StackPanel Orientation="Horizontal" Spacing="6"
+                                                                                        Margin="0,6,0,0"
+                                                                                        IsVisible="{Binding IsPlugin}">
+                                                                                <Button Command="{Binding ShowPluginFolderCommand}"
+                                                                                        Click="OnPluginActionClicked"
+                                                                                        Classes="mode-toggle" FontSize="11">
+                                                                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                                                                        <PathIcon Data="{StaticResource Icon.Folder}"
+                                                                                                  Width="10" Height="10"/>
+                                                                                        <TextBlock Text="Show plugin folder"/>
+                                                                                    </StackPanel>
+                                                                                </Button>
+                                                                                <Button Command="{Binding EditPluginSourceCommand}"
+                                                                                        Click="OnPluginActionClicked"
+                                                                                        Classes="mode-toggle" FontSize="11">
+                                                                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                                                                        <PathIcon Data="{StaticResource Icon.Edit}"
+                                                                                                  Width="10" Height="10"/>
+                                                                                        <TextBlock Text="Edit plugin source"/>
+                                                                                    </StackPanel>
+                                                                                </Button>
+                                                                            </StackPanel>
+                                                                        </StackPanel>
+                                                                    </Flyout>
+                                                                </Button.Flyout>
+                                                            </Button>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Border>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
 
                     </StackPanel> <!-- /EnableWebSearch -->
                 </StackPanel>
@@ -717,7 +892,8 @@
                             <Border BorderThickness="1"
                                     BorderBrush="{DynamicResource Theme.Divider}"
                                     CornerRadius="4"
-                                    Padding="0">
+                                    Padding="0"
+                                    IsVisible="{Binding HasSearchFolders}">
                                 <ItemsControl ItemsSource="{Binding SearchFolders}">
                                     <ItemsControl.Styles>
                                         <Style Selector="ContentPresenter:last-child Border">
@@ -729,13 +905,18 @@
                                             <Border BorderThickness="0,0,0,1"
                                                     BorderBrush="{DynamicResource Theme.Divider}"
                                                     Padding="10,7">
-                                                <Grid ColumnDefinitions="*,Auto">
-                                                    <TextBlock Grid.Column="0"
-                                                               Text="{Binding DisplayPath}"
+                                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6">
+                                                    <PathIcon Grid.Column="0"
+                                                              Data="{StaticResource Icon.FileSearch}"
+                                                              Width="13" Height="13"
+                                                              Classes.folder-missing="{Binding DoesNotExist}"
+                                                              VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Column="1"
+                                                               Text="{Binding RawPath}"
                                                                Classes.folder-missing="{Binding DoesNotExist}"
                                                                TextTrimming="CharacterEllipsis"
                                                                VerticalAlignment="Center"/>
-                                                    <Button Grid.Column="1"
+                                                    <Button Grid.Column="2"
                                                             Classes="remove-btn"
                                                             Content="✕"
                                                             Tag="{Binding}"
@@ -775,6 +956,7 @@
                         <TextBlock Classes="label" Text="Default Currency Pair"/>
                         <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                             <TextBox Text="{Binding CalculatorCurrencyA}"
+                                     Classes="flyout-input"
                                      Width="64"
                                      MaxLength="3"/>
                             <TextBlock Text="/"
@@ -782,6 +964,7 @@
                                        VerticalAlignment="Center"
                                        FontSize="16"/>
                             <TextBox Text="{Binding CalculatorCurrencyB}"
+                                     Classes="flyout-input"
                                      Width="64"
                                      MaxLength="3"/>
                         </StackPanel>
@@ -792,13 +975,17 @@
                     <!-- Decimal places -->
                     <StackPanel Spacing="6">
                         <TextBlock Classes="label" Text="Result Decimal Places"/>
-                        <NumericUpDown Value="{Binding CalculatorDecimalPlaces}"
-                                       Minimum="0"
-                                       Maximum="6"
-                                       Increment="1"
-                                       FormatString="0"
-                                       Width="90"
-                                       HorizontalAlignment="Left"/>
+                        <Border Classes="numeric-field"
+                                Width="130"
+                                HorizontalAlignment="Left"
+                                ClipToBounds="True">
+                            <NumericUpDown x:Name="DecimalPlacesInput"
+                                           Value="{Binding CalculatorDecimalPlaces}"
+                                           Minimum="0"
+                                           Maximum="6"
+                                           Increment="1"
+                                           FormatString="0"/>
+                        </Border>
                     </StackPanel>
 
                     </StackPanel> <!-- /EnableCalculator -->
@@ -845,6 +1032,7 @@
                         <StackPanel Spacing="0" IsVisible="{Binding !DictionaryShowAlways}">
                             <TextBlock Classes="label" Text="Prefix"/>
                             <TextBox Text="{Binding DictionaryPrefix}"
+                                     Classes="flyout-input"
                                      Watermark="define"
                                      MaxWidth="200"
                                      HorizontalAlignment="Left"/>

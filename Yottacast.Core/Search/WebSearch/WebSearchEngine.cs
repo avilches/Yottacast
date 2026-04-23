@@ -6,6 +6,7 @@ public record WebSearchEngine {
     public required string Id          { get; init; }
     public required string Name        { get; init; }
     public required string QueryUrl    { get; init; }  // string.Format placeholder: {0}
+    public required string Group       { get; init; }  // e.g. "general", "dev", "social"
     public string? IconResource        { get; init; }  // embedded resource name, or null
 }
 
@@ -21,35 +22,35 @@ public record WebSearchEngineSettings {
 public static class WebSearchDefaults {
     public static readonly IReadOnlyList<WebSearchEngine> Engines = [
         // General
-        new() { Id = "google",        Name = "Google",        QueryUrl = "https://www.google.com/search?q={0}",                           IconResource = "Yottacast.Core.Search.WebSearch.Icons.google.png" },
-        new() { Id = "bing",          Name = "Bing",          QueryUrl = "https://www.bing.com/search?q={0}",                             IconResource = "Yottacast.Core.Search.WebSearch.Icons.bing.png" },
-        new() { Id = "duckduckgo",    Name = "DuckDuckGo",    QueryUrl = "https://duckduckgo.com/?q={0}",                                 IconResource = "Yottacast.Core.Search.WebSearch.Icons.duckduckgo.png" },
+        new() { Id = "google",        Name = "Google",           Group = "general",       QueryUrl = "https://www.google.com/search?q={0}",                           IconResource = "Yottacast.Core.Search.WebSearch.Icons.google.png" },
+        new() { Id = "bing",          Name = "Bing",             Group = "general",       QueryUrl = "https://www.bing.com/search?q={0}",                             IconResource = "Yottacast.Core.Search.WebSearch.Icons.bing.png" },
+        new() { Id = "duckduckgo",    Name = "DuckDuckGo",       Group = "general",       QueryUrl = "https://duckduckgo.com/?q={0}",                                 IconResource = "Yottacast.Core.Search.WebSearch.Icons.duckduckgo.png" },
         // Shopping
-        new() { Id = "amazon",        Name = "Amazon",        QueryUrl = "https://www.amazon.com/s?k={0}",                                IconResource = "Yottacast.Core.Search.WebSearch.Icons.amazon.png" },
+        new() { Id = "amazon",        Name = "Amazon",           Group = "shopping",      QueryUrl = "https://www.amazon.com/s?k={0}",                                IconResource = "Yottacast.Core.Search.WebSearch.Icons.amazon.png" },
         // Video
-        new() { Id = "youtube",       Name = "YouTube",       QueryUrl = "https://www.youtube.com/results?search_query={0}",              IconResource = "Yottacast.Core.Search.WebSearch.Icons.youtube.png" },
-        new() { Id = "twitch",        Name = "Twitch",        QueryUrl = "https://www.twitch.tv/search?term={0}",                         IconResource = "Yottacast.Core.Search.WebSearch.Icons.twitch.png" },
+        new() { Id = "youtube",       Name = "YouTube",          Group = "video",         QueryUrl = "https://www.youtube.com/results?search_query={0}",              IconResource = "Yottacast.Core.Search.WebSearch.Icons.youtube.png" },
+        new() { Id = "twitch",        Name = "Twitch",           Group = "video",         QueryUrl = "https://www.twitch.tv/search?term={0}",                         IconResource = "Yottacast.Core.Search.WebSearch.Icons.twitch.png" },
         // Social
-        new() { Id = "reddit",        Name = "Reddit",        QueryUrl = "https://www.reddit.com/search/?q={0}",                          IconResource = "Yottacast.Core.Search.WebSearch.Icons.reddit.png" },
-        new() { Id = "x",             Name = "X",             QueryUrl = "https://x.com/search?q={0}",                                   IconResource = "Yottacast.Core.Search.WebSearch.Icons.x.png" },
-        new() { Id = "linkedin",      Name = "LinkedIn",      QueryUrl = "https://www.linkedin.com/search/results/all/?keywords={0}",    IconResource = "Yottacast.Core.Search.WebSearch.Icons.linkedin.png" },
-        new() { Id = "pinterest",     Name = "Pinterest",     QueryUrl = "https://www.pinterest.com/search/pins/?q={0}",                  IconResource = "Yottacast.Core.Search.WebSearch.Icons.pinterest.png" },
-        new() { Id = "tiktok",        Name = "TikTok",        QueryUrl = "https://www.tiktok.com/search?q={0}",                           IconResource = "Yottacast.Core.Search.WebSearch.Icons.tiktok.png" },
+        new() { Id = "reddit",        Name = "Reddit",           Group = "social",        QueryUrl = "https://www.reddit.com/search/?q={0}",                          IconResource = "Yottacast.Core.Search.WebSearch.Icons.reddit.png" },
+        new() { Id = "x",             Name = "X",                Group = "social",        QueryUrl = "https://x.com/search?q={0}",                                   IconResource = "Yottacast.Core.Search.WebSearch.Icons.x.png" },
+        new() { Id = "linkedin",      Name = "LinkedIn",         Group = "social",        QueryUrl = "https://www.linkedin.com/search/results/all/?keywords={0}",    IconResource = "Yottacast.Core.Search.WebSearch.Icons.linkedin.png" },
+        new() { Id = "pinterest",     Name = "Pinterest",        Group = "social",        QueryUrl = "https://www.pinterest.com/search/pins/?q={0}",                  IconResource = "Yottacast.Core.Search.WebSearch.Icons.pinterest.png" },
+        new() { Id = "tiktok",        Name = "TikTok",           Group = "social",        QueryUrl = "https://www.tiktok.com/search?q={0}",                           IconResource = "Yottacast.Core.Search.WebSearch.Icons.tiktok.png" },
         // Knowledge
-        new() { Id = "wikipedia",     Name = "Wikipedia",     QueryUrl = "https://en.wikipedia.org/wiki/Special:Search?search={0}",      IconResource = "Yottacast.Core.Search.WebSearch.Icons.wikipedia.png" },
-        new() { Id = "wolframalpha",  Name = "Wolfram Alpha",  QueryUrl = "https://www.wolframalpha.com/input?i={0}",                    IconResource = "Yottacast.Core.Search.WebSearch.Icons.wolframalpha.png" },
+        new() { Id = "wikipedia",     Name = "Wikipedia",        Group = "knowledge",     QueryUrl = "https://en.wikipedia.org/wiki/Special:Search?search={0}",      IconResource = "Yottacast.Core.Search.WebSearch.Icons.wikipedia.png" },
+        new() { Id = "wolframalpha",  Name = "Wolfram Alpha",    Group = "knowledge",     QueryUrl = "https://www.wolframalpha.com/input?i={0}",                    IconResource = "Yottacast.Core.Search.WebSearch.Icons.wolframalpha.png" },
         // Dev
-        new() { Id = "github",        Name = "GitHub",        QueryUrl = "https://github.com/search?q={0}",                              IconResource = "Yottacast.Core.Search.WebSearch.Icons.github.png" },
-        new() { Id = "stackoverflow", Name = "Stack Overflow", QueryUrl = "https://stackoverflow.com/search?q={0}",                      IconResource = "Yottacast.Core.Search.WebSearch.Icons.stackoverflow.png" },
-        new() { Id = "npm",           Name = "npm",           QueryUrl = "https://www.npmjs.com/search?q={0}",                           IconResource = "Yottacast.Core.Search.WebSearch.Icons.npm.png" },
-        new() { Id = "pypi",          Name = "PyPI",          QueryUrl = "https://pypi.org/search/?q={0}",                               IconResource = "Yottacast.Core.Search.WebSearch.Icons.pypi.png" },
-        new() { Id = "mdn",           Name = "Mozilla Developer", QueryUrl = "https://developer.mozilla.org/en-US/search?q={0}",         IconResource = "Yottacast.Core.Search.WebSearch.Icons.mdn.png" },
-        new() { Id = "dh",            Name = "Docker Hub", QueryUrl = "https://hub.docker.com/search?q=pepe",                            IconResource = "Yottacast.Core.Search.WebSearch.Icons.docker.png" },
+        new() { Id = "github",        Name = "GitHub",           Group = "dev",           QueryUrl = "https://github.com/search?q={0}",                              IconResource = "Yottacast.Core.Search.WebSearch.Icons.github.png" },
+        new() { Id = "stackoverflow", Name = "Stack Overflow",   Group = "dev",           QueryUrl = "https://stackoverflow.com/search?q={0}",                      IconResource = "Yottacast.Core.Search.WebSearch.Icons.stackoverflow.png" },
+        new() { Id = "npm",           Name = "npm",              Group = "dev",           QueryUrl = "https://www.npmjs.com/search?q={0}",                           IconResource = "Yottacast.Core.Search.WebSearch.Icons.npm.png" },
+        new() { Id = "pypi",          Name = "PyPI",             Group = "dev",           QueryUrl = "https://pypi.org/search/?q={0}",                               IconResource = "Yottacast.Core.Search.WebSearch.Icons.pypi.png" },
+        new() { Id = "mdn",           Name = "Mozilla Developer", Group = "dev",          QueryUrl = "https://developer.mozilla.org/en-US/search?q={0}",             IconResource = "Yottacast.Core.Search.WebSearch.Icons.mdn.png" },
+        new() { Id = "dh",            Name = "Docker Hub",       Group = "dev",           QueryUrl = "https://hub.docker.com/search?q=pepe",                         IconResource = "Yottacast.Core.Search.WebSearch.Icons.docker.png" },
         // Entertainment
-        new() { Id = "imdb",          Name = "IMDb",          QueryUrl = "https://www.imdb.com/find?q={0}",                              IconResource = "Yottacast.Core.Search.WebSearch.Icons.imdb.png" },
-        new() { Id = "spotify",       Name = "Spotify",       QueryUrl = "https://open.spotify.com/search/{0}",                          IconResource = "Yottacast.Core.Search.WebSearch.Icons.spotify.png" },
+        new() { Id = "imdb",          Name = "IMDb",             Group = "entertainment", QueryUrl = "https://www.imdb.com/find?q={0}",                              IconResource = "Yottacast.Core.Search.WebSearch.Icons.imdb.png" },
+        new() { Id = "spotify",       Name = "Spotify",          Group = "entertainment", QueryUrl = "https://open.spotify.com/search/{0}",                          IconResource = "Yottacast.Core.Search.WebSearch.Icons.spotify.png" },
         // Maps
-        new() { Id = "googlemaps",    Name = "Google Maps",   QueryUrl = "https://www.google.com/maps/search/{0}",                       IconResource = "Yottacast.Core.Search.WebSearch.Icons.googlemaps.png" },
+        new() { Id = "googlemaps",    Name = "Google Maps",      Group = "maps",          QueryUrl = "https://www.google.com/maps/search/{0}",                       IconResource = "Yottacast.Core.Search.WebSearch.Icons.googlemaps.png" },
     ];
 
     /// <summary>Default per-engine user settings applied on first run or for newly added engines.</summary>

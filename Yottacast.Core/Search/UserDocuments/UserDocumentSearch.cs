@@ -127,7 +127,10 @@ public class UserDocumentSearch(
                             Subtitle = r.Path,
                             Category = "Files",
                             Score = score,
-                            OnActivate = () => platform.LaunchApp(path),
+                            OnActivate = () => {
+                                logger.LogInformation("DocSearch: open \"{Path}\"", path);
+                                platform.LaunchApp(path);
+                            },
                         });
 
                         var now = Environment.TickCount64;

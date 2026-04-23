@@ -100,6 +100,9 @@ public partial class App : Application {
 
             base.OnFrameworkInitializationCompleted();
 
+            var pluginService = _services.GetRequiredService<PluginService>();
+            _ = pluginService.StartAsync();
+
             globalSearch.Start();
             _ = ShowWhenInstantReadyAsync(globalSearch, desktop);
             return;
@@ -117,13 +120,11 @@ public partial class App : Application {
         });
     }
 
-    public async void OpenSettings() {
+    public void OpenSettings() {
         if (_settingsWindow is { IsVisible: true }) {
             _settingsWindow.Activate();
             return;
         }
-        var appSearch = _services.GetRequiredService<ApplicationSearch>();
-        await appSearch.WhenReady();
         _settingsVm = _services.GetRequiredService<SettingsWindowViewModel>();
         _settingsWindow = new SettingsWindow {
             DataContext = _settingsVm,
@@ -201,6 +202,7 @@ public partial class App : Application {
         // Register IInstantSearchSource and IDeferredSearchSource implementations.
         services.AddSingleton<UserDocumentSearch>();
         services.AddSingleton<RandomSearch>();
+        services.AddSingleton<PluginService>();
         services.AddSingleton<WebSearchSource>();
         services.AddSingleton<IInstantSearchSource>(sp => sp.GetRequiredService<ApplicationSearch>());
         services.AddSingleton<IInstantSearchSource>(sp => sp.GetRequiredService<CalculatorSearch>());

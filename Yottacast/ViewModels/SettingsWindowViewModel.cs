@@ -5,9 +5,11 @@ using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using Avalonia.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Logging;
 using Yottacast.Core;
 using Yottacast.Core.Platform;
 using Yottacast.Core.Search.Calculator;
@@ -34,6 +36,12 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [NotifyPropertyChangedFor(nameof(IsDictionarySelected))]
     private SettingsSection _selectedSection = SettingsSection.General;
 
+    partial void OnSelectedSectionChanged(SettingsSection oldValue, SettingsSection newValue) {
+        if (oldValue == SettingsSection.AppSearch)
+            FlushAppDirectoryChanges();
+        _logger.LogInformation("Settings: section {Old} → {New}", oldValue, newValue);
+    }
+
     public bool IsGeneralSelected   => SelectedSection == SettingsSection.General;
     public bool IsAppSearchSelected => SelectedSection == SettingsSection.AppSearch;
     public bool IsWebSearchSelected => SelectedSection == SettingsSection.WebSearch;
@@ -58,8 +66,10 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [ObservableProperty] private ThemeOption? _selectedTheme;
     [ObservableProperty] private bool _isCapturingHotkey;
 
-    public IReadOnlyList<string> Browsers  { get; }
-    public IReadOnlyList<string> Terminals { get; }
+    [ObservableProperty] private IReadOnlyList<string> _browsers = [];
+    [ObservableProperty] private IReadOnlyList<string> _terminals = [];
+    [ObservableProperty] private bool _isBrowsersLoading;
+    [ObservableProperty] private bool _isTerminalsLoading;
     public IReadOnlyList<ThemeOption> Themes { get; }
 
     // ── Folder lists ─────────────────────────────────────────────────────────
@@ -67,7 +77,9 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     public ObservableCollection<string> AppDirectories { get; }
 
     // ── Web Search engines ───────────────────────────────────────────────────
-    public ObservableCollection<WebSearchEngineRowViewModel> WebSearchEngines { get; }
+    [ObservableProperty] private IReadOnlyList<WebSearchGroupViewModel> _webSearchGroups = [];
+
+    [ObservableProperty] private bool _showDisabledWebSearchEngines;
 
     // ── Feature toggles ──────────────────────────────────────────────────────
     [ObservableProperty] private bool _enableAppSearch;
@@ -79,44 +91,55 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [ObservableProperty] private bool _fileSearchOnlySpecificFolders;
     [ObservableProperty] private bool _stickyWindow;
 
-    partial void OnEnableAppSearchChanged(bool v)               { _settings.EnableAppSearch              = v; _settings.Save(); }
-    partial void OnEnableCalculatorChanged(bool v)              { _settings.EnableCalculator             = v; _settings.Save(); }
-    partial void OnEnableClipboardChanged(bool v)               { _settings.EnableClipboard              = v; _settings.Save(); }
-    partial void OnEnableEmojiChanged(bool v)                   { _settings.EnableEmoji                  = v; _settings.Save(); }
-    partial void OnEnableFileSearchChanged(bool v)              { _settings.EnableFileSearch             = v; _settings.Save(); }
-    partial void OnEnableWebSearchChanged(bool v)               { _settings.EnableWebSearch              = v; _settings.Save(); }
-    partial void OnFileSearchOnlySpecificFoldersChanged(bool v) { _settings.FileSearchOnlySpecificFolders = v; _settings.Save(); }
-    partial void OnStickyWindowChanged(bool v)                  { _settings.StickyWindow                 = v; _settings.Save(); }
+    partial void OnEnableAppSearchChanged(bool value)               { _settings.EnableAppSearch              = value; _settings.Save(); _logger.LogInformation("Settings: EnableAppSearch = {Value}", value); }
+    partial void OnEnableCalculatorChanged(bool value)              { _settings.EnableCalculator             = value; _settings.Save(); _logger.LogInformation("Settings: EnableCalculator = {Value}", value); }
+    partial void OnEnableClipboardChanged(bool value)               { _settings.EnableClipboard              = value; _settings.Save(); _logger.LogInformation("Settings: EnableClipboard = {Value}", value); }
+    partial void OnEnableEmojiChanged(bool value)                   { _settings.EnableEmoji                  = value; _settings.Save(); _logger.LogInformation("Settings: EnableEmoji = {Value}", value); }
+    partial void OnEnableFileSearchChanged(bool value)              { _settings.EnableFileSearch             = value; _settings.Save(); _logger.LogInformation("Settings: EnableFileSearch = {Value}", value); }
+    partial void OnEnableWebSearchChanged(bool value)               { _settings.EnableWebSearch              = value; _settings.Save(); _logger.LogInformation("Settings: EnableWebSearch = {Value}", value); }
+    partial void OnShowDisabledWebSearchEnginesChanged(bool value) {
+        _settings.ShowDisabledWebSearchEngines = value;
+        _settings.Save();
+        _logger.LogInformation("Settings: ShowDisabledWebSearchEngines = {Value}", value);
+        foreach (var group in WebSearchGroups)
+            foreach (var engine in group.Engines)
+                engine.ShowDisabled = value;
+    }
+    partial void OnFileSearchOnlySpecificFoldersChanged(bool value) { _settings.FileSearchOnlySpecificFolders = value; _settings.Save(); _logger.LogInformation("Settings: FileSearchOnlySpecificFolders = {Value}", value); }
+    partial void OnStickyWindowChanged(bool value)                  { _settings.StickyWindow                 = value; _settings.Save(); _logger.LogInformation("Settings: StickyWindow = {Value}", value); }
 
     // ── Dictionary config ────────────────────────────────────────────────────
     [ObservableProperty] private bool _enableDictionary;
     [ObservableProperty] private string _dictionaryPrefix = AppDefaults.DictionaryDefaultPrefix;
     [ObservableProperty] private bool _dictionaryShowAlways;
 
-    partial void OnEnableDictionaryChanged(bool v)    { _settings.EnableDictionary    = v; _settings.Save(); }
-    partial void OnDictionaryPrefixChanged(string v)  { _settings.DictionaryPrefix    = v; _settings.Save(); }
-    partial void OnDictionaryShowAlwaysChanged(bool v) { _settings.DictionaryShowAlways = v; _settings.Save(); }
+    partial void OnEnableDictionaryChanged(bool value)    { _settings.EnableDictionary    = value; _settings.Save(); _logger.LogInformation("Settings: EnableDictionary = {Value}", value); }
+    partial void OnDictionaryPrefixChanged(string value)  { _settings.DictionaryPrefix    = value; _settings.Save(); _logger.LogInformation("Settings: DictionaryPrefix = \"{Value}\"", value); }
+    partial void OnDictionaryShowAlwaysChanged(bool value) { _settings.DictionaryShowAlways = value; _settings.Save(); _logger.LogInformation("Settings: DictionaryShowAlways = {Value}", value); }
 
     // ── Calculator config ────────────────────────────────────────────────────
     [ObservableProperty] private string _calculatorCurrencyA = "EUR";
     [ObservableProperty] private string _calculatorCurrencyB = "USD";
     [ObservableProperty] private int _calculatorDecimalPlaces = 2;
 
-    partial void OnCalculatorCurrencyAChanged(string v) {
-        var upper = v.ToUpperInvariant();
+    partial void OnCalculatorCurrencyAChanged(string value) {
+        var upper = value.ToUpperInvariant();
         _settings.CalculatorCurrencyA = upper;
         _settings.Save();
+        _logger.LogInformation("Settings: CalculatorCurrencyA = \"{Value}\"", upper);
         _mathJsEngine.UpdateConfig(BuildFormatConfig());
     }
-    partial void OnCalculatorCurrencyBChanged(string v) {
-        var upper = v.ToUpperInvariant();
+    partial void OnCalculatorCurrencyBChanged(string value) {
+        var upper = value.ToUpperInvariant();
         _settings.CalculatorCurrencyB = upper;
         _settings.Save();
+        _logger.LogInformation("Settings: CalculatorCurrencyB = \"{Value}\"", upper);
         _mathJsEngine.UpdateConfig(BuildFormatConfig());
     }
-    partial void OnCalculatorDecimalPlacesChanged(int v) {
-        _settings.CalculatorDecimalPlaces = v;
+    partial void OnCalculatorDecimalPlacesChanged(int value) {
+        _settings.CalculatorDecimalPlaces = value;
         _settings.Save();
+        _logger.LogInformation("Settings: CalculatorDecimalPlaces = {Value}", value);
         _mathJsEngine.UpdateConfig(BuildFormatConfig());
     }
 
@@ -134,6 +157,11 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     private readonly ThemeService _themeService;
     private readonly PlatformProvider _platform;
     private readonly MathJsEngine _mathJsEngine;
+    private readonly PluginService _pluginService;
+    private readonly BrowserDiscovery _browserDiscovery;
+    private readonly TerminalDiscovery _terminalDiscovery;
+    private readonly ILogger<SettingsWindowViewModel> _logger;
+    private bool _appDirectoriesDirty;
 
     public SettingsWindowViewModel(
         UserSettings settings,
@@ -141,22 +169,30 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         TerminalDiscovery terminalDiscovery,
         ThemeService themeService,
         PlatformProvider platform,
-        MathJsEngine mathJsEngine) {
-        _settings    = settings;
-        _themeService = themeService;
-        _platform    = platform;
-        _mathJsEngine = mathJsEngine;
+        MathJsEngine mathJsEngine,
+        PluginService pluginService,
+        ILogger<SettingsWindowViewModel> logger) {
+        _settings           = settings;
+        _themeService       = themeService;
+        _platform           = platform;
+        _mathJsEngine       = mathJsEngine;
+        _pluginService      = pluginService;
+        _browserDiscovery   = browserDiscovery;
+        _terminalDiscovery  = terminalDiscovery;
+        _logger             = logger;
+        _logger.LogInformation("Settings: opened");
 
-        Browsers  = browserDiscovery.Discover().Select(b => b.Name).ToList();
-        Terminals = terminalDiscovery.Discover().Select(t => t.Name).ToList();
-        Themes    = themeService.AvailableThemes();
+        Themes = themeService.AvailableThemes();
 
         // Self-heal stored browser/terminal before reading them for the picker.
         settings.EnsureIntegrity();
 
-        // Set initial selections without triggering the partial callbacks (fields, not properties)
-        _selectedBrowser  = Browsers.Contains(settings.Browser) ? settings.Browser : Browsers.FirstOrDefault();
-        _selectedTerminal = Terminals.Contains(settings.Terminal) ? settings.Terminal : Terminals.FirstOrDefault();
+        // Start with only the saved selection; full list is loaded lazily on dropdown open.
+        _browsers  = string.IsNullOrEmpty(settings.Browser)  ? [] : [settings.Browser];
+        _terminals = string.IsNullOrEmpty(settings.Terminal) ? [] : [settings.Terminal];
+
+        _selectedBrowser  = Browsers.FirstOrDefault();
+        _selectedTerminal = Terminals.FirstOrDefault();
         _selectedTheme    = Themes.FirstOrDefault(t => t.Id == settings.Theme) ?? Themes.FirstOrDefault();
 
         _enableAppSearch                 = settings.EnableAppSearch;
@@ -177,39 +213,69 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         SearchFolders  = new ObservableCollection<SearchFolderItem>(settings.SearchFolders.Select(p => new SearchFolderItem(p)));
         AppDirectories = new ObservableCollection<string>(settings.AppDirectories);
 
-        SearchFolders.CollectionChanged  += (_, _) => { settings.SearchFolders  = SearchFolders.Select(f => f.RawPath).ToList(); settings.Save(); };
-        AppDirectories.CollectionChanged += (_, _) => {
+        SearchFolders.CollectionChanged  += (_, e) => {
+            settings.SearchFolders = SearchFolders.Select(f => f.RawPath).ToList();
+            settings.Save();
+            _logger.LogInformation("Settings: SearchFolders changed ({Action}) → {Count} folders", e.Action, SearchFolders.Count);
+            OnPropertyChanged(nameof(HasSearchFolders));
+        };
+        AppDirectories.CollectionChanged += (_, e) => {
             settings.AppDirectories = AppDirectories.ToList();
             settings.Save();
+            _appDirectoriesDirty = true;
+            _logger.LogInformation("Settings: AppDirectories changed ({Action}) → {Count} dirs", e.Action, AppDirectories.Count);
             OnPropertyChanged(nameof(HasMissingCommonAppDirectories));
+            OnPropertyChanged(nameof(HasAppDirectories));
         };
 
-        var rows = WebSearchDefaults.Engines.Select(engine => {
-            var cfg = settings.WebSearchEngines.FirstOrDefault(s => s.Id == engine.Id)
-                      ?? WebSearchDefaults.DefaultSettingsFor(engine.Id);
-            return new WebSearchEngineRowViewModel(engine.Id, engine.Name, engine.QueryUrl, engine.IconResource, cfg, settings, platform);
-        });
-        WebSearchEngines = new ObservableCollection<WebSearchEngineRowViewModel>(
-            rows.OrderByDescending(e => e.Enabled).ThenBy(e => e.Name));
+        _showDisabledWebSearchEngines = settings.ShowDisabledWebSearchEngines;
 
-        foreach (var row in WebSearchEngines)
-            row.PropertyChanged += (_, e) => {
-                if (e.PropertyName == nameof(WebSearchEngineRowViewModel.Enabled))
-                    ReSortWebSearchEngines();
-            };
+        settings.EnsurePluginSettings(pluginService.Plugins);
+        WebSearchGroups = BuildWebSearchGroups();
+        pluginService.PluginsChanged += OnPluginsReloaded;
     }
 
-    private void ReSortWebSearchEngines() {
-        var sorted = WebSearchEngines.OrderByDescending(e => e.Enabled).ThenBy(e => e.Name).ToList();
-        for (int i = 0; i < sorted.Count; i++) {
-            int current = WebSearchEngines.IndexOf(sorted[i]);
-            if (current != i) WebSearchEngines.Move(current, i);
+    private void OnPluginsReloaded() {
+        _settings.EnsurePluginSettings(_pluginService.Plugins);
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => {
+            WebSearchGroups = BuildWebSearchGroups();
+        });
+    }
+
+    private List<WebSearchGroupViewModel> BuildWebSearchGroups() {
+        var allRows = new List<WebSearchEngineRowViewModel>();
+
+        // Built-in engines
+        foreach (var engine in WebSearchDefaults.Engines) {
+            var cfg = _settings.WebSearchEngines.FirstOrDefault(s => s.Id == engine.Id)
+                      ?? WebSearchDefaults.DefaultSettingsFor(engine.Id);
+            allRows.Add(new WebSearchEngineRowViewModel(
+                engine.Id, engine.Name, engine.Group, engine.QueryUrl, engine.IconResource,
+                cfg, _settings, _platform) { ShowDisabled = ShowDisabledWebSearchEngines });
         }
+
+        // Plugin engines
+        foreach (var plugin in _pluginService.Plugins) {
+            var cfg = _settings.WebSearchEngines.FirstOrDefault(s => s.Id == plugin.Id);
+            if (cfg == null) continue;
+            var group = string.IsNullOrEmpty(plugin.Group) ? "general" : plugin.Group;
+            allRows.Add(new WebSearchEngineRowViewModel(
+                plugin.Id, plugin.Name, group, plugin.QueryUrl,
+                _pluginService.GetIcon(plugin.Id), cfg, _settings, _platform,
+                plugin.SourceFilePath) { ShowDisabled = ShowDisabledWebSearchEngines });
+        }
+
+        // Preserve group order: built-in groups first, then plugin-only groups
+        var groupOrder = allRows.Select(r => r.Group).Distinct().ToList();
+        return groupOrder
+            .Select(g => new WebSearchGroupViewModel(g, allRows.Where(r => r.Group == g).ToList()))
+            .ToList();
     }
 
     // ── Folder mutators (called from code-behind) ─────────────────────────────
     public void AddSearchFolder(string path) {
-        var item = new SearchFolderItem(path);
+        var collapsed = PlatformProvider.CollapseHomePath(path.TrimEnd('/', '\\'));
+        var item = new SearchFolderItem(collapsed);
         var expandedNew = item.DisplayPath;
         if (SearchFolders.All(f => f.DisplayPath != expandedNew))
             SearchFolders.Add(item);
@@ -220,10 +286,45 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     public void AddCommonFolders() {
         foreach (var raw in _platform.DefaultSearchFolders()) {
             var expanded = PlatformProvider.ExpandPath(raw);
-            if (Directory.Exists(expanded) && SearchFolders.All(f => f.RawPath != raw))
+            if (Directory.Exists(expanded) && SearchFolders.All(f => f.DisplayPath != expanded))
                 SearchFolders.Add(new SearchFolderItem(raw));
         }
     }
+
+    /// <summary>Called from code-behind when the browser ComboBox dropdown opens.</summary>
+    public async Task RefreshBrowsersAsync() {
+        if (IsBrowsersLoading) return;
+        IsBrowsersLoading = true;
+        var saved = SelectedBrowser;
+
+        var discovered = await Task.Run(() => _browserDiscovery.Discover().Select(b => b.Name).ToList());
+
+        if (!string.IsNullOrEmpty(_settings.Browser) && !discovered.Contains(_settings.Browser))
+            discovered.Insert(0, _settings.Browser);
+
+        Browsers = discovered;
+        SelectedBrowser = Browsers.Contains(saved) ? saved : Browsers.FirstOrDefault();
+        IsBrowsersLoading = false;
+    }
+
+    /// <summary>Called from code-behind when the terminal ComboBox dropdown opens.</summary>
+    public async Task RefreshTerminalsAsync() {
+        if (IsTerminalsLoading) return;
+        IsTerminalsLoading = true;
+        var saved = SelectedTerminal;
+
+        var discovered = await Task.Run(() => _terminalDiscovery.Discover().Select(t => t.Name).ToList());
+
+        if (!string.IsNullOrEmpty(_settings.Terminal) && !discovered.Contains(_settings.Terminal))
+            discovered.Insert(0, _settings.Terminal);
+
+        Terminals = discovered;
+        SelectedTerminal = Terminals.Contains(saved) ? saved : Terminals.FirstOrDefault();
+        IsTerminalsLoading = false;
+    }
+
+    public bool HasSearchFolders   => SearchFolders.Count > 0;
+    public bool HasAppDirectories  => AppDirectories.Count > 0;
 
     public bool HasMissingCommonAppDirectories {
         get {
@@ -238,7 +339,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     }                                                                   
 
     public void AddAppDirectory(string path) {
-        var normalized = path.TrimEnd('/', '\\');
+        var normalized = PlatformProvider.CollapseHomePath(path.TrimEnd('/', '\\'));
         var normalizedExpanded = PlatformProvider.ExpandPath(normalized);
         if (AppDirectories.All(d => PlatformProvider.ExpandPath(d.TrimEnd('/', '\\')) != normalizedExpanded))
             AppDirectories.Add(normalized);
@@ -258,6 +359,25 @@ public partial class SettingsWindowViewModel : ViewModelBase {
                 currentExpanded.Add(expanded);
             }
         }
+    }
+
+    /// <summary>
+    /// Flushes deferred AppDirectories changes: invalidates the app cache and
+    /// browser/terminal discovery caches. Called when leaving the AppSearch section
+    /// or when the settings window closes.
+    /// </summary>
+    public void FlushAppDirectoryChanges() {
+        if (!_appDirectoriesDirty) return;
+        _appDirectoriesDirty = false;
+        _settings.NotifyAppDirectoriesChanged();
+        _browserDiscovery.InvalidateCache();
+        _terminalDiscovery.InvalidateCache();
+    }
+
+    /// <summary>Called from the View when the settings window is closed.</summary>
+    public void OnWindowClosed() {
+        FlushAppDirectoryChanges();
+        _logger.LogInformation("Settings: closed");
     }
 
     // ── Hotkey capture ────────────────────────────────────────────────────────
@@ -318,6 +438,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
 
         _settings.Hotkey = config.ToString();
         _settings.Save();
+        _logger.LogInformation("Settings: Hotkey = \"{Value}\"", config);
         _capturingModifiers = KeyModifiers.None;
         IsCapturingHotkey   = false;
         NotifyBadgesAndKey();
@@ -358,17 +479,20 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     partial void OnSelectedBrowserChanged(string? value) {
         _settings.Browser = value ?? "";
         _settings.Save();
+        _logger.LogInformation("Settings: Browser = \"{Value}\"", value);
     }
 
     partial void OnSelectedTerminalChanged(string? value) {
         _settings.Terminal = value ?? "";
         _settings.Save();
+        _logger.LogInformation("Settings: Terminal = \"{Value}\"", value);
     }
 
     partial void OnSelectedThemeChanged(ThemeOption? value) {
         if (value is null) return;
         _settings.Theme = value.Id;
         _settings.Save();
+        _logger.LogInformation("Settings: Theme = \"{Value}\"", value.Id);
         _themeService.Apply(value.Id);
     }
 }

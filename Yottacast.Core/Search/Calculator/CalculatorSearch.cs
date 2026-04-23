@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Yottacast.Core.Services;
 using Yottacast.Core.ViewModels;
 
@@ -10,7 +11,7 @@ namespace Yottacast.Core.Search.Calculator;
 /// When the expression fails with an actionable error (unknown unit, incompatible units) an
 /// informational error item is shown via LastHint.
 /// </summary>
-public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard, UserSettings settings) : IInstantSearchSource, ISearchHintProvider {
+public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard, UserSettings settings, ILogger<CalculatorSearch> logger) : IInstantSearchSource, ISearchHintProvider {
     public string? LastHint { get; private set; }
 
     public void Start() { }
@@ -41,6 +42,8 @@ public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard, U
                     normFromLong  = LongForm(r.NormFromValue, r.NormFromUnitLong, r.NormFromUnit);
                 }
 
+                logger.LogDebug("Calculator query=\"{Query}\" → conversion {From} → {To}", q, fromShort, toShort);
+
                 var capturedOrig = fromShort;
                 var capturedNorm = normFromShort;
                 var capturedTo   = toShort;
@@ -59,15 +62,20 @@ public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard, U
                     FromWasNormalized = r.FromWasNormalized,
                     OnLeft  = () => vm.MoveCellLeft(),
                     OnRight = () => vm.MoveCellRight(),
-                    OnActivate = () => clipboard.CopyText(vm.SelectedCell switch {
-                        ConversionCell.OrigFrom => capturedOrig,
-                        ConversionCell.NormFrom => capturedNorm ?? capturedTo,
-                        _                       => capturedTo,
-                    }),
+                    OnActivate = () => {
+                        var copied = vm.SelectedCell switch {
+                            ConversionCell.OrigFrom => capturedOrig,
+                            ConversionCell.NormFrom => capturedNorm ?? capturedTo,
+                            _                       => capturedTo,
+                        };
+                        logger.LogInformation("Calculator: copied conversion result \"{Value}\"", copied);
+                        clipboard.CopyText(copied);
+                    },
                 };
                 return [vm];
             }
             case CalcResult r when r.RawValue != q: {
+                logger.LogDebug("Calculator query=\"{Query}\" → result \"{Result}\"", q, r.RawValue);
                 var subtitle = BuildSubtitle(r.NormalizedQuery, r.AmbiguityHints);
                 var captured = r.RawValue;
                 return [new CalculatorResultItemViewModel {
@@ -76,11 +84,15 @@ public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard, U
                     Subtitle = subtitle,
                     Category = "Calculator",
                     Score = 4,
-                    OnActivate = () => clipboard.CopyText(captured),
+                    OnActivate = () => {
+                        logger.LogInformation("Calculator: copied result \"{Value}\"", captured);
+                        clipboard.CopyText(captured);
+                    },
                 }];
             }
             case ErrorResult r when r.ErrorKind is CalcErrorKind.IncompatibleUnitsConvert or CalcErrorKind.IncompatibleUnitsOp:
                 LastHint = BuildErrorHint(r);
+                logger.LogDebug("Calculator query=\"{Query}\" → error {Kind}: {Hint}", q, r.ErrorKind, LastHint);
                 break;
         }
 

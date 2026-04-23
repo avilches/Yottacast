@@ -79,6 +79,20 @@ public sealed class WindowsPlatformProvider(ProcessRunner runner, ILogger<Window
         } catch { }
     }
 
+    public override void RevealInFileManager(string directoryPath) {
+        try {
+            System.Diagnostics.Process.Start(
+                new ProcessStartInfo("explorer.exe", $"\"{directoryPath}\"") { UseShellExecute = false });
+        } catch { }
+    }
+
+    public override void OpenFile(string filePath) {
+        try {
+            System.Diagnostics.Process.Start(
+                new ProcessStartInfo(filePath) { UseShellExecute = true });
+        } catch { }
+    }
+
     // ── File search ───────────────────────────────────────────────────────────
 
     public override Task SearchFilesAsync(
@@ -119,7 +133,7 @@ public sealed class WindowsPlatformProvider(ProcessRunner runner, ILogger<Window
 
     // ── Browser ───────────────────────────────────────────────────────────────
 
-    private static readonly IReadOnlyDictionary<string, string[]> _browserFallbackPaths =
+    private static readonly IReadOnlyDictionary<string, string[]> _browserKnownPaths =
         new Dictionary<string, string[]> {
             ["Google Chrome"]   = [@"C:\Program Files\Google\Chrome\Application\chrome.exe",
                                    @"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"],
@@ -131,15 +145,13 @@ public sealed class WindowsPlatformProvider(ProcessRunner runner, ILogger<Window
             ["Vivaldi"]         = [@"C:\Program Files\Vivaldi\Application\vivaldi.exe"],
         };
 
-    public override string[] KnownBrowserNames => [.. _browserFallbackPaths.Keys];
-    public override IReadOnlyDictionary<string, string[]> BrowserFallbackPaths => _browserFallbackPaths;
-
-    public override string[] GetBrowserPaths(string name) =>
-        _browserFallbackPaths.TryGetValue(name, out var paths) ? paths : [];
+    public override string[] KnownBrowserNames => [.. _browserKnownPaths.Keys];
+    public override IReadOnlyDictionary<string, string[]> BrowserKnownPaths => _browserKnownPaths;
 
     public override void OpenUrl(string url, string browserName) {
         try {
-            var exePath = GetBrowserPaths(browserName).FirstOrDefault(File.Exists);
+            var paths = _browserKnownPaths.TryGetValue(browserName, out var p) ? p : [];
+            var exePath = paths.FirstOrDefault(File.Exists);
             if (exePath is null) return;
             Process.Start(new ProcessStartInfo {
                 FileName = exePath,
@@ -151,7 +163,7 @@ public sealed class WindowsPlatformProvider(ProcessRunner runner, ILogger<Window
 
     // ── Terminal ──────────────────────────────────────────────────────────────
 
-    private static readonly IReadOnlyDictionary<string, string[]> _terminalFallbackPaths =
+    private static readonly IReadOnlyDictionary<string, string[]> _terminalKnownPaths =
         new Dictionary<string, string[]> {
             ["Windows Terminal"] = [@"C:\Program Files\WindowsApps\Microsoft.WindowsTerminal*\wt.exe"],
             ["PowerShell"]       = [@"C:\Program Files\PowerShell\7\pwsh.exe",
@@ -161,14 +173,11 @@ public sealed class WindowsPlatformProvider(ProcessRunner runner, ILogger<Window
                                     @"C:\Program Files (x86)\Git\bin\bash.exe"],
         };
 
-    public override string[] KnownTerminalNames => [.. _terminalFallbackPaths.Keys];
-    public override IReadOnlyDictionary<string, string[]> TerminalFallbackPaths => _terminalFallbackPaths;
-
-    public override string[] GetTerminalPaths(string name) =>
-        _terminalFallbackPaths.TryGetValue(name, out var paths) ? paths : [];
+    public override string[] KnownTerminalNames => [.. _terminalKnownPaths.Keys];
+    public override IReadOnlyDictionary<string, string[]> TerminalKnownPaths => _terminalKnownPaths;
 
     public override void ExecuteCommand(string command, string terminalName) {
-        var paths = GetTerminalPaths(terminalName);
+        var paths = _terminalKnownPaths.TryGetValue(terminalName, out var p) ? p : Array.Empty<string>();
         var exePath = paths.FirstOrDefault(p => !p.Contains('*') && File.Exists(p)) ?? "";
         if (string.IsNullOrEmpty(exePath)) return;
 

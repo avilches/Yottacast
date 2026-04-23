@@ -22,12 +22,16 @@ public class UserSettings {
     public string Theme { get; set; } = "dark-default";
     public List<string> SearchFolders { get; set; } = [];
     public List<string> AppDirectories { get; set; } = [];
+
+    public event Action? AppDirectoriesChanged;
+    public void NotifyAppDirectoriesChanged() => AppDirectoriesChanged?.Invoke();
     public bool EnableAppSearch { get; set; } = true;
     public bool EnableCalculator { get; set; } = true;
     public bool EnableClipboard { get; set; } = true;
     public bool EnableEmoji { get; set; } = true;
     public bool EnableFileSearch { get; set; } = true;
     public bool EnableWebSearch { get; set; } = true;
+    public bool ShowDisabledWebSearchEngines { get; set; } = true;
     public bool FileSearchOnlySpecificFolders { get; set; } = false;
     public string LastLaunchedVersion { get; set; } = "";
     public List<WebSearchEngineSettings> WebSearchEngines { get; set; } = [];
@@ -77,7 +81,7 @@ public class UserSettings {
     /// </summary>
     public BrowserInfo? ActiveBrowser {
         get {
-            var resolved = BrowserDiscovery.Resolve(Browser, _platform);
+            var resolved = BrowserDiscovery.Resolve(Browser, _platform, ExpandedAppDirectories);
             if (resolved is not null && resolved.Name != Browser) {
                 _logger?.LogInformation("Settings: browser '{OldBrowser}' not found, switching to '{NewBrowser}'", Browser, resolved.Name);
                 Browser = resolved.Name;
@@ -94,7 +98,7 @@ public class UserSettings {
     /// </summary>
     public TerminalInfo? ActiveTerminal {
         get {
-            var resolved = TerminalDiscovery.Resolve(Terminal, _platform);
+            var resolved = TerminalDiscovery.Resolve(Terminal, _platform, ExpandedAppDirectories);
             if (resolved is not null && resolved.Name != Terminal) {
                 _logger?.LogInformation("Settings: terminal '{OldTerminal}' not found, switching to '{NewTerminal}'", Terminal, resolved.Name);
                 Terminal = resolved.Name;
@@ -131,6 +135,7 @@ public class UserSettings {
         [JsonPropertyName("enableEmoji")] public bool EnableEmoji { get; init; } = true;
         [JsonPropertyName("enableFileSearch")] public bool EnableFileSearch { get; init; } = true;
         [JsonPropertyName("enableWebSearch")] public bool EnableWebSearch { get; init; } = true;
+        [JsonPropertyName("showDisabledWebSearchEngines")] public bool ShowDisabledWebSearchEngines { get; init; } = true;
         [JsonPropertyName("fileSearchOnlySpecificFolders")] public bool FileSearchOnlySpecificFolders { get; init; } = false;
         [JsonPropertyName("lastLaunchedVersion")] public string LastLaunchedVersion { get; init; } = "";
         [JsonPropertyName("webSearchEngines")] public List<WebSearchEngineSettingsData>? WebSearchEngines { get; init; }
@@ -169,6 +174,7 @@ public class UserSettings {
                     EnableAppSearch = data.EnableAppSearch,
                     EnableFileSearch = data.EnableFileSearch,
                     EnableWebSearch = data.EnableWebSearch,
+                    ShowDisabledWebSearchEngines = data.ShowDisabledWebSearchEngines,
                     FileSearchOnlySpecificFolders = data.FileSearchOnlySpecificFolders,
                     SearchFolders = (data.SearchFolders?.Count > 0
                             ? data.SearchFolders
@@ -234,6 +240,27 @@ public class UserSettings {
         ).ToList();
     }
 
+    /// <summary>
+    /// Ensures every loaded plugin has a matching entry in WebSearchEngines.
+    /// New plugins get defaults (Enabled=true, PrefixOnly, prefix from plugin).
+    /// Persists only if new entries were added.
+    /// </summary>
+    public void EnsurePluginSettings(IReadOnlyList<WebSearchPlugin> plugins) {
+        var existingIds = new HashSet<string>(WebSearchEngines.Select(e => e.Id));
+        var added = false;
+        foreach (var plugin in plugins) {
+            if (existingIds.Contains(plugin.Id)) continue;
+            WebSearchEngines.Add(new WebSearchEngineSettings {
+                Id      = plugin.Id,
+                Enabled = true,
+                Mode    = WebSearchMode.PrefixOnly,
+                Prefix  = plugin.DefaultPrefix,
+            });
+            added = true;
+        }
+        if (added) Save();
+    }
+
     private static UserSettings CreateDefaultUserSettings(PlatformProvider platform, ILogger<UserSettings>? logger, string? settingsPath = null) {
         return new UserSettings(platform, logger, settingsPath) {
             Theme = platform.DefaultTheme(),
@@ -266,6 +293,7 @@ public class UserSettings {
                 EnableEmoji = EnableEmoji,
                 EnableFileSearch = EnableFileSearch,
                 EnableWebSearch = EnableWebSearch,
+                ShowDisabledWebSearchEngines = ShowDisabledWebSearchEngines,
                 FileSearchOnlySpecificFolders = FileSearchOnlySpecificFolders,
                 LastLaunchedVersion = LastLaunchedVersion,
                 WindowX = WindowX,

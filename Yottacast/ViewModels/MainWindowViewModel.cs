@@ -52,6 +52,7 @@ public partial class MainWindowViewModel(
     private bool _userNavigated;
 
     private readonly List<AppInfo> _pendingAppInfos = [];
+    private bool _appCacheRefreshPending;
 
     public void CancelDeferredSearch() => _deferredCts?.Cancel();
     public void NotifyUserNavigated() => _userNavigated = true;
@@ -59,6 +60,7 @@ public partial class MainWindowViewModel(
     public void Initialize() {
         _ = CheckForUpdateAsync();
         appSearch.IconLoaded += OnAppCacheChanged;
+        appSearch.AppsChanged += OnAppCacheChanged;
         appSearch.AppsChanged += fileIconCache.InvalidateAll;
         appSearch.AppsChanged += userDocumentSearch.InvalidateAll;
         fileIconCache.IconLoaded += OnFileIconLoaded;
@@ -94,7 +96,10 @@ public partial class MainWindowViewModel(
     }
 
     private void OnAppCacheChanged() {
+        if (_appCacheRefreshPending) return;
+        _appCacheRefreshPending = true;
         Dispatcher.UIThread.Post(() => {
+            _appCacheRefreshPending = false;
             if (string.IsNullOrEmpty(SearchText)) {
                 if (_pendingAppInfos.Count > 0) ShowPendingApps();
                 return;

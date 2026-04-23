@@ -247,3 +247,20 @@ Si un fichero de doc empieza a ser demasiado grande, sugiere dividirlo en dos.
   type-resolvable en compile time.
 - **`DataAnnotationsValidationPlugin`** deshabilitado en `App.axaml.cs` para evitar conflictos con
   CommunityToolkit.Mvvm.
+- **`ControlTheme` interno gana en `:focus-within`** — Los estilos externos con `/template/` aplicados a template
+  children de un control (p.ej. `NumericUpDown:focus-within /template/ ButtonSpinner /template/ Border`) son
+  sobreescritos por los estilos del `ControlTheme` interno del control hijo (`ButtonSpinner`). No hay `!important` en
+  Avalonia. Solución: envolver el control en un `Border` externo que gestione el borde visual y hacer que el control
+  interior tenga `BorderThickness="0"`. El `Border` exterior no tiene `ControlTheme` que interfiera, así que su
+  `BorderBrush` siempre se respeta.
+- **`CornerRadius` no recorta hijos automáticamente** — Ni `CornerRadius` ni `ClipToBounds="True"` en un `Border`
+  recortan los hijos a la forma redondeada: `ClipToBounds` recorta al rectángulo de layout, no a la curva. Si el fondo
+  de un control interior cambia de color en `:focus-within` (p.ej. FluentTheme cambia el background del `ButtonSpinner`
+  al enfocar), ese color distinto aparece en las esquinas tapando el borde redondeado. La solución correcta es hacer
+  todos los fondos interiores `Transparent` — el `Border` exterior aporta el color de fondo y sus esquinas nunca quedan
+  tapadas porque los hijos no pintan nada opaco.
+- **`NumericUpDown` y validación** — Si el campo queda vacío, Avalonia muestra un error de validación ("System.Object[]"
+  si `ErrorTemplate` es `{x:Null}`). Suprimir con un template vacío: `<DataTemplate><Panel/></DataTemplate>` como valor
+  de `ErrorTemplate` en un estilo sobre `NumericUpDown /template/ DataValidationErrors`. Para bloquear letras, usar
+  `AddHandler(InputElement.TextInputEvent, handler, RoutingStrategies.Tunnel)` en code-behind (el evento
+  `TextInputting` no se puede declarar en AXAML sobre `NumericUpDown`).

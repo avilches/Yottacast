@@ -1,3 +1,4 @@
+using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -30,6 +31,10 @@ public partial class SettingsWindow : Window {
 
         // El handle nativo solo está disponible tras Show(); deshabilitamos el botón en Opened.
         Opened += (_, _) => AppHandler.Instance.DisableMinimizeButton(this);
+        Closed += (_, _) => (DataContext as SettingsWindowViewModel)?.OnWindowClosed();
+
+        // Bloquear entrada de letras en el campo numérico; usamos Tunnel para interceptar antes del TextBox interior
+        DecimalPlacesInput.AddHandler(InputElement.TextInputEvent, OnDecimalPlacesTextInputting, RoutingStrategies.Tunnel);
     }
 
     protected override void OnKeyDown(KeyEventArgs e) {
@@ -108,11 +113,20 @@ public partial class SettingsWindow : Window {
         }
     }
 
+    private void OnEngineFlyoutOpened(object? sender, EventArgs e) {
+        // Disable light-dismiss so clicking Test URL / Show folder / Edit source
+        // (which open external apps and deactivate this window) does not close the flyout.
+        // The flyout can only be closed via the explicit "Close" button.
+        if (sender is not Flyout flyout) return;
+        // Access the protected Popup property via reflection
+        var popupProp = typeof(PopupFlyoutBase).GetProperty("Popup",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        if (popupProp?.GetValue(flyout) is Popup popup)
+            popup.IsLightDismissEnabled = false;
+    }
+
     private void OnFlyoutCloseClicked(object? sender, RoutedEventArgs e) {
         if (sender is Control ctrl) {
-            // The Flyout content lives inside a FlyoutPresenter; walk up to find it
-            // and use FlyoutBase.GetAttachedFlyout-style closure via the presenter's
-            // visual root (a PopupRoot whose parent Popup we can close).
             var presenter = ctrl.GetVisualAncestors().OfType<FlyoutPresenter>().FirstOrDefault();
             if (presenter?.Parent is Popup popup)
                 popup.IsOpen = false;
@@ -125,35 +139,10 @@ public partial class SettingsWindow : Window {
         Activate();
     }
 
-    // ── Engine prefix inline editing ──────────────────────────────────────────
-    private void OnPrefixDoubleTapped(object? sender, TappedEventArgs e) {
-        if (sender is not TextBlock { DataContext: WebSearchEngineRowViewModel vm } tb) return;
-        if (!vm.IsPrefixEnabled) return;
-
-        vm.IsPrefixEditing = true;
-
-        // Focus the TextBox sibling after Avalonia updates IsVisible in the next layout pass
-        if (tb.Parent is Panel panel) {
-            var textBox = panel.Children.OfType<TextBox>().FirstOrDefault();
-            if (textBox != null)
-                Avalonia.Threading.Dispatcher.UIThread.Post(() => {
-                    textBox.Focus();
-                    textBox.SelectAll();
-                });
-        }
-    }
-
-    private void OnPrefixLostFocus(object? sender, RoutedEventArgs e) {
-        if (sender is TextBox { DataContext: WebSearchEngineRowViewModel vm })
-            vm.IsPrefixEditing = false;
-    }
-
-    private void OnPrefixKeyDown(object? sender, KeyEventArgs e) {
-        if (e.Key is Key.Enter or Key.Escape &&
-            sender is TextBox { DataContext: WebSearchEngineRowViewModel vm }) {
-            vm.IsPrefixEditing = false;
-            e.Handled = true;
-        }
+    private async void OnPluginActionClicked(object? sender, RoutedEventArgs e) {
+        // Re-activate settings after the OS opens a folder/file externally
+        await Task.Delay(500);
+        Activate();
     }
 
     // ── Folder picker ─────────────────────────────────────────────────────────
@@ -193,5 +182,20 @@ public partial class SettingsWindow : Window {
     private void OnAddCommonAppDirectoriesClicked(object? sender, RoutedEventArgs e) {
         if (DataContext is SettingsWindowViewModel vm)
             vm.AddCommonAppDirectories();
+    }
+
+    private void OnDecimalPlacesTextInputting(object? sender, TextInputEventArgs e) {
+        if (e.Text != null && !e.Text.All(char.IsDigit))
+            e.Handled = true;
+    }
+
+    private async void OnBrowserDropDownOpened(object? sender, EventArgs e) {
+        if (DataContext is SettingsWindowViewModel vm)
+            await vm.RefreshBrowsersAsync();
+    }
+
+    private async void OnTerminalDropDownOpened(object? sender, EventArgs e) {
+        if (DataContext is SettingsWindowViewModel vm)
+            await vm.RefreshTerminalsAsync();
     }
 }

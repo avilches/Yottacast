@@ -11,11 +11,9 @@ namespace Yottacast.Core.Search.WebSearch;
 ///   "id": "hackernews",
 ///   "name": "Hacker News",
 ///   "queryUrl": "https://hn.algolia.com/?q={0}",
+///   "group": "dev",
 ///   "iconUrl": "https://news.ycombinator.com/favicon.ico",
-///   "defaultPrefix": "hn",
-///   "defaultEnabled": true,
-///   "defaultMode": "PrefixOnly",
-///   "showAlwaysPattern": null
+///   "defaultPrefix": "hn"
 /// }
 /// </code>
 /// </remarks>
@@ -23,10 +21,11 @@ public record WebSearchPlugin {
     public required string Id          { get; init; }
     public required string Name        { get; init; }
     public required string QueryUrl    { get; init; }  // string.Format placeholder: {0}
+    public string Group                { get; init; } = "";  // e.g. "general", "dev", "social"; empty = ungrouped
     public string? IconUrl             { get; init; }  // Remote URL; downloaded and cached on disk
     public string DefaultPrefix        { get; init; } = "";
-    public bool DefaultEnabled         { get; init; } = true;
-    public WebSearchMode DefaultMode   { get; init; } = WebSearchMode.PrefixOnly;
     /// <summary>Optional regex. When Mode is ShowAlways, query must match this pattern. Null = no validation.</summary>
     public string? ShowAlwaysPattern   { get; init; }
+    /// <summary>Absolute path to the JSON file this plugin was loaded from.</summary>
+    public string SourceFilePath       { get; init; } = "";
 }

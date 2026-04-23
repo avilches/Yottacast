@@ -74,6 +74,20 @@ public sealed class LinuxPlatformProvider(ProcessRunner runner, ILogger<LinuxPla
         } catch { }
     }
 
+    public override void RevealInFileManager(string directoryPath) {
+        try {
+            System.Diagnostics.Process.Start(
+                new ProcessStartInfo("xdg-open", $"\"{directoryPath}\"") { UseShellExecute = false });
+        } catch { }
+    }
+
+    public override void OpenFile(string filePath) {
+        try {
+            System.Diagnostics.Process.Start(
+                new ProcessStartInfo("xdg-open", $"\"{filePath}\"") { UseShellExecute = false });
+        } catch { }
+    }
+
     // ── File search ───────────────────────────────────────────────────────────
 
     public override Task SearchFilesAsync(
@@ -109,17 +123,11 @@ public sealed class LinuxPlatformProvider(ProcessRunner runner, ILogger<LinuxPla
     // ── Browser ───────────────────────────────────────────────────────────────
 
     public override string[] KnownBrowserNames => [];
-    public override IReadOnlyDictionary<string, string[]> BrowserFallbackPaths =>
-        new Dictionary<string, string[]>();
-    public override string[] GetBrowserPaths(string name) => [];
     public override void OpenUrl(string url, string browserName) { }
 
     // ── Terminal ──────────────────────────────────────────────────────────────
 
     public override string[] KnownTerminalNames => [];
-    public override IReadOnlyDictionary<string, string[]> TerminalFallbackPaths =>
-        new Dictionary<string, string[]>();
-    public override string[] GetTerminalPaths(string name) => [];
     public override void ExecuteCommand(string command, string terminalName) { }
 
     // ── Icon ──────────────────────────────────────────────────────────────────

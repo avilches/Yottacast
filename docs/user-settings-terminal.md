@@ -6,12 +6,13 @@ El usuario puede configurar su terminal preferido en los ajustes de Yottacast. L
 
 ## 1. Deteccion de terminales instalados
 
-La aplicacion mantiene una lista de terminales conocidos por plataforma. Al poblar el selector de Settings, se busca cada nombre en dos fuentes por orden de prioridad:
+La aplicacion mantiene una lista de terminales conocidos por plataforma. Al poblar el selector de Settings, se busca cada nombre en tres fuentes por orden de prioridad:
 
-1. **Cache de aplicaciones** -- si `ApplicationSearch` ya indexo la app, se usa esa ruta.
-2. **Rutas de fallback en disco** -- si la cache no contiene el terminal, se comprueban rutas predefinidas con `File.Exists`. Las rutas con wildcards (`*`) se descartan antes de la comprobacion.
+1. **Carpetas de apps del usuario** -- se busca en las carpetas configuradas en `AppDirectories` (via `AppPathInDirectory` del `PlatformProvider`).
+2. **Carpetas por defecto de la plataforma** -- `DefaultAppDirectories()`, deduplicadas respecto a las del usuario.
+3. **Rutas conocidas de la plataforma** -- `TerminalKnownPaths`, solo relevante en Windows con rutas absolutas a ejecutables. Las rutas con wildcards (`*`) se descartan.
 
-Solo se muestran al usuario los terminales que realmente existen en disco.
+Los resultados se cachean en memoria. La cache se invalida al cambiar las carpetas de apps en Settings (diferido al salir de la seccion AppSearch o cerrar Settings). La deteccion no depende de la cache de `ApplicationSearch`. Solo se muestran al usuario los terminales que realmente existen en disco.
 
 ### Terminales conocidos por plataforma
 
@@ -24,13 +25,13 @@ Solo se muestran al usuario los terminales que realmente existen en disco.
 ### Invariantes
 
 - El usuario nunca ve un terminal en el selector que no tenga ruta resuelta (se filtran entradas con ruta vacia o nula).
-- En macOS, `TerminalFallbackPaths` es un diccionario vacio: toda la deteccion depende exclusivamente de la cache de `ApplicationSearch`. Si la cache no esta poblada, no se detecta ningun terminal por fallback.
-- En Windows, las rutas de fallback incluyen wildcards para Windows Terminal (`Microsoft.WindowsTerminal*\wt.exe`); estas se filtran correctamente y solo aplican las rutas literales.
+- En macOS, los terminales se buscan via `AppPathInDirectory` en las carpetas del usuario y las por defecto (`/Applications`, `~/Applications`, `/System/Applications`, `/System/Applications/Utilities`).
+- En Windows, `TerminalKnownPaths` contiene rutas absolutas a ejecutables conocidos; las que incluyen wildcards (`Microsoft.WindowsTerminal*\wt.exe`) se filtran correctamente.
 - En Linux, las listas de terminales conocidos estan vacias. `Discover()` devuelve lista vacia.
 
 > **Verificar en:**
-> - `TerminalDiscovery.Discover()` y `TerminalDiscovery.GetCandidatePaths()` en `Yottacast.Core/Services/TerminalDiscovery.cs`
-> - `KnownTerminalNames`, `TerminalFallbackPaths` en cada `*PlatformProvider.cs`
+> - `TerminalDiscovery.Discover()`, `TerminalDiscovery.InvalidateCache()` en `Yottacast.Core/Services/TerminalDiscovery.cs`
+> - `KnownTerminalNames`, `TerminalKnownPaths` en cada `*PlatformProvider.cs`
 
 ---
 
@@ -43,7 +44,7 @@ Cuando se accede al terminal activo (propiedad `ActiveTerminal` en `UserSettings
 3. Se actualiza el ajuste y se persiste automaticamente.
 4. Si ningun terminal existe, se devuelve `null`.
 
-Este proceso usa `TerminalDiscovery.Resolve()`, un metodo estatico que NO depende de la cache de `ApplicationSearch`. Comprueba disco directamente via `GetTerminalPaths()`.
+Este proceso usa `TerminalDiscovery.Resolve()`, un metodo estatico que NO depende de la cache de `ApplicationSearch` ni de la cache de discovery. Comprueba disco directamente (carpetas del usuario, carpetas por defecto, rutas conocidas).
 
 ### Invariantes
 
@@ -51,14 +52,9 @@ Este proceso usa `TerminalDiscovery.Resolve()`, un metodo estatico que NO depend
 - `EnsureIntegrity()` fuerza la auto-reparacion tanto del browser como del terminal al acceder a los ajustes.
 - Si el terminal preferido sigue existiendo, no se modifica el ajuste ni se guarda.
 
-### Limitacion conocida (macOS)
-
-Las rutas devueltas por `GetTerminalPaths` en macOS incluyen `$HOME/Applications/{name}.app` como string literal. Sin embargo, `$HOME` no se expande a la ruta real del usuario (no se llama a `ExpandPath`). En la practica, un terminal instalado en `~/Applications/` solo se encontrara si ya esta en la cache de `ApplicationSearch`, no por comprobacion directa en disco.
-
 > **Verificar en:**
 > - `UserSettings.ActiveTerminal` en `Yottacast.Core/Services/UserSettings.cs`
 > - `TerminalDiscovery.Resolve()` en `Yottacast.Core/Services/TerminalDiscovery.cs`
-> - `MacOsPlatformProvider.GetTerminalPaths()` en `Yottacast.Core/Platform/MacOsPlatformProvider.cs`
 
 ---
 
@@ -100,7 +96,7 @@ No implementado. El metodo `ExecuteCommand` tiene cuerpo vacio (no-op).
 
 ## 4. CLI de diagnostico
 
-`Yottacast.Cli` expone el subcomando `terminals` (alias `t`) que llama a `GetCandidatePaths()` e imprime cada terminal con su ruta, marcando cuales existen en disco y cuales no. Util para depurar la deteccion sin arrancar la GUI.
+`Yottacast.Cli` expone el subcomando `terminals` (alias `t`) que llama a `Discover()` e imprime cada terminal instalado con su ruta. Util para depurar la deteccion sin arrancar la GUI.
 
 > **Verificar en:**
 > - `CmdTerminals()` en `Yottacast.Cli/Program.cs`

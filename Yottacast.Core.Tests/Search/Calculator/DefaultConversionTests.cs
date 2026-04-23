@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 using Yottacast.Core.Search.Calculator;
 using Yottacast.Core.Services;
+using Yottacast.Core.Tests.Fakes;
 using Yottacast.Core.ViewModels;
 
 namespace Yottacast.Core.Tests.Search.Calculator;
@@ -14,7 +15,8 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
 
     private ConversionResultItemViewModel GetConversionItem(string query) {
         var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
-        var search = new CalculatorSearch(fixture.Engine, clipboard);
+        var settings = UserSettings.Load(new FakePlatformProvider([]));
+        var search = new CalculatorSearch(fixture.Engine, clipboard, settings, NullLogger<CalculatorSearch>.Instance);
         var results = search.Search(query, 5);
         var item = Assert.Single(results);
         return Assert.IsType<ConversionResultItemViewModel>(item);

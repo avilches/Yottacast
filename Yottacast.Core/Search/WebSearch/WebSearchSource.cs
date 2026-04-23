@@ -6,14 +6,24 @@ namespace Yottacast.Core.Search.WebSearch;
 
 public class WebSearchSource(
     UserSettings settings,
+    PluginService pluginService,
     BrowserDiscovery browserDiscovery,
     ILogger<WebSearchSource> logger) : IInstantSearchSource {
 
     private readonly Dictionary<string, byte[]?> _icons = LoadIcons();
 
-    public void Start() { }
+    public void Start() {
+        pluginService.PluginsChanged += OnPluginsChanged;
+    }
+
     public Task WhenReady() => Task.CompletedTask;
-    public Task Stop() => Task.CompletedTask;
+
+    public Task Stop() {
+        pluginService.PluginsChanged -= OnPluginsChanged;
+        return Task.CompletedTask;
+    }
+
+    private void OnPluginsChanged() => settings.EnsurePluginSettings(pluginService.Plugins);
 
     public IReadOnlyList<BaseResultItemViewModel> Search(string query, int _limit) {
         if (!settings.EnableWebSearch) return [];
@@ -22,61 +32,92 @@ public class WebSearchSource(
 
         var results = new List<BaseResultItemViewModel>();
 
-        var anyPrefixMatch = WebSearchDefaults.Engines.Any(engine => {
-            var cfg = settings.WebSearchEngines.FirstOrDefault(s => s.Id == engine.Id)
-                      ?? WebSearchDefaults.DefaultSettingsFor(engine.Id);
-            if (!cfg.Enabled || cfg.Mode != WebSearchMode.PrefixOnly) return false;
-            var trigger = cfg.Prefix + " ";
-            return !string.IsNullOrEmpty(cfg.Prefix)
-                   && query.StartsWith(trigger, StringComparison.OrdinalIgnoreCase)
-                   && query.Length > trigger.Length;
-        });
+        // Check if any engine (built-in or plugin) has a prefix match,
+        // so ShowAlways engines can be suppressed when a prefix is active.
+        var anyPrefixMatch = HasAnyPrefixMatch(query);
 
+        // Built-in engines
         foreach (var engine in WebSearchDefaults.Engines) {
             var userConfig = settings.WebSearchEngines.FirstOrDefault(s => s.Id == engine.Id)
                              ?? WebSearchDefaults.DefaultSettingsFor(engine.Id);
+            var result = TryBuildResult(engine.Id, engine.Name, engine.QueryUrl,
+                _icons.GetValueOrDefault(engine.Id), userConfig, query, anyPrefixMatch);
+            if (result != null) results.Add(result);
+        }
 
-            if (!userConfig.Enabled) continue;
-
-            string searchQuery;
-            double score;
-
-            if (userConfig.Mode == WebSearchMode.ShowAlways) {
-                if (anyPrefixMatch) continue;
-                searchQuery = query;
-                score = 3.0;
-            } else {
-                // PrefixOnly: only activate when query is "{prefix} {text}"
-                var prefix = userConfig.Prefix;
-                if (string.IsNullOrEmpty(prefix)) continue;
-                var trigger = prefix + " ";
-                if (!query.StartsWith(trigger, StringComparison.OrdinalIgnoreCase)) continue;
-                searchQuery = query[trigger.Length..].Trim();
-                if (string.IsNullOrEmpty(searchQuery)) continue;
-                score = 3.5;  // explicit intent → higher than ShowAlways
-            }
-
-            var capturedQuery = searchQuery;
-            var capturedEngine = engine;
-            var capturedQueryUrl = string.IsNullOrEmpty(userConfig.QueryUrl) ? engine.QueryUrl : userConfig.QueryUrl;
-            results.Add(new ResultItemViewModel {
-                IconBytes  = _icons.GetValueOrDefault(engine.Id),
-                Title      = $"{capturedEngine.Name}: {capturedQuery}",
-                Subtitle   = "Open in browser",
-                Category   = "Web",
-                Score      = score,
-                BypassLimit = true,
-                OnActivate = () => {
-                    var browser = settings.ActiveBrowser;
-                    if (browser is null) return;
-                    var url = string.Format(capturedQueryUrl, Uri.EscapeDataString(capturedQuery));
-                    browserDiscovery.OpenUrl(url, browser);
-                },
-            });
+        // Plugin engines
+        foreach (var plugin in pluginService.Plugins) {
+            var userConfig = settings.WebSearchEngines.FirstOrDefault(s => s.Id == plugin.Id);
+            if (userConfig == null) continue;
+            var result = TryBuildResult(plugin.Id, plugin.Name, plugin.QueryUrl,
+                pluginService.GetIcon(plugin.Id), userConfig, query, anyPrefixMatch);
+            if (result != null) results.Add(result);
         }
 
         logger.LogDebug("WebSearch query=\"{Query}\" results={Count}", query, results.Count);
         return results;
+    }
+
+    private bool HasAnyPrefixMatch(string query) {
+        foreach (var engine in WebSearchDefaults.Engines) {
+            var cfg = settings.WebSearchEngines.FirstOrDefault(s => s.Id == engine.Id)
+                      ?? WebSearchDefaults.DefaultSettingsFor(engine.Id);
+            if (IsPrefixMatch(cfg, query)) return true;
+        }
+        foreach (var plugin in pluginService.Plugins) {
+            var cfg = settings.WebSearchEngines.FirstOrDefault(s => s.Id == plugin.Id);
+            if (cfg != null && IsPrefixMatch(cfg, query)) return true;
+        }
+        return false;
+    }
+
+    private static bool IsPrefixMatch(WebSearchEngineSettings cfg, string query) {
+        if (!cfg.Enabled || cfg.Mode != WebSearchMode.PrefixOnly) return false;
+        var trigger = cfg.Prefix + " ";
+        return !string.IsNullOrEmpty(cfg.Prefix)
+               && query.StartsWith(trigger, StringComparison.OrdinalIgnoreCase)
+               && query.Length > trigger.Length;
+    }
+
+    private ResultItemViewModel? TryBuildResult(string id, string name, string defaultQueryUrl,
+        byte[]? iconBytes, WebSearchEngineSettings userConfig, string query, bool anyPrefixMatch) {
+
+        if (!userConfig.Enabled) return null;
+
+        string searchQuery;
+        double score;
+
+        if (userConfig.Mode == WebSearchMode.ShowAlways) {
+            if (anyPrefixMatch) return null;
+            searchQuery = query;
+            score = 3.0;
+        } else {
+            var prefix = userConfig.Prefix;
+            if (string.IsNullOrEmpty(prefix)) return null;
+            var trigger = prefix + " ";
+            if (!query.StartsWith(trigger, StringComparison.OrdinalIgnoreCase)) return null;
+            searchQuery = query[trigger.Length..].Trim();
+            if (string.IsNullOrEmpty(searchQuery)) return null;
+            score = 3.5;
+        }
+
+        var capturedQuery = searchQuery;
+        var capturedQueryUrl = string.IsNullOrEmpty(userConfig.QueryUrl) ? defaultQueryUrl : userConfig.QueryUrl;
+        return new ResultItemViewModel {
+            IconBytes   = iconBytes,
+            Title       = $"{name}: {capturedQuery}",
+            Subtitle    = "Open in browser",
+            Category    = "Web",
+            Score       = score,
+            BypassLimit = true,
+            OnActivate  = () => {
+                var browser = settings.ActiveBrowser;
+                if (browser is null) return;
+                var url = string.Format(capturedQueryUrl, Uri.EscapeDataString(capturedQuery));
+                logger.LogInformation("WebSearch: open engine={Engine} query=\"{Query}\" browser={Browser}", name, capturedQuery, browser.Name);
+                browserDiscovery.OpenUrl(url, browser);
+            },
+        };
     }
 
     private static Dictionary<string, byte[]?> LoadIcons() {
