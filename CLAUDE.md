@@ -66,9 +66,9 @@ Cada tipo de resultado tiene una accion por defecto al activarlo (Enter):
 ## Settings
 
 La configuracion del usuario incluye: hotkey global, navegador preferido, terminal, tema visual, carpetas de busqueda,
-directorios de apps, motor de busqueda web, y toggles para features individuales (calculadora, clipboard, emoji) — los
-toggles se persisten en `UserSettings` y se muestran en Settings, pero aun no tienen efecto funcional sobre los
-resultados de busqueda (pendiente de implementacion).
+directorios de apps, motor de busqueda web, y toggles para features individuales (calculadora, clipboard, emoji).
+Los toggles se persisten en `UserSettings`, se muestran en Settings, y al cambiarlos se refresca automaticamente la
+busqueda activa via el evento `SearchSettingsChanged`.
 
 La ventana de settings es una ventana modal separada, accesible con Cmd+, (macOS).
 

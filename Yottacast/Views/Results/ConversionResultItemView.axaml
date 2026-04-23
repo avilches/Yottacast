@@ -3,45 +3,54 @@
              xmlns:viewModels="clr-namespace:Yottacast.Core.ViewModels;assembly=Yottacast.Core"
              x:Class="Yottacast.Views.Results.ConversionResultItemView"
              x:DataType="viewModels:ConversionResultItemViewModel">
-    <Grid ColumnDefinitions="*" RowDefinitions="Auto,Auto" MinHeight="58">
+    <Grid ColumnDefinitions="*" RowDefinitions="Auto,Auto" MinHeight="68">
 
         <!-- 2-cell layout: From → To (when math.js did NOT simplify the from) -->
         <Grid Grid.Column="0"
               IsVisible="{Binding !FromWasNormalized}"
               ColumnDefinitions="*,Auto,*"
-              VerticalAlignment="Center">
+              VerticalAlignment="Center"
+              Margin="0,8">
             <!-- From -->
             <Border Grid.Column="0" CornerRadius="6" Padding="6,4"
                     HorizontalAlignment="Stretch"
                     Classes.conv-cell-selected="{Binding IsOrigFromHighlighted}">
-                <StackPanel Orientation="Vertical" Spacing="2">
+                <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
                     <TextBlock Text="{Binding FromShort}"
                                Foreground="{DynamicResource Theme.ItemTitle}"
-                               FontSize="16"
-                               FontWeight="Medium"/>
-                    <TextBlock Text="{Binding FromLong}"
-                               Foreground="{DynamicResource Theme.ItemSubtitle}"
+                               FontSize="20"
+                               FontWeight="Medium"
+                               HorizontalAlignment="Center"
+                               TextAlignment="Center"/>
+                    <TextBlock Classes="conv-subtitle"
+                               Text="{Binding FromLong}"
                                FontSize="13"
+                               HorizontalAlignment="Center"
+                               TextAlignment="Center"
                                IsVisible="{Binding FromLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>
                 </StackPanel>
             </Border>
             <!-- Arrow -->
             <TextBlock Grid.Column="1" Text="→"
-                       Foreground="{DynamicResource Theme.ItemSubtitle}"
+                       Foreground="{DynamicResource Theme.ItemTitle}"
                        VerticalAlignment="Center"
                        Margin="8,0"/>
             <!-- To -->
             <Border Grid.Column="2" CornerRadius="6" Padding="6,4"
                     HorizontalAlignment="Stretch"
                     Classes.conv-cell-selected="{Binding IsToHighlighted}">
-                <StackPanel Orientation="Vertical" Spacing="2">
+                <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
                     <TextBlock Text="{Binding ToShort}"
                                Foreground="{DynamicResource Theme.ItemTitle}"
-                               FontSize="16"
-                               FontWeight="Medium"/>
-                    <TextBlock Text="{Binding ToLong}"
-                               Foreground="{DynamicResource Theme.ItemSubtitle}"
+                               FontSize="20"
+                               FontWeight="Medium"
+                               HorizontalAlignment="Center"
+                               TextAlignment="Center"/>
+                    <TextBlock Classes="conv-subtitle"
+                               Text="{Binding ToLong}"
                                FontSize="13"
+                               HorizontalAlignment="Center"
+                               TextAlignment="Center"
                                IsVisible="{Binding ToLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>
                 </StackPanel>
             </Border>
@@ -51,59 +60,72 @@
         <Grid Grid.Column="0"
               IsVisible="{Binding FromWasNormalized}"
               ColumnDefinitions="*,Auto,*,Auto,*"
-              VerticalAlignment="Center">
+              VerticalAlignment="Center"
+              Margin="0,8">
             <!-- OrigFrom -->
             <Border Grid.Column="0" CornerRadius="6" Padding="6,4"
                     HorizontalAlignment="Stretch"
                     Classes.conv-cell-selected="{Binding IsOrigFromHighlighted}">
-                <StackPanel Orientation="Vertical" Spacing="2">
+                <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
                     <TextBlock Text="{Binding FromShort}"
                                Foreground="{DynamicResource Theme.ItemTitle}"
-                               FontSize="16"
-                               FontWeight="Medium"/>
-                    <TextBlock Text="{Binding FromLong}"
-                               Foreground="{DynamicResource Theme.ItemSubtitle}"
+                               FontSize="20"
+                               FontWeight="Medium"
+                               HorizontalAlignment="Center"
+                               TextAlignment="Center"/>
+                    <TextBlock Classes="conv-subtitle"
+                               Text="{Binding FromLong}"
                                FontSize="13"
+                               HorizontalAlignment="Center"
+                               TextAlignment="Center"
                                IsVisible="{Binding FromLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>
                 </StackPanel>
             </Border>
             <!-- Arrow 1 -->
             <TextBlock Grid.Column="1" Text="→"
-                       Foreground="{DynamicResource Theme.ItemSubtitle}"
+                       Foreground="{DynamicResource Theme.ItemTitle}"
                        VerticalAlignment="Center"
                        Margin="8,0"/>
             <!-- NormFrom -->
             <Border Grid.Column="2" CornerRadius="6" Padding="6,4"
                     HorizontalAlignment="Stretch"
                     Classes.conv-cell-selected="{Binding IsNormFromHighlighted}">
-                <StackPanel Orientation="Vertical" Spacing="2">
+                <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
                     <TextBlock Text="{Binding NormFromShort}"
                                Foreground="{DynamicResource Theme.ItemTitle}"
-                               FontSize="16"
-                               FontWeight="Medium"/>
-                    <TextBlock Text="{Binding NormFromLong}"
-                               Foreground="{DynamicResource Theme.ItemSubtitle}"
+                               FontSize="20"
+                               FontWeight="Medium"
+                               HorizontalAlignment="Center"
+                               TextAlignment="Center"/>
+                    <TextBlock Classes="conv-subtitle"
+                               Text="{Binding NormFromLong}"
                                FontSize="13"
+                               HorizontalAlignment="Center"
+                               TextAlignment="Center"
                                IsVisible="{Binding NormFromLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>
                 </StackPanel>
             </Border>
             <!-- Arrow 2 -->
             <TextBlock Grid.Column="3" Text="→"
-                       Foreground="{DynamicResource Theme.ItemSubtitle}"
+                       Foreground="{DynamicResource Theme.ItemTitle}"
                        VerticalAlignment="Center"
                        Margin="8,0"/>
             <!-- To -->
             <Border Grid.Column="4" CornerRadius="6" Padding="6,4"
                     HorizontalAlignment="Stretch"
                     Classes.conv-cell-selected="{Binding IsToHighlighted}">
-                <StackPanel Orientation="Vertical" Spacing="2">
+                <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
                     <TextBlock Text="{Binding ToShort}"
                                Foreground="{DynamicResource Theme.ItemTitle}"
-                               FontSize="16"
-                               FontWeight="Medium"/>
-                    <TextBlock Text="{Binding ToLong}"
-                               Foreground="{DynamicResource Theme.ItemSubtitle}"
+                               FontSize="20"
+                               FontWeight="Medium"
+                               HorizontalAlignment="Center"
+                               TextAlignment="Center"/>
+                    <TextBlock Classes="conv-subtitle"
+                               Text="{Binding ToLong}"
                                FontSize="13"
+                               HorizontalAlignment="Center"
+                               TextAlignment="Center"
                                IsVisible="{Binding ToLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>
                 </StackPanel>
             </Border>

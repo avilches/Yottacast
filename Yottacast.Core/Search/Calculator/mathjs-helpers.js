@@ -505,6 +505,25 @@ function getExplicitLongName(symbol) {
 // Examples: 6.213711922 mi → "6.21 mi", 0.001450377377 psi → "0.00145 psi", 600 min → "600 min"
 function smartFormat(r) {
     var s = math.format(r, {precision: _FMT_BASE_PRECISION});
+    // Convert scientific notation to fixed when the result is readable (up to 10 digits).
+    // e.g. "3.2808399e+7 ft" → "32808399 ft", but "1e+18 N" stays as-is.
+    var sci = /^(-?\d+\.?\d*)[eE]\+(\d+)(\s.*)?$/.exec(s);
+    if (sci) {
+        var exp = parseInt(sci[2], 10);
+        var mantissa = sci[1].replace('-', '').replace('.', '');
+        var totalDigits = mantissa.length + exp - (sci[1].indexOf('.') >= 0 ? mantissa.length - 1 : 0);
+        // Only for integer mantissa: totalDigits = intDigits + exp
+        var dotPos = sci[1].indexOf('.');
+        var intDigits = dotPos >= 0 ? dotPos - (sci[1][0] === '-' ? 1 : 0) : sci[1].replace('-','').length;
+        var mantissaDecimals = dotPos >= 0 ? sci[1].length - dotPos - 1 : 0;
+        var resultDigits = intDigits + exp;
+        if (resultDigits <= 10) {
+            var num = Number(sci[1] + 'e+' + sci[2]);
+            var suffix = sci[3] || '';
+            var decimals = Math.max(0, mantissaDecimals - exp);
+            s = num.toFixed(decimals) + suffix;
+        }
+    }
     // Only post-process strings with a plain decimal number (no scientific notation).
     // The pattern requires digits.digits followed immediately by whitespace or end of string.
     var m = /^(-?\d+\.\d+)(\s|$)/.exec(s);

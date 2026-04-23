@@ -149,5 +149,6 @@ public partial class WebSearchEngineRowViewModel : ViewModelBase {
             QueryUrl = effectiveUrl,
         };
         _settings.Save();
+        _settings.NotifySearchSettingsChanged();
     }
 }

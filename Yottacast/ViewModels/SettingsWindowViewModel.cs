@@ -91,12 +91,12 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [ObservableProperty] private bool _fileSearchOnlySpecificFolders;
     [ObservableProperty] private bool _stickyWindow;
 
-    partial void OnEnableAppSearchChanged(bool value)               { _settings.EnableAppSearch              = value; _settings.Save(); _logger.LogInformation("Settings: EnableAppSearch = {Value}", value); }
-    partial void OnEnableCalculatorChanged(bool value)              { _settings.EnableCalculator             = value; _settings.Save(); _logger.LogInformation("Settings: EnableCalculator = {Value}", value); }
-    partial void OnEnableClipboardChanged(bool value)               { _settings.EnableClipboard              = value; _settings.Save(); _logger.LogInformation("Settings: EnableClipboard = {Value}", value); }
-    partial void OnEnableEmojiChanged(bool value)                   { _settings.EnableEmoji                  = value; _settings.Save(); _logger.LogInformation("Settings: EnableEmoji = {Value}", value); }
-    partial void OnEnableFileSearchChanged(bool value)              { _settings.EnableFileSearch             = value; _settings.Save(); _logger.LogInformation("Settings: EnableFileSearch = {Value}", value); }
-    partial void OnEnableWebSearchChanged(bool value)               { _settings.EnableWebSearch              = value; _settings.Save(); _logger.LogInformation("Settings: EnableWebSearch = {Value}", value); }
+    partial void OnEnableAppSearchChanged(bool value)               { _settings.EnableAppSearch              = value; _settings.Save(); _logger.LogInformation("Settings: EnableAppSearch = {Value}", value); _settings.NotifySearchSettingsChanged(); }
+    partial void OnEnableCalculatorChanged(bool value)              { _settings.EnableCalculator             = value; _settings.Save(); _logger.LogInformation("Settings: EnableCalculator = {Value}", value); _settings.NotifySearchSettingsChanged(); }
+    partial void OnEnableClipboardChanged(bool value)               { _settings.EnableClipboard              = value; _settings.Save(); _logger.LogInformation("Settings: EnableClipboard = {Value}", value); _settings.NotifySearchSettingsChanged(); }
+    partial void OnEnableEmojiChanged(bool value)                   { _settings.EnableEmoji                  = value; _settings.Save(); _logger.LogInformation("Settings: EnableEmoji = {Value}", value); _settings.NotifySearchSettingsChanged(); }
+    partial void OnEnableFileSearchChanged(bool value)              { _settings.EnableFileSearch             = value; _settings.Save(); _logger.LogInformation("Settings: EnableFileSearch = {Value}", value); _settings.NotifySearchSettingsChanged(); }
+    partial void OnEnableWebSearchChanged(bool value)               { _settings.EnableWebSearch              = value; _settings.Save(); _logger.LogInformation("Settings: EnableWebSearch = {Value}", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnShowDisabledWebSearchEnginesChanged(bool value) {
         _settings.ShowDisabledWebSearchEngines = value;
         _settings.Save();
@@ -105,7 +105,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
             foreach (var engine in group.Engines)
                 engine.ShowDisabled = value;
     }
-    partial void OnFileSearchOnlySpecificFoldersChanged(bool value) { _settings.FileSearchOnlySpecificFolders = value; _settings.Save(); _logger.LogInformation("Settings: FileSearchOnlySpecificFolders = {Value}", value); }
+    partial void OnFileSearchOnlySpecificFoldersChanged(bool value) { _settings.FileSearchOnlySpecificFolders = value; _settings.Save(); _logger.LogInformation("Settings: FileSearchOnlySpecificFolders = {Value}", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnStickyWindowChanged(bool value)                  { _settings.StickyWindow                 = value; _settings.Save(); _logger.LogInformation("Settings: StickyWindow = {Value}", value); }
 
     // ── Dictionary config ────────────────────────────────────────────────────
@@ -113,9 +113,9 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [ObservableProperty] private string _dictionaryPrefix = AppDefaults.DictionaryDefaultPrefix;
     [ObservableProperty] private bool _dictionaryShowAlways;
 
-    partial void OnEnableDictionaryChanged(bool value)    { _settings.EnableDictionary    = value; _settings.Save(); _logger.LogInformation("Settings: EnableDictionary = {Value}", value); }
-    partial void OnDictionaryPrefixChanged(string value)  { _settings.DictionaryPrefix    = value; _settings.Save(); _logger.LogInformation("Settings: DictionaryPrefix = \"{Value}\"", value); }
-    partial void OnDictionaryShowAlwaysChanged(bool value) { _settings.DictionaryShowAlways = value; _settings.Save(); _logger.LogInformation("Settings: DictionaryShowAlways = {Value}", value); }
+    partial void OnEnableDictionaryChanged(bool value)    { _settings.EnableDictionary    = value; _settings.Save(); _logger.LogInformation("Settings: EnableDictionary = {Value}", value); _settings.NotifySearchSettingsChanged(); }
+    partial void OnDictionaryPrefixChanged(string value)  { _settings.DictionaryPrefix    = value; _settings.Save(); _logger.LogInformation("Settings: DictionaryPrefix = \"{Value}\"", value); _settings.NotifySearchSettingsChanged(); }
+    partial void OnDictionaryShowAlwaysChanged(bool value) { _settings.DictionaryShowAlways = value; _settings.Save(); _logger.LogInformation("Settings: DictionaryShowAlways = {Value}", value); _settings.NotifySearchSettingsChanged(); }
 
     // ── Calculator config ────────────────────────────────────────────────────
     [ObservableProperty] private string _calculatorCurrencyA = "EUR";
@@ -128,6 +128,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _settings.Save();
         _logger.LogInformation("Settings: CalculatorCurrencyA = \"{Value}\"", upper);
         _mathJsEngine.UpdateConfig(BuildFormatConfig());
+        _settings.NotifySearchSettingsChanged();
     }
     partial void OnCalculatorCurrencyBChanged(string value) {
         var upper = value.ToUpperInvariant();
@@ -135,12 +136,14 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _settings.Save();
         _logger.LogInformation("Settings: CalculatorCurrencyB = \"{Value}\"", upper);
         _mathJsEngine.UpdateConfig(BuildFormatConfig());
+        _settings.NotifySearchSettingsChanged();
     }
     partial void OnCalculatorDecimalPlacesChanged(int value) {
         _settings.CalculatorDecimalPlaces = value;
         _settings.Save();
         _logger.LogInformation("Settings: CalculatorDecimalPlaces = {Value}", value);
         _mathJsEngine.UpdateConfig(BuildFormatConfig());
+        _settings.NotifySearchSettingsChanged();
     }
 
     private FormatConfig BuildFormatConfig() => new(
@@ -218,6 +221,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
             settings.Save();
             _logger.LogInformation("Settings: SearchFolders changed ({Action}) → {Count} folders", e.Action, SearchFolders.Count);
             OnPropertyChanged(nameof(HasSearchFolders));
+            settings.NotifySearchSettingsChanged();
         };
         AppDirectories.CollectionChanged += (_, e) => {
             settings.AppDirectories = AppDirectories.ToList();
@@ -372,6 +376,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _settings.NotifyAppDirectoriesChanged();
         _browserDiscovery.InvalidateCache();
         _terminalDiscovery.InvalidateCache();
+        _settings.NotifySearchSettingsChanged();
     }
 
     /// <summary>Called from the View when the settings window is closed.</summary>

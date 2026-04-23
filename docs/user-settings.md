@@ -273,3 +273,24 @@ Internamente se usa un record privado `UserSettingsData` como DTO de serializaci
 | Auto-reparacion de browser/terminal | `Information` |
 
 > **Verificar en:** `UserSettings.Load()`, `UserSettings.Save()`, propiedades `ActiveBrowser`/`ActiveTerminal` en `Yottacast.Core/Services/UserSettings.cs`.
+
+---
+
+## 12. Refresco automatico de resultados al cambiar settings
+
+Cuando el usuario modifica un setting que afecta a los resultados de busqueda, la busqueda activa se re-ejecuta automaticamente sin que el usuario tenga que reescribir la query. Si no hay query activa (barra vacia), no ocurre nada.
+
+**Settings que disparan refresco:**
+- Toggles de fuentes: `EnableAppSearch`, `EnableCalculator`, `EnableClipboard`, `EnableEmoji`, `EnableFileSearch`, `EnableWebSearch`, `EnableDictionary`
+- Configuracion de file search: `FileSearchOnlySpecificFolders`, cambios en `SearchFolders`
+- Configuracion de diccionario: `DictionaryPrefix`, `DictionaryShowAlways`
+- Configuracion de calculadora: `CalculatorCurrencyA`, `CalculatorCurrencyB`, `CalculatorDecimalPlaces`
+- Configuracion por motor de web search (enabled, mode, prefix, queryUrl)
+- Cambios en `AppDirectories` (al hacer flush)
+
+**Settings que NO disparan refresco** (no afectan que resultados aparecen):
+- `Browser`, `Terminal`, `Theme`, `Hotkey`, `StickyWindow`, `WindowX`/`WindowY`, `ShowDisabledWebSearchEngines`
+
+**Mecanismo:** `UserSettings` expone un evento `SearchSettingsChanged`. `SettingsWindowViewModel` lo dispara tras cada cambio relevante. `MainWindowViewModel` se suscribe y re-lanza `SearchAsync` con la query actual, cancelando cualquier busqueda en vuelo.
+
+> **Verificar en:** evento `SearchSettingsChanged` en `UserSettings`. Suscripcion en `MainWindowViewModel.Initialize()`. Llamadas a `NotifySearchSettingsChanged()` en `SettingsWindowViewModel` y `WebSearchEngineRowViewModel`.

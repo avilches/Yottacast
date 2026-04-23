@@ -65,6 +65,7 @@ public partial class MainWindowViewModel(
         appSearch.AppsChanged += userDocumentSearch.InvalidateAll;
         fileIconCache.IconLoaded += OnFileIconLoaded;
         userDocumentSearch.BadgeIconLoaded += OnBadgeIconLoaded;
+        settings.SearchSettingsChanged += OnSearchSettingsChanged;
         _ = StartTrackingNewAppsAsync();
     }
 
@@ -93,6 +94,16 @@ public partial class MainWindowViewModel(
         HasResults = Results.Count > 0;
         ShowNoResults = false;
         SelectedResult = Results.FirstOrDefault();
+    }
+
+    private void OnSearchSettingsChanged() {
+        Dispatcher.UIThread.Post(() => {
+            if (string.IsNullOrEmpty(SearchText)) return;
+            _cts?.Cancel();
+            _cts = new CancellationTokenSource();
+            _userNavigated = false;
+            _ = SearchAsync(SearchText, _cts.Token);
+        });
     }
 
     private void OnAppCacheChanged() {

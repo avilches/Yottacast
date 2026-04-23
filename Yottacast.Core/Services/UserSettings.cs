@@ -25,6 +25,9 @@ public class UserSettings {
 
     public event Action? AppDirectoriesChanged;
     public void NotifyAppDirectoriesChanged() => AppDirectoriesChanged?.Invoke();
+
+    public event Action? SearchSettingsChanged;
+    public void NotifySearchSettingsChanged() => SearchSettingsChanged?.Invoke();
     public bool EnableAppSearch { get; set; } = true;
     public bool EnableCalculator { get; set; } = true;
     public bool EnableClipboard { get; set; } = true;

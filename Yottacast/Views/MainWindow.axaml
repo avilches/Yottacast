@@ -89,8 +89,20 @@
         <Style Selector="Border.emoji-selected">
             <Setter Property="Background" Value="{DynamicResource Theme.ItemSelectionIconBackground}"/>
         </Style>
-        <!-- Conversion cell selection highlight -->
-        <Style Selector="Border.conv-cell-selected">
+        <!-- Conversion cell selection highlight: only when the ListBoxItem is selected -->
+        <Style Selector="ListBoxItem:selected Border.conv-cell-selected">
+            <Setter Property="Background" Value="{DynamicResource Theme.ItemSelectionIconBackground}"/>
+        </Style>
+        <!-- Conversion subtitle (small text): white but slightly dimmed -->
+        <Style Selector="TextBlock.conv-subtitle">
+            <Setter Property="Foreground" Value="{DynamicResource Theme.ItemTitle}"/>
+            <Setter Property="Opacity" Value="0.55"/>
+        </Style>
+        <!-- Calculator cell: subtle background always, brighter when selected -->
+        <Style Selector="Border.calc-cell">
+            <Setter Property="Background" Value="{DynamicResource Theme.ItemIconBackground}"/>
+        </Style>
+        <Style Selector="ListBoxItem:selected Border.calc-cell">
             <Setter Property="Background" Value="{DynamicResource Theme.ItemSelectionIconBackground}"/>
         </Style>
     </Window.Styles>

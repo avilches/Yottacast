@@ -3,17 +3,35 @@
              xmlns:viewModels="clr-namespace:Yottacast.Core.ViewModels;assembly=Yottacast.Core"
              x:Class="Yottacast.Views.Results.CalculatorResultItemView"
              x:DataType="viewModels:CalculatorResultItemViewModel">
-    <StackPanel Orientation="Vertical"
-                VerticalAlignment="Center"
-                Spacing="2"
-                MinHeight="44">
-        <TextBlock Text="{Binding Title}"
+    <Grid ColumnDefinitions="*,Auto,*" MinHeight="68" VerticalAlignment="Center" Margin="0,8">
+
+        <!-- Left: formatted expression (what user typed) -->
+        <Border Grid.Column="0" Classes="calc-cell" CornerRadius="6" Padding="6,4"
+                HorizontalAlignment="Stretch" VerticalAlignment="Center">
+            <TextBlock Text="{Binding Subtitle}"
+                       Foreground="{DynamicResource Theme.ItemTitle}"
+                       FontSize="20"
+                       FontWeight="Medium"
+                       HorizontalAlignment="Center"
+                       TextAlignment="Center"/>
+        </Border>
+
+        <!-- Separator -->
+        <TextBlock Grid.Column="1" Text="="
                    Foreground="{DynamicResource Theme.ItemTitle}"
-                   FontSize="{DynamicResource Theme.FontSizeTitle}"
-                   FontWeight="Medium"/>
-        <TextBlock Text="{Binding Subtitle}"
-                   Foreground="{DynamicResource Theme.ItemSubtitle}"
-                   FontSize="{DynamicResource Theme.FontSizeSubtitle}"
-                   TextTrimming="CharacterEllipsis"/>
-    </StackPanel>
+                   VerticalAlignment="Center"
+                   Margin="8,0"/>
+
+        <!-- Right: result -->
+        <Border Grid.Column="2" Classes="calc-cell" CornerRadius="6" Padding="6,4"
+                HorizontalAlignment="Stretch" VerticalAlignment="Center">
+            <TextBlock Text="{Binding Title}"
+                       Foreground="{DynamicResource Theme.ItemTitle}"
+                       FontSize="20"
+                       FontWeight="SemiBold"
+                       HorizontalAlignment="Center"
+                       TextAlignment="Center"/>
+        </Border>
+
+    </Grid>
 </UserControl>

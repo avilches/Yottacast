@@ -180,7 +180,7 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
         Assert.True(r1.IsSuccess, r1.Error);
         Assert.True(r2.IsSuccess, r2.Error);
         Assert.NotEqual(r1.Value, r2.Value);
-        Assert.Contains("1e+6", r1.Value!); // 1 Mg = 1,000,000 g (math.js formato científico)
+        Assert.Contains("1000000", r1.Value!); // 1 Mg = 1,000,000 g
     }
 
     // ── Ambiguity hints ───────────────────────────────────────────────────────

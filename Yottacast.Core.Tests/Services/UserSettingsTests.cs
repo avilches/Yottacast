@@ -1023,6 +1023,15 @@ public class UserSettingsTests : IDisposable {
         Assert.Empty(settings.SearchFolders);
     }
 
+    [Fact]
+    public void NotifySearchSettingsChanged_fires_event() {
+        var settings = Load();
+        var fired = false;
+        settings.SearchSettingsChanged += () => fired = true;
+        settings.NotifySearchSettingsChanged();
+        Assert.True(fired);
+    }
+
     /// <summary>Platform provider with configurable default search folders (no browsers/terminals).</summary>
     private sealed class PlatformWithSearchFolders(List<string> searchFolders) : PlatformProvider {
         public override bool? IsSystemDarkMode() => null;
