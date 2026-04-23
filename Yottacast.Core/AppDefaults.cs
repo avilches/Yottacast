@@ -37,6 +37,26 @@ public static class AppDefaults {
     public const int DictionaryTimeoutSeconds = 5;
     /// Default prefix to activate dictionary lookup.
     public const string DictionaryDefaultPrefix = "define";
+    /// Default languages for dictionary lookups.
+    public static readonly string[] DictionaryDefaultLanguages = ["en"];
+    /// All languages supported by the Free Dictionary API.
+    public static readonly (string Code, string Name)[] DictionaryAvailableLanguages = [
+        ("en", "English"),
+        ("es", "Spanish"),
+        ("fr", "French"),
+        ("de", "German"),
+        ("it", "Italian"),
+        ("pt-BR", "Portuguese (Brazil)"),
+        ("ru", "Russian"),
+        ("ar", "Arabic"),
+        ("hi", "Hindi"),
+        ("ja", "Japanese"),
+        ("ko", "Korean"),
+        ("tr", "Turkish"),
+        ("cs", "Czech"),
+        ("nl", "Dutch"),
+        ("sk", "Slovak"),
+    ];
 
     // ── Updates ───────────────────────────────────────────────────────────────
     /// HTTP timeout for the version check request.

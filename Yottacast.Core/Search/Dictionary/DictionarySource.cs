@@ -52,43 +52,58 @@ public class DictionarySource(
 
         if (string.IsNullOrEmpty(searchWord)) yield break;
 
-        var response = await DictionaryApiClient.LookupAsync(Http, searchWord, logger, ct);
-        if (response is null) yield break;
+        var languages = settings.DictionaryLanguages;
+        var multiLang = languages.Count > 1;
+
+        var tasks = languages.Select(lang =>
+            DictionaryApiClient.LookupAsync(Http, searchWord, lang, logger, ct)).ToArray();
+        var responses = await Task.WhenAll(tasks);
 
         var results = new List<BaseResultItemViewModel>();
-        var phonetic = response.Phonetics.FirstOrDefault(p => !string.IsNullOrEmpty(p.Text))?.Text;
-        var sourceUrl = response.SourceUrls.FirstOrDefault();
+        var phonetic = (string?)null;
 
-        foreach (var meaning in response.Meanings) {
-            foreach (var def in meaning.Definitions.Take(3)) {
+        for (var i = 0; i < responses.Length; i++) {
+            var response = responses[i];
+            if (response is null) continue;
+            var lang = languages[i];
+
+            phonetic ??= response.Phonetics.FirstOrDefault(p => !string.IsNullOrEmpty(p.Text))?.Text;
+            var sourceUrl = response.SourceUrls.FirstOrDefault();
+
+            foreach (var meaning in response.Meanings) {
+                foreach (var def in meaning.Definitions.Take(3)) {
+                    if (results.Count >= limit) break;
+
+                    var title = multiLang
+                        ? $"{response.Word} ({meaning.PartOfSpeech}) [{lang}]: {def.Definition}"
+                        : $"{response.Word} ({meaning.PartOfSpeech}): {def.Definition}";
+                    var subtitle = def.Example is not null
+                        ? $"\"{def.Example}\""
+                        : phonetic ?? "";
+
+                    var capturedUrl = sourceUrl;
+                    results.Add(new ResultItemViewModel {
+                        IconBytes = IconBytes,
+                        Title = title,
+                        Subtitle = subtitle,
+                        Category = "Definition",
+                        Score = score,
+                        OnActivate = capturedUrl != null
+                            ? () => {
+                                var browser = settings.ActiveBrowser;
+                                if (browser is not null)
+                                    browserDiscovery.OpenUrl(capturedUrl, browser);
+                            }
+                            : null,
+                    });
+                }
                 if (results.Count >= limit) break;
-
-                var title = $"{response.Word} ({meaning.PartOfSpeech}): {def.Definition}";
-                var subtitle = def.Example is not null
-                    ? $"\"{def.Example}\""
-                    : phonetic ?? "";
-
-                var capturedUrl = sourceUrl;
-                results.Add(new ResultItemViewModel {
-                    IconBytes = IconBytes,
-                    Title = title,
-                    Subtitle = subtitle,
-                    Category = "Definition",
-                    Score = score,
-                    OnActivate = capturedUrl != null
-                        ? () => {
-                            var browser = settings.ActiveBrowser;
-                            if (browser is not null)
-                                browserDiscovery.OpenUrl(capturedUrl, browser);
-                        }
-                        : null,
-                });
             }
             if (results.Count >= limit) break;
         }
 
         if (results.Count > 0) {
-            logger.LogDebug("Dictionary query=\"{Word}\" results={Count}", searchWord, results.Count);
+            logger.LogDebug("Dictionary query=\"{Word}\" languages={Languages} results={Count}", searchWord, string.Join(",", languages), results.Count);
             yield return results;
         }
     }

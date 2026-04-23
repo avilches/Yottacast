@@ -35,25 +35,27 @@ Al pulsar Enter sobre un resultado, se abre la URL fuente de la definicion en el
 
 ## API
 
-Usa la API publica de Free Dictionary API (`https://api.dictionaryapi.dev/api/v2/entries/en/{word}`). Actualmente solo soporta ingles. El soporte multi-idioma y diccionarios locales (kaikki) estan pendientes para una fase posterior.
+Usa la API publica de Free Dictionary API (`https://api.dictionaryapi.dev/api/v2/entries/{lang}/{word}`). Soporta 15 idiomas: English, Spanish, French, German, Italian, Portuguese (Brazil), Russian, Arabic, Hindi, Japanese, Korean, Turkish, Czech, Dutch y Slovak. El usuario puede seleccionar uno o varios idiomas en Settings; las peticiones se lanzan en paralelo (una por idioma) y los resultados se combinan. Cuando hay mas de un idioma seleccionado, el titulo de cada resultado incluye el codigo de idioma entre corchetes (p. ej. `[en]`, `[es]`).
 
 ## Settings del usuario
 
-Tres propiedades en `UserSettings`:
+Cuatro propiedades en `UserSettings`:
 
 | Propiedad | Tipo | Default | Descripcion |
 |---|---|---|---|
 | `EnableDictionary` | `bool` | `true` | Activa o desactiva la fuente |
 | `DictionaryPrefix` | `string` | `"define"` | Prefijo para modo PrefixOnly |
 | `DictionaryShowAlways` | `bool` | `false` | Si true, busca definiciones para cualquier query |
+| `DictionaryLanguages` | `List<string>` | `["en"]` | Idiomas en los que buscar definiciones (ver `AppDefaults.DictionaryAvailableLanguages` para la lista completa) |
 
 En la ventana de Settings, la seccion "Dictionary" permite:
 - Activar/desactivar con un ToggleSwitch.
 - Marcar "Show always" para desactivar el prefijo.
 - Editar el prefijo (solo visible cuando ShowAlways esta desactivado).
+- Seleccionar idiomas con checkboxes (siempre debe haber al menos uno seleccionado).
 
 ## Icono
 
 El icono de los resultados es un PNG embebido (`Search/Dictionary/Icons/wiktionary.png`), cargado una sola vez al inicializar la source.
 
-> **Verificar en:** `DictionarySource.cs` (SearchAsync, LoadIcon), `DictionaryApi.cs` (LookupAsync, DTOs), `UserSettings.cs` (EnableDictionary, DictionaryPrefix, DictionaryShowAlways), `AppDefaults.cs` (DictionaryTimeoutSeconds, DictionaryDefaultPrefix).
+> **Verificar en:** `DictionarySource.cs` (SearchAsync, LoadIcon), `DictionaryApi.cs` (LookupAsync, DTOs), `UserSettings.cs` (EnableDictionary, DictionaryPrefix, DictionaryShowAlways, DictionaryLanguages), `AppDefaults.cs` (DictionaryTimeoutSeconds, DictionaryDefaultPrefix, DictionaryDefaultLanguages, DictionaryAvailableLanguages), `SettingsWindowViewModel.cs` (DictionaryLanguageItem, DictionaryLanguages).
