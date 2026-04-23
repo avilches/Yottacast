@@ -22,17 +22,14 @@
             </ItemsControl.ItemTemplate>
         </ItemsControl>
         <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Margin="0,6,0,0" Spacing="2">
-            <TextBlock Text="{Binding SelectedEmoji.Name}"
-                       Foreground="{DynamicResource Theme.ItemTitle}"
+            <!-- Group: name -->
+            <TextBlock Foreground="{DynamicResource Theme.ItemTitle}"
                        FontSize="{DynamicResource Theme.FontSizeTitle}"
                        FontWeight="Medium"
-                       HorizontalAlignment="Center"/>
-            <TextBlock Text="{Binding SelectedEmoji.Category}"
-                       Foreground="{DynamicResource Theme.ItemCategory}"
-                       FontSize="{DynamicResource Theme.FontSizeSmall}"
-                       HorizontalAlignment="Center"/>
-            <TextBlock Text="{Binding SelectedEmoji.KeywordsText}"
-                       Foreground="{DynamicResource Theme.ItemSubtitle}"
+                       HorizontalAlignment="Center"><Run Text="{Binding SelectedEmoji.Category}"/><Run Text=": "/><Run Text="{Binding SelectedEmoji.Name}"/></TextBlock>
+            <!-- Keywords with reduced opacity -->
+            <TextBlock Classes="conv-subtitle"
+                       Text="{Binding SelectedEmoji.KeywordsText}"
                        FontSize="{DynamicResource Theme.FontSizeSmall}"
                        HorizontalAlignment="Center"
                        TextWrapping="Wrap"

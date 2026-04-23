@@ -70,8 +70,11 @@ public partial class SettingsWindow : Window {
     // Click on the hotkey border → start capture only if not already capturing
     // (prevents restarting when the cancel button inside is clicked)
     private void OnHotkeyAreaPointerPressed(object? sender, PointerPressedEventArgs e) {
-        if (DataContext is SettingsWindowViewModel { IsCapturingHotkey: false } vm)
+        if (DataContext is SettingsWindowViewModel { IsCapturingHotkey: false } vm) {
+            // Clear focus from any control (e.g. Theme combo) so it doesn't intercept keys during capture
+            FocusManager?.ClearFocus();
             vm.StartHotkeyCapture();
+        }
         e.Handled = true;  // always stop bubble so OnPointerPressed doesn't also cancel
     }
 

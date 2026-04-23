@@ -36,7 +36,6 @@ public abstract class PlatformProvider {
     public virtual IReadOnlyDictionary<string, string[]> BrowserKnownPaths =>
         new Dictionary<string, string[]>();
     public abstract void OpenUrl(string url, string browserName);
-
     public abstract string[] KnownTerminalNames { get; }
     public virtual IReadOnlyDictionary<string, string[]> TerminalKnownPaths =>
         new Dictionary<string, string[]>();

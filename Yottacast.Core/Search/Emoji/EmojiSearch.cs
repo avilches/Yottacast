@@ -45,7 +45,6 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
         _entries
             .Where(e => e.SortOrder > 0)
             .OrderBy(e => e.SortOrder)
-            .Take(AppDefaults.EmojiDefaultLimit)
             .ToList();
 
     private IReadOnlyList<EmojiEntry> FilterEmojis(string term, int limit) =>
@@ -53,7 +52,6 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
             .Select(e => (entry: e, score: MatchScore(e, term)))
             .Where(x => x.score > 0)
             .OrderByDescending(x => x.score)
-            .Take(limit)
             .Select(x => x.entry)
             .ToList();
 

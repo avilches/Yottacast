@@ -28,7 +28,7 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
 
     // ── Defaults ──────────────────────────────────────────────────────────────
 
-    public override List<string> DefaultAppDirectories() => ["/Applications", "$HOME/Applications", "/System/Applications"];
+    public override List<string> DefaultAppDirectories() => ["/Applications", "$HOME/Applications", "/System/Applications", "/System/Applications/Utilities"];
 
     public override List<string> DefaultSearchFolders() {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
