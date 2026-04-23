@@ -46,6 +46,7 @@ El fichero de preferencias se crea automaticamente en la primera ejecucion y se 
 | LastLaunchedVersion | `""` | Version del ultimo arranque (para migraciones) |
 | ShowDisabledWebSearchEngines | `true` | Si muestra los motores deshabilitados en la UI de Settings |
 | WebSearchEngines | Lista predeterminada de 20 motores | Configuracion por motor de busqueda web |
+| DictionaryLanguages | `["en"]` | Idiomas en los que buscar definiciones de diccionario |
 | WindowX | `null` | Posicion X de la ventana principal en coordenadas de pantalla (pixels fisicos) |
 | WindowY | `null` | Posicion Y de la ventana principal en coordenadas de pantalla (pixels fisicos) |
 
@@ -283,7 +284,7 @@ Cuando el usuario modifica un setting que afecta a los resultados de busqueda, l
 **Settings que disparan refresco:**
 - Toggles de fuentes: `EnableAppSearch`, `EnableCalculator`, `EnableClipboard`, `EnableEmoji`, `EnableFileSearch`, `EnableWebSearch`, `EnableDictionary`
 - Configuracion de file search: `FileSearchOnlySpecificFolders`, cambios en `SearchFolders`
-- Configuracion de diccionario: `DictionaryPrefix`, `DictionaryShowAlways`
+- Configuracion de diccionario: `DictionaryPrefix`, `DictionaryShowAlways`, `DictionaryLanguages`
 - Configuracion de calculadora: `CalculatorCurrencyA`, `CalculatorCurrencyB`, `CalculatorDecimalPlaces`
 - Configuracion por motor de web search (enabled, mode, prefix, queryUrl)
 - Cambios en `AppDirectories` (al hacer flush)

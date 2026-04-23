@@ -1037,6 +1037,26 @@
                                      MaxWidth="200"
                                      HorizontalAlignment="Left"/>
                         </StackPanel>
+
+                        <StackPanel Spacing="4">
+                            <TextBlock Classes="label" Text="Languages"/>
+                            <TextBlock Classes="description"
+                                       Text="Select which languages to look up definitions in."/>
+                            <ItemsControl ItemsSource="{Binding DictionaryLanguages}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel Orientation="Horizontal"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:DictionaryLanguageItem">
+                                        <CheckBox Content="{Binding Name}"
+                                                  IsChecked="{Binding IsSelected}"
+                                                  Margin="0,2,16,2"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
                     </StackPanel>
                 </StackPanel>
 

@@ -112,6 +112,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [ObservableProperty] private bool _enableDictionary;
     [ObservableProperty] private string _dictionaryPrefix = AppDefaults.DictionaryDefaultPrefix;
     [ObservableProperty] private bool _dictionaryShowAlways;
+    public ObservableCollection<DictionaryLanguageItem> DictionaryLanguages { get; private set; } = [];
 
     partial void OnEnableDictionaryChanged(bool value)    { _settings.EnableDictionary    = value; _settings.Save(); _logger.LogInformation("Settings: EnableDictionary = {Value}", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnDictionaryPrefixChanged(string value)  { _settings.DictionaryPrefix    = value; _settings.Save(); _logger.LogInformation("Settings: DictionaryPrefix = \"{Value}\"", value); _settings.NotifySearchSettingsChanged(); }
@@ -213,6 +214,21 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _enableDictionary                = settings.EnableDictionary;
         _dictionaryPrefix                = settings.DictionaryPrefix;
         _dictionaryShowAlways            = settings.DictionaryShowAlways;
+
+        var selectedLangs = new HashSet<string>(settings.DictionaryLanguages);
+        DictionaryLanguages = new ObservableCollection<DictionaryLanguageItem>(
+            AppDefaults.DictionaryAvailableLanguages.Select(l =>
+                new DictionaryLanguageItem(l.Code, l.Name, selectedLangs.Contains(l.Code))));
+        foreach (var item in DictionaryLanguages)
+            item.PropertyChanged += (_, e) => {
+                if (e.PropertyName != nameof(DictionaryLanguageItem.IsSelected)) return;
+                var selected = DictionaryLanguages.Where(l => l.IsSelected).Select(l => l.Code).ToList();
+                if (selected.Count == 0) { item.IsSelected = true; return; }
+                _settings.DictionaryLanguages = selected;
+                _settings.Save();
+                _logger.LogInformation("Settings: DictionaryLanguages = [{Languages}]", string.Join(", ", selected));
+                _settings.NotifySearchSettingsChanged();
+            };
 
         SearchFolders  = new ObservableCollection<SearchFolderItem>(settings.SearchFolders.Select(p => new SearchFolderItem(p)));
         AppDirectories = new ObservableCollection<string>(settings.AppDirectories);
@@ -509,6 +525,17 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _settings.Save();
         _logger.LogInformation("Settings: Theme = \"{Value}\"", value.Id);
         _themeService.Apply(value.Id);
+    }
+}
+
+public partial class DictionaryLanguageItem : ObservableObject {
+    public string Code { get; }
+    public string Name { get; }
+    [ObservableProperty] private bool _isSelected;
+    public DictionaryLanguageItem(string code, string name, bool isSelected) {
+        Code = code;
+        Name = name;
+        _isSelected = isSelected;
     }
 }
 

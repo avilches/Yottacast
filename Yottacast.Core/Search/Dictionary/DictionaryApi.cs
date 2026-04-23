@@ -49,18 +49,18 @@ public record DictionaryDefinition {
 }
 
 public static class DictionaryApiClient {
-    private const string BaseUrl = "https://api.dictionaryapi.dev/api/v2/entries/en/";
+    private const string BaseUrl = "https://api.dictionaryapi.dev/api/v2/entries/";
 
-    public static async Task<DictionaryApiResponse?> LookupAsync(HttpClient http, string word, ILogger logger, CancellationToken ct) {
+    public static async Task<DictionaryApiResponse?> LookupAsync(HttpClient http, string word, string language, ILogger logger, CancellationToken ct) {
         try {
-            var url = BaseUrl + Uri.EscapeDataString(word);
+            var url = BaseUrl + language + "/" + Uri.EscapeDataString(word);
             var responses = await http.GetFromJsonAsync<List<DictionaryApiResponse>>(url, ct);
             return responses?.FirstOrDefault();
         } catch (HttpRequestException ex) {
-            logger.LogDebug("Dictionary API error for '{Word}': {Message}", word, ex.Message);
+            logger.LogDebug("Dictionary API error for '{Word}' [{Language}]: {Message}", word, language, ex.Message);
             return null;
         } catch (Exception ex) when (ex is not OperationCanceledException) {
-            logger.LogWarning("Dictionary API unexpected error for '{Word}': {Message}", word, ex.Message);
+            logger.LogWarning("Dictionary API unexpected error for '{Word}' [{Language}]: {Message}", word, language, ex.Message);
             return null;
         }
     }

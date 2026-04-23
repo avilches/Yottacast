@@ -47,6 +47,7 @@ public class UserSettings {
     public bool EnableDictionary { get; set; } = true;
     public string DictionaryPrefix { get; set; } = AppDefaults.DictionaryDefaultPrefix;
     public bool DictionaryShowAlways { get; set; } = false;
+    public List<string> DictionaryLanguages { get; set; } = new(AppDefaults.DictionaryDefaultLanguages);
 
     private string _hotkey = "Alt+Space";
     private HotkeyConfig? _parsedHotkey;
@@ -155,6 +156,7 @@ public class UserSettings {
         [JsonPropertyName("enableDictionary")] public bool EnableDictionary { get; init; } = true;
         [JsonPropertyName("dictionaryPrefix")] public string DictionaryPrefix { get; init; } = AppDefaults.DictionaryDefaultPrefix;
         [JsonPropertyName("dictionaryShowAlways")] public bool DictionaryShowAlways { get; init; } = false;
+        [JsonPropertyName("dictionaryLanguages")] public List<string>? DictionaryLanguages { get; init; }
     }
 
     public static UserSettings Load(PlatformProvider platform, ILogger<UserSettings>? logger = null, string? settingsPath = null) {
@@ -207,6 +209,7 @@ public class UserSettings {
                     EnableDictionary = data.EnableDictionary,
                     DictionaryPrefix = string.IsNullOrWhiteSpace(data.DictionaryPrefix) ? AppDefaults.DictionaryDefaultPrefix : data.DictionaryPrefix,
                     DictionaryShowAlways = data.DictionaryShowAlways,
+                    DictionaryLanguages = data.DictionaryLanguages is { Count: > 0 } ? data.DictionaryLanguages : new(AppDefaults.DictionaryDefaultLanguages),
                 };
             }
         } catch (Exception ex) {
@@ -308,6 +311,7 @@ public class UserSettings {
                 EnableDictionary = EnableDictionary,
                 DictionaryPrefix = DictionaryPrefix,
                 DictionaryShowAlways = DictionaryShowAlways,
+                DictionaryLanguages = DictionaryLanguages,
                 WebSearchEngines = WebSearchEngines
                     .Select(s => new WebSearchEngineSettingsData {
                         Id = s.Id,
