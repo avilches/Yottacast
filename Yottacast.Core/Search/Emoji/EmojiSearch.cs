@@ -11,7 +11,7 @@ namespace Yottacast.Core.Search.Emoji;
 /// Emoji data is loaded from the embedded resource; a compact cache is written to disk for fast startups.
 /// Activating a result copies the emoji character to the clipboard.
 /// </summary>
-public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, EmojiDataLoader dataLoader, ILogger<EmojiSearch> logger, UserSettings settings) : IInstantSearchSource {
+public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, EmojiDataLoader dataLoader, EmojiUsageStore usageStore, ILogger<EmojiSearch> logger, UserSettings settings) : IInstantSearchSource {
 
     private Task<IReadOnlyList<EmojiEntry>>? _loadTask;
     private volatile IReadOnlyList<EmojiEntry> _entries = [];
@@ -20,6 +20,7 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
         _loadTask = Task.Run(async () => {
             var entries = await dataLoader.LoadAsync(emojiCachePath);
             _entries = entries;
+            await usageStore.LoadAsync();
             return entries;
         });
     }
@@ -41,11 +42,33 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
         return [];
     }
 
-    private IReadOnlyList<EmojiEntry> GetDefaultEmojis() =>
-        _entries
-            .Where(e => e.SortOrder > 0)
-            .OrderBy(e => e.SortOrder)
-            .ToList();
+    private IReadOnlyList<EmojiEntry> GetDefaultEmojis() {
+        var charToEntry = _entries.ToDictionary(e => e.Char);
+        var seen = new HashSet<string>();
+        var result = new List<EmojiEntry>();
+
+        // Favorites first, capped at MaxFavoriteRows * Columns
+        var maxFavorites = AppDefaults.EmojiMaxFavoriteRows * AppDefaults.EmojiColumns;
+        foreach (var ch in usageStore.Favorites.Take(maxFavorites)) {
+            if (charToEntry.TryGetValue(ch, out var entry) && seen.Add(ch))
+                result.Add(entry);
+        }
+
+        // Most-used next, capped at MaxMostUsedRows * Columns
+        var maxMostUsed = AppDefaults.EmojiMaxMostUsedRows * AppDefaults.EmojiColumns;
+        foreach (var ch in usageStore.GetMostUsed(maxMostUsed)) {
+            if (charToEntry.TryGetValue(ch, out var entry) && seen.Add(ch))
+                result.Add(entry);
+        }
+
+        // Remaining emojis in default sort order, excluding already-added
+        foreach (var entry in _entries.Where(e => e.SortOrder > 0).OrderBy(e => e.SortOrder)) {
+            if (seen.Add(entry.Char))
+                result.Add(entry);
+        }
+
+        return result;
+    }
 
     private IReadOnlyList<EmojiEntry> FilterEmojis(string term, int limit) =>
         _entries
@@ -62,6 +85,7 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
             Category = e.Category,
             Keywords = e.Keywords,
             IsSelected = i == 0,
+            IsFavorite = usageStore.IsFavorite(e.Char),
         }).ToList();
 
         EmojiGridResultViewModel grid = null!;
@@ -76,6 +100,20 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
                 var cell = grid.Cells[grid.SelectedEmojiIndex];
                 logger.LogInformation("Emoji: copied {Char} ({Name})", cell.Char, cell.Name);
                 clipboard.CopyText(cell.Char);
+                usageStore.RecordUsage(cell.Char);
+            },
+            OnCopy = () => {
+                var cell = grid.Cells[grid.SelectedEmojiIndex];
+                logger.LogInformation("Emoji: copied (no paste) {Char} ({Name})", cell.Char, cell.Name);
+                clipboard.CopyText(cell.Char);
+                usageStore.RecordUsage(cell.Char);
+            },
+            OnToggleFavorite = () => {
+                var cell = grid.Cells[grid.SelectedEmojiIndex];
+                usageStore.ToggleFavorite(cell.Char);
+                cell.IsFavorite = usageStore.IsFavorite(cell.Char);
+                logger.LogInformation("Emoji: favorite toggled {Char} ({Name}) -> {IsFav}",
+                    cell.Char, cell.Name, cell.IsFavorite);
             },
             OnLeft  = () => { grid.SelectPrevious(); return true; },
             OnRight = () => { grid.SelectNext(); return true; },

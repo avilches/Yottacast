@@ -367,9 +367,22 @@
                             <Run Text="results"/>
                         </TextBlock>
                     </StackPanel>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16">
+                    <!-- Footer: normal mode -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16"
+                                IsVisible="{Binding !IsEmojiMode}">
                         <TextBlock Text="↑↓  navigate"  Foreground="{DynamicResource Theme.FooterText}" FontSize="{DynamicResource Theme.FontSizeSmall}"/>
                         <TextBlock Text="↵  open"        Foreground="{DynamicResource Theme.FooterText}" FontSize="{DynamicResource Theme.FontSizeSmall}"/>
+                    </StackPanel>
+                    <!-- Footer: emoji mode -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16"
+                                IsVisible="{Binding IsEmojiMode}">
+                        <TextBlock Foreground="{DynamicResource Theme.FooterText}" FontSize="{DynamicResource Theme.FontSizeSmall}">
+                            <Run Text="{Binding MetaSymbol}"/><Run Text="C  copy"/>
+                        </TextBlock>
+                        <TextBlock Text="↵  paste" Foreground="{DynamicResource Theme.FooterText}" FontSize="{DynamicResource Theme.FontSizeSmall}"/>
+                        <TextBlock Foreground="{DynamicResource Theme.FooterText}" FontSize="{DynamicResource Theme.FontSizeSmall}">
+                            <Run Text="{Binding MetaSymbol}"/><Run Text="{Binding ShiftSymbol}"/><Run Text="F  fav"/>
+                        </TextBlock>
                     </StackPanel>
                 </Grid>
             </Border>

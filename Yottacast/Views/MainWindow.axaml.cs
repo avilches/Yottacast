@@ -210,6 +210,22 @@ public partial class MainWindow : Window {
         if (vm is null) return;
 
         switch (e.Key) {
+            // Cmd+C in emoji mode: copy without hiding/pasting. Falls through to system Cmd+C when OnCopy is null.
+            case Key.C when e.KeyModifiers == KeyModifiers.Meta:
+                if (vm.SelectedResult is { OnCopy: { } copyAction }) {
+                    copyAction();
+                    e.Handled = true;
+                }
+                break;
+
+            // Cmd+Shift+F in emoji mode: toggle favorite on the selected emoji.
+            case Key.F when e.KeyModifiers == (KeyModifiers.Meta | KeyModifiers.Shift):
+                if (vm.SelectedResult is { OnToggleFavorite: { } favAction }) {
+                    favAction();
+                    e.Handled = true;
+                }
+                break;
+
             // Consume ALT+Space so macOS doesn't produce a beep for the unhandled key
             case Key.Space when e.KeyModifiers.HasFlag(KeyModifiers.Alt):
                 e.Handled = true;

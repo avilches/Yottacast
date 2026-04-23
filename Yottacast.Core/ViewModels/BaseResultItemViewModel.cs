@@ -8,6 +8,15 @@ public abstract class BaseResultItemViewModel {
     public double Score { get; init; }
     public Action? OnActivate { get; init; }
     /// <summary>
+    /// Copy action (e.g. Cmd+C in emoji mode): copies without hiding the window or pasting.
+    /// Null for non-emoji results, letting the system handle Cmd+C normally.
+    /// </summary>
+    public Action? OnCopy { get; init; }
+    /// <summary>
+    /// Toggle favorite action (e.g. Cmd+Shift+F in emoji mode): marks/unmarks the selected item as favorite.
+    /// </summary>
+    public Action? OnToggleFavorite { get; init; }
+    /// <summary>
     /// When non-null, the item captures LEFT/RIGHT/UP/DOWN arrow keys while selected.
     /// The Window's tunnel handler calls these instead of letting the TextBox move its cursor.
     /// </summary>

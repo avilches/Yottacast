@@ -192,10 +192,14 @@ public partial class App : Application {
         });
         services.AddSingleton<CalculatorSearch>();
         services.AddSingleton<EmojiDataLoader>();
+        services.AddSingleton<EmojiUsageStore>(sp => new EmojiUsageStore(
+            AppPaths.EmojiUsageFile,
+            sp.GetRequiredService<ILogger<EmojiUsageStore>>()));
         services.AddSingleton<EmojiSearch>(sp => new EmojiSearch(
             sp.GetRequiredService<ClipboardService>(),
             AppPaths.EmojiCacheFile,
             sp.GetRequiredService<EmojiDataLoader>(),
+            sp.GetRequiredService<EmojiUsageStore>(),
             sp.GetRequiredService<ILogger<EmojiSearch>>(),
             sp.GetRequiredService<UserSettings>()));
 

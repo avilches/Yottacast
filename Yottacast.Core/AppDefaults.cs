@@ -27,6 +27,10 @@ public static class AppDefaults {
     public const int EmojiColumns = 10;
     /// Number of rows visible at once in the emoji picker grid (default; overridden per theme via Theme.EmojiViewportRows).
     public const int EmojiViewportRows = 8;
+    /// Maximum rows of favorite emojis shown at the top of the default grid.
+    public const int EmojiMaxFavoriteRows = 2;
+    /// Maximum rows of most-used emojis shown after favorites in the default grid.
+    public const int EmojiMaxMostUsedRows = 2;
 
     // ── UI — paste simulation ─────────────────────────────────────────────────
     /// Delay before simulating Cmd+V / Ctrl+V after selecting an emoji.

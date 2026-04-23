@@ -10,6 +10,16 @@ public class EmojiCellViewModel : INotifyPropertyChanged {
 
     public string KeywordsText => Keywords.Length > 0 ? string.Join(", ", Keywords) : "";
 
+    private bool _isFavorite;
+    public bool IsFavorite {
+        get => _isFavorite;
+        set {
+            if (_isFavorite == value) return;
+            _isFavorite = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsFavorite)));
+        }
+    }
+
     private bool _isSelected;
     public bool IsSelected {
         get => _isSelected;

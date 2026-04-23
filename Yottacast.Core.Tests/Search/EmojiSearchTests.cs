@@ -10,13 +10,14 @@ namespace Yottacast.Core.Tests.Search;
 
 public class EmojiSearchTests {
 
-    private static async Task<EmojiSearch> BuildSearchWithCache(string compactJson) {
+    private static async Task<EmojiSearch> BuildSearchWithCache(string compactJson, EmojiUsageStore? usageStore = null) {
         var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(dir);
         var cachePath = Path.Combine(dir, "emoji-cache.json");
         await File.WriteAllTextAsync(cachePath, compactJson);
         var settings = UserSettings.Load(new FakePlatformProvider([]));
-        var search = new EmojiSearch(new ClipboardService(NullLogger<ClipboardService>.Instance), cachePath, new EmojiDataLoader(NullLogger<EmojiDataLoader>.Instance), NullLogger<EmojiSearch>.Instance, settings);
+        usageStore ??= new EmojiUsageStore(Path.Combine(dir, "emoji-usage.json"), NullLogger<EmojiUsageStore>.Instance);
+        var search = new EmojiSearch(new ClipboardService(NullLogger<ClipboardService>.Instance), cachePath, new EmojiDataLoader(NullLogger<EmojiDataLoader>.Instance), usageStore, NullLogger<EmojiSearch>.Instance, settings);
         search.Start();
         await search.WhenReady();
         return search;
@@ -177,7 +178,8 @@ public class EmojiSearchTests {
         var cachePath = Path.Combine(dir, "emoji-cache.json");
         await File.WriteAllTextAsync(cachePath, json);
         var settings = UserSettings.Load(new FakePlatformProvider([]));
-        var search = new EmojiSearch(clipboard, cachePath, new EmojiDataLoader(NullLogger<EmojiDataLoader>.Instance), NullLogger<EmojiSearch>.Instance, settings);
+        var usageStore = new EmojiUsageStore(Path.Combine(dir, "emoji-usage.json"), NullLogger<EmojiUsageStore>.Instance);
+        var search = new EmojiSearch(clipboard, cachePath, new EmojiDataLoader(NullLogger<EmojiDataLoader>.Instance), usageStore, NullLogger<EmojiSearch>.Instance, settings);
         search.Start();
         await search.WhenReady();
 
@@ -190,6 +192,112 @@ public class EmojiSearchTests {
         item.OnActivate();
 
         Assert.Equal("😀", copied);
+    }
+
+    // ── Favorites and most-used ──────────────────────────────────────────────
+
+    [Fact]
+    public async Task DefaultGrid_ShowsFavoritesFirst() {
+        var json = """
+        [
+          ["😀","grinning face",["grinning"],"Smileys & Emotion",1],
+          ["😃","grinning face with big eyes",["smiley"],"Smileys & Emotion",2],
+          ["🔥","fire",["fire"],"Travel & Places",3]
+        ]
+        """;
+        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(dir);
+        var usageStore = new EmojiUsageStore(Path.Combine(dir, "emoji-usage.json"), NullLogger<EmojiUsageStore>.Instance);
+        usageStore.ToggleFavorite("🔥");
+
+        var search = await BuildSearchWithCache(json, usageStore);
+        var grid = search.Search(":", 10).OfType<EmojiGridResultViewModel>().First();
+
+        Assert.Equal("🔥", grid.Cells[0].Char); // favorite comes first
+        Assert.True(grid.Cells[0].IsFavorite);
+        Assert.Equal("😀", grid.Cells[1].Char); // then by sort_order
+    }
+
+    [Fact]
+    public async Task DefaultGrid_ShowsMostUsedAfterFavorites() {
+        var json = """
+        [
+          ["😀","grinning face",["grinning"],"Smileys & Emotion",1],
+          ["😃","grinning face with big eyes",["smiley"],"Smileys & Emotion",2],
+          ["🔥","fire",["fire"],"Travel & Places",3],
+          ["👍","thumbs up sign",["thumbsup"],"People & Body",4]
+        ]
+        """;
+        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(dir);
+        var usageStore = new EmojiUsageStore(Path.Combine(dir, "emoji-usage.json"), NullLogger<EmojiUsageStore>.Instance);
+        usageStore.ToggleFavorite("🔥");
+        usageStore.RecordUsage("👍");
+        usageStore.RecordUsage("👍");
+        usageStore.RecordUsage("😃");
+
+        var search = await BuildSearchWithCache(json, usageStore);
+        var grid = search.Search(":", 10).OfType<EmojiGridResultViewModel>().First();
+
+        Assert.Equal("🔥", grid.Cells[0].Char);  // favorite first
+        Assert.Equal("👍", grid.Cells[1].Char);  // most-used (2 uses)
+        Assert.Equal("😃", grid.Cells[2].Char);  // most-used (1 use)
+        Assert.Equal("😀", grid.Cells[3].Char);  // rest by sort_order
+    }
+
+    [Fact]
+    public async Task DefaultGrid_NoDuplicatesBetweenSections() {
+        var json = """
+        [
+          ["😀","grinning face",["grinning"],"Smileys & Emotion",1],
+          ["🔥","fire",["fire"],"Travel & Places",2]
+        ]
+        """;
+        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(dir);
+        var usageStore = new EmojiUsageStore(Path.Combine(dir, "emoji-usage.json"), NullLogger<EmojiUsageStore>.Instance);
+        usageStore.ToggleFavorite("🔥");
+        usageStore.RecordUsage("🔥"); // also used, but should only appear once (as favorite)
+
+        var search = await BuildSearchWithCache(json, usageStore);
+        var grid = search.Search(":", 10).OfType<EmojiGridResultViewModel>().First();
+
+        Assert.Equal(2, grid.Cells.Count); // no duplicates
+        Assert.Equal("🔥", grid.Cells[0].Char);
+        Assert.Equal("😀", grid.Cells[1].Char);
+    }
+
+    [Fact]
+    public async Task OnCopy_CopiesWithoutPasteAfterActivate() {
+        var json = """[["😀","grinning face",["grinning"],"Smileys & Emotion",1]]""";
+        var search = await BuildSearchWithCache(json);
+        var grid = search.Search(":", 10).OfType<EmojiGridResultViewModel>().First();
+
+        Assert.NotNull(grid.OnCopy);
+        Assert.True(grid.PasteAfterActivate); // the grid has PasteAfterActivate for Enter
+        // OnCopy is a separate action that just copies — the caller (MainWindow) does not hide/paste
+    }
+
+    [Fact]
+    public async Task OnToggleFavorite_UpdatesCellAndStore() {
+        var json = """[["😀","grinning face",["grinning"],"Smileys & Emotion",1]]""";
+        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(dir);
+        var usageStore = new EmojiUsageStore(Path.Combine(dir, "emoji-usage.json"), NullLogger<EmojiUsageStore>.Instance);
+
+        var search = await BuildSearchWithCache(json, usageStore);
+        var grid = search.Search(":", 10).OfType<EmojiGridResultViewModel>().First();
+
+        Assert.False(grid.Cells[0].IsFavorite);
+        Assert.NotNull(grid.OnToggleFavorite);
+        grid.OnToggleFavorite();
+
+        Assert.True(grid.Cells[0].IsFavorite);
+        Assert.True(usageStore.IsFavorite("😀"));
+
+        grid.OnToggleFavorite();
+        Assert.False(grid.Cells[0].IsFavorite);
+        Assert.False(usageStore.IsFavorite("😀"));
     }
 }
 
@@ -213,9 +321,10 @@ public class RealEmojiDataFixture : IAsyncLifetime, IDisposable {
         await loader.LoadAsync(cachePath);
         // EmojiSearch then reads the cache on Start(), so data loads quickly.
         var settings = UserSettings.Load(new FakePlatformProvider([]));
+        var usageStore = new EmojiUsageStore(Path.Combine(_tempDir, "emoji-usage.json"), NullLogger<EmojiUsageStore>.Instance);
         Search = new EmojiSearch(
             new ClipboardService(NullLogger<ClipboardService>.Instance), cachePath, loader,
-            NullLogger<EmojiSearch>.Instance, settings);
+            usageStore, NullLogger<EmojiSearch>.Instance, settings);
         Search.Start();
         await Search.WhenReady();
     }

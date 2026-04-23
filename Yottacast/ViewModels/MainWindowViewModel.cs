@@ -42,6 +42,10 @@ public partial class MainWindowViewModel(
     [ObservableProperty] private string _updateBannerText = "";
     [ObservableProperty] private string? _searchHint;
 
+    public bool IsEmojiMode => SelectedResult is EmojiGridResultViewModel;
+    public string MetaSymbol => AppHandler.Instance.MetaSymbol;
+    public string ShiftSymbol => AppHandler.Instance.ShiftSymbol;
+
     public ObservableCollection<BaseResultItemViewModel> Results { get; } = [];
 
     public int DisplayResultCount =>
@@ -231,6 +235,10 @@ public partial class MainWindowViewModel(
             await Task.Delay(AppDefaults.ErrorHintDelayMs, ct);
             SearchHint = hint;
         } catch (OperationCanceledException) { }
+    }
+
+    partial void OnSelectedResultChanged(BaseResultItemViewModel? value) {
+        OnPropertyChanged(nameof(IsEmojiMode));
     }
 
     private void RefreshResults() {

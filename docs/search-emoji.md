@@ -42,11 +42,55 @@ El primer emoji del grid aparece seleccionado inicialmente. El icono y titulo de
 | Derecha   | Mueve la seleccion a la celda siguiente (con wrap circular al inicio del grid). Siempre consume el evento. |
 | Arriba    | Mueve la seleccion una fila hacia arriba. Si ya esta en la primera fila, no consume el evento y la ventana gestiona la navegacion de lista. |
 | Abajo     | Mueve la seleccion una fila hacia abajo. Si ya esta en la ultima fila, no consume el evento y la ventana gestiona la navegacion de lista. |
-| Enter     | Copia el emoji seleccionado al portapapeles, oculta el launcher y pega automaticamente en la app anterior. |
+| Enter     | Copia el emoji seleccionado al portapapeles, oculta el launcher y pega automaticamente en la app anterior. Registra el uso en `EmojiUsageStore`. |
+| Cmd+C     | Copia el emoji seleccionado al portapapeles sin ocultar la ventana ni pegar. Registra el uso. Solo activo en modo emoji (si `OnCopy` no es null). |
+| Cmd+Shift+F | Marca o desmarca el emoji seleccionado como favorito. Actualiza `IsFavorite` en la celda y persiste en `EmojiUsageStore`. |
 
 **Invariante:** las teclas izquierda/derecha nunca escapan del grid. Las teclas arriba/abajo escapan solo cuando no hay fila disponible en esa direccion, permitiendo al usuario navegar a otros resultados de la lista.
 
-> **Verificar en:** `EmojiGridResultViewModel.SelectNext()`, `SelectPrevious()` (wrap circular), `SelectUp()`, `SelectDown()` (devuelven `bool`); `MainWindow.axaml.cs` -- `OnTunnelKeyDown()` maneja las flechas en fase tunnel.
+> **Verificar en:** `EmojiGridResultViewModel.SelectNext()`, `SelectPrevious()` (wrap circular), `SelectUp()`, `SelectDown()` (devuelven `bool`); `MainWindow.axaml.cs` -- `OnTunnelKeyDown()` maneja las flechas en fase tunnel; `OnKeyDown()` -- `Key.C` con Meta y `Key.F` con Meta+Shift.
+
+---
+
+## Footer contextual
+
+Cuando el resultado seleccionado es un `EmojiGridResultViewModel`, el footer cambia de los atajos genericos ("navigate", "open") a los atajos especificos del modo emoji: "Cmd+C copy", "Enter paste", "Cmd+Shift+F fav". Los simbolos de Meta y Shift se obtienen de `AppHandler.Instance` para adaptarse a cada plataforma.
+
+La propiedad `IsEmojiMode` en `MainWindowViewModel` se recalcula cada vez que cambia `SelectedResult`. En el AXAML, dos `StackPanel` con visibilidad opuesta (`IsVisible="{Binding IsEmojiMode}"` / `!IsEmojiMode`) muestran el footer correspondiente.
+
+> **Verificar en:** `MainWindowViewModel.IsEmojiMode`, `OnSelectedResultChanged`; `MainWindow.axaml` -- footer con dos StackPanels condicionados.
+
+---
+
+## Favoritos y mas usados
+
+Al escribir `:` sin termino de busqueda, el grid por defecto muestra tres secciones en orden:
+
+1. **Favoritos**: emojis marcados por el usuario con Cmd+Shift+F, en el orden en que fueron anadidos. Maximo `EmojiMaxFavoriteRows * EmojiColumns` emojis (ver `AppDefaults`).
+2. **Mas usados**: emojis ordenados por numero de usos descendente, excluyendo los que ya estan en favoritos. Maximo `EmojiMaxMostUsedRows * EmojiColumns` emojis.
+3. **Resto**: todos los emojis restantes en orden Unicode CLDR (`sort_order`), sin duplicados con las secciones anteriores.
+
+Las celdas de emojis favoritos tienen `IsFavorite = true` en su `EmojiCellViewModel`, lo que permite feedback visual futuro.
+
+**Invariante:** nunca hay emojis duplicados entre las tres secciones. Un emoji favorito con uso alto solo aparece en la seccion de favoritos.
+
+> **Verificar en:** `EmojiSearch.GetDefaultEmojis()` -- logica de merge; `EmojiUsageStore.Favorites`, `GetMostUsed()`; `AppDefaults.EmojiMaxFavoriteRows`, `EmojiMaxMostUsedRows`.
+
+---
+
+## Persistencia de uso
+
+Los favoritos y contadores de uso se persisten en un fichero JSON separado (`AppPaths.EmojiUsageFile`, por defecto `emoji-usage.json` en el directorio de configuracion). El formato es:
+
+```json
+{ "favorites": ["emoji1", "emoji2"], "usage": { "emoji1": 42, "emoji2": 15 } }
+```
+
+`EmojiUsageStore` carga el fichero de forma asincrona durante `EmojiSearch.Start()`. Si el fichero no existe o esta corrupto, arranca con datos vacios sin error visible.
+
+La escritura es atomica (fichero temporal + `File.Move`), el mismo patron que `EmojiDataLoader.WriteCompactCache`, para evitar corrupcion ante cierres inesperados.
+
+> **Verificar en:** `EmojiUsageStore.LoadAsync()`, `Save()`; `AppPaths.EmojiUsageFile`; tests en `EmojiUsageStoreTests.cs`.
 
 ---
 
@@ -55,14 +99,15 @@ El primer emoji del grid aparece seleccionado inicialmente. El icono y titulo de
 Cuando el usuario pulsa Enter sobre el grid:
 
 1. Se copia el caracter emoji seleccionado al portapapeles via `ClipboardService`.
-2. Se limpia el texto de busqueda.
-3. Se oculta la ventana del launcher.
-4. Se restaura el foco a la aplicacion que estaba activa antes de abrir Yottacast (`AppHandler.OnHide()`).
-5. Se simula un pegado (Cmd+V en macOS, Ctrl+V en Windows) con un breve delay para que la app destino tenga tiempo de tomar el foco.
+2. Se registra el uso del emoji en `EmojiUsageStore`.
+3. Se limpia el texto de busqueda.
+4. Se oculta la ventana del launcher.
+5. Se restaura el foco a la aplicacion que estaba activa antes de abrir Yottacast (`AppHandler.OnHide()`).
+6. Se simula un pegado (Cmd+V en macOS, Ctrl+V en Windows) con un breve delay para que la app destino tenga tiempo de tomar el foco.
 
 **Invariante:** el emoji se pega automaticamente en la aplicacion de destino sin intervencion adicional del usuario. Este comportamiento lo controla la propiedad `PasteAfterActivate = true`.
 
-> **Verificar en:** `EmojiSearch.MakeGrid()` -- `OnActivate` y `PasteAfterActivate`; `MainWindow.axaml.cs` -- logica de Enter que invoca `OnActivate`, `Hide()`, `OnHide()`, `SimulatePasteAsync()`; `MacAppHandler.cs` / `WindowsAppHandler.cs` -- implementaciones de `SimulatePasteAsync()`.
+> **Verificar en:** `EmojiSearch.MakeGrid()` -- `OnActivate`, `OnCopy`, `OnToggleFavorite` y `PasteAfterActivate`; `MainWindow.axaml.cs` -- logica de Enter que invoca `OnActivate`, `Hide()`, `OnHide()`, `SimulatePasteAsync()`; `MacAppHandler.cs` / `WindowsAppHandler.cs` -- implementaciones de `SimulatePasteAsync()`.
 
 ---
 
@@ -145,7 +190,8 @@ Los tests cubren dos niveles:
 
 | Nivel       | Clase                          | Estrategia                                                                                    |
 |-------------|--------------------------------|-----------------------------------------------------------------------------------------------|
-| Unitario    | `EmojiSearchTests`             | Prepueblan una cache compacta en un directorio temporal. No requieren red ni recurso embebido. |
+| Unitario    | `EmojiSearchTests`             | Prepueblan una cache compacta en un directorio temporal. No requieren red ni recurso embebido. Incluyen tests de favoritos, mas usados, OnCopy y OnToggleFavorite. |
+| Unitario    | `EmojiUsageStoreTests`         | Prueban ToggleFavorite, RecordUsage, GetMostUsed, persistencia y recuperacion de fichero corrupto. |
 | Unitario    | `EmojiDataLoaderTests`         | Prueban `ParseRawJson`, `ParseCompactCache` y `LoadAsync` con datos sinteticos y reales.      |
 | Integracion | `EmojiSearchRealDataTests`     | Cargan el dataset completo embebido una sola vez via `IClassFixture<RealEmojiDataFixture>` y validan el matching contra datos de produccion. |
 
