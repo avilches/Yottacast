@@ -53,7 +53,6 @@ public class DictionarySource(
         if (string.IsNullOrEmpty(searchWord)) yield break;
 
         var languages = settings.DictionaryLanguages;
-        var multiLang = languages.Count > 1;
 
         var tasks = languages.Select(lang =>
             DictionaryApiClient.LookupAsync(Http, searchWord, lang, logger, ct)).ToArray();
@@ -74,9 +73,7 @@ public class DictionarySource(
                 foreach (var def in meaning.Definitions.Take(3)) {
                     if (results.Count >= limit) break;
 
-                    var title = multiLang
-                        ? $"{response.Word} ({meaning.PartOfSpeech}) [{lang}]: {def.Definition}"
-                        : $"{response.Word} ({meaning.PartOfSpeech}): {def.Definition}";
+                    var title = $"{response.Word} ({meaning.PartOfSpeech}) [{lang}]: {def.Definition}";
                     var subtitle = def.Example is not null
                         ? $"\"{def.Example}\""
                         : phonetic ?? "";

@@ -35,36 +35,36 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
         var term = query[1..].Trim().ToLowerInvariant();
         var emojis = string.IsNullOrEmpty(term)
             ? GetDefaultEmojis()
-            : FilterEmojis(term, limit);
+            : FilterEmojis(term, limit).Select(e => (e, EmojiSection.Default)).ToList();
 
         if (emojis.Count > 0) return [MakeGrid(emojis)];
 
         return [];
     }
 
-    private IReadOnlyList<EmojiEntry> GetDefaultEmojis() {
+    private IReadOnlyList<(EmojiEntry Entry, EmojiSection Section)> GetDefaultEmojis() {
         var charToEntry = _entries.ToDictionary(e => e.Char);
         var seen = new HashSet<string>();
-        var result = new List<EmojiEntry>();
+        var result = new List<(EmojiEntry, EmojiSection)>();
 
         // Favorites first, capped at MaxFavoriteRows * Columns
         var maxFavorites = AppDefaults.EmojiMaxFavoriteRows * AppDefaults.EmojiColumns;
         foreach (var ch in usageStore.Favorites.Take(maxFavorites)) {
             if (charToEntry.TryGetValue(ch, out var entry) && seen.Add(ch))
-                result.Add(entry);
+                result.Add((entry, EmojiSection.Favorite));
         }
 
         // Most-used next, capped at MaxMostUsedRows * Columns
         var maxMostUsed = AppDefaults.EmojiMaxMostUsedRows * AppDefaults.EmojiColumns;
         foreach (var ch in usageStore.GetMostUsed(maxMostUsed)) {
             if (charToEntry.TryGetValue(ch, out var entry) && seen.Add(ch))
-                result.Add(entry);
+                result.Add((entry, EmojiSection.MostUsed));
         }
 
         // Remaining emojis in default sort order, excluding already-added
         foreach (var entry in _entries.Where(e => e.SortOrder > 0).OrderBy(e => e.SortOrder)) {
             if (seen.Add(entry.Char))
-                result.Add(entry);
+                result.Add((entry, EmojiSection.Default));
         }
 
         return result;
@@ -78,14 +78,15 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
             .Select(x => x.entry)
             .ToList();
 
-    private EmojiGridResultViewModel MakeGrid(IReadOnlyList<EmojiEntry> emojis) {
-        var cells = emojis.Select((e, i) => new EmojiCellViewModel {
-            Char     = e.Char,
-            Name     = e.Name,
-            Category = e.Category,
-            Keywords = e.Keywords,
+    private EmojiGridResultViewModel MakeGrid(IReadOnlyList<(EmojiEntry Entry, EmojiSection Section)> emojis) {
+        var cells = emojis.Select((x, i) => new EmojiCellViewModel {
+            Char     = x.Entry.Char,
+            Name     = x.Entry.Name,
+            Category = x.Entry.Category,
+            Keywords = x.Entry.Keywords,
+            Section  = x.Section,
             IsSelected = i == 0,
-            IsFavorite = usageStore.IsFavorite(e.Char),
+            IsFavorite = usageStore.IsFavorite(x.Entry.Char),
         }).ToList();
 
         EmojiGridResultViewModel grid = null!;

@@ -35,7 +35,7 @@ Al pulsar Enter sobre un resultado, se abre la URL fuente de la definicion en el
 
 ## API
 
-Usa la API publica de Free Dictionary API (`https://api.dictionaryapi.dev/api/v2/entries/{lang}/{word}`). Soporta 15 idiomas: English, Spanish, French, German, Italian, Portuguese (Brazil), Russian, Arabic, Hindi, Japanese, Korean, Turkish, Czech, Dutch y Slovak. El usuario puede seleccionar uno o varios idiomas en Settings; las peticiones se lanzan en paralelo (una por idioma) y los resultados se combinan. Cuando hay mas de un idioma seleccionado, el titulo de cada resultado incluye el codigo de idioma entre corchetes (p. ej. `[en]`, `[es]`).
+Usa la API publica de Free Dictionary API (`https://api.dictionaryapi.dev/api/v2/entries/{lang}/{word}`). Soporta 15 idiomas: English, Spanish, French, German, Italian, Portuguese (Brazil), Russian, Arabic, Hindi, Japanese, Korean, Turkish, Czech, Dutch y Slovak. El usuario puede seleccionar uno o varios idiomas en Settings; las peticiones se lanzan en paralelo (una por idioma) y los resultados se combinan. El titulo de cada resultado incluye el codigo de idioma entre corchetes (p. ej. `[en]`, `[es]`).
 
 ## Settings del usuario
 

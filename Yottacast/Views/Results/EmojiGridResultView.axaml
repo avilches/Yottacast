@@ -17,15 +17,30 @@
                             Height="{DynamicResource Theme.Emoji.Cell.Size}"
                             CornerRadius="{DynamicResource Theme.Emoji.Cell.CornerRadius}" Margin="2"
                             Classes.emoji-selected="{Binding IsSelected}">
-                        <TextBlock Text="{Binding Char}"
-                                   FontSize="{DynamicResource Theme.Emoji.Char.Size}"
-                                   FontFamily="{DynamicResource Theme.Emoji.Char.FontFamily}"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Panel>
+                            <TextBlock Text="{Binding Char}"
+                                       FontSize="{DynamicResource Theme.Emoji.Char.Size}"
+                                       FontFamily="{DynamicResource Theme.Emoji.Char.FontFamily}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <TextBlock Text="★"
+                                       FontSize="8"
+                                       Foreground="{DynamicResource Theme.Emoji.Name.Color}"
+                                       Opacity="0.7"
+                                       HorizontalAlignment="Right" VerticalAlignment="Top"
+                                       Margin="0,2,4,0"
+                                       IsVisible="{Binding IsFavorite}"/>
+                        </Panel>
                     </Border>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
         <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Margin="0,6,0,0" Spacing="2">
+            <!-- Section label (Favorite / Frequently Used) -->
+            <TextBlock Text="{Binding SelectedEmoji.SectionLabel}"
+                       Foreground="{DynamicResource Theme.Emoji.Keywords.Color}"
+                       FontSize="{DynamicResource Theme.Emoji.Keywords.Size}"
+                       HorizontalAlignment="Center"
+                       IsVisible="{Binding SelectedEmoji.SectionLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
             <!-- Group: name -->
             <TextBlock Foreground="{DynamicResource Theme.Emoji.Name.Color}"
                        FontSize="{DynamicResource Theme.Emoji.Name.Size}"
