@@ -12,7 +12,7 @@ La aplicacion determina en que sistema operativo se ejecuta **una sola vez** al 
 el codigo accede a las capacidades del OS a traves de una abstraccion unica (`PlatformProvider`) y un singleton de
 gestion de ventana/foco (`AppHandler`). Ninguna otra parte del codigo consulta directamente el sistema operativo.
 
-**Invariante**: fuera de `App.axaml.cs`, `Program.cs` (CLI) y las propias implementaciones de plataforma, no existe
+**Invariante**: fuera de `App.axaml.cs` y las propias implementaciones de plataforma, no existe
 ninguna llamada a `RuntimeInformation.IsOSPlatform()` ni a `OperatingSystem.Is*()`.
 
 > **Verificar en:** `Yottacast.Core/Platform/PlatformProvider.cs` (clase abstracta), `Yottacast/App.axaml.cs` (seleccion

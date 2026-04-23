@@ -1,1 +1,0 @@
-dotnet run --project "/Users/avilches/Library/Mobile Documents/com~apple~CloudDocs/Shared/Proy/Yottacast/Yottacast.Cli" -- "$@"

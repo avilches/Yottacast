@@ -108,7 +108,6 @@ ha actualizado desde una version anterior.
 Yottacast.sln
 +-- Yottacast/                 <- GUI app (Avalonia, WinExe). Views, ViewModels, Themes, AppHandler (codigo OS-especifico de UI)
 +-- Yottacast.Core/            <- Shared library (sin UI). Search sources, PlatformProvider, Services, ViewModels base
-+-- Yottacast.Cli/             <- CLI interactivo para probar servicios (browsers, terminals, apps, search, run)
 +-- Yottacast.Core.Tests/      <- Tests xUnit
 ```
 
@@ -118,9 +117,6 @@ Yottacast.sln
 # GUI
 cd Yottacast && dotnet run
 dotnet publish -c Release -r osx-arm64 --self-contained
-
-# CLI (para probar servicios)
-cd Yottacast.Cli && dotnet run
 
 # Tests
 cd Yottacast.Core.Tests && dotnet test
@@ -148,7 +144,7 @@ referenciar versiones pasadas.
 - El codigo de las Views y ViewModels no debe contener `OperatingSystem.IsMacOS()` ni similares; en su lugar, delega en
   `AppHandler.Instance`.
 - La logica OS-especifica que no depende de UI (busqueda de archivos, lanzar procesos, etc.) va en
-  `Yottacast.Core/Platform/PlatformProvider` y sus subclases, para que sea reutilizable desde el CLI y los tests.
+  `Yottacast.Core/Platform/PlatformProvider` y sus subclases, para que sea reutilizable desde los tests.
 
 **Inyeccion de dependencias**: no usar clases `static` para logica de negocio o servicios.
 Las clases estaticas no permiten inyectar `ILogger`, `IConfiguration` ni otros servicios, lo que imposibilita el logging

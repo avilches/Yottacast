@@ -94,16 +94,7 @@ No implementado. El metodo `ExecuteCommand` tiene cuerpo vacio (no-op).
 
 ---
 
-## 4. CLI de diagnostico
-
-`Yottacast.Cli` expone el subcomando `terminals` (alias `t`) que llama a `Discover()` e imprime cada terminal instalado con su ruta. Util para depurar la deteccion sin arrancar la GUI.
-
-> **Verificar en:**
-> - `CmdTerminals()` en `Yottacast.Cli/Program.cs`
-
----
-
-## 5. Persistencia
+## 4. Persistencia
 
 El terminal seleccionado se guarda en el archivo de settings como la propiedad JSON `"terminal"`, cuyo valor es el nombre logico del terminal (p. ej. `"Warp"`, `"iTerm"`). Al cargar settings, si el valor esta vacio se deja vacio y la auto-reparacion asignara el primer terminal disponible en el primer acceso a `ActiveTerminal`.
 

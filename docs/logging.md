@@ -11,19 +11,17 @@ de logging cumple estos contratos:
    aplicaciones, carga de datos y aplicacion de temas emiten `Information`.
 3. **Las operaciones frecuentes de busqueda se registran como `Debug`**, para no saturar el log en uso normal pero estar
    disponibles cuando se sube el nivel.
-4. **El usuario nunca ve los logs.** Los logs van a fichero (GUI) o a consola (CLI); no se muestran mensajes de log en
-   la interfaz grafica.
+4. **El usuario nunca ve los logs.** Los logs van a fichero; no se muestran mensajes de log en la interfaz grafica.
 
-> **Verificar en:** `App.axaml.cs` (metodo `BuildServices`), `Yottacast.Cli/Program.cs` (campo `SerilogLogger`).
+> **Verificar en:** `App.axaml.cs` (metodo `BuildServices`).
 
 ---
 
 ## Destinos y formato
 
-| Modo | Destino          | Rotacion                    | Plantilla                                                                                  |
-|------|------------------|-----------------------------|--------------------------------------------------------------------------------------------|
-| GUI  | Fichero en disco | Diaria, 7 dias de retencion | `{Timestamp:HH:mm:ss.fff} [{Level:u5}] [{SourceContext}] {Message:lj}{NewLine}{Exception}` |
-| CLI  | Consola (stdout) | N/A                         | `[{Level:u5}] [{SourceContext}] {Message:lj}{NewLine}{Exception}`                          |
+| Destino          | Rotacion                    | Plantilla                                                                                  |
+|------------------|-----------------------------|--------------------------------------------------------------------------------------------|
+| Fichero en disco | Diaria, 7 dias de retencion | `{Timestamp:HH:mm:ss.fff} [{Level:u5}] [{SourceContext}] {Message:lj}{NewLine}{Exception}` |
 
 **Rutas del fichero de log (GUI):**
 
