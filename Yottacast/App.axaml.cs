@@ -48,9 +48,10 @@ public partial class App : Application {
             _services = BuildServices();
 
             var userSettings = _services.GetRequiredService<UserSettings>();
+            var pluginService = _services.GetRequiredService<PluginService>();
             var themeService = _services.GetRequiredService<ThemeService>();
             themeService.Apply(userSettings.Theme);
-            themeService.StartWatching();
+            themeService.StartWatching(pluginService);
 
             var updateChecker = _services.GetRequiredService<UpdateChecker>();
             RunMigrations(userSettings, updateChecker, _services.GetRequiredService<ILogger<App>>());
@@ -101,7 +102,6 @@ public partial class App : Application {
 
             base.OnFrameworkInitializationCompleted();
 
-            var pluginService = _services.GetRequiredService<PluginService>();
             _ = pluginService.StartAsync();
 
             globalSearch.Start();

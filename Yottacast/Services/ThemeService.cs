@@ -11,6 +11,7 @@ using Avalonia.Styling;
 using Avalonia.Threading;
 using Microsoft.Extensions.Logging;
 using Yottacast.Core;
+using Yottacast.Core.Services;
 
 namespace Yottacast.Services;
 
@@ -23,7 +24,6 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
         Path.Combine(AppContext.BaseDirectory, "Themes");
 
     private FileSystemWatcher? _activeThemeWatcher;
-    private FileSystemWatcher? _pluginsDirWatcher;
     private CancellationTokenSource? _debounceCts;
     private string? _activeThemeId;
 
@@ -32,7 +32,7 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
     public static bool IsUserTheme(string id) => id.StartsWith(UserThemePrefix);
 
     private static string UserThemeFilePath(string id) =>
-        Path.Combine(AppPaths.PluginsDir, id[UserThemePrefix.Length..] + ".json");
+        Path.Combine(AppPaths.PluginsDir, "theme." + id[UserThemePrefix.Length..] + ".json");
 
     public IReadOnlyList<ThemeOption> AvailableThemes() {
         var themes = new List<ThemeOption>();
@@ -53,18 +53,20 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
             logger.LogWarning("Could not load themes: {Message}", ex.Message);
         }
 
-        // Scan user themes from plugins directory
+        // Scan user themes from plugins directory (theme.*.json files with required "id" field)
         try {
             if (Directory.Exists(AppPaths.PluginsDir)) {
-                foreach (var file in Directory.GetFiles(AppPaths.PluginsDir, "*.json").OrderBy(f => f)) {
-                    var filename = Path.GetFileNameWithoutExtension(file);
-                    var id = UserThemePrefix + filename;
-                    if (!seen.Add(id)) continue;
+                foreach (var file in Directory.GetFiles(AppPaths.PluginsDir, "theme.*.json").OrderBy(f => f)) {
                     try {
                         var json = JsonNode.Parse(File.ReadAllText(file));
-                        var type = json?["type"]?.GetValue<string>();
-                        if (!string.Equals(type, "theme", StringComparison.OrdinalIgnoreCase)) continue;
-                        var displayName = json?["name"]?.GetValue<string>() ?? filename;
+                        var themeId = json?["id"]?.GetValue<string>();
+                        if (string.IsNullOrWhiteSpace(themeId)) {
+                            logger.LogWarning("User theme {File}: missing required 'id' field, skipping", Path.GetFileName(file));
+                            continue;
+                        }
+                        var id = UserThemePrefix + themeId;
+                        if (!seen.Add(id)) continue;
+                        var displayName = json?["name"]?.GetValue<string>() ?? themeId;
                         themes.Add(new ThemeOption(id, displayName));
                     } catch {
                         // Skip files that can't be parsed
@@ -81,29 +83,15 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
         return themes;
     }
 
-    public void StartWatching() {
-        Directory.CreateDirectory(AppPaths.PluginsDir);
-
-        _pluginsDirWatcher = new FileSystemWatcher(AppPaths.PluginsDir, "*.json") {
-            NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite,
-            EnableRaisingEvents = true
-        };
-        _pluginsDirWatcher.Created += (_, _) => DebouncedThemesChanged();
-        _pluginsDirWatcher.Deleted += (_, _) => DebouncedThemesChanged();
-        _pluginsDirWatcher.Renamed += (_, _) => DebouncedThemesChanged();
+    /// <summary>
+    /// Subscribes to the central PluginService for directory changes and sets up
+    /// the active theme file watcher for hot-reload.
+    /// </summary>
+    public void StartWatching(PluginService pluginService) {
+        pluginService.PluginsChanged += () => ThemesChanged?.Invoke();
 
         if (_activeThemeId != null)
             WatchActiveTheme(_activeThemeId);
-    }
-
-    private void DebouncedThemesChanged() {
-        _debounceCts?.Cancel();
-        _debounceCts = new CancellationTokenSource();
-        var token = _debounceCts.Token;
-        Task.Delay(300, token).ContinueWith(_ => {
-            if (!token.IsCancellationRequested)
-                ThemesChanged?.Invoke();
-        }, token);
     }
 
     private void WatchActiveTheme(string themeId) {
@@ -113,7 +101,7 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
 
         if (!IsUserTheme(themeId)) return;
 
-        var fileName = themeId[UserThemePrefix.Length..] + ".json";
+        var fileName = "theme." + themeId[UserThemePrefix.Length..] + ".json";
         _activeThemeWatcher = new FileSystemWatcher(AppPaths.PluginsDir, fileName) {
             NotifyFilter = NotifyFilters.LastWrite,
             EnableRaisingEvents = true
@@ -439,7 +427,6 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
 
     public void Dispose() {
         _activeThemeWatcher?.Dispose();
-        _pluginsDirWatcher?.Dispose();
         _debounceCts?.Cancel();
         _debounceCts?.Dispose();
     }
