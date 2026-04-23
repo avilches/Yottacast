@@ -27,7 +27,8 @@
     "footerBorder":                "#E2E8F0",
     "footerText":                  "#94A3B8",
     "noResultsTitle":              "#64748B",
-    "noResultsSubtitle":           "#94A3B8"
+    "noResultsSubtitle":           "#94A3B8",
+    "errorHint":                   "#D32F2F"
   },
   "fonts": {
     "search":    18,
@@ -42,6 +43,10 @@
     "iconCornerRadius":      8,
     "escCornerRadius":       6,
     "shortcutCornerRadius":  5,
-    "windowWidth":         730
+    "windowWidth":         730,
+    "emojiColumns":        10,
+    "emojiViewportRows":    8,
+    "emojiCellSize":       48,
+    "emojiFontSize":       28
   }
 }

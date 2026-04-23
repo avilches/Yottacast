@@ -14,7 +14,7 @@
     "itemIconBackground":          "#3A3A3C",
     "itemTitle":                   "#F2F2F7",
     "itemSubtitle":                "#8E8E93",
-    "itemCategory":                "#48484A",
+    "itemCategory":                "#70707A",
     "itemShortcutText":            "#8E8E93",
     "itemShortcutBackground":      "#3A3A3C",
     "itemSelection":               "#0A84FF",
@@ -25,15 +25,16 @@
     "escBadgeBackground":          "#3A3A3C",
     "escBadgeText":                "#636366",
     "footerBorder":                "#252528",
-    "footerText":                  "#636366",
+    "footerText":                  "#78787E",
     "noResultsTitle":              "#8E8E93",
-    "noResultsSubtitle":           "#636366"
+    "noResultsSubtitle":           "#636366",
+    "errorHint":                   "#FF3B30"
   },
   "fonts": {
     "search":    17,
     "title":     14,
     "subtitle":  12,
-    "small":     11,
+    "small":     12,
     "noResults": 15
   },
   "layout": {
@@ -42,6 +43,10 @@
     "iconCornerRadius":      8,
     "escCornerRadius":       6,
     "shortcutCornerRadius":  6,
-    "windowWidth":         710
+    "windowWidth":         710,
+    "emojiColumns":        10,
+    "emojiViewportRows":    8,
+    "emojiCellSize":       48,
+    "emojiFontSize":       28
   }
 }

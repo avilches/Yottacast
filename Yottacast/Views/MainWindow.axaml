@@ -85,6 +85,13 @@
         <Style Selector="ListBoxItem:selected TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource Theme.ItemSelectionText}"/>
         </Style>
+        <!-- Emoji ListBoxItem: no selection background (only the individual cell gets highlighted) -->
+        <Style Selector="ListBoxItem.emoji-item:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="ListBoxItem.emoji-item:selected:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
         <!-- Emoji cell selection highlight -->
         <Style Selector="Border.emoji-selected">
             <Setter Property="Background" Value="{DynamicResource Theme.ItemSelectionIconBackground}"/>
@@ -164,7 +171,7 @@
 
                 <!-- Error hint (shown below the input when calculator detects an actionable error) -->
                 <TextBlock Text="{Binding SearchHint}"
-                           Foreground="#FF3B30"
+                           Foreground="{DynamicResource Theme.ErrorHint}"
                            FontSize="{DynamicResource Theme.FontSizeSmall}"
                            Margin="18,0,18,8"
                            Opacity="0"
@@ -261,7 +268,7 @@
                                 <!-- Default-app badge: bottom-right corner, 7px overflow + 2px ring -->
                                 <Border Width="18" Height="18"
                                         CornerRadius="5"
-                                        Background="{DynamicResource Theme.Background}"
+                                        Background="{DynamicResource Theme.WindowBackground}"
                                         HorizontalAlignment="Right"
                                         VerticalAlignment="Bottom"
                                         Margin="0,0,-7,-7"
@@ -338,7 +345,7 @@
                     HorizontalContentAlignment="Center"
                     Cursor="Hand">
                 <TextBlock Text="{Binding UpdateBannerText}"
-                           Foreground="{DynamicResource Theme.ItemText}"
+                           Foreground="{DynamicResource Theme.ItemSelectionText}"
                            FontSize="{DynamicResource Theme.FontSizeSmall}"
                            FontWeight="Medium"
                            HorizontalAlignment="Center"/>

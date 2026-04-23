@@ -7,6 +7,7 @@ using Avalonia;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Microsoft.Extensions.Logging;
+using Yottacast.Core;
 
 namespace Yottacast.Services;
 
@@ -88,6 +89,7 @@ public sealed class ThemeService(ILogger<ThemeService> logger) {
                 SetBrush(app, "Theme.FooterText",                  colors["footerText"]);
                 SetBrush(app, "Theme.NoResultsTitle",              colors["noResultsTitle"]);
                 SetBrush(app, "Theme.NoResultsSubtitle",           colors["noResultsSubtitle"]);
+                SetBrush(app, "Theme.ErrorHint",                   colors["errorHint"]);
             }
 
             var fonts = json["fonts"];
@@ -107,6 +109,10 @@ public sealed class ThemeService(ILogger<ThemeService> logger) {
                 SetCornerRadius(app, "Theme.CornerRadiusEsc",      layout["escCornerRadius"]);
                 SetCornerRadius(app, "Theme.CornerRadiusShortcut", layout["shortcutCornerRadius"]);
                 SetDouble(app, "Theme.WindowWidth",                layout["windowWidth"]);
+                SetInt(app, "Theme.EmojiColumns",                  layout["emojiColumns"]);
+                SetInt(app, "Theme.EmojiViewportRows",             layout["emojiViewportRows"]);
+                SetDouble(app, "Theme.EmojiCellSize",              layout["emojiCellSize"]);
+                SetDouble(app, "Theme.EmojiFontSize",              layout["emojiFontSize"]);
             }
 
             logger.LogInformation("Theme applied: {ThemeName}", json["name"]?.GetValue<string>() ?? themeName);
@@ -135,7 +141,7 @@ public sealed class ThemeService(ILogger<ThemeService> logger) {
         app.Resources["Theme.ItemIconBackground"]          = B("#252529");
         app.Resources["Theme.ItemTitle"]                   = B("#EAEAEE");
         app.Resources["Theme.ItemSubtitle"]                = B("#505055");
-        app.Resources["Theme.ItemCategory"]                = B("#36363C");
+        app.Resources["Theme.ItemCategory"]                = B("#606068");
         app.Resources["Theme.ItemShortcutText"]            = B("#505055");
         app.Resources["Theme.ItemShortcutBackground"]      = B("#252529");
         app.Resources["Theme.ItemSelection"]               = B("#2C5AF0");
@@ -146,14 +152,15 @@ public sealed class ThemeService(ILogger<ThemeService> logger) {
         app.Resources["Theme.EscBadgeBackground"]          = B("#252529");
         app.Resources["Theme.EscBadgeText"]                = B("#444448");
         app.Resources["Theme.FooterBorder"]                = B("#1E1E24");
-        app.Resources["Theme.FooterText"]                  = B("#36363C");
+        app.Resources["Theme.FooterText"]                  = B("#606068");
         app.Resources["Theme.NoResultsTitle"]              = B("#505055");
         app.Resources["Theme.NoResultsSubtitle"]           = B("#36363C");
+        app.Resources["Theme.ErrorHint"]                   = B("#FF3B30");
 
         app.Resources["Theme.FontSizeSearch"]    = 18.0;
         app.Resources["Theme.FontSizeTitle"]     = 14.0;
         app.Resources["Theme.FontSizeSubtitle"]  = 12.0;
-        app.Resources["Theme.FontSizeSmall"]     = 11.0;
+        app.Resources["Theme.FontSizeSmall"]     = 12.0;
         app.Resources["Theme.FontSizeNoResults"] = 16.0;
 
         app.Resources["Theme.CornerRadiusWindow"]   = new CornerRadius(14);
@@ -161,7 +168,11 @@ public sealed class ThemeService(ILogger<ThemeService> logger) {
         app.Resources["Theme.CornerRadiusIcon"]     = new CornerRadius(8);
         app.Resources["Theme.CornerRadiusEsc"]      = new CornerRadius(6);
         app.Resources["Theme.CornerRadiusShortcut"] = new CornerRadius(5);
-        app.Resources["Theme.WindowWidth"]          = 700.0;
+        app.Resources["Theme.WindowWidth"]          = 730.0;
+        app.Resources["Theme.EmojiColumns"]         = AppDefaults.EmojiColumns;
+        app.Resources["Theme.EmojiViewportRows"]    = AppDefaults.EmojiViewportRows;
+        app.Resources["Theme.EmojiCellSize"]        = 48.0;
+        app.Resources["Theme.EmojiFontSize"]        = 28.0;
     }
 
     private static void SetBrush(Application app, string key, JsonNode? node) {
@@ -173,6 +184,11 @@ public sealed class ThemeService(ILogger<ThemeService> logger) {
     private static void SetDouble(Application app, string key, JsonNode? node) {
         if (node == null) return;
         app.Resources[key] = node.GetValue<double>();
+    }
+
+    private static void SetInt(Application app, string key, JsonNode? node) {
+        if (node == null) return;
+        app.Resources[key] = node.GetValue<int>();
     }
 
     private static void SetCornerRadius(Application app, string key, JsonNode? node) {

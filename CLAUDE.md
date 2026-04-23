@@ -156,6 +156,11 @@ aceptables para utilidades puras sin dependencias (helpers de conversion, parser
 Cada `CLAUDE.md` de paquete lista los ficheros de test relevantes para su area. Ejecutar
 `cd Yottacast.Core.Tests && dotnet test` para verificar que todo pasa antes de dar la tarea por terminada.
 
+**IMPORTANTE — Cambios de color o estilo en temas**: cada vez que se modifique un color, fuente u otro estilo visual,
+el cambio debe hacerse en el fichero JSON del tema que el usuario indique. Si no especifica cual, preguntarle antes de
+hacer ningun cambio. Si hace falta anadir un nuevo token de tema (nuevo color, nueva propiedad), preguntar al usuario
+antes de crearlo.
+
 **Centralizacion de constantes y rutas**: toda ruta de fichero o directorio que la app lee o escribe en runtime debe
 definirse en `AppPaths.cs`. Todo valor numerico o parametro por defecto debe definirse en `AppDefaults.cs`. Nunca
 hardcodear rutas ni constantes en las clases que las consumen.

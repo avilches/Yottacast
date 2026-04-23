@@ -5,6 +5,14 @@ namespace Yottacast.Core.ViewModels;
 public class EmojiGridResultViewModel : ResultItemViewModel, INotifyPropertyChanged {
     public IReadOnlyList<EmojiCellViewModel> Cells { get; init; } = [];
 
+    private int _viewportStartRow = 0;
+
+    public IReadOnlyList<EmojiCellViewModel> VisibleCells =>
+        Cells
+            .Skip(_viewportStartRow * AppDefaults.EmojiColumns)
+            .Take(AppDefaults.EmojiViewportRows * AppDefaults.EmojiColumns)
+            .ToList();
+
     private int _selectedEmojiIndex;
     public int SelectedEmojiIndex {
         get => _selectedEmojiIndex;
@@ -17,6 +25,18 @@ public class EmojiGridResultViewModel : ResultItemViewModel, INotifyPropertyChan
             _selectedEmojiIndex = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedEmojiIndex)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedEmoji)));
+            EnsureVisible();
+        }
+    }
+
+    private void EnsureVisible() {
+        var row = _selectedEmojiIndex / AppDefaults.EmojiColumns;
+        if (row < _viewportStartRow) {
+            _viewportStartRow = row;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(VisibleCells)));
+        } else if (row >= _viewportStartRow + AppDefaults.EmojiViewportRows) {
+            _viewportStartRow = row - AppDefaults.EmojiViewportRows + 1;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(VisibleCells)));
         }
     }
 

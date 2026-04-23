@@ -5,17 +5,21 @@
              x:Class="Yottacast.Views.Results.EmojiGridResultView"
              x:DataType="viewModels:EmojiGridResultViewModel">
     <StackPanel Orientation="Vertical" Margin="4,8,4,8">
-        <ItemsControl ItemsSource="{Binding Cells}">
+        <ItemsControl ItemsSource="{Binding VisibleCells}">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
-                    <UniformGrid Columns="{x:Static core:AppDefaults.EmojiColumns}"/>
+                    <UniformGrid Columns="{DynamicResource Theme.EmojiColumns}"/>
                 </ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="viewModels:EmojiCellViewModel">
-                    <Border Width="40" Height="40" CornerRadius="8" Margin="2"
+                    <Border Width="{DynamicResource Theme.EmojiCellSize}"
+                            Height="{DynamicResource Theme.EmojiCellSize}"
+                            CornerRadius="8" Margin="2"
                             Classes.emoji-selected="{Binding IsSelected}">
-                        <TextBlock Text="{Binding Char}" FontSize="22"
+                        <TextBlock Text="{Binding Char}"
+                                   FontSize="{DynamicResource Theme.EmojiFontSize}"
+                                   FontFamily="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                 </DataTemplate>

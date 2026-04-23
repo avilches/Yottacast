@@ -88,10 +88,26 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
     // Exact name match → 3.0; other name matches → NameMatcher score + 1 (range 1.2–2.0);
     // keyword-only matches → NameMatcher score (0–1). Ensures "fire" ranks above "fireworks"
     // when both names start with the same query ("fire"), since both would otherwise score 1.0.
+    // Multi-word queries (e.g. "flag sp"): all tokens must match; score is the minimum across tokens.
     private static double MatchScore(EmojiEntry e, string term) {
+        var terms = term.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (terms.Length == 1) return SingleTermScore(e, term);
+
+        var min = double.MaxValue;
+        foreach (var t in terms) {
+            var s = SingleTermScore(e, t);
+            if (s <= 0) return 0;
+            if (s < min) min = s;
+        }
+        return min == double.MaxValue ? 0 : min;
+    }
+
+    private static double SingleTermScore(EmojiEntry e, string term) {
         if (e.Name.Equals(term, StringComparison.OrdinalIgnoreCase)) return 3.0;
         var nameScore = NameMatcher.Score(e.NameTokens, e.Name, term);
         if (nameScore > 0) return nameScore + 1;
-        return e.Keywords.Select(k => NameMatcher.Score(k, term)).DefaultIfEmpty(0d).Max();
+        var keywordScore = e.Keywords.Select(k => NameMatcher.Score(k, term)).DefaultIfEmpty(0d).Max();
+        if (keywordScore > 0) return keywordScore;
+        return NameMatcher.Score(e.Category, term) * 0.5; // category match scores lower than keywords
     }
 }

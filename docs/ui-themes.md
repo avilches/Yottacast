@@ -67,7 +67,7 @@ Cada tema es un fichero `.json` en la carpeta `Themes/` del directorio de la apl
 |---|---|---|
 | `name` | Nombre para mostrar en el picker | `"Dark Default"` |
 | `variant` | `"light"` o `"dark"` (controla el `ThemeVariant` de Avalonia) | `"dark"` |
-| `colors` | 22 tokens de color en formato Avalonia (`#AARRGGBB` o `#RRGGBB`) | `"windowBackground": "#F21C1C22"` |
+| `colors` | 23 tokens de color en formato Avalonia (`#AARRGGBB` o `#RRGGBB`) | `"windowBackground": "#F21C1C22"` |
 | `fonts` | 5 tamanos de fuente (numeros) | `"search": 18` |
 | `layout` | 5 corner radius + ancho de ventana (numeros) | `"windowWidth": 700` |
 
@@ -111,6 +111,7 @@ Si el valor de `variant` no es `"light"`, se asume `"dark"`.
 | `footerText` | `Theme.FooterText` | Texto del footer |
 | `noResultsTitle` | `Theme.NoResultsTitle` | Titulo cuando no hay resultados |
 | `noResultsSubtitle` | `Theme.NoResultsSubtitle` | Subtitulo cuando no hay resultados |
+| `errorHint` | `Theme.ErrorHint` | Texto del hint de error (calculadora) |
 
 ### Fuentes (seccion `fonts`)
 
@@ -132,6 +133,8 @@ Si el valor de `variant` no es `"light"`, se asume `"dark"`.
 | `escCornerRadius` | `Theme.CornerRadiusEsc` |
 | `shortcutCornerRadius` | `Theme.CornerRadiusShortcut` |
 | `windowWidth` | `Theme.WindowWidth` |
+| `emojiCellSize` | `Theme.EmojiCellSize` |
+| `emojiFontSize` | `Theme.EmojiFontSize` |
 
 > **Verificar en:**
 > - `ThemeService.Apply()` -- mapeo token JSON a recurso Avalonia.

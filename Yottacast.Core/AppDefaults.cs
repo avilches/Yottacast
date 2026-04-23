@@ -25,8 +25,10 @@ public static class AppDefaults {
     // ── Search — emoji ────────────────────────────────────────────────────────
     /// Max emojis shown when the query is bare ':' (no filter text).
     public const int EmojiDefaultLimit = 20;
-    /// Number of columns in the emoji picker grid.
-    public const int EmojiColumns = 8;
+    /// Number of columns in the emoji picker grid (default; overridden per theme via Theme.EmojiColumns).
+    public const int EmojiColumns = 10;
+    /// Number of rows visible at once in the emoji picker grid (default; overridden per theme via Theme.EmojiViewportRows).
+    public const int EmojiViewportRows = 8;
 
     // ── UI — paste simulation ─────────────────────────────────────────────────
     /// Delay before simulating Cmd+V / Ctrl+V after selecting an emoji.

@@ -286,4 +286,40 @@ public class EmojiSearchRealDataTests(RealEmojiDataFixture fixture)
         Assert.NotNull(grid);
         Assert.Contains("grinning", grid.Cells[0].Name);
     }
+
+    // ── Category matching ─────────────────────────────────────────────────────
+
+    [Fact]
+    public void Category_TravelFindsTravelEmojis() {
+        var grid = SearchGrid(fixture.Search, ":travel");
+        Assert.NotNull(grid);
+        Assert.All(grid!.Cells, c => Assert.Contains("Travel", c.Category, StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Category_EmotionFindsSmileysEmojis() {
+        var grid = SearchGrid(fixture.Search, ":emotion");
+        Assert.NotNull(grid);
+        Assert.All(grid!.Cells, c => Assert.Contains("Emotion", c.Category, StringComparison.OrdinalIgnoreCase));
+    }
+
+    // ── Multi-word queries (order-independent) ────────────────────────────────
+
+    [Fact]
+    public void MultiWord_FlagSpFindsFlagSpain() {
+        var grid = SearchGrid(fixture.Search, ":flag sp");
+        Assert.NotNull(grid);
+        Assert.Contains(grid.Cells, c => c.Name.Contains("spain", StringComparison.OrdinalIgnoreCase) ||
+                                         c.Keywords.Any(k => k.Contains("spain", StringComparison.OrdinalIgnoreCase) || k == "es"));
+    }
+
+    [Fact]
+    public void MultiWord_SpFlagSameAsFlagSp() {
+        var gridA = SearchGrid(fixture.Search, ":flag sp");
+        var gridB = SearchGrid(fixture.Search, ":sp flag");
+        Assert.NotNull(gridA);
+        Assert.NotNull(gridB);
+        Assert.Equal(gridA!.Cells.Count, gridB!.Cells.Count);
+        Assert.Equal(gridA.Cells.Select(c => c.Char), gridB.Cells.Select(c => c.Char));
+    }
 }
