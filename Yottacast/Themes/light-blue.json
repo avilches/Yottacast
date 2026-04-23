@@ -1,58 +1,86 @@
 {
   "name": "Light Blue",
-  "author": "",
-  "url": "",
   "variant": "light",
-  "colors": {
-    "windowBackground":            "#F5EEF4FF",
-    "searchText":                  "#1E293B",
-    "searchPlaceholder":           "#94A3B8",
-    "searchCaret":                 "#2563EB",
-    "searchSelection":             "#BFDBFE",
-    "icon":                        "#94A3B8",
-    "divider":                     "#E2E8F0",
-    "itemIconBackground":          "#EFF6FF",
-    "itemTitle":                   "#1E293B",
-    "itemSubtitle":                "#64748B",
-    "itemCategory":                "#94A3B8",
-    "itemShortcutText":            "#64748B",
-    "itemShortcutBackground":      "#DBEAFE",
-    "itemSelection":               "#2563EB",
-    "itemSelectionHover":          "#1D4ED8",
-    "itemHover":                   "#12000000",
-    "itemSelectionText":           "#FFFFFF",
-    "itemSelectionIconBackground": "#40FFFFFF",
-    "escBadgeBackground":          "#EFF6FF",
-    "escBadgeText":                "#94A3B8",
-    "footerBorder":                "#E2E8F0",
-    "footerText":                  "#94A3B8",
-    "noResultsTitle":              "#64748B",
-    "noResultsSubtitle":           "#94A3B8",
-    "errorHint":                   "#D32F2F"
+
+  "window": {
+    "background": "#F5EEF4FF",
+    "width": 730,
+    "cornerRadius": 14,
+    "fontFamily": ""
   },
-  "fonts": {
-    "search":    18,
-    "title":     14,
-    "subtitle":  12,
-    "small":     11,
-    "noResults": 16,
-    "calcValue": 20,
-    "convSubtitle": 13,
+
+  "search": {
+    "text":        { "color": "#1E293B", "size": 18, "fontFamily": "" },
+    "placeholder": { "color": "#94A3B8" },
+    "caret":       { "color": "#2563EB" },
+    "selection":   { "color": "#BFDBFE" },
+    "hint":        { "color": "#D32F2F" }
+  },
+
+  "divider": { "color": "#E2E8F0" },
+  "spinner": { "color": "#94A3B8" },
+
+  "results": {
+    "cornerRadius": 8,
+    "title":    { "color": "#1E293B", "size": 14 },
+    "subtitle": { "color": "#64748B", "size": 12 },
+    "category": { "color": "#94A3B8", "size": 11 },
+    "icon":     { "background": "#EFF6FF", "cornerRadius": 8 },
+    "shortcut": { "color": "#64748B", "background": "#DBEAFE", "size": 11, "cornerRadius": 5 },
+    "selection": {
+      "background": "#2563EB",
+      "hoverBackground": "#1D4ED8",
+      "color": "#FFFFFF",
+      "iconBackground": "#40FFFFFF"
+    },
+    "hover": { "background": "#12000000" }
+  },
+
+  "calculator": {
     "fontFamily": "",
-    "searchFontFamily": "",
-    "calcFontFamily": "",
-    "emojiFontFamily": "Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji"
+    "expression": { "color": "#1E293B", "size": 20 },
+    "result":     { "color": "#1E293B", "size": 20 },
+    "subtitle":   { "color": "#1E293B", "size": 13, "opacity": 0.55 },
+    "separator":  { "color": "#1E293B" },
+    "cell":       { "background": "#EFF6FF", "cornerRadius": 6 }
   },
-  "layout": {
-    "windowCornerRadius":   14,
-    "itemCornerRadius":      8,
-    "iconCornerRadius":      8,
-    "escCornerRadius":       6,
-    "shortcutCornerRadius":  5,
-    "windowWidth":         730,
-    "emojiColumns":        10,
-    "emojiViewportRows":    8,
-    "emojiCellSize":       48,
-    "emojiFontSize":       28
+
+  "converter": {
+    "fontFamily": "",
+    "value":    { "color": "#1E293B", "size": 20 },
+    "subtitle": { "color": "#1E293B", "size": 13, "opacity": 0.55 },
+    "arrow":    { "color": "#1E293B" },
+    "hint":     { "color": "#64748B", "size": 12 },
+    "cell":     { "cornerRadius": 6 }
+  },
+
+  "emoji": {
+    "columns": 10,
+    "viewportRows": 8,
+    "cell":     { "size": 48, "cornerRadius": 8 },
+    "char":     { "size": 28, "fontFamily": "Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji" },
+    "name":     { "color": "#1E293B", "size": 14 },
+    "keywords": { "color": "#1E293B", "size": 11, "opacity": 0.55 }
+  },
+
+  "noResults": {
+    "title":    { "color": "#64748B", "size": 16 },
+    "subtitle": { "color": "#94A3B8", "size": 14 }
+  },
+
+  "footer": {
+    "border": "#E2E8F0",
+    "text": { "color": "#94A3B8", "size": 11 }
+  },
+
+  "escBadge": {
+    "background": "#EFF6FF",
+    "cornerRadius": 6,
+    "text": { "color": "#94A3B8", "size": 11 }
+  },
+
+  "updateBanner": {
+    "background": "#2563EB",
+    "text": { "color": "#FFFFFF", "size": 11 }
   }
 }

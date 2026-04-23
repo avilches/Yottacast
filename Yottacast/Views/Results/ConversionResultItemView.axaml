@@ -4,7 +4,7 @@
              x:Class="Yottacast.Views.Results.ConversionResultItemView"
              x:DataType="viewModels:ConversionResultItemViewModel">
     <Grid ColumnDefinitions="*" MinHeight="68"
-          TextElement.FontFamily="{DynamicResource Theme.FontFamilyCalc}">
+          TextElement.FontFamily="{DynamicResource Theme.Conv.FontFamily}">
 
         <!-- 2-cell layout: From → To (when math.js did NOT simplify the from) -->
         <Grid Grid.Column="0"
@@ -13,18 +13,19 @@
               VerticalAlignment="Center"
               Margin="0,8">
             <!-- From -->
-            <Border Grid.Column="0" CornerRadius="6" Padding="6,4"
+            <Border Grid.Column="0" CornerRadius="{DynamicResource Theme.Conv.Cell.CornerRadius}" Padding="6,4"
                     HorizontalAlignment="Stretch">
                 <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
                     <TextBlock Text="{Binding FromShort}"
-                               Foreground="{DynamicResource Theme.ItemTitle}"
-                               FontSize="{DynamicResource Theme.FontSizeCalcValue}"
+                               Foreground="{DynamicResource Theme.Conv.Value.Color}"
+                               FontSize="{DynamicResource Theme.Conv.Value.Size}"
                                FontWeight="Medium"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"/>
-                    <TextBlock Classes="conv-subtitle"
-                               Text="{Binding FromLong}"
-                               FontSize="{DynamicResource Theme.FontSizeConvSubtitle}"
+                    <TextBlock Text="{Binding FromLong}"
+                               Foreground="{DynamicResource Theme.Conv.Subtitle.Color}"
+                               FontSize="{DynamicResource Theme.Conv.Subtitle.Size}"
+                               Opacity="{DynamicResource Theme.Conv.Subtitle.Opacity}"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"
                                IsVisible="{Binding FromLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>
@@ -32,22 +33,23 @@
             </Border>
             <!-- Arrow -->
             <TextBlock Grid.Column="1" Text="→"
-                       Foreground="{DynamicResource Theme.ItemTitle}"
+                       Foreground="{DynamicResource Theme.Conv.Arrow.Color}"
                        VerticalAlignment="Center"
                        Margin="8,0"/>
             <!-- To -->
-            <Border Grid.Column="2" CornerRadius="6" Padding="6,4"
+            <Border Grid.Column="2" CornerRadius="{DynamicResource Theme.Conv.Cell.CornerRadius}" Padding="6,4"
                     HorizontalAlignment="Stretch">
                 <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
                     <TextBlock Text="{Binding ToShort}"
-                               Foreground="{DynamicResource Theme.ItemTitle}"
-                               FontSize="{DynamicResource Theme.FontSizeCalcValue}"
+                               Foreground="{DynamicResource Theme.Conv.Value.Color}"
+                               FontSize="{DynamicResource Theme.Conv.Value.Size}"
                                FontWeight="Medium"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"/>
-                    <TextBlock Classes="conv-subtitle"
-                               Text="{Binding ToLong}"
-                               FontSize="{DynamicResource Theme.FontSizeConvSubtitle}"
+                    <TextBlock Text="{Binding ToLong}"
+                               Foreground="{DynamicResource Theme.Conv.Subtitle.Color}"
+                               FontSize="{DynamicResource Theme.Conv.Subtitle.Size}"
+                               Opacity="{DynamicResource Theme.Conv.Subtitle.Opacity}"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"
                                IsVisible="{Binding ToLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>
@@ -62,18 +64,19 @@
               VerticalAlignment="Center"
               Margin="0,8">
             <!-- OrigFrom (context only, not navigable) -->
-            <Border Grid.Column="0" CornerRadius="6" Padding="6,4"
+            <Border Grid.Column="0" CornerRadius="{DynamicResource Theme.Conv.Cell.CornerRadius}" Padding="6,4"
                     HorizontalAlignment="Stretch">
                 <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
                     <TextBlock Text="{Binding FromShort}"
-                               Foreground="{DynamicResource Theme.ItemTitle}"
-                               FontSize="{DynamicResource Theme.FontSizeCalcValue}"
+                               Foreground="{DynamicResource Theme.Conv.Value.Color}"
+                               FontSize="{DynamicResource Theme.Conv.Value.Size}"
                                FontWeight="Medium"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"/>
-                    <TextBlock Classes="conv-subtitle"
-                               Text="{Binding FromLong}"
-                               FontSize="{DynamicResource Theme.FontSizeConvSubtitle}"
+                    <TextBlock Text="{Binding FromLong}"
+                               Foreground="{DynamicResource Theme.Conv.Subtitle.Color}"
+                               FontSize="{DynamicResource Theme.Conv.Subtitle.Size}"
+                               Opacity="{DynamicResource Theme.Conv.Subtitle.Opacity}"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"
                                IsVisible="{Binding FromLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>
@@ -81,23 +84,24 @@
             </Border>
             <!-- Arrow 1 -->
             <TextBlock Grid.Column="1" Text="→"
-                       Foreground="{DynamicResource Theme.ItemTitle}"
+                       Foreground="{DynamicResource Theme.Conv.Arrow.Color}"
                        VerticalAlignment="Center"
                        Margin="8,0"/>
             <!-- NormFrom -->
-            <Border Grid.Column="2" CornerRadius="6" Padding="6,4"
+            <Border Grid.Column="2" CornerRadius="{DynamicResource Theme.Conv.Cell.CornerRadius}" Padding="6,4"
                     HorizontalAlignment="Stretch"
                     Classes.conv-cell-selected="{Binding IsNormFromHighlighted}">
                 <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
                     <TextBlock Text="{Binding NormFromShort}"
-                               Foreground="{DynamicResource Theme.ItemTitle}"
-                               FontSize="{DynamicResource Theme.FontSizeCalcValue}"
+                               Foreground="{DynamicResource Theme.Conv.Value.Color}"
+                               FontSize="{DynamicResource Theme.Conv.Value.Size}"
                                FontWeight="Medium"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"/>
-                    <TextBlock Classes="conv-subtitle"
-                               Text="{Binding NormFromLong}"
-                               FontSize="{DynamicResource Theme.FontSizeConvSubtitle}"
+                    <TextBlock Text="{Binding NormFromLong}"
+                               Foreground="{DynamicResource Theme.Conv.Subtitle.Color}"
+                               FontSize="{DynamicResource Theme.Conv.Subtitle.Size}"
+                               Opacity="{DynamicResource Theme.Conv.Subtitle.Opacity}"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"
                                IsVisible="{Binding NormFromLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>
@@ -105,23 +109,24 @@
             </Border>
             <!-- Arrow 2 -->
             <TextBlock Grid.Column="3" Text="→"
-                       Foreground="{DynamicResource Theme.ItemTitle}"
+                       Foreground="{DynamicResource Theme.Conv.Arrow.Color}"
                        VerticalAlignment="Center"
                        Margin="8,0"/>
             <!-- To -->
-            <Border Grid.Column="4" CornerRadius="6" Padding="6,4"
+            <Border Grid.Column="4" CornerRadius="{DynamicResource Theme.Conv.Cell.CornerRadius}" Padding="6,4"
                     HorizontalAlignment="Stretch"
                     Classes.conv-cell-selected="{Binding IsToHighlighted}">
                 <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
                     <TextBlock Text="{Binding ToShort}"
-                               Foreground="{DynamicResource Theme.ItemTitle}"
-                               FontSize="{DynamicResource Theme.FontSizeCalcValue}"
+                               Foreground="{DynamicResource Theme.Conv.Value.Color}"
+                               FontSize="{DynamicResource Theme.Conv.Value.Size}"
                                FontWeight="Medium"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"/>
-                    <TextBlock Classes="conv-subtitle"
-                               Text="{Binding ToLong}"
-                               FontSize="{DynamicResource Theme.FontSizeConvSubtitle}"
+                    <TextBlock Text="{Binding ToLong}"
+                               Foreground="{DynamicResource Theme.Conv.Subtitle.Color}"
+                               FontSize="{DynamicResource Theme.Conv.Subtitle.Size}"
+                               Opacity="{DynamicResource Theme.Conv.Subtitle.Opacity}"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"
                                IsVisible="{Binding ToLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>

@@ -8,18 +8,18 @@
         <ItemsControl ItemsSource="{Binding VisibleCells}">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
-                    <UniformGrid Columns="{DynamicResource Theme.EmojiColumns}"/>
+                    <UniformGrid Columns="{DynamicResource Theme.Emoji.Columns}"/>
                 </ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="viewModels:EmojiCellViewModel">
-                    <Border Width="{DynamicResource Theme.EmojiCellSize}"
-                            Height="{DynamicResource Theme.EmojiCellSize}"
-                            CornerRadius="8" Margin="2"
+                    <Border Width="{DynamicResource Theme.Emoji.Cell.Size}"
+                            Height="{DynamicResource Theme.Emoji.Cell.Size}"
+                            CornerRadius="{DynamicResource Theme.Emoji.Cell.CornerRadius}" Margin="2"
                             Classes.emoji-selected="{Binding IsSelected}">
                         <TextBlock Text="{Binding Char}"
-                                   FontSize="{DynamicResource Theme.EmojiFontSize}"
-                                   FontFamily="{DynamicResource Theme.FontFamilyEmoji}"
+                                   FontSize="{DynamicResource Theme.Emoji.Char.Size}"
+                                   FontFamily="{DynamicResource Theme.Emoji.Char.FontFamily}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                 </DataTemplate>
@@ -27,14 +27,15 @@
         </ItemsControl>
         <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Margin="0,6,0,0" Spacing="2">
             <!-- Group: name -->
-            <TextBlock Foreground="{DynamicResource Theme.ItemTitle}"
-                       FontSize="{DynamicResource Theme.FontSizeTitle}"
+            <TextBlock Foreground="{DynamicResource Theme.Emoji.Name.Color}"
+                       FontSize="{DynamicResource Theme.Emoji.Name.Size}"
                        FontWeight="Medium"
                        HorizontalAlignment="Center"><Run Text="{Binding SelectedEmoji.Category}"/><Run Text=": "/><Run Text="{Binding SelectedEmoji.Name}"/></TextBlock>
-            <!-- Keywords with reduced opacity -->
-            <TextBlock Classes="conv-subtitle"
-                       Text="{Binding SelectedEmoji.KeywordsText}"
-                       FontSize="{DynamicResource Theme.FontSizeSmall}"
+            <!-- Keywords -->
+            <TextBlock Text="{Binding SelectedEmoji.KeywordsText}"
+                       Foreground="{DynamicResource Theme.Emoji.Keywords.Color}"
+                       FontSize="{DynamicResource Theme.Emoji.Keywords.Size}"
+                       Opacity="{DynamicResource Theme.Emoji.Keywords.Opacity}"
                        HorizontalAlignment="Center"
                        TextWrapping="Wrap"
                        MaxWidth="400"/>

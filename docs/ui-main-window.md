@@ -263,7 +263,7 @@ La posicion se actualiza en memoria en cada movimiento via `PositionChanged` (si
 |---|---|
 | Decoraciones del sistema | Ninguna (`SystemDecorations="None"`) |
 | Fondo | Transparente con borde redondeado |
-| Ancho | Definido por tema (`Theme.WindowWidth`) |
+| Ancho | Definido por tema (`Theme.Window.Width`) |
 | Alto | Ajustado al contenido (`SizeToContent="Height"`) |
 | Barra de tareas | No visible (`ShowInTaskbar="False"`) |
 | Redimensionable | No |

@@ -42,36 +42,36 @@ internal sealed class WindowsAppHandler : AppHandler {
     public override void ApplySettingsTheme(Window window) {
         window.FontFamily = new Avalonia.Media.FontFamily("Segoe UI");
         window.Resources.ThemeDictionaries[ThemeVariant.Light] = MakeThemeDict(
-            ("Theme.WindowBackground",   Brush("#F3F3F3")),
-            ("Theme.ItemIconBackground", Brush("#E8E8E8")),
-            ("Theme.Divider",            Brush("#E0E0E0")),
-            ("Theme.ItemTitle",          Brush("#1C1C1C")),
-            ("Theme.ItemSubtitle",       Brush("#616161")),
-            ("Theme.ItemCategory",       Brush("#8A8A8A")),
-            ("Theme.ItemSelection",      Brush("#0078D4")),
-            ("Theme.ItemSelectionText",  Brush("#FFFFFF")),
-            ("Theme.ItemHover",          Brush("#12000000")),
-            ("Theme.FooterText",         Brush("#8A8A8A")),
-            ("Theme.SearchCaret",        Brush("#0078D4")),
-            ("Theme.FontSizeTitle",      13d),
-            ("Theme.FontSizeSmall",      11d),
-            ("Theme.FontSizeNoResults",  14d)
+            ("Theme.Window.Background",            Brush("#F3F3F3")),
+            ("Theme.Results.Icon.Background",      Brush("#E8E8E8")),
+            ("Theme.Divider.Color",                Brush("#E0E0E0")),
+            ("Theme.Results.Title.Color",          Brush("#1C1C1C")),
+            ("Theme.Results.Subtitle.Color",       Brush("#616161")),
+            ("Theme.Results.Category.Color",       Brush("#8A8A8A")),
+            ("Theme.Results.Selection.Background", Brush("#0078D4")),
+            ("Theme.Results.Selection.Color",      Brush("#FFFFFF")),
+            ("Theme.Results.Hover.Background",     Brush("#12000000")),
+            ("Theme.Footer.Color",                 Brush("#8A8A8A")),
+            ("Theme.Search.Caret",                 Brush("#0078D4")),
+            ("Theme.Results.Title.Size",           13d),
+            ("Theme.Results.Category.Size",        11d),
+            ("Theme.NoResults.Title.Size",         14d)
         );
         window.Resources.ThemeDictionaries[ThemeVariant.Dark] = MakeThemeDict(
-            ("Theme.WindowBackground",   Brush("#202020")),
-            ("Theme.ItemIconBackground", Brush("#2C2C2C")),
-            ("Theme.Divider",            Brush("#3A3A3A")),
-            ("Theme.ItemTitle",          Brush("#FFFFFF")),
-            ("Theme.ItemSubtitle",       Brush("#ABABAB")),
-            ("Theme.ItemCategory",       Brush("#6B6B6B")),
-            ("Theme.ItemSelection",      Brush("#0078D4")),
-            ("Theme.ItemSelectionText",  Brush("#FFFFFF")),
-            ("Theme.ItemHover",          Brush("#18FFFFFF")),
-            ("Theme.FooterText",         Brush("#6B6B6B")),
-            ("Theme.SearchCaret",        Brush("#4CC2FF")),
-            ("Theme.FontSizeTitle",      13d),
-            ("Theme.FontSizeSmall",      11d),
-            ("Theme.FontSizeNoResults",  14d)
+            ("Theme.Window.Background",            Brush("#202020")),
+            ("Theme.Results.Icon.Background",      Brush("#2C2C2C")),
+            ("Theme.Divider.Color",                Brush("#3A3A3A")),
+            ("Theme.Results.Title.Color",          Brush("#FFFFFF")),
+            ("Theme.Results.Subtitle.Color",       Brush("#ABABAB")),
+            ("Theme.Results.Category.Color",       Brush("#6B6B6B")),
+            ("Theme.Results.Selection.Background", Brush("#0078D4")),
+            ("Theme.Results.Selection.Color",      Brush("#FFFFFF")),
+            ("Theme.Results.Hover.Background",     Brush("#18FFFFFF")),
+            ("Theme.Footer.Color",                 Brush("#6B6B6B")),
+            ("Theme.Search.Caret",                 Brush("#4CC2FF")),
+            ("Theme.Results.Title.Size",           13d),
+            ("Theme.Results.Category.Size",        11d),
+            ("Theme.NoResults.Title.Size",         14d)
         );
     }
 

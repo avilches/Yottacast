@@ -4,15 +4,15 @@
              x:Class="Yottacast.Views.Results.CalculatorResultItemView"
              x:DataType="viewModels:CalculatorResultItemViewModel">
     <Grid ColumnDefinitions="*" MinHeight="68"
-          TextElement.FontFamily="{DynamicResource Theme.FontFamilyCalc}">
+          TextElement.FontFamily="{DynamicResource Theme.Calc.FontFamily}">
     <Grid ColumnDefinitions="*,Auto,*" VerticalAlignment="Center" Margin="0,8">
 
         <!-- Left: formatted expression (what user typed) -->
-        <Border Grid.Column="0" CornerRadius="6" Padding="6,4"
+        <Border Grid.Column="0" CornerRadius="{DynamicResource Theme.Calc.Cell.CornerRadius}" Padding="6,4"
                 HorizontalAlignment="Stretch" VerticalAlignment="Center">
             <TextBlock Text="{Binding Subtitle}"
-                       Foreground="{DynamicResource Theme.ItemTitle}"
-                       FontSize="{DynamicResource Theme.FontSizeCalcValue}"
+                       Foreground="{DynamicResource Theme.Calc.Expression.Color}"
+                       FontSize="{DynamicResource Theme.Calc.Expression.Size}"
                        FontWeight="Medium"
                        HorizontalAlignment="Center"
                        TextAlignment="Center"/>
@@ -20,23 +20,24 @@
 
         <!-- Separator -->
         <TextBlock Grid.Column="1" Text="="
-                   Foreground="{DynamicResource Theme.ItemTitle}"
+                   Foreground="{DynamicResource Theme.Calc.Separator.Color}"
                    VerticalAlignment="Center"
                    Margin="8,0"/>
 
         <!-- Right: result -->
-        <Border Grid.Column="2" CornerRadius="6" Padding="6,4"
+        <Border Grid.Column="2" CornerRadius="{DynamicResource Theme.Calc.Cell.CornerRadius}" Padding="6,4"
                 HorizontalAlignment="Stretch" VerticalAlignment="Center">
             <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
                 <TextBlock Text="{Binding Title}"
-                           Foreground="{DynamicResource Theme.ItemTitle}"
-                           FontSize="{DynamicResource Theme.FontSizeCalcValue}"
+                           Foreground="{DynamicResource Theme.Calc.Result.Color}"
+                           FontSize="{DynamicResource Theme.Calc.Result.Size}"
                            FontWeight="SemiBold"
                            HorizontalAlignment="Center"
                            TextAlignment="Center"/>
-                <TextBlock Classes="conv-subtitle"
-                           Text="{Binding TitleLong}"
-                           FontSize="{DynamicResource Theme.FontSizeConvSubtitle}"
+                <TextBlock Text="{Binding TitleLong}"
+                           Foreground="{DynamicResource Theme.Calc.Subtitle.Color}"
+                           FontSize="{DynamicResource Theme.Calc.Subtitle.Size}"
+                           Opacity="{DynamicResource Theme.Calc.Subtitle.Opacity}"
                            HorizontalAlignment="Center"
                            TextAlignment="Center"
                            IsVisible="{Binding TitleLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>

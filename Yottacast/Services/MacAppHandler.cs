@@ -238,36 +238,36 @@ internal sealed class MacAppHandler : AppHandler {
     public override void ApplySettingsTheme(Window window) {
         window.FontFamily = new FontFamily("SF Pro Text, Helvetica Neue");
         window.Resources.ThemeDictionaries[ThemeVariant.Light] = MakeThemeDict(
-            ("Theme.WindowBackground",   Brush("#F5F5F5")),  // windowBackgroundColor
-            ("Theme.ItemIconBackground", Brush("#E8E8E8")),  // sidebar
-            ("Theme.Divider",            Brush("#D1D1D6")),  // separatorColor
-            ("Theme.ItemTitle",          Brush("#1C1C1E")),  // labelColor
-            ("Theme.ItemSubtitle",       Brush("#636366")),  // secondaryLabelColor
-            ("Theme.ItemCategory",       Brush("#8E8E93")),  // tertiaryLabelColor
-            ("Theme.ItemSelection",      Brush("#007AFF")),  // systemBlueColor
-            ("Theme.ItemSelectionText",  Brush("#FFFFFF")),
-            ("Theme.ItemHover",          Brush("#14000000")),
-            ("Theme.FooterText",         Brush("#8E8E93")),
-            ("Theme.SearchCaret",        Brush("#007AFF")),
-            ("Theme.FontSizeTitle",      13d),
-            ("Theme.FontSizeSmall",      14d),
-            ("Theme.FontSizeNoResults",  14d)
+            ("Theme.Window.Background",            Brush("#F5F5F5")),  // windowBackgroundColor
+            ("Theme.Results.Icon.Background",      Brush("#E8E8E8")),  // sidebar
+            ("Theme.Divider.Color",                Brush("#D1D1D6")),  // separatorColor
+            ("Theme.Results.Title.Color",          Brush("#1C1C1E")),  // labelColor
+            ("Theme.Results.Subtitle.Color",       Brush("#636366")),  // secondaryLabelColor
+            ("Theme.Results.Category.Color",       Brush("#8E8E93")),  // tertiaryLabelColor
+            ("Theme.Results.Selection.Background", Brush("#007AFF")),  // systemBlueColor
+            ("Theme.Results.Selection.Color",      Brush("#FFFFFF")),
+            ("Theme.Results.Hover.Background",     Brush("#14000000")),
+            ("Theme.Footer.Color",                 Brush("#8E8E93")),
+            ("Theme.Search.Caret",                 Brush("#007AFF")),
+            ("Theme.Results.Title.Size",           13d),
+            ("Theme.Results.Category.Size",        14d),
+            ("Theme.NoResults.Title.Size",         14d)
         );
         window.Resources.ThemeDictionaries[ThemeVariant.Dark] = MakeThemeDict(
-            ("Theme.WindowBackground",   Brush("#282828")),  // windowBackgroundColor dark
-            ("Theme.ItemIconBackground", Brush("#1E1E1E")),  // sidebar dark
-            ("Theme.Divider",            Brush("#3A3A3C")),  // separatorColor dark
-            ("Theme.ItemTitle",          Brush("#FFFFFF")),  // labelColor dark
-            ("Theme.ItemSubtitle",       Brush("#ABABAB")),  // secondaryLabelColor dark
-            ("Theme.ItemCategory",       Brush("#8A8A8A")),  // tertiaryLabelColor dark
-            ("Theme.ItemSelection",      Brush("#0A84FF")),  // systemBlueColor dark
-            ("Theme.ItemSelectionText",  Brush("#FFFFFF")),
-            ("Theme.ItemHover",          Brush("#1AFFFFFF")),
-            ("Theme.FooterText",         Brush("#6C6C70")),
-            ("Theme.SearchCaret",        Brush("#0A84FF")),
-            ("Theme.FontSizeTitle",      13d),
-            ("Theme.FontSizeSmall",      14d),
-            ("Theme.FontSizeNoResults",  14d)
+            ("Theme.Window.Background",            Brush("#282828")),  // windowBackgroundColor dark
+            ("Theme.Results.Icon.Background",      Brush("#1E1E1E")),  // sidebar dark
+            ("Theme.Divider.Color",                Brush("#3A3A3C")),  // separatorColor dark
+            ("Theme.Results.Title.Color",          Brush("#FFFFFF")),  // labelColor dark
+            ("Theme.Results.Subtitle.Color",       Brush("#ABABAB")),  // secondaryLabelColor dark
+            ("Theme.Results.Category.Color",       Brush("#8A8A8A")),  // tertiaryLabelColor dark
+            ("Theme.Results.Selection.Background", Brush("#0A84FF")),  // systemBlueColor dark
+            ("Theme.Results.Selection.Color",      Brush("#FFFFFF")),
+            ("Theme.Results.Hover.Background",     Brush("#1AFFFFFF")),
+            ("Theme.Footer.Color",                 Brush("#6C6C70")),
+            ("Theme.Search.Caret",                 Brush("#0A84FF")),
+            ("Theme.Results.Title.Size",           13d),
+            ("Theme.Results.Category.Size",        14d),
+            ("Theme.NoResults.Title.Size",         14d)
         );
     }
 
