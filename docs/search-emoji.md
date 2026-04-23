@@ -17,8 +17,6 @@ Yottacast permite buscar e insertar emojis en cualquier aplicacion. El usuario e
 
 **Invariante:** la busqueda de emojis solo se activa cuando la query empieza por `:`. Cualquier otro prefijo no produce resultados de emojis.
 
-> **Verificar en:** `EmojiSearch.Search()` -- condicion `query.StartsWith(':')`; constante `AppDefaults.EmojiDefaultLimit` (valor 20) en `AppDefaults.cs`.
-
 ---
 
 ## Presentacion del grid

@@ -35,7 +35,9 @@
     "title":     14,
     "subtitle":  12,
     "small":     12,
-    "noResults": 16
+    "noResults": 16,
+    "calcValue": 20,
+    "convSubtitle": 13
   },
   "layout": {
     "windowCornerRadius":   12,

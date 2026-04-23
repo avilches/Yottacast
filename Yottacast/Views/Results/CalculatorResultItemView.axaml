@@ -10,7 +10,7 @@
                 HorizontalAlignment="Stretch" VerticalAlignment="Center">
             <TextBlock Text="{Binding Subtitle}"
                        Foreground="{DynamicResource Theme.ItemTitle}"
-                       FontSize="20"
+                       FontSize="{DynamicResource Theme.FontSizeCalcValue}"
                        FontWeight="Medium"
                        HorizontalAlignment="Center"
                        TextAlignment="Center"/>
@@ -27,7 +27,7 @@
                 HorizontalAlignment="Stretch" VerticalAlignment="Center">
             <TextBlock Text="{Binding Title}"
                        Foreground="{DynamicResource Theme.ItemTitle}"
-                       FontSize="20"
+                       FontSize="{DynamicResource Theme.FontSizeCalcValue}"
                        FontWeight="SemiBold"
                        HorizontalAlignment="Center"
                        TextAlignment="Center"/>

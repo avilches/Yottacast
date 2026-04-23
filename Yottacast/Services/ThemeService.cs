@@ -98,7 +98,9 @@ public sealed class ThemeService(ILogger<ThemeService> logger) {
                 SetDouble(app, "Theme.FontSizeTitle",     fonts["title"]);
                 SetDouble(app, "Theme.FontSizeSubtitle",  fonts["subtitle"]);
                 SetDouble(app, "Theme.FontSizeSmall",     fonts["small"]);
-                SetDouble(app, "Theme.FontSizeNoResults", fonts["noResults"]);
+                SetDouble(app, "Theme.FontSizeNoResults",    fonts["noResults"]);
+                SetDouble(app, "Theme.FontSizeCalcValue",   fonts["calcValue"]);
+                SetDouble(app, "Theme.FontSizeConvSubtitle", fonts["convSubtitle"]);
             }
 
             var layout = json["layout"];
@@ -161,7 +163,9 @@ public sealed class ThemeService(ILogger<ThemeService> logger) {
         app.Resources["Theme.FontSizeTitle"]     = 14.0;
         app.Resources["Theme.FontSizeSubtitle"]  = 12.0;
         app.Resources["Theme.FontSizeSmall"]     = 12.0;
-        app.Resources["Theme.FontSizeNoResults"] = 16.0;
+        app.Resources["Theme.FontSizeNoResults"]    = 16.0;
+        app.Resources["Theme.FontSizeCalcValue"]   = 20.0;
+        app.Resources["Theme.FontSizeConvSubtitle"] = 13.0;
 
         app.Resources["Theme.CornerRadiusWindow"]   = new CornerRadius(14);
         app.Resources["Theme.CornerRadiusItem"]     = new CornerRadius(8);

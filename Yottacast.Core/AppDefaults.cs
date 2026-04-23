@@ -23,8 +23,6 @@ public static class AppDefaults {
     public const int FileSearchSnapshotIntervalMs = 200;
 
     // ── Search — emoji ────────────────────────────────────────────────────────
-    /// Max emojis shown when the query is bare ':' (no filter text).
-    public const int EmojiDefaultLimit = 20;
     /// Number of columns in the emoji picker grid (default; overridden per theme via Theme.EmojiColumns).
     public const int EmojiColumns = 10;
     /// Number of rows visible at once in the emoji picker grid (default; overridden per theme via Theme.EmojiViewportRows).

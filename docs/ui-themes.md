@@ -68,7 +68,7 @@ Cada tema es un fichero `.json` en la carpeta `Themes/` del directorio de la apl
 | `name` | Nombre para mostrar en el picker | `"Dark Default"` |
 | `variant` | `"light"` o `"dark"` (controla el `ThemeVariant` de Avalonia) | `"dark"` |
 | `colors` | 23 tokens de color en formato Avalonia (`#AARRGGBB` o `#RRGGBB`) | `"windowBackground": "#F21C1C22"` |
-| `fonts` | 5 tamanos de fuente (numeros) | `"search": 18` |
+| `fonts` | 7 tamanos de fuente (numeros) | `"search": 18` |
 | `layout` | 5 corner radius + ancho de ventana (numeros) | `"windowWidth": 700` |
 
 Los campos `author` y `url` estan presentes en los JSON pero no se utilizan actualmente. Estan reservados para una futura funcionalidad de descarga de temas.
@@ -122,6 +122,8 @@ Si el valor de `variant` no es `"light"`, se asume `"dark"`.
 | `subtitle` | `Theme.FontSizeSubtitle` |
 | `small` | `Theme.FontSizeSmall` |
 | `noResults` | `Theme.FontSizeNoResults` |
+| `calcValue` | `Theme.FontSizeCalcValue` |
+| `convSubtitle` | `Theme.FontSizeConvSubtitle` |
 
 ### Layout (seccion `layout`)
 

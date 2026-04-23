@@ -222,7 +222,7 @@
                      x:Name="ResultsList"
                      ItemsSource="{Binding Results}"
                      SelectedItem="{Binding SelectedResult}"
-                     MaxHeight="416"
+                     MaxHeight="540"
                      Padding="8,6"
                      IsVisible="{Binding HasResults}"
                      ScrollViewer.VerticalScrollBarVisibility="Auto"
@@ -361,7 +361,7 @@
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4">
                         <TextBlock Foreground="{DynamicResource Theme.FooterText}"
                                    FontSize="{DynamicResource Theme.FontSizeSmall}">
-                            <Run Text="{Binding Results.Count}"/>
+                            <Run Text="{Binding DisplayResultCount}"/>
                             <Run Text="results"/>
                         </TextBlock>
                     </StackPanel>

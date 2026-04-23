@@ -44,6 +44,10 @@ public partial class MainWindowViewModel(
 
     public ObservableCollection<BaseResultItemViewModel> Results { get; } = [];
 
+    public int DisplayResultCount =>
+        Results.OfType<EmojiGridResultViewModel>().FirstOrDefault()?.Cells.Count
+        ?? Results.Count;
+
     private CancellationTokenSource? _cts;
     private CancellationTokenSource? _deferredCts;
 
@@ -93,6 +97,7 @@ public partial class MainWindowViewModel(
             Results.Add(appSearch.CreateResultItem(info));
         HasResults = Results.Count > 0;
         ShowNoResults = false;
+        OnPropertyChanged(nameof(DisplayResultCount));
         SelectedResult = Results.FirstOrDefault();
     }
 
@@ -239,6 +244,7 @@ public partial class MainWindowViewModel(
         foreach (var item in merged) Results.Add(item);
         HasResults = Results.Count > 0;
         ShowNoResults = false;
+        OnPropertyChanged(nameof(DisplayResultCount));
 
         var calcResult = merged.FirstOrDefault(x =>
             x is ConversionResultItemViewModel ||

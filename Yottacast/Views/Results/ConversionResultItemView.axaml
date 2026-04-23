@@ -18,13 +18,13 @@
                 <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
                     <TextBlock Text="{Binding FromShort}"
                                Foreground="{DynamicResource Theme.ItemTitle}"
-                               FontSize="20"
+                               FontSize="{DynamicResource Theme.FontSizeCalcValue}"
                                FontWeight="Medium"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"/>
                     <TextBlock Classes="conv-subtitle"
                                Text="{Binding FromLong}"
-                               FontSize="13"
+                               FontSize="{DynamicResource Theme.FontSizeConvSubtitle}"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"
                                IsVisible="{Binding FromLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>
@@ -42,13 +42,13 @@
                 <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
                     <TextBlock Text="{Binding ToShort}"
                                Foreground="{DynamicResource Theme.ItemTitle}"
-                               FontSize="20"
+                               FontSize="{DynamicResource Theme.FontSizeCalcValue}"
                                FontWeight="Medium"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"/>
                     <TextBlock Classes="conv-subtitle"
                                Text="{Binding ToLong}"
-                               FontSize="13"
+                               FontSize="{DynamicResource Theme.FontSizeConvSubtitle}"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"
                                IsVisible="{Binding ToLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>
@@ -69,13 +69,13 @@
                 <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
                     <TextBlock Text="{Binding FromShort}"
                                Foreground="{DynamicResource Theme.ItemTitle}"
-                               FontSize="20"
+                               FontSize="{DynamicResource Theme.FontSizeCalcValue}"
                                FontWeight="Medium"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"/>
                     <TextBlock Classes="conv-subtitle"
                                Text="{Binding FromLong}"
-                               FontSize="13"
+                               FontSize="{DynamicResource Theme.FontSizeConvSubtitle}"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"
                                IsVisible="{Binding FromLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>
@@ -93,13 +93,13 @@
                 <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
                     <TextBlock Text="{Binding NormFromShort}"
                                Foreground="{DynamicResource Theme.ItemTitle}"
-                               FontSize="20"
+                               FontSize="{DynamicResource Theme.FontSizeCalcValue}"
                                FontWeight="Medium"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"/>
                     <TextBlock Classes="conv-subtitle"
                                Text="{Binding NormFromLong}"
-                               FontSize="13"
+                               FontSize="{DynamicResource Theme.FontSizeConvSubtitle}"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"
                                IsVisible="{Binding NormFromLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>
@@ -117,13 +117,13 @@
                 <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
                     <TextBlock Text="{Binding ToShort}"
                                Foreground="{DynamicResource Theme.ItemTitle}"
-                               FontSize="20"
+                               FontSize="{DynamicResource Theme.FontSizeCalcValue}"
                                FontWeight="Medium"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"/>
                     <TextBlock Classes="conv-subtitle"
                                Text="{Binding ToLong}"
-                               FontSize="13"
+                               FontSize="{DynamicResource Theme.FontSizeConvSubtitle}"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"
                                IsVisible="{Binding ToLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>
