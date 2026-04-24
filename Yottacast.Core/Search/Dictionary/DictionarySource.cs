@@ -10,8 +10,9 @@ public class DictionarySource(
     BrowserDiscovery browserDiscovery,
     ILogger<DictionarySource> logger) : IDeferredSearchSource {
 
-    private static readonly HttpClient Http = new() {
-        Timeout = TimeSpan.FromSeconds(AppDefaults.DictionaryTimeoutSeconds)
+    private static readonly HttpClient Http = new(new HttpClientHandler()) {
+        Timeout = TimeSpan.FromSeconds(AppDefaults.DictionaryTimeoutSeconds),
+        DefaultRequestHeaders = { { "User-Agent", "Yottacast/1.0 (https://yottacast.app)" } }
     };
 
     private static readonly byte[]? IconBytes = LoadIcon();
@@ -52,46 +53,43 @@ public class DictionarySource(
 
         if (string.IsNullOrEmpty(searchWord)) yield break;
 
-        var languages = settings.DictionaryLanguages;
+        var allEntries = await DictionaryApiClient.LookupAsync(Http, searchWord, logger, ct);
+        if (allEntries is null) yield break;
 
-        var tasks = languages.Select(lang =>
-            DictionaryApiClient.LookupAsync(Http, searchWord, lang, logger, ct)).ToArray();
-        var responses = await Task.WhenAll(tasks);
-
+        var languages = new HashSet<string>(settings.DictionaryLanguages);
+        var wiktionaryUrl = $"https://en.wiktionary.org/wiki/{Uri.EscapeDataString(searchWord)}";
         var results = new List<BaseResultItemViewModel>();
-        var phonetic = (string?)null;
 
-        for (var i = 0; i < responses.Length; i++) {
-            var response = responses[i];
-            if (response is null) continue;
-            var lang = languages[i];
+        foreach (var (langCode, entries) in allEntries) {
+            if (!languages.Contains(langCode)) continue;
 
-            phonetic ??= response.Phonetics.FirstOrDefault(p => !string.IsNullOrEmpty(p.Text))?.Text;
-            var sourceUrl = response.SourceUrls.FirstOrDefault();
-
-            foreach (var meaning in response.Meanings) {
-                foreach (var def in meaning.Definitions.Take(3)) {
+            foreach (var entry in entries) {
+                foreach (var def in entry.Definitions.Take(3)) {
                     if (results.Count >= limit) break;
 
-                    var title = $"{response.Word} ({meaning.PartOfSpeech}) [{lang}]: {def.Definition}";
-                    var subtitle = def.Example is not null
-                        ? $"\"{def.Example}\""
-                        : phonetic ?? "";
+                    var cleanDef = DictionaryApiClient.StripHtml(def.Definition);
+                    if (string.IsNullOrWhiteSpace(cleanDef)) continue;
 
-                    var capturedUrl = sourceUrl;
+                    var title = $"{searchWord} ({entry.PartOfSpeech}) [{entry.Language}]: {cleanDef}";
+
+                    var subtitle = "";
+                    var example = def.ParsedExamples?.FirstOrDefault();
+                    if (example is not null) {
+                        subtitle = $"\"{DictionaryApiClient.StripHtml(example.Example)}\"";
+                    }
+
+                    var capturedUrl = wiktionaryUrl;
                     results.Add(new ResultItemViewModel {
                         IconBytes = IconBytes,
                         Title = title,
                         Subtitle = subtitle,
                         Category = "Definition",
                         Score = score,
-                        OnActivate = capturedUrl != null
-                            ? () => {
-                                var browser = settings.ActiveBrowser;
-                                if (browser is not null)
-                                    browserDiscovery.OpenUrl(capturedUrl, browser);
-                            }
-                            : null,
+                        OnActivate = () => {
+                            var browser = settings.ActiveBrowser;
+                            if (browser is not null)
+                                browserDiscovery.OpenUrl(capturedUrl, browser);
+                        },
                     });
                 }
                 if (results.Count >= limit) break;
@@ -100,7 +98,8 @@ public class DictionarySource(
         }
 
         if (results.Count > 0) {
-            logger.LogDebug("Dictionary query=\"{Word}\" languages={Languages} results={Count}", searchWord, string.Join(",", languages), results.Count);
+            logger.LogDebug("Dictionary query=\"{Word}\" languages=[{Languages}] results={Count}",
+                searchWord, string.Join(",", languages), results.Count);
             yield return results;
         }
     }

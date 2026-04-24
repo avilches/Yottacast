@@ -41,25 +41,40 @@ public static class AppDefaults {
     public const int DictionaryTimeoutSeconds = 5;
     /// Default prefix to activate dictionary lookup.
     public const string DictionaryDefaultPrefix = "define";
-    /// Default languages for dictionary lookups.
-    public static readonly string[] DictionaryDefaultLanguages = ["en"];
-    /// All languages supported by the Free Dictionary API.
+    /// Default languages enabled for dictionary lookups.
+    public static readonly List<string> DictionaryDefaultLanguages = ["en"];
+    /// All languages available for dictionary lookups via Wiktionary.
     public static readonly (string Code, string Name)[] DictionaryAvailableLanguages = [
         ("en", "English"),
         ("es", "Spanish"),
         ("fr", "French"),
         ("de", "German"),
         ("it", "Italian"),
-        ("pt-BR", "Portuguese (Brazil)"),
+        ("pt", "Portuguese"),
         ("ru", "Russian"),
         ("ar", "Arabic"),
         ("hi", "Hindi"),
         ("ja", "Japanese"),
         ("ko", "Korean"),
+        ("zh", "Chinese"),
         ("tr", "Turkish"),
-        ("cs", "Czech"),
         ("nl", "Dutch"),
-        ("sk", "Slovak"),
+        ("pl", "Polish"),
+        ("sv", "Swedish"),
+        ("cs", "Czech"),
+        ("da", "Danish"),
+        ("fi", "Finnish"),
+        ("el", "Greek"),
+        ("he", "Hebrew"),
+        ("hu", "Hungarian"),
+        ("id", "Indonesian"),
+        ("no", "Norwegian"),
+        ("ro", "Romanian"),
+        ("th", "Thai"),
+        ("uk", "Ukrainian"),
+        ("vi", "Vietnamese"),
+        ("ca", "Catalan"),
+        ("gl", "Galician"),
     ];
 
     // ── Updates ───────────────────────────────────────────────────────────────

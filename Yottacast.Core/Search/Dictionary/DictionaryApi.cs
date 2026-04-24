@@ -1,66 +1,60 @@
-using System.Net.Http.Json;
+using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 
 namespace Yottacast.Core.Search.Dictionary;
 
-public record DictionaryApiResponse {
-    [JsonPropertyName("word")]
-    public string Word { get; init; } = "";
-
-    [JsonPropertyName("phonetics")]
-    public List<DictionaryPhonetic> Phonetics { get; init; } = [];
-
-    [JsonPropertyName("meanings")]
-    public List<DictionaryMeaning> Meanings { get; init; } = [];
-
-    [JsonPropertyName("sourceUrls")]
-    public List<string> SourceUrls { get; init; } = [];
-}
-
-public record DictionaryPhonetic {
-    [JsonPropertyName("text")]
-    public string? Text { get; init; }
-
-    [JsonPropertyName("audio")]
-    public string? Audio { get; init; }
-}
-
-public record DictionaryMeaning {
+public record WiktionaryEntry {
     [JsonPropertyName("partOfSpeech")]
     public string PartOfSpeech { get; init; } = "";
 
-    [JsonPropertyName("definitions")]
-    public List<DictionaryDefinition> Definitions { get; init; } = [];
+    [JsonPropertyName("language")]
+    public string Language { get; init; } = "";
 
-    [JsonPropertyName("synonyms")]
-    public List<string> Synonyms { get; init; } = [];
+    [JsonPropertyName("definitions")]
+    public List<WiktionaryDefinition> Definitions { get; init; } = [];
 }
 
-public record DictionaryDefinition {
+public record WiktionaryDefinition {
     [JsonPropertyName("definition")]
     public string Definition { get; init; } = "";
 
-    [JsonPropertyName("example")]
-    public string? Example { get; init; }
+    [JsonPropertyName("parsedExamples")]
+    public List<WiktionaryExample>? ParsedExamples { get; init; }
+}
 
-    [JsonPropertyName("synonyms")]
-    public List<string> Synonyms { get; init; } = [];
+public record WiktionaryExample {
+    [JsonPropertyName("example")]
+    public string Example { get; init; } = "";
 }
 
 public static class DictionaryApiClient {
-    private const string BaseUrl = "https://api.dictionaryapi.dev/api/v2/entries/";
+    private const string BaseUrl = "https://en.wiktionary.org/api/rest_v1/page/definition/";
 
-    public static async Task<DictionaryApiResponse?> LookupAsync(HttpClient http, string word, string language, ILogger logger, CancellationToken ct) {
+    private static readonly Regex HtmlTagRegex = new("<[^>]+>", RegexOptions.Compiled);
+
+    public static string StripHtml(string html) => HtmlTagRegex.Replace(html, "").Trim();
+
+    public static async Task<Dictionary<string, List<WiktionaryEntry>>?> LookupAsync(
+        HttpClient http, string word, ILogger logger, CancellationToken ct) {
         try {
-            var url = BaseUrl + language + "/" + Uri.EscapeDataString(word);
-            var responses = await http.GetFromJsonAsync<List<DictionaryApiResponse>>(url, ct);
-            return responses?.FirstOrDefault();
+            var url = BaseUrl + Uri.EscapeDataString(word);
+            var response = await http.GetAsync(url, ct);
+            if (!response.IsSuccessStatusCode) {
+                logger.LogDebug("Wiktionary API {Status} for '{Word}'", response.StatusCode, word);
+                return null;
+            }
+            var json = await response.Content.ReadAsStringAsync(ct);
+            return JsonSerializer.Deserialize<Dictionary<string, List<WiktionaryEntry>>>(json);
         } catch (HttpRequestException ex) {
-            logger.LogDebug("Dictionary API error for '{Word}' [{Language}]: {Message}", word, language, ex.Message);
+            logger.LogDebug("Wiktionary API error for '{Word}': {Message}", word, ex.Message);
+            return null;
+        } catch (JsonException ex) {
+            logger.LogDebug("Wiktionary API parse error for '{Word}': {Message}", word, ex.Message);
             return null;
         } catch (Exception ex) when (ex is not OperationCanceledException) {
-            logger.LogWarning("Dictionary API unexpected error for '{Word}' [{Language}]: {Message}", word, language, ex.Message);
+            logger.LogWarning("Wiktionary API unexpected error for '{Word}': {Message}", word, ex.Message);
             return null;
         }
     }
