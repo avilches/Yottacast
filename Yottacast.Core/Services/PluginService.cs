@@ -50,6 +50,7 @@ public class PluginService(ILogger<PluginService> logger) : IDisposable {
 
     private async Task ReloadAsync() {
         var plugins = new List<WebSearchPlugin>();
+        var seen = new HashSet<string>();
 
         foreach (var file in Directory.EnumerateFiles(AppPaths.PluginsDir, "websearch.*.json")) {
             try {
@@ -58,6 +59,10 @@ public class PluginService(ILogger<PluginService> logger) : IDisposable {
                 if (raw is null) continue;
                 if (string.IsNullOrWhiteSpace(raw.Id) || string.IsNullOrWhiteSpace(raw.Name) || string.IsNullOrWhiteSpace(raw.QueryUrl)) {
                     logger.LogWarning("Plugin {File}: missing required fields (id, name, queryUrl), skipping", Path.GetFileName(file));
+                    continue;
+                }
+                if (!seen.Add(raw.Id)) {
+                    logger.LogWarning("Plugin {File}: duplicate id '{Id}', skipping", Path.GetFileName(file), raw.Id);
                     continue;
                 }
 

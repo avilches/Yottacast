@@ -65,7 +65,10 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
                             continue;
                         }
                         var id = UserThemePrefix + themeId;
-                        if (!seen.Add(id)) continue;
+                        if (!seen.Add(id)) {
+                            logger.LogWarning("User theme {File}: duplicate id '{Id}', skipping", Path.GetFileName(file), themeId);
+                            continue;
+                        }
                         var displayName = json?["name"]?.GetValue<string>() ?? themeId;
                         themes.Add(new ThemeOption(id, displayName));
                     } catch {
