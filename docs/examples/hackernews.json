@@ -1,5 +1,4 @@
 {
-  "type": "WebSearch",
   "id": "hackernews",
   "name": "Hacker News",
   "group": "dev",

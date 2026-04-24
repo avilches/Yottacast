@@ -288,15 +288,19 @@ Los tokens que no se pueden interpretar se omiten silenciosamente, conservando e
 
 ## Temas de usuario
 
-Los usuarios pueden instalar temas personalizados colocando ficheros JSON en `AppPaths.PluginsDir` (la carpeta `plugins/` dentro del directorio de configuracion de la app). El fichero debe incluir `"type": "theme"` (case-insensitive) para ser reconocido como tema.
+Los usuarios pueden instalar temas personalizados colocando ficheros JSON en `AppPaths.PluginsDir` (la carpeta `plugins/` dentro del directorio de configuracion de la app). Los temas se detectan por convencion de nombre de archivo: `theme.*.json` (ej. `theme.my-custom.json`).
+
+### Requisitos del JSON
+
+El fichero debe incluir un campo `"id"` obligatorio en el nivel raiz. Sin este campo, el tema se ignora con un warning en el log. El `id` se usa como identificador interno del tema (prefijado con `user:`).
 
 ### Identificacion
 
-Los temas de usuario se identifican con el prefijo `user:` en su ID. Un fichero `my-theme.json` en la carpeta de plugins produce el ID `"user:my-theme"`. Esto evita colisiones con temas built-in.
+Los temas de usuario se identifican con el prefijo `user:` en su ID. Un fichero `theme.my-theme.json` con `"id": "my-theme"` produce el ID `"user:my-theme"`. Esto evita colisiones con temas built-in. La ruta del fichero se deriva del ID: `theme.{id}.json`.
 
 ### Formato
 
-El formato es identico al de los temas built-in (mismas secciones y tokens), con la adicion obligatoria del campo `"type": "theme"` en el nivel raiz del JSON.
+El formato es identico al de los temas built-in (mismas secciones y tokens). No se requiere campo `"type"` — la deteccion es por nombre de archivo.
 
 ### Recarga automatica del tema activo
 
@@ -304,12 +308,13 @@ Si el tema seleccionado es de usuario, ThemeService vigila su fichero con un `Fi
 
 ### Actualizacion del picker en Settings
 
-Un segundo watcher vigila la carpeta de plugins para detectar temas anadidos o eliminados. Cuando cambia la lista de ficheros, se dispara el evento `ThemesChanged` y el picker de temas en Settings se actualiza automaticamente, preservando la seleccion actual si sigue disponible.
+ThemeService se suscribe al evento `PluginsChanged` del `PluginService` central (que vigila `*.json` en la carpeta de plugins). Cuando cambia la lista de ficheros, se dispara el evento `ThemesChanged` y el picker de temas en Settings se actualiza automaticamente, preservando la seleccion actual si sigue disponible.
 
 > **Verificar en:**
-> - `ThemeService.StartWatching()` -- creacion de watchers.
-> - `ThemeService.WatchActiveTheme()` -- watcher del fichero activo.
-> - `ThemeService.AvailableThemes()` -- escaneo de plugins con filtro `"type": "theme"`.
+> - `PluginService.SetupWatcher()` -- watcher central del directorio de plugins.
+> - `ThemeService.StartWatching()` -- suscripcion a `PluginService.PluginsChanged` y watcher del tema activo.
+> - `ThemeService.WatchActiveTheme()` -- watcher del fichero activo para hot-reload.
+> - `ThemeService.AvailableThemes()` -- escaneo de plugins con filtro `theme.*.json` y validacion de `id`.
 > - `SettingsWindowViewModel.OnThemesChanged()` -- actualizacion del picker.
 
 ---

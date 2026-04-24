@@ -6,10 +6,9 @@ using Yottacast.Core.Search.WebSearch;
 namespace Yottacast.Core.Services;
 
 /// <summary>
-/// Loads and monitors WebSearch plugins from AppPaths.PluginsDir.
-/// Each plugin is a JSON file with "type": "WebSearch".
-/// Plugin icons are downloaded from their iconUrl and cached in AppPaths.PluginIconCacheDir.
-/// On every reload (startup or file change), missing icons are re-attempted.
+/// Central watcher for the plugins directory (AppPaths.PluginsDir).
+/// Monitors all *.json files and fires PluginsChanged on any addition, removal or modification.
+/// Also loads WebSearch plugins (websearch.*.json) and caches their icons.
 /// </summary>
 public class PluginService(ILogger<PluginService> logger) : IDisposable {
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(10) };
@@ -17,7 +16,7 @@ public class PluginService(ILogger<PluginService> logger) : IDisposable {
 
     public IReadOnlyList<WebSearchPlugin> Plugins { get; private set; } = [];
 
-    /// <summary>Fired on the thread pool when plugins are reloaded (added, removed, or changed).</summary>
+    /// <summary>Fired on the thread pool when any *.json file in the plugins directory changes.</summary>
     public event Action? PluginsChanged;
 
     // In-memory icon cache: pluginId → PNG/ICO bytes (null if unavailable)
@@ -52,12 +51,11 @@ public class PluginService(ILogger<PluginService> logger) : IDisposable {
     private async Task ReloadAsync() {
         var plugins = new List<WebSearchPlugin>();
 
-        foreach (var file in Directory.EnumerateFiles(AppPaths.PluginsDir, "*.json")) {
+        foreach (var file in Directory.EnumerateFiles(AppPaths.PluginsDir, "websearch.*.json")) {
             try {
                 var json = await File.ReadAllTextAsync(file);
                 var raw = JsonSerializer.Deserialize<PluginFileData>(json, JsonOptions);
                 if (raw is null) continue;
-                if (!string.Equals(raw.Type, "WebSearch", StringComparison.OrdinalIgnoreCase)) continue;
                 if (string.IsNullOrWhiteSpace(raw.Id) || string.IsNullOrWhiteSpace(raw.Name) || string.IsNullOrWhiteSpace(raw.QueryUrl)) {
                     logger.LogWarning("Plugin {File}: missing required fields (id, name, queryUrl), skipping", Path.GetFileName(file));
                     continue;
@@ -134,7 +132,6 @@ public class PluginService(ILogger<PluginService> logger) : IDisposable {
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     private record PluginFileData {
-        [JsonPropertyName("type")]               public string? Type              { get; init; }
         [JsonPropertyName("id")]                 public string? Id                { get; init; }
         [JsonPropertyName("name")]               public string? Name              { get; init; }
         [JsonPropertyName("queryUrl")]           public string? QueryUrl          { get; init; }
