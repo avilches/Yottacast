@@ -220,9 +220,22 @@ public partial class MainWindow : Window {
 
             // Cmd+Shift+F in emoji mode: toggle favorite on the selected emoji.
             case Key.F when e.KeyModifiers == (KeyModifiers.Meta | KeyModifiers.Shift):
-                if (vm.SelectedResult is { OnToggleFavorite: { } favAction }) {
+                if (vm.SelectedResult is EmojiGridResultViewModel { OnToggleFavorite: { } favAction } emojiGrid) {
+                    var previousIndex = emojiGrid.SelectedEmojiIndex;
+                    var selectedChar = emojiGrid.SelectedEmoji?.Char;
                     favAction();
+                    var justMarked = emojiGrid.SelectedEmoji?.IsFavorite ?? false;
                     vm.RefreshSearch();
+                    if (vm.SelectedResult is EmojiGridResultViewModel newGrid) {
+                        if (justMarked && selectedChar != null) {
+                            // Marked: cursor follows the emoji to its new position in Favorites
+                            var idx = newGrid.Cells.ToList().FindIndex(c => c.Char == selectedChar);
+                            if (idx >= 0) newGrid.SelectedEmojiIndex = idx;
+                        } else {
+                            // Unmarked: cursor stays at same index position (clamped)
+                            newGrid.SelectedEmojiIndex = Math.Min(previousIndex, newGrid.Cells.Count - 1);
+                        }
+                    }
                     e.Handled = true;
                 }
                 break;

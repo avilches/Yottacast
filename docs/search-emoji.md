@@ -75,7 +75,10 @@ Las cabeceras de seccion se renderizan en la UI con estilos controlados por tema
 
 Las celdas de emojis favoritos tienen `IsFavorite = true` mostrando una estrella en la esquina. Las celdas con uso previo muestran un contador de uso (`UsageCount`).
 
-Al alternar favorito con `OnToggleFavorite`, se invoca `RefreshSearch()` en el ViewModel, que reconstruye el grid completo, reflejando inmediatamente el cambio en la seccion de favoritos.
+Al alternar favorito con `OnToggleFavorite`, se reconstruye el grid en ambos casos. El comportamiento del cursor depende de la accion:
+
+- **Marcar como favorito**: el cursor sigue al emoji a su nueva posicion en la seccion de favoritos.
+- **Desmarcar favorito**: el cursor se mantiene en el mismo indice numerico (clampeado al nuevo total de celdas), apuntando al siguiente emoji disponible en lugar de seguir al emoji desmarcado.
 
 **Invariante:** cada emoji aparece exactamente una vez en el grid. Si es favorito, en la seccion de favoritos; si no es favorito pero tiene uso, en frecuentes; el resto en su categoria Unicode. No se muestran secciones vacias.
 

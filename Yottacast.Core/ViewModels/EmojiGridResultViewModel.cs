@@ -90,16 +90,73 @@ public class EmojiGridResultViewModel : ResultItemViewModel, INotifyPropertyChan
 
     public void SelectNext()     => SelectedEmojiIndex = (SelectedEmojiIndex + 1)       % Cells.Count;
     public void SelectPrevious() => SelectedEmojiIndex = (SelectedEmojiIndex - 1 + Cells.Count) % Cells.Count;
+
+    private record SectionRange(int Start, int Count);
+
+    private IReadOnlyList<SectionRange> GetSectionRanges() {
+        if (Cells.Count == 0) return [];
+        var ranges = new List<SectionRange>();
+        int start = 0;
+        string currentKey = SectionKey(Cells[0]);
+        for (int i = 1; i < Cells.Count; i++) {
+            var key = SectionKey(Cells[i]);
+            if (key != currentKey) {
+                ranges.Add(new SectionRange(start, i - start));
+                start = i;
+                currentKey = key;
+            }
+        }
+        ranges.Add(new SectionRange(start, Cells.Count - start));
+        return ranges;
+    }
+
+    private (int SectionIndex, int Row, int Col) GetPosition(IReadOnlyList<SectionRange> sections) {
+        for (int s = 0; s < sections.Count; s++) {
+            var sec = sections[s];
+            if (_selectedEmojiIndex >= sec.Start && _selectedEmojiIndex < sec.Start + sec.Count) {
+                int pos = _selectedEmojiIndex - sec.Start;
+                return (s, pos / Columns, pos % Columns);
+            }
+        }
+        return (0, 0, 0);
+    }
+
     public bool SelectDown() {
-        if (SelectedEmojiIndex + Columns >= Cells.Count) return false;
-        SelectedEmojiIndex += Columns;
-        return true;
+        var sections = GetSectionRanges();
+        var (sIdx, row, col) = GetPosition(sections);
+        var sec = sections[sIdx];
+        int totalRows = (sec.Count + Columns - 1) / Columns;
+
+        if (row + 1 < totalRows) {
+            int target = sec.Start + (row + 1) * Columns + col;
+            SelectedEmojiIndex = Math.Min(target, sec.Start + sec.Count - 1);
+            return true;
+        }
+        if (sIdx + 1 < sections.Count) {
+            var next = sections[sIdx + 1];
+            int target = next.Start + col;
+            SelectedEmojiIndex = Math.Min(target, next.Start + next.Count - 1);
+            return true;
+        }
+        return false;
     }
 
     public bool SelectUp() {
-        if (SelectedEmojiIndex < Columns) return false;
-        SelectedEmojiIndex -= Columns;
-        return true;
+        var sections = GetSectionRanges();
+        var (sIdx, row, col) = GetPosition(sections);
+
+        if (row > 0) {
+            SelectedEmojiIndex = sections[sIdx].Start + (row - 1) * Columns + col;
+            return true;
+        }
+        if (sIdx > 0) {
+            var prev = sections[sIdx - 1];
+            int lastRow = (prev.Count - 1) / Columns;
+            int target = prev.Start + lastRow * Columns + col;
+            SelectedEmojiIndex = Math.Min(target, prev.Start + prev.Count - 1);
+            return true;
+        }
+        return false;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

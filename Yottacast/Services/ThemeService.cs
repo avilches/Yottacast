@@ -27,25 +27,36 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
     private CancellationTokenSource? _debounceCts;
     private string? _activeThemeId;
 
+    // Maps theme id → actual file path on disk (populated by AvailableThemes, covers all themes)
+    private readonly Dictionary<string, string> _themePaths = new();
+
     public event Action? ThemesChanged;
 
     public static bool IsUserTheme(string id) => id.StartsWith(UserThemePrefix);
 
-    private static string UserThemeFilePath(string id) =>
-        Path.Combine(AppPaths.PluginsDir, "theme." + id[UserThemePrefix.Length..] + ".json");
+    private string? ThemeFilePath(string id) => _themePaths.GetValueOrDefault(id);
 
     public IReadOnlyList<ThemeOption> AvailableThemes() {
         var themes = new List<ThemeOption>();
         var seen   = new HashSet<string>();
+        _themePaths.Clear();
+
+        // Built-in themes
         try {
             foreach (var file in Directory.GetFiles(ThemesFolder, "*.json").OrderBy(f => f)) {
-                var id = Path.GetFileNameWithoutExtension(file);
-                if (!seen.Add(id)) continue;
                 try {
                     var json = JsonNode.Parse(File.ReadAllText(file));
+                    var id = json?["id"]?.GetValue<string>();
+                    if (string.IsNullOrWhiteSpace(id))
+                        id = Path.GetFileNameWithoutExtension(file);
+                    if (!seen.Add(id)) continue;
+                    _themePaths[id] = file;
                     var displayName = json?["name"]?.GetValue<string>() ?? id;
                     themes.Add(new ThemeOption(id, displayName));
                 } catch {
+                    var id = Path.GetFileNameWithoutExtension(file);
+                    if (!seen.Add(id)) continue;
+                    _themePaths[id] = file;
                     themes.Add(new ThemeOption(id, id));
                 }
             }
@@ -53,7 +64,7 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
             logger.LogWarning("Could not load themes: {Message}", ex.Message);
         }
 
-        // Scan user themes from plugins directory (theme.*.json files with required "id" field)
+        // User themes from plugins directory (theme.*.json files with required "id" field)
         try {
             if (Directory.Exists(AppPaths.PluginsDir)) {
                 foreach (var file in Directory.GetFiles(AppPaths.PluginsDir, "theme.*.json").OrderBy(f => f)) {
@@ -69,6 +80,7 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
                             logger.LogWarning("User theme {File}: duplicate id '{Id}', skipping", Path.GetFileName(file), themeId);
                             continue;
                         }
+                        _themePaths[id] = file;
                         var displayName = json?["name"]?.GetValue<string>() ?? themeId;
                         themes.Add(new ThemeOption(id, displayName));
                     } catch {
@@ -104,8 +116,9 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
 
         if (!IsUserTheme(themeId)) return;
 
-        var fileName = "theme." + themeId[UserThemePrefix.Length..] + ".json";
-        _activeThemeWatcher = new FileSystemWatcher(AppPaths.PluginsDir, fileName) {
+        var filePath = ThemeFilePath(themeId);
+        if (filePath == null) return;
+        _activeThemeWatcher = new FileSystemWatcher(AppPaths.PluginsDir, Path.GetFileName(filePath)) {
             NotifyFilter = NotifyFilters.LastWrite,
             EnableRaisingEvents = true
         };
@@ -123,10 +136,11 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
 
     public void Apply(string themeName) {
         try {
-            var themePath = IsUserTheme(themeName)
-                ? UserThemeFilePath(themeName)
-                : Path.Combine(ThemesFolder, $"{themeName}.json");
-            if (!File.Exists(themePath)) {
+            // Ensure the path cache is populated (may be empty on first Apply at startup)
+            if (!_themePaths.ContainsKey(themeName))
+                AvailableThemes();
+            var themePath = ThemeFilePath(themeName);
+            if (themePath == null || !File.Exists(themePath)) {
                 logger.LogWarning("Theme file not found: {Path}, using built-in default", themePath);
                 ApplyBuiltinDefault();
                 return;

@@ -464,6 +464,122 @@ public class EmojiSearchTests {
         Assert.False(grid.HasPinnedSection);
         Assert.Equal("", grid.PinnedSectionHeader);
     }
+
+    // ── Section-aware navigation ─────────────────────────────────────────────
+
+    [Fact]
+    public async Task SelectDown_CrossesSectionBoundary() {
+        // Favorites: 2 emojis, Default: remaining. Down from favorites row should land in default section.
+        var json = MakeEmojiJson(15);
+        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(dir);
+        var usageStore = new EmojiUsageStore(Path.Combine(dir, "emoji-usage.json"), NullLogger<EmojiUsageStore>.Instance);
+        usageStore.ToggleFavorite("E1");
+        usageStore.ToggleFavorite("E2");
+
+        var search = await BuildSearchWithCache(json, usageStore);
+        var grid = search.Search(":", 100).OfType<EmojiGridResultViewModel>().First();
+
+        // Start at index 0 (first favorite), col 0
+        Assert.Equal("E1", grid.Cells[0].Char);
+        Assert.Equal(EmojiSection.Favorite, grid.Cells[0].Section);
+
+        // Down should go to first cell of default section (index 2), not index 0+Columns
+        grid.SelectDown();
+        Assert.Equal(2, grid.SelectedEmojiIndex);
+        Assert.Equal(EmojiSection.Default, grid.Cells[grid.SelectedEmojiIndex].Section);
+    }
+
+    [Fact]
+    public async Task SelectUp_CrossesSectionBoundary() {
+        var json = MakeEmojiJson(15);
+        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(dir);
+        var usageStore = new EmojiUsageStore(Path.Combine(dir, "emoji-usage.json"), NullLogger<EmojiUsageStore>.Instance);
+        usageStore.ToggleFavorite("E1");
+        usageStore.ToggleFavorite("E2");
+
+        var search = await BuildSearchWithCache(json, usageStore);
+        var grid = search.Search(":", 100).OfType<EmojiGridResultViewModel>().First();
+
+        // Move to first cell of default section
+        grid.SelectedEmojiIndex = 2;
+        Assert.Equal(EmojiSection.Default, grid.Cells[2].Section);
+
+        // Up from first row of default section should go to favorites
+        grid.SelectUp();
+        Assert.Equal(0, grid.SelectedEmojiIndex);
+        Assert.Equal(EmojiSection.Favorite, grid.Cells[0].Section);
+    }
+
+    [Fact]
+    public async Task SelectDown_ClampsColumnToShorterSection() {
+        // Favorites: 2 emojis. If cursor is at col 5 in default section row 0,
+        // going up to favorites (2 items) should clamp to col 1, then going back
+        // down should go to col 1 (not col 5).
+        var json = MakeEmojiJson(25);
+        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(dir);
+        var usageStore = new EmojiUsageStore(Path.Combine(dir, "emoji-usage.json"), NullLogger<EmojiUsageStore>.Instance);
+        usageStore.ToggleFavorite("E1");
+        usageStore.ToggleFavorite("E2");
+
+        var search = await BuildSearchWithCache(json, usageStore);
+        var grid = search.Search(":", 100).OfType<EmojiGridResultViewModel>().First();
+
+        // Move to col 5 in default section (flat index 2 + 5 = 7)
+        grid.SelectedEmojiIndex = 7;
+        Assert.Equal(EmojiSection.Default, grid.Cells[7].Section);
+
+        // Up: favorites has 2 items, clamps to col 1 (index 1)
+        grid.SelectUp();
+        Assert.Equal(1, grid.SelectedEmojiIndex);
+
+        // Down: should go to col 1 of default (index 2 + 1 = 3), NOT col 5
+        grid.SelectDown();
+        Assert.Equal(3, grid.SelectedEmojiIndex);
+    }
+
+    [Fact]
+    public async Task SelectDown_FromLastRowOfSection_GoesToNextSection() {
+        // Build a grid with 3 sections: favorite(3), mostused(3), default(20+)
+        var json = MakeEmojiJson(30);
+        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(dir);
+        var usageStore = new EmojiUsageStore(Path.Combine(dir, "emoji-usage.json"), NullLogger<EmojiUsageStore>.Instance);
+        usageStore.ToggleFavorite("E1");
+        usageStore.ToggleFavorite("E2");
+        usageStore.ToggleFavorite("E3");
+        usageStore.RecordUsage("E4"); usageStore.RecordUsage("E4");
+        usageStore.RecordUsage("E5"); usageStore.RecordUsage("E5");
+        usageStore.RecordUsage("E6");
+
+        var search = await BuildSearchWithCache(json, usageStore);
+        var grid = search.Search(":", 100).OfType<EmojiGridResultViewModel>().First();
+
+        // Verify layout: 3 favorites, 3 most-used, rest default
+        Assert.Equal(EmojiSection.Favorite, grid.Cells[0].Section);
+        Assert.Equal(EmojiSection.MostUsed, grid.Cells[3].Section);
+        int defaultStart = 6;
+        Assert.Equal(EmojiSection.Default, grid.Cells[defaultStart].Section);
+
+        // From favorites col 1 (index 1), down should go to most-used col 1 (index 4)
+        grid.SelectedEmojiIndex = 1;
+        grid.SelectDown();
+        Assert.Equal(4, grid.SelectedEmojiIndex);
+        Assert.Equal(EmojiSection.MostUsed, grid.Cells[4].Section);
+
+        // From most-used col 1 (index 4), down should go to default col 1 (index 7)
+        grid.SelectDown();
+        Assert.Equal(defaultStart + 1, grid.SelectedEmojiIndex);
+        Assert.Equal(EmojiSection.Default, grid.Cells[defaultStart + 1].Section);
+    }
+
+    private static string MakeEmojiJson(int count) {
+        var entries = Enumerable.Range(1, count)
+            .Select(i => $"""["E{i}","emoji {i}",["kw{i}"],"Cat A",{i}]""");
+        return "[" + string.Join(",", entries) + "]";
+    }
 }
 
 // ── Integration tests against the real embedded emoji-data.json ───────────────

@@ -65,6 +65,7 @@ Cada tema es un fichero `.json` en la carpeta `Themes/` del directorio de la apl
 
 | Seccion | Contenido |
 |---|---|
+| `id` | Identificador unico del tema (obligatorio; usado para deduplicacion y resolucion de ruta) |
 | `name` | Nombre para mostrar en el picker |
 | `variant` | `"light"` o `"dark"` (controla el `ThemeVariant` de Avalonia) |
 | `window` | Fondo, ancho, cornerRadius y fontFamily de la ventana |
@@ -248,20 +249,26 @@ Existe un fallback hardcodeado que replica exactamente el tema `dark-default.jso
 
 ## Descubrimiento de temas
 
-La lista de temas disponibles se construye a partir de los ficheros `*.json` en la carpeta `Themes/`, con las siguientes reglas:
+La lista de temas disponibles se construye escaneando dos fuentes en orden:
 
-1. Los ficheros se ordenan alfabeticamente por nombre.
-2. Si dos ficheros producen el mismo ID (nombre sin extension), solo se incluye el primero. Esto puede ocurrir con copias de conflicto de iCloud como `dark-default 2.json`.
-3. El nombre para mostrar se extrae del campo `"name"` del JSON. Si falla el parsing, se usa el ID del fichero como nombre.
-4. Despues de los temas built-in, se escanean los temas de usuario en `AppPaths.PluginsDir` (ver seccion "Temas de usuario").
-5. Si no se encuentra ningun tema, se anade un fallback `"dark-default"` / `"Dark Default"`.
+1. Ficheros `*.json` en `Themes/` (built-in), ordenados alfabeticamente.
+2. Ficheros `theme.*.json` en `AppPaths.PluginsDir` (user themes), ordenados alfabeticamente.
+
+Reglas de deduplicacion y resolucion:
+
+- El `id` de cada tema se lee del campo `"id"` del JSON. Si no existe, se usa el nombre del fichero sin extension como fallback (solo built-ins).
+- Si dos ficheros tienen el mismo `id`, solo se carga el primero. Esto filtra automaticamente las copias de conflicto de iCloud (`dark-default 2.json`) y los duplicados de user themes.
+- El nombre para mostrar se extrae del campo `"name"` del JSON. Si falla el parsing, se usa el `id` como nombre.
+- Si no se encuentra ningun tema, se anade un fallback `"dark-default"` / `"Dark Default"`.
+
+Al escanear, `ThemeService` construye un diccionario `id → path` que cubre todos los temas. Todas las operaciones posteriores (aplicar, vigilar cambios) resuelven la ruta del fichero a traves de este diccionario — el nombre del fichero no interviene en ninguna operacion posterior al escaneo.
 
 La carpeta de temas se resuelve relativa al directorio del ejecutable (`AppContext.BaseDirectory`), no al directorio de trabajo actual.
 
 Los ficheros JSON se copian al directorio de salida del build con `CopyToOutputDirectory=PreserveNewest`.
 
 > **Verificar en:**
-> - `ThemeService.AvailableThemes()` -- enumeracion y filtrado.
+> - `ThemeService.AvailableThemes()` -- enumeracion, deduplicacion por `id` y construccion de `_themePaths`.
 > - `ThemeService.ThemesFolder` -- resolucion de la ruta.
 > - `Yottacast.csproj` -- regla de copia de `Themes/**`.
 
@@ -296,7 +303,7 @@ El fichero debe incluir un campo `"id"` obligatorio en el nivel raiz. Sin este c
 
 ### Identificacion
 
-Los temas de usuario se identifican con el prefijo `user:` en su ID. Un fichero `theme.my-theme.json` con `"id": "my-theme"` produce el ID `"user:my-theme"`. Esto evita colisiones con temas built-in. La ruta del fichero se deriva del ID: `theme.{id}.json`.
+Los temas de usuario se identifican con el prefijo `user:` en su ID. Un fichero `theme.my-theme.json` con `"id": "my-theme"` produce el ID `"user:my-theme"`. Esto evita colisiones con temas built-in. El nombre del fichero y el valor de `id` son independientes — la ruta se resuelve siempre a traves del diccionario `_themePaths` construido al escanear.
 
 ### Formato
 
