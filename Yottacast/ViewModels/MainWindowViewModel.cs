@@ -65,6 +65,14 @@ public partial class MainWindowViewModel(
     public void CancelDeferredSearch() => _deferredCts?.Cancel();
     public void NotifyUserNavigated() => _userNavigated = true;
 
+    public void RefreshSearch() {
+        if (string.IsNullOrWhiteSpace(SearchText)) return;
+        var (items, hint) = globalSearch.SearchInstant(SearchText, limit: SearchSourceLimit);
+        _instantSnapshot = items;
+        SearchHint = hint;
+        RefreshResults();
+    }
+
     public void Initialize() {
         _ = CheckForUpdateAsync();
         appSearch.IconLoaded += OnAppCacheChanged;

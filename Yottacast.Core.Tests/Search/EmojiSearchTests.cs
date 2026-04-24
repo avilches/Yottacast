@@ -213,17 +213,14 @@ public class EmojiSearchTests {
         var search = await BuildSearchWithCache(json, usageStore);
         var grid = search.Search(":", 10).OfType<EmojiGridResultViewModel>().First();
 
-        // Pinned section: favorite first
+        // Favorite first
         Assert.Equal("🔥", grid.Cells[0].Char);
         Assert.True(grid.Cells[0].IsFavorite);
         Assert.Equal(EmojiSection.Favorite, grid.Cells[0].Section);
-        // Then ALL emojis in normal order (including fire again)
+        // Then remaining emojis in normal order (fire excluded — already in favorites)
         Assert.Equal("😀", grid.Cells[1].Char);
         Assert.Equal("😃", grid.Cells[2].Char);
-        Assert.Equal("🔥", grid.Cells[3].Char); // fire also appears in normal position
-        Assert.True(grid.Cells[3].IsFavorite);   // with IsFavorite=true
-        Assert.Equal(EmojiSection.Default, grid.Cells[3].Section);
-        Assert.Equal(4, grid.Cells.Count);
+        Assert.Equal(3, grid.Cells.Count);
     }
 
     [Fact]
@@ -247,20 +244,22 @@ public class EmojiSearchTests {
         var search = await BuildSearchWithCache(json, usageStore);
         var grid = search.Search(":", 10).OfType<EmojiGridResultViewModel>().First();
 
-        // Pinned section: favorite + most-used
+        // Favorite section
         Assert.Equal("🔥", grid.Cells[0].Char);  // favorite
+        Assert.Equal(EmojiSection.Favorite, grid.Cells[0].Section);
+        // Most-used section (excluding favorite)
         Assert.Equal("👍", grid.Cells[1].Char);  // most-used (2 uses)
+        Assert.Equal(EmojiSection.MostUsed, grid.Cells[1].Section);
         Assert.Equal("😃", grid.Cells[2].Char);  // most-used (1 use)
-        // Normal section: ALL emojis in sort order
+        Assert.Equal(EmojiSection.MostUsed, grid.Cells[2].Section);
+        // Remaining emojis in sort order (excluding already-seen)
         Assert.Equal("😀", grid.Cells[3].Char);
-        Assert.Equal("😃", grid.Cells[4].Char);  // appears again in normal position
-        Assert.Equal("🔥", grid.Cells[5].Char);  // appears again in normal position
-        Assert.Equal("👍", grid.Cells[6].Char);  // appears again in normal position
-        Assert.Equal(7, grid.Cells.Count);
+        Assert.Equal(EmojiSection.Default, grid.Cells[3].Section);
+        Assert.Equal(4, grid.Cells.Count);
     }
 
     [Fact]
-    public async Task DefaultGrid_EmojisAppearInBothPinnedAndNormalSections() {
+    public async Task DefaultGrid_EachEmojiAppearsExactlyOnce() {
         var json = """
         [
           ["😀","grinning face",["grinning"],"Smileys & Emotion",1],
@@ -276,14 +275,13 @@ public class EmojiSearchTests {
         var search = await BuildSearchWithCache(json, usageStore);
         var grid = search.Search(":", 10).OfType<EmojiGridResultViewModel>().First();
 
-        // Fire appears in pinned (as favorite, not most-used since it's already a favorite)
+        // Fire appears once as favorite (not duplicated in normal section)
         Assert.Equal("🔥", grid.Cells[0].Char);
         Assert.Equal(EmojiSection.Favorite, grid.Cells[0].Section);
-        // Then all emojis in normal order
+        // Then remaining emojis in normal order
         Assert.Equal("😀", grid.Cells[1].Char);
-        Assert.Equal("🔥", grid.Cells[2].Char); // fire appears again in normal position
-        Assert.Equal(EmojiSection.Default, grid.Cells[2].Section);
-        Assert.Equal(3, grid.Cells.Count);
+        Assert.Equal(EmojiSection.Default, grid.Cells[1].Section);
+        Assert.Equal(2, grid.Cells.Count);
     }
 
     [Fact]
@@ -295,6 +293,95 @@ public class EmojiSearchTests {
         Assert.NotNull(grid.OnCopy);
         Assert.True(grid.PasteAfterActivate); // the grid has PasteAfterActivate for Enter
         // OnCopy is a separate action that just copies — the caller (MainWindow) does not hide/paste
+    }
+
+    [Fact]
+    public async Task DefaultGrid_CellsHaveCorrectSections() {
+        var json = """
+        [
+          ["😀","grinning face",["grinning"],"Smileys & Emotion",1],
+          ["😃","grinning face with big eyes",["smiley"],"Smileys & Emotion",2],
+          ["🔥","fire",["fire"],"Travel & Places",3],
+          ["👍","thumbs up sign",["thumbsup"],"People & Body",4]
+        ]
+        """;
+        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(dir);
+        var usageStore = new EmojiUsageStore(Path.Combine(dir, "emoji-usage.json"), NullLogger<EmojiUsageStore>.Instance);
+        usageStore.ToggleFavorite("🔥");
+        usageStore.RecordUsage("👍");
+        usageStore.RecordUsage("👍");
+
+        var search = await BuildSearchWithCache(json, usageStore);
+        var grid = search.Search(":", 10).OfType<EmojiGridResultViewModel>().First();
+
+        Assert.Equal(EmojiSection.Favorite, grid.Cells[0].Section); // 🔥 is favorite
+        Assert.Equal(EmojiSection.MostUsed, grid.Cells[1].Section); // 👍 is most-used
+        Assert.Equal(EmojiSection.Default, grid.Cells[2].Section);  // 😀 is default
+        Assert.Equal(EmojiSection.Default, grid.Cells[3].Section);  // 😃 is default
+    }
+
+    [Fact]
+    public async Task DefaultGrid_VisibleSectionsGroupByCategory() {
+        var json = """
+        [
+          ["😀","grinning face",["grinning"],"Smileys & Emotion",1],
+          ["😃","grinning face with big eyes",["smiley"],"Smileys & Emotion",2],
+          ["🔥","fire",["fire"],"Travel & Places",3],
+          ["👍","thumbs up sign",["thumbsup"],"People & Body",4]
+        ]
+        """;
+        var search = await BuildSearchWithCache(json);
+        var grid = search.Search(":", 10).OfType<EmojiGridResultViewModel>().First();
+
+        var sections = grid.VisibleSections;
+        Assert.Equal(3, sections.Count);
+        Assert.Equal("Smileys & Emotion", sections[0].Header);
+        Assert.Equal(2, sections[0].Cells.Count);
+        Assert.Equal("Travel & Places", sections[1].Header);
+        Assert.Single(sections[1].Cells);
+        Assert.Equal("People & Body", sections[2].Header);
+        Assert.Single(sections[2].Cells);
+    }
+
+    [Fact]
+    public async Task DefaultGrid_VisibleSectionsIncludeFavoriteHeader() {
+        var json = """
+        [
+          ["😀","grinning face",["grinning"],"Smileys & Emotion",1],
+          ["🔥","fire",["fire"],"Travel & Places",2]
+        ]
+        """;
+        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(dir);
+        var usageStore = new EmojiUsageStore(Path.Combine(dir, "emoji-usage.json"), NullLogger<EmojiUsageStore>.Instance);
+        usageStore.ToggleFavorite("🔥");
+
+        var search = await BuildSearchWithCache(json, usageStore);
+        var grid = search.Search(":", 10).OfType<EmojiGridResultViewModel>().First();
+
+        var sections = grid.VisibleSections;
+        Assert.Equal("\u2605 Favorites", sections[0].Header);
+        Assert.Equal("🔥", sections[0].Cells[0].Char);
+        Assert.Equal("Smileys & Emotion", sections[1].Header);
+    }
+
+    [Fact]
+    public async Task DefaultGrid_CellsHaveUsageCount() {
+        var json = """[["😀","grinning face",["grinning"],"Smileys & Emotion",1]]""";
+        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(dir);
+        var usageStore = new EmojiUsageStore(Path.Combine(dir, "emoji-usage.json"), NullLogger<EmojiUsageStore>.Instance);
+        usageStore.RecordUsage("😀");
+        usageStore.RecordUsage("😀");
+        usageStore.RecordUsage("😀");
+
+        var search = await BuildSearchWithCache(json, usageStore);
+        var grid = search.Search(":", 10).OfType<EmojiGridResultViewModel>().First();
+
+        Assert.Equal(3, grid.Cells[0].UsageCount);
+        Assert.True(grid.Cells[0].HasUsageCount);
+        Assert.Equal("3", grid.Cells[0].UsageCountText);
     }
 
     [Fact]
@@ -320,7 +407,7 @@ public class EmojiSearchTests {
     }
 
     [Fact]
-    public async Task OnToggleFavorite_UpdatesAllCellsWithSameChar() {
+    public async Task OnToggleFavorite_UnfavoriteUpdatesSingleCell() {
         var json = """
         [
           ["😀","grinning face",["grinning"],"Smileys & Emotion",1],
@@ -330,22 +417,21 @@ public class EmojiSearchTests {
         var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(dir);
         var usageStore = new EmojiUsageStore(Path.Combine(dir, "emoji-usage.json"), NullLogger<EmojiUsageStore>.Instance);
-        usageStore.ToggleFavorite("🔥"); // fire is a favorite -> appears in pinned + normal
+        usageStore.ToggleFavorite("🔥"); // fire is a favorite
 
         var search = await BuildSearchWithCache(json, usageStore);
         var grid = search.Search(":", 10).OfType<EmojiGridResultViewModel>().First();
 
-        // Fire appears twice: pinned (index 0) and normal (index 2)
+        // Fire appears once as favorite (each emoji appears exactly once)
         var fireCells = grid.Cells.Where(c => c.Char == "🔥").ToList();
-        Assert.Equal(2, fireCells.Count);
-        Assert.All(fireCells, c => Assert.True(c.IsFavorite));
+        Assert.Single(fireCells);
+        Assert.True(fireCells[0].IsFavorite);
 
-        // Toggle off favorite on the first fire cell
+        // Toggle off favorite
         grid.SelectedEmojiIndex = 0;
         grid.OnToggleFavorite!();
 
-        // Both cells should be updated
-        Assert.All(fireCells, c => Assert.False(c.IsFavorite));
+        Assert.False(fireCells[0].IsFavorite);
         Assert.False(usageStore.IsFavorite("🔥"));
     }
 

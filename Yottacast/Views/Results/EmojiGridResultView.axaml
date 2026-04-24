@@ -1,59 +1,75 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:viewModels="clr-namespace:Yottacast.Core.ViewModels;assembly=Yottacast.Core"
-             xmlns:core="clr-namespace:Yottacast.Core;assembly=Yottacast.Core"
              x:Class="Yottacast.Views.Results.EmojiGridResultView"
              x:DataType="viewModels:EmojiGridResultViewModel">
     <StackPanel Orientation="Vertical" Margin="4,8,4,8">
-        <TextBlock Text="{Binding PinnedSectionHeader}"
-                   IsVisible="{Binding HasPinnedSection}"
-                   Foreground="{DynamicResource Theme.Emoji.SectionHeader.Color}"
-                   FontSize="{DynamicResource Theme.Emoji.SectionHeader.Size}"
-                   Opacity="{DynamicResource Theme.Emoji.SectionHeader.Opacity}"
-                   Margin="6,0,0,4"/>
-        <ItemsControl ItemsSource="{Binding VisibleCells}">
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <UniformGrid Columns="{DynamicResource Theme.Emoji.Columns}"/>
-                </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
+        <!-- Sectioned grid -->
+        <ItemsControl ItemsSource="{Binding VisibleSections}">
             <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="viewModels:EmojiCellViewModel">
-                    <Border Width="{DynamicResource Theme.Emoji.Cell.Size}"
-                            Height="{DynamicResource Theme.Emoji.Cell.Size}"
-                            CornerRadius="{DynamicResource Theme.Emoji.Cell.CornerRadius}" Margin="2"
-                            Classes.emoji-selected="{Binding IsSelected}">
-                        <Panel>
-                            <TextBlock Text="{Binding Char}"
-                                       FontSize="{DynamicResource Theme.Emoji.Char.Size}"
-                                       FontFamily="{DynamicResource Theme.Emoji.Char.FontFamily}"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            <TextBlock Text="★"
-                                       FontSize="8"
-                                       Foreground="{DynamicResource Theme.Emoji.Name.Color}"
-                                       Opacity="0.7"
-                                       HorizontalAlignment="Right" VerticalAlignment="Top"
-                                       Margin="0,2,4,0"
-                                       IsVisible="{Binding IsFavorite}"/>
-                        </Panel>
-                    </Border>
+                <DataTemplate x:DataType="viewModels:EmojiGridSection">
+                    <StackPanel>
+                        <!-- Section header (scrolls with content) -->
+                        <TextBlock Text="{Binding Header}"
+                                   Foreground="{DynamicResource Theme.Emoji.SectionHeader.Color}"
+                                   FontSize="{DynamicResource Theme.Emoji.SectionHeader.Size}"
+                                   Opacity="{DynamicResource Theme.Emoji.SectionHeader.Opacity}"
+                                   Margin="6,6,0,2"/>
+                        <!-- Emoji cells for this section -->
+                        <ItemsControl ItemsSource="{Binding Cells}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Columns="{DynamicResource Theme.Emoji.Columns}"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="viewModels:EmojiCellViewModel">
+                                    <Border Width="{DynamicResource Theme.Emoji.Cell.Size}"
+                                            Height="{DynamicResource Theme.Emoji.Cell.Size}"
+                                            CornerRadius="{DynamicResource Theme.Emoji.Cell.CornerRadius}" Margin="2"
+                                            Classes.emoji-selected="{Binding IsSelected}">
+                                        <Panel>
+                                            <TextBlock Text="{Binding Char}"
+                                                       FontSize="{DynamicResource Theme.Emoji.Char.Size}"
+                                                       FontFamily="{DynamicResource Theme.Emoji.Char.FontFamily}"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            <TextBlock Text="&#x2605;"
+                                                       FontSize="{DynamicResource Theme.Emoji.Favorite.Size}"
+                                                       Foreground="{DynamicResource Theme.Emoji.Favorite.Color}"
+                                                       Opacity="{DynamicResource Theme.Emoji.Favorite.Opacity}"
+                                                       HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                       Margin="0,2,4,0"
+                                                       IsVisible="{Binding IsFavorite}"/>
+                                            <TextBlock Text="{Binding UsageCountText}"
+                                                       FontSize="{DynamicResource Theme.Emoji.UsageCount.Size}"
+                                                       Foreground="{DynamicResource Theme.Emoji.UsageCount.Color}"
+                                                       Opacity="{DynamicResource Theme.Emoji.UsageCount.Opacity}"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                                                       Margin="0,0,0,1"
+                                                       IsVisible="{Binding HasUsageCount}"/>
+                                        </Panel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
+
+        <!-- Info panel -->
         <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Margin="0,6,0,0" Spacing="2">
-            <!-- Group: name -->
             <TextBlock Foreground="{DynamicResource Theme.Emoji.Name.Color}"
                        FontSize="{DynamicResource Theme.Emoji.Name.Size}"
                        FontWeight="Medium"
-                       HorizontalAlignment="Center"><Run Text="{Binding SelectedEmoji.Category}"/><Run Text=": "/><Run Text="{Binding SelectedEmoji.Name}"/></TextBlock>
-            <!-- Keywords -->
+                       HorizontalAlignment="Center">
+                <Run Text="{Binding SelectedEmoji.Category}"/><Run Text=": "/><Run Text="{Binding SelectedEmoji.Name}"/>
+            </TextBlock>
             <TextBlock Text="{Binding SelectedEmoji.KeywordsText}"
                        Foreground="{DynamicResource Theme.Emoji.Keywords.Color}"
                        FontSize="{DynamicResource Theme.Emoji.Keywords.Size}"
                        Opacity="{DynamicResource Theme.Emoji.Keywords.Opacity}"
-                       HorizontalAlignment="Center"
-                       TextWrapping="Wrap"
-                       MaxWidth="400"/>
+                       HorizontalAlignment="Center" TextWrapping="Wrap" MaxWidth="400"/>
         </StackPanel>
     </StackPanel>
 </UserControl>

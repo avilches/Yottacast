@@ -61,7 +61,9 @@
     "char":     { "size": 28, "fontFamily": "Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji" },
     "name":     { "color": "#EAEAEE", "size": 14 },
     "keywords": { "color": "#EAEAEE", "size": 12, "opacity": 0.55 },
-    "sectionHeader": { "color": "#EAEAEE", "size": 11, "opacity": 0.5 }
+    "sectionHeader": { "color": "#EAEAEE", "size": 11, "opacity": 0.5 },
+    "favorite": { "color": "#FFD60A", "size": 8, "opacity": 0.7 },
+    "usageCount": { "color": "#EAEAEE", "size": 9, "opacity": 0.4 }
   },
 
   "noResults": {

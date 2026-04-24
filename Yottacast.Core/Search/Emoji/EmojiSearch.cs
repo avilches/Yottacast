@@ -44,32 +44,27 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
 
     private IReadOnlyList<(EmojiEntry Entry, EmojiSection Section)> GetDefaultEmojis() {
         var charToEntry = _entries.ToDictionary(e => e.Char);
-        var result = new List<(EmojiEntry, EmojiSection)>();
+        var seen = new HashSet<string>();
+        var result = new List<(EmojiEntry Entry, EmojiSection Section)>();
 
-        // Pinned section: favorites + most-used, combined cap of MaxFavoriteRows * Columns
-        var maxPinned = AppDefaults.EmojiMaxFavoriteRows * AppDefaults.EmojiColumns;
-        var pinnedChars = new HashSet<string>();
-
-        foreach (var ch in usageStore.Favorites.Take(maxPinned)) {
-            if (charToEntry.TryGetValue(ch, out var entry) && pinnedChars.Add(ch))
+        // Favorites first, capped at MaxFavoriteRows * Columns
+        var maxFavorites = AppDefaults.EmojiMaxFavoriteRows * AppDefaults.EmojiColumns;
+        foreach (var ch in usageStore.Favorites.Take(maxFavorites)) {
+            if (charToEntry.TryGetValue(ch, out var entry) && seen.Add(ch))
                 result.Add((entry, EmojiSection.Favorite));
         }
 
-        // Most-used fills remaining space, excluding favorites to avoid duplicates within pinned section
-        var remainingSlots = maxPinned - pinnedChars.Count;
-        if (remainingSlots > 0) {
-            foreach (var ch in usageStore.GetMostUsed(maxPinned)) {
-                if (remainingSlots <= 0) break;
-                if (charToEntry.TryGetValue(ch, out var entry) && pinnedChars.Add(ch)) {
-                    result.Add((entry, EmojiSection.MostUsed));
-                    remainingSlots--;
-                }
-            }
+        // Most-used next, capped at MaxMostUsedRows * Columns
+        var maxMostUsed = AppDefaults.EmojiMaxMostUsedRows * AppDefaults.EmojiColumns;
+        foreach (var ch in usageStore.GetMostUsed(maxMostUsed)) {
+            if (charToEntry.TryGetValue(ch, out var entry) && seen.Add(ch))
+                result.Add((entry, EmojiSection.MostUsed));
         }
 
-        // All emojis in normal sort order (no exclusions — emojis appear in both pinned and normal sections)
+        // All emojis in normal sort order (excluding already-seen emojis)
         foreach (var entry in _entries.Where(e => e.SortOrder > 0).OrderBy(e => e.SortOrder)) {
-            result.Add((entry, EmojiSection.Default));
+            if (seen.Add(entry.Char))
+                result.Add((entry, EmojiSection.Default));
         }
 
         return result;
@@ -90,6 +85,7 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
             Category = x.Entry.Category,
             Keywords = x.Entry.Keywords,
             Section  = x.Section,
+            UsageCount = usageStore.GetUsageCount(x.Entry.Char),
             IsSelected = i == 0,
             IsFavorite = usageStore.IsFavorite(x.Entry.Char),
         }).ToList();

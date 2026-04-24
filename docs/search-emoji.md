@@ -23,14 +23,15 @@ Yottacast permite buscar e insertar emojis en cualquier aplicacion. El usuario e
 
 Los resultados se muestran como un unico item de tipo grid en la lista de resultados, en lugar de items individuales. El grid contiene:
 
-- Una cuadricula de celdas de 40x40 px con 8 columnas (constante `AppDefaults.EmojiColumns`).
+- Secciones con cabecera que agrupa emojis por tipo: favoritos, frecuentes y categorias Unicode (por ejemplo "Smileys & Emotion", "People & Body"). Cada seccion tiene un header visible que se desplaza con el contenido.
+- Cada seccion renderiza sus celdas en una `UniformGrid` con el numero de columnas definido por tema (`Theme.Emoji.Columns`).
 - Debajo del grid, informacion del emoji seleccionado: nombre, categoria y keywords.
 
 El primer emoji del grid aparece seleccionado inicialmente. El icono y titulo del resultado en la lista se toman del primer emoji del grid. La categoria del resultado siempre es `"Emoji"` y el score es `3.5`.
 
-**Invariante:** siempre se devuelve exactamente 0 o 1 resultado (nunca multiples items en la lista). Si no hay emojis que coincidan, no se muestra ningun resultado.
+**Invariante:** siempre se devuelve exactamente 0 o 1 resultado (nunca multiples items en la lista). Si no hay emojis que coincidan, no se muestra ningun resultado. Si no hay favoritos ni frecuentes, la primera seccion visible es la primera categoria Unicode — no se muestran secciones vacias.
 
-> **Verificar en:** `EmojiSearch.MakeGrid()` -- construccion del `EmojiGridResultViewModel`; `EmojiGridResultView.axaml` -- template AXAML con `UniformGrid` y panel de informacion.
+> **Verificar en:** `EmojiSearch.MakeGrid()` -- construccion del `EmojiGridResultViewModel`; `EmojiGridResultView.axaml` -- template AXAML con secciones (`EmojiGridSection`) y panel de informacion; `EmojiGridResultViewModel.VisibleSections` -- agrupacion del viewport en secciones.
 
 ---
 
@@ -64,18 +65,21 @@ La propiedad `IsEmojiMode` en `MainWindowViewModel` se recalcula cada vez que ca
 
 ## Favoritos y mas usados
 
-Al escribir `:` sin termino de busqueda, el grid por defecto muestra dos zonas:
+Al escribir `:` sin termino de busqueda, el grid por defecto muestra secciones diferenciadas con cabeceras visibles:
 
-1. **Seccion fijada ("Favorites & most used")**: emojis favoritos (marcados con Cmd+Shift+F, seccion `Favorite`) seguidos de los mas usados (seccion `MostUsed`), excluyendo los que ya son favoritos. El total combinado esta limitado a `EmojiMaxFavoriteRows * EmojiColumns` celdas (los mas usados rellenan el espacio que no ocupan los favoritos). Cuando esta seccion tiene contenido, se muestra una cabecera "★ Favorites & most used" encima del grid (`HasPinnedSection`, `PinnedSectionHeader` en `EmojiGridResultViewModel`).
-2. **Todos los emojis**: la lista completa de emojis en orden Unicode CLDR (`sort_order`), sin exclusiones. Un emoji que aparezca en la seccion fijada tambien aparece en su posicion normal.
+1. **Seccion "Favorites"**: emojis favoritos (marcados con Cmd+Shift+F), limitados a `EmojiMaxFavoriteRows * EmojiColumns` celdas. Cada celda tiene `Section = Favorite`.
+2. **Seccion "Frequently Used"**: emojis mas usados (excluyendo favoritos), limitados a `EmojiMaxMostUsedRows * EmojiColumns` celdas. Cada celda tiene `Section = MostUsed`.
+3. **Secciones por categoria Unicode**: la lista completa de emojis restantes en orden Unicode CLDR (`sort_order`), agrupados por su categoria ("Smileys & Emotion", "People & Body", etc.). Cada celda tiene `Section = Default` y la cabecera se toma de `Category`.
 
-Las celdas de emojis favoritos tienen `IsFavorite = true` en su `EmojiCellViewModel`, mostrando una estrella (★) en la esquina. Si un emoji aparece en ambas zonas (fijada y normal), ambas celdas muestran la estrella.
+Las cabeceras de seccion se renderizan en la UI con estilos controlados por tema (`Theme.Emoji.SectionHeader.*`). Las secciones se calculan en `EmojiGridResultViewModel.VisibleSections` agrupando las celdas visibles del viewport por `EmojiSection` y `Category`.
 
-Al alternar favorito con `OnToggleFavorite`, se actualiza `IsFavorite` en **todas** las celdas con el mismo caracter, no solo en la celda seleccionada.
+Las celdas de emojis favoritos tienen `IsFavorite = true` mostrando una estrella en la esquina. Las celdas con uso previo muestran un contador de uso (`UsageCount`).
 
-**Invariante:** un emoji puede aparecer hasta dos veces en el grid (una en la seccion fijada y otra en la seccion normal). Dentro de la seccion fijada no hay duplicados: un emoji favorito con uso alto solo aparece como favorito.
+Al alternar favorito con `OnToggleFavorite`, se invoca `RefreshSearch()` en el ViewModel, que reconstruye el grid completo, reflejando inmediatamente el cambio en la seccion de favoritos.
 
-> **Verificar en:** `EmojiSearch.GetDefaultEmojis()` -- logica de merge; `EmojiSearch.MakeGrid()` -- `OnToggleFavorite` actualiza todas las celdas; `EmojiUsageStore.Favorites`, `GetMostUsed()`; `AppDefaults.EmojiMaxFavoriteRows`; `EmojiGridResultViewModel.HasPinnedSection`, `PinnedSectionHeader`.
+**Invariante:** cada emoji aparece exactamente una vez en el grid. Si es favorito, en la seccion de favoritos; si no es favorito pero tiene uso, en frecuentes; el resto en su categoria Unicode. No se muestran secciones vacias.
+
+> **Verificar en:** `EmojiSearch.GetDefaultEmojis()` -- logica de merge con `EmojiSection`; `EmojiSearch.MakeGrid()` -- asignacion de `Section` y `UsageCount`; `EmojiUsageStore.Favorites`, `GetMostUsed()`, `GetUsageCount()`; `AppDefaults.EmojiMaxFavoriteRows`, `EmojiMaxMostUsedRows`; `EmojiGridResultViewModel.VisibleSections` -- agrupacion en secciones; `MainWindow.axaml.cs` -- `Key.F` handler invoca `RefreshSearch()`.
 
 ---
 

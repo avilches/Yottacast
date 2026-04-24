@@ -253,6 +253,12 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
                 SetBrush(app,  "Theme.Emoji.SectionHeader.Color",   emoji["sectionHeader"]?["color"]);
                 SetDouble(app, "Theme.Emoji.SectionHeader.Size",    emoji["sectionHeader"]?["size"]);
                 SetOpacity(app, "Theme.Emoji.SectionHeader.Opacity", emoji["sectionHeader"]?["opacity"]);
+                SetBrush(app,  "Theme.Emoji.Favorite.Color",   emoji["favorite"]?["color"]);
+                SetDouble(app, "Theme.Emoji.Favorite.Size",    emoji["favorite"]?["size"]);
+                SetOpacity(app, "Theme.Emoji.Favorite.Opacity", emoji["favorite"]?["opacity"]);
+                SetBrush(app,  "Theme.Emoji.UsageCount.Color",   emoji["usageCount"]?["color"]);
+                SetDouble(app, "Theme.Emoji.UsageCount.Size",    emoji["usageCount"]?["size"]);
+                SetOpacity(app, "Theme.Emoji.UsageCount.Opacity", emoji["usageCount"]?["opacity"]);
             }
 
             // ── No Results ──
@@ -385,6 +391,12 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
         app.Resources["Theme.Emoji.SectionHeader.Color"]   = B("#EAEAEE");
         app.Resources["Theme.Emoji.SectionHeader.Size"]    = 11.0;
         app.Resources["Theme.Emoji.SectionHeader.Opacity"] = 0.5;
+        app.Resources["Theme.Emoji.Favorite.Color"]   = B("#FFD60A");
+        app.Resources["Theme.Emoji.Favorite.Size"]    = 8.0;
+        app.Resources["Theme.Emoji.Favorite.Opacity"] = 0.7;
+        app.Resources["Theme.Emoji.UsageCount.Color"]   = B("#EAEAEE");
+        app.Resources["Theme.Emoji.UsageCount.Size"]    = 9.0;
+        app.Resources["Theme.Emoji.UsageCount.Opacity"] = 0.4;
 
         // ── No Results ──
         app.Resources["Theme.NoResults.Title.Color"]    = B("#505055");

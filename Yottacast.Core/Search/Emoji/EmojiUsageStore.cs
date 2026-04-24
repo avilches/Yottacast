@@ -35,6 +35,8 @@ public class EmojiUsageStore(string filePath, ILogger<EmojiUsageStore> logger) {
         Save();
     }
 
+    public int GetUsageCount(string ch) => _usage.TryGetValue(ch, out var count) ? count : 0;
+
     public IReadOnlyList<string> GetMostUsed(int max) =>
         _usage
             .Where(kv => !_favoriteSet.Contains(kv.Key))

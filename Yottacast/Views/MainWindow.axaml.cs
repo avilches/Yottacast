@@ -222,6 +222,7 @@ public partial class MainWindow : Window {
             case Key.F when e.KeyModifiers == (KeyModifiers.Meta | KeyModifiers.Shift):
                 if (vm.SelectedResult is { OnToggleFavorite: { } favAction }) {
                     favAction();
+                    vm.RefreshSearch();
                     e.Handled = true;
                 }
                 break;
