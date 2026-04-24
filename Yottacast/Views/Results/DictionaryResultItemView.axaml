@@ -1,0 +1,93 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:viewModels="clr-namespace:Yottacast.Core.ViewModels;assembly=Yottacast.Core"
+             x:Class="Yottacast.Views.Results.DictionaryResultItemView"
+             x:DataType="viewModels:DictionaryResultViewModel">
+    <Grid ColumnDefinitions="Auto,*,Auto" MinHeight="56">
+
+        <!-- Wiktionary icon -->
+        <Border Grid.Column="0"
+                Classes="icon-box"
+                Width="28" Height="28"
+                CornerRadius="{DynamicResource Theme.Results.Icon.CornerRadius}"
+                ClipToBounds="True"
+                VerticalAlignment="Top"
+                Margin="0,4,12,0">
+            <Image IsVisible="{Binding IconBytes, Converter={x:Static ObjectConverters.IsNotNull}}"
+                   Source="{Binding IconBytes, Converter={StaticResource PathToAppIcon}}"
+                   Width="28" Height="28"
+                   Stretch="UniformToFill"
+                   RenderOptions.BitmapInterpolationMode="HighQuality"/>
+        </Border>
+
+        <!-- Word + pills + definition + example -->
+        <StackPanel Grid.Column="1"
+                    Orientation="Vertical"
+                    VerticalAlignment="Center"
+                    Spacing="3">
+
+            <!-- Row 1: word + PartOfSpeech pill + Language pill -->
+            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <TextBlock Text="{Binding Word}"
+                           Foreground="{DynamicResource Theme.Results.Title.Color}"
+                           FontSize="{DynamicResource Theme.Results.Title.Size}"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"/>
+                <Border Background="{DynamicResource Theme.Results.Shortcut.Background}"
+                        CornerRadius="{DynamicResource Theme.Results.Shortcut.CornerRadius}"
+                        Padding="5,2"
+                        VerticalAlignment="Center">
+                    <TextBlock Text="{Binding PartOfSpeech}"
+                               Foreground="{DynamicResource Theme.Results.Category.Color}"
+                               FontSize="{DynamicResource Theme.Results.Category.Size}"/>
+                </Border>
+                <Border Background="{DynamicResource Theme.Results.Shortcut.Background}"
+                        CornerRadius="{DynamicResource Theme.Results.Shortcut.CornerRadius}"
+                        Padding="5,2"
+                        VerticalAlignment="Center"
+                        IsVisible="{Binding Language, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <TextBlock Text="{Binding Language}"
+                               Foreground="{DynamicResource Theme.Results.Category.Color}"
+                               FontSize="{DynamicResource Theme.Results.Category.Size}"/>
+                </Border>
+            </StackPanel>
+
+            <!-- Row 2: definition -->
+            <TextBlock Text="{Binding Definition}"
+                       Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
+                       FontSize="{DynamicResource Theme.Results.Subtitle.Size}"
+                       TextWrapping="Wrap"
+                       MaxLines="2"
+                       TextTrimming="CharacterEllipsis"/>
+
+            <!-- Row 3: example (optional) -->
+            <TextBlock IsVisible="{Binding Example, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                       Foreground="{DynamicResource Theme.Results.Category.Color}"
+                       FontSize="{DynamicResource Theme.Results.Category.Size}"
+                       FontStyle="Italic"
+                       TextTrimming="CharacterEllipsis">
+                <Run Text="&#x201C;"/><Run Text="{Binding Example}"/><Run Text="&#x201D;"/>
+            </TextBlock>
+
+        </StackPanel>
+
+        <!-- Right: category / score (debug) -->
+        <StackPanel Grid.Column="2"
+                    Orientation="Horizontal"
+                    VerticalAlignment="Top"
+                    Margin="12,6,0,0"
+                    Spacing="8">
+            <TextBlock x:CompileBindings="False"
+                       Text="Definition"
+                       Foreground="{DynamicResource Theme.Results.Category.Color}"
+                       FontSize="{DynamicResource Theme.Results.Category.Size}"
+                       IsVisible="{Binding !DataContext.IsAltPressed, ElementName=RootWindow}"/>
+            <TextBlock x:CompileBindings="False"
+                       Text="{Binding Score, StringFormat={}{0:F2}}"
+                       Foreground="{DynamicResource Theme.Results.Category.Color}"
+                       FontSize="{DynamicResource Theme.Results.Category.Size}"
+                       IsVisible="{Binding DataContext.IsAltPressed, ElementName=RootWindow}"/>
+        </StackPanel>
+
+    </Grid>
+</UserControl>

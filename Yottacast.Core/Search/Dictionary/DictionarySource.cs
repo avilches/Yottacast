@@ -57,6 +57,7 @@ public class DictionarySource(
         if (allEntries is null) yield break;
 
         var languages = new HashSet<string>(settings.DictionaryLanguages);
+        var multiLang = settings.DictionaryLanguages.Count > 1;
         var wiktionaryUrl = $"https://en.wiktionary.org/wiki/{Uri.EscapeDataString(searchWord)}";
         var results = new List<BaseResultItemViewModel>();
 
@@ -66,24 +67,26 @@ public class DictionarySource(
             foreach (var entry in entries) {
                 foreach (var def in entry.Definitions.Take(3)) {
                     if (results.Count >= limit) break;
+                    if (DictionaryApiClient.IsFormOfDefinition(def.Definition)) continue;
 
                     var cleanDef = DictionaryApiClient.StripHtml(def.Definition);
                     if (string.IsNullOrWhiteSpace(cleanDef)) continue;
 
-                    var title = $"{searchWord} ({entry.PartOfSpeech}) [{entry.Language}]: {cleanDef}";
-
-                    var subtitle = "";
+                    string? exampleText = null;
                     var example = def.ParsedExamples?.FirstOrDefault();
                     if (example is not null) {
-                        subtitle = $"\"{DictionaryApiClient.StripHtml(example.Example)}\"";
+                        var cleaned = DictionaryApiClient.StripHtml(example.Example);
+                        if (!string.IsNullOrWhiteSpace(cleaned)) exampleText = cleaned;
                     }
 
                     var capturedUrl = wiktionaryUrl;
-                    results.Add(new ResultItemViewModel {
+                    results.Add(new DictionaryResultViewModel {
                         IconBytes = IconBytes,
-                        Title = title,
-                        Subtitle = subtitle,
-                        Category = "Definition",
+                        Word = searchWord,
+                        PartOfSpeech = entry.PartOfSpeech,
+                        Language = multiLang ? entry.Language : null,
+                        Definition = cleanDef,
+                        Example = exampleText,
                         Score = score,
                         OnActivate = () => {
                             var browser = settings.ActiveBrowser;

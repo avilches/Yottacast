@@ -1,6 +1,6 @@
 # Definiciones de diccionario
 
-Yottacast puede buscar definiciones de palabras en un diccionario online multilingue. Los resultados muestran la palabra, su categoria gramatical (noun, verb, adjective...), el idioma, la definicion y opcionalmente un ejemplo de uso.
+Yottacast puede buscar definiciones de palabras en un diccionario online multilingue. Los resultados muestran la palabra, su categoría gramatical, opcionalmente el idioma, la definición y un ejemplo de uso.
 
 ---
 
@@ -21,13 +21,17 @@ Yottacast puede buscar definiciones de palabras en un diccionario online multili
 
 En modo `PrefixOnly` el score es 3.5 (intent explicito). En modo `ShowAlways` el score es 2.5, inferior al de web search (3.0), para que las definiciones no dominen sobre los resultados de busqueda web.
 
-## Titulo y subtitulo del resultado
+## Presentacion del resultado
 
-El titulo tiene el formato `"{word} ({partOfSpeech}) [{language}]: {definition}"`, p. ej. `"house (Noun) [English]: a structure built or serving as an abode"`.
+Cada resultado usa `DictionaryResultViewModel` y se renderiza con `DictionaryResultItemView`. El layout muestra:
 
-El subtitulo muestra el ejemplo de uso si existe (entre comillas). Si no hay ejemplo, queda vacio.
+- **Fila 1**: la palabra buscada en negrita, seguida de una pill con la categoría gramatical (Noun, Verb…). Si el usuario tiene más de un idioma configurado, aparece una segunda pill con el nombre del idioma.
+- **Fila 2**: texto de la definición (máx. 2 líneas, con ellipsis).
+- **Fila 3** (opcional): ejemplo de uso entre comillas tipográficas, en itálica y color más tenue.
 
-Se muestran hasta 3 definiciones por categoria gramatical, con un maximo global definido por `AppDefaults.SearchSourceLimit`.
+La etiqueta de idioma **no aparece** cuando solo hay un idioma configurado (`DictionaryLanguages.Count == 1`).
+
+Se muestran hasta 3 definiciones por entrada (partOfSpeech), con un máximo global definido por `AppDefaults.SearchSourceLimit`. Las definiciones de inflexión gramatical (`form-of-definition` en el HTML) se descartan. El HTML del API se limpia extrayendo el texto antes del primer `<ol>` (o el contenido del primer `<li>` si no hay texto previo), eliminando las etiquetas restantes y colapsando espacios.
 
 ## Accion al activar
 
@@ -60,4 +64,4 @@ En la ventana de Settings, la seccion "Dictionary" permite:
 
 El icono de los resultados es un PNG embebido (`Search/Dictionary/Icons/wiktionary.png`), cargado una sola vez al inicializar la source.
 
-> **Verificar en:** `DictionarySource.cs` (SearchAsync, LoadIcon), `DictionaryApi.cs` (LookupAsync, WiktionaryEntry, StripHtml), `UserSettings.cs` (EnableDictionary, DictionaryPrefix, DictionaryShowAlways, DictionaryLanguages), `AppDefaults.cs` (DictionaryTimeoutSeconds, DictionaryDefaultPrefix, DictionaryAvailableLanguages, DictionaryDefaultLanguages), `SettingsWindowViewModel.cs` (DictionaryLanguageItem, DictionaryLanguages).
+> **Verificar en:** `DictionarySource.cs` (SearchAsync, LoadIcon), `DictionaryApi.cs` (LookupAsync, StripHtml, IsFormOfDefinition), `DictionaryResultViewModel.cs`, `DictionaryResultItemView.axaml`, `UserSettings.cs` (EnableDictionary, DictionaryPrefix, DictionaryShowAlways, DictionaryLanguages), `AppDefaults.cs` (DictionaryTimeoutSeconds, DictionaryDefaultPrefix, DictionaryAvailableLanguages, DictionaryDefaultLanguages), `SettingsWindowViewModel.cs` (DictionaryLanguageItem, DictionaryLanguages).
