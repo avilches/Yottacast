@@ -7,7 +7,7 @@
     <UserControl.Resources>
         <conv:PathToAppIconConverter x:Key="PathToAppIcon"/>
     </UserControl.Resources>
-    <Grid ColumnDefinitions="Auto,*,Auto" MinHeight="56">
+    <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,6,0,6">
 
         <!-- Wiktionary icon -->
         <Border Grid.Column="0"
@@ -16,7 +16,7 @@
                 CornerRadius="{DynamicResource Theme.Results.Icon.CornerRadius}"
                 ClipToBounds="True"
                 VerticalAlignment="Top"
-                Margin="0,4,12,0">
+                Margin="0,2,12,0">
             <Image IsVisible="{Binding IconBytes, Converter={x:Static ObjectConverters.IsNotNull}}"
                    Source="{Binding IconBytes, Converter={StaticResource PathToAppIcon}}"
                    Width="28" Height="28"
@@ -24,27 +24,19 @@
                    RenderOptions.BitmapInterpolationMode="HighQuality"/>
         </Border>
 
-        <!-- Word + pills + definition + example -->
+        <!-- Word + language pill + definitions list -->
         <StackPanel Grid.Column="1"
                     Orientation="Vertical"
-                    VerticalAlignment="Center"
-                    Spacing="3">
+                    VerticalAlignment="Top"
+                    Spacing="5">
 
-            <!-- Row 1: word + PartOfSpeech pill + Language pill -->
+            <!-- Header: word + optional language pill -->
             <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                 <TextBlock Text="{Binding Word}"
                            Foreground="{DynamicResource Theme.Results.Title.Color}"
                            FontSize="{DynamicResource Theme.Results.Title.Size}"
                            FontWeight="SemiBold"
                            VerticalAlignment="Center"/>
-                <Border Background="{DynamicResource Theme.Results.Shortcut.Background}"
-                        CornerRadius="{DynamicResource Theme.Results.Shortcut.CornerRadius}"
-                        Padding="5,2"
-                        VerticalAlignment="Center">
-                    <TextBlock Text="{Binding PartOfSpeech}"
-                               Foreground="{DynamicResource Theme.Results.Category.Color}"
-                               FontSize="{DynamicResource Theme.Results.Category.Size}"/>
-                </Border>
                 <Border Background="{DynamicResource Theme.Results.Shortcut.Background}"
                         CornerRadius="{DynamicResource Theme.Results.Shortcut.CornerRadius}"
                         Padding="5,2"
@@ -56,30 +48,52 @@
                 </Border>
             </StackPanel>
 
-            <!-- Row 2: definition -->
-            <TextBlock Text="{Binding Definition}"
-                       Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
-                       FontSize="{DynamicResource Theme.Results.Subtitle.Size}"
-                       TextWrapping="Wrap"
-                       MaxLines="2"
-                       TextTrimming="CharacterEllipsis"/>
+            <!-- Definitions -->
+            <ItemsControl ItemsSource="{Binding Definitions}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="viewModels:DictionaryDefinitionEntry">
+                        <StackPanel Orientation="Vertical" Spacing="1" Margin="0,0,0,5">
 
-            <!-- Row 3: example (optional) -->
-            <TextBlock IsVisible="{Binding Example, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                       Foreground="{DynamicResource Theme.Results.Category.Color}"
-                       FontSize="{DynamicResource Theme.Results.Category.Size}"
-                       FontStyle="Italic"
-                       TextTrimming="CharacterEllipsis">
-                <Run Text="&#x201C;"/><Run Text="{Binding Example}"/><Run Text="&#x201D;"/>
-            </TextBlock>
+                            <!-- PartOfSpeech pill + definition text -->
+                            <Grid ColumnDefinitions="Auto,*">
+                                <Border Grid.Column="0"
+                                        Background="{DynamicResource Theme.Results.Shortcut.Background}"
+                                        CornerRadius="{DynamicResource Theme.Results.Shortcut.CornerRadius}"
+                                        Padding="5,2"
+                                        Margin="0,1,6,0"
+                                        VerticalAlignment="Top">
+                                    <TextBlock Text="{Binding PartOfSpeech}"
+                                               Foreground="{DynamicResource Theme.Results.Category.Color}"
+                                               FontSize="{DynamicResource Theme.Results.Category.Size}"/>
+                                </Border>
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding Definition}"
+                                           Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
+                                           FontSize="{DynamicResource Theme.Results.Subtitle.Size}"
+                                           TextWrapping="Wrap"/>
+                            </Grid>
+
+                            <!-- Example (optional, same color as definition) -->
+                            <TextBlock IsVisible="{Binding Example, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                       Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
+                                       FontSize="{DynamicResource Theme.Results.Subtitle.Size}"
+                                       FontStyle="Italic"
+                                       Margin="0,0,0,0">
+                                <Run Text="&#x201C;"/><Run Text="{Binding Example}"/><Run Text="&#x201D;"/>
+                            </TextBlock>
+
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
 
         </StackPanel>
 
-        <!-- Right: category / score (debug) -->
+        <!-- Right: category label / score (debug) -->
         <StackPanel Grid.Column="2"
                     Orientation="Horizontal"
                     VerticalAlignment="Top"
-                    Margin="12,6,0,0"
+                    Margin="12,2,0,0"
                     Spacing="8">
             <TextBlock x:CompileBindings="False"
                        Text="Definition"

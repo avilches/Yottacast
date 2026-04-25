@@ -63,10 +63,12 @@ public class DictionarySource(
 
         foreach (var (langCode, entries) in allEntries) {
             if (!languages.Contains(langCode)) continue;
+            if (results.Count >= limit) break;
 
+            var defs = new List<DictionaryDefinitionEntry>();
             foreach (var entry in entries) {
-                foreach (var def in entry.Definitions.Take(3)) {
-                    if (results.Count >= limit) break;
+                foreach (var def in entry.Definitions) {
+                    if (defs.Count >= AppDefaults.DictionaryMaxDefinitionsPerItem) break;
                     if (DictionaryApiClient.IsFormOfDefinition(def.Definition)) continue;
 
                     var cleanDef = DictionaryApiClient.StripHtml(def.Definition);
@@ -79,25 +81,31 @@ public class DictionarySource(
                         if (!string.IsNullOrWhiteSpace(cleaned)) exampleText = cleaned;
                     }
 
-                    var capturedUrl = wiktionaryUrl;
-                    results.Add(new DictionaryResultViewModel {
-                        IconBytes = IconBytes,
-                        Word = searchWord,
+                    defs.Add(new DictionaryDefinitionEntry {
                         PartOfSpeech = entry.PartOfSpeech,
-                        Language = multiLang ? entry.Language : null,
                         Definition = cleanDef,
                         Example = exampleText,
-                        Score = score,
-                        OnActivate = () => {
-                            var browser = settings.ActiveBrowser;
-                            if (browser is not null)
-                                browserDiscovery.OpenUrl(capturedUrl, browser);
-                        },
                     });
                 }
-                if (results.Count >= limit) break;
+                if (defs.Count >= AppDefaults.DictionaryMaxDefinitionsPerItem) break;
             }
-            if (results.Count >= limit) break;
+
+            if (defs.Count == 0) continue;
+
+            var capturedUrl = wiktionaryUrl;
+            var langName = entries.FirstOrDefault()?.Language ?? langCode;
+            results.Add(new DictionaryResultViewModel {
+                IconBytes = IconBytes,
+                Word = searchWord,
+                Language = multiLang ? langName : null,
+                Definitions = defs,
+                Score = score,
+                OnActivate = () => {
+                    var browser = settings.ActiveBrowser;
+                    if (browser is not null)
+                        browserDiscovery.OpenUrl(capturedUrl, browser);
+                },
+            });
         }
 
         if (results.Count > 0) {
