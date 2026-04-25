@@ -58,7 +58,7 @@ public class DictionarySource(
 
         var languages = new HashSet<string>(settings.DictionaryLanguages);
         var multiLang = settings.DictionaryLanguages.Count > 1;
-        var wiktionaryUrl = $"https://en.wiktionary.org/wiki/{Uri.EscapeDataString(searchWord)}";
+        var wiktionaryBase = $"https://en.wiktionary.org/wiki/{Uri.EscapeDataString(searchWord)}";
         var results = new List<BaseResultItemViewModel>();
 
         foreach (var (langCode, entries) in allEntries) {
@@ -92,8 +92,8 @@ public class DictionarySource(
 
             if (defs.Count == 0) continue;
 
-            var capturedUrl = wiktionaryUrl;
             var langName = entries.FirstOrDefault()?.Language ?? langCode;
+            var capturedUrl = $"{wiktionaryBase}#{Uri.EscapeDataString(langName)}";
             results.Add(new DictionaryResultViewModel {
                 IconBytes = IconBytes,
                 Word = searchWord,
