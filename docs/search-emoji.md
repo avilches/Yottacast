@@ -44,12 +44,12 @@ El primer emoji del grid aparece seleccionado inicialmente. El icono y titulo de
 | Arriba    | Mueve la seleccion una fila hacia arriba. Si ya esta en la primera fila, no consume el evento y la ventana gestiona la navegacion de lista. |
 | Abajo     | Mueve la seleccion una fila hacia abajo. Si ya esta en la ultima fila, no consume el evento y la ventana gestiona la navegacion de lista. |
 | Enter     | Copia el emoji seleccionado al portapapeles, oculta el launcher y pega automaticamente en la app anterior. Registra el uso en `EmojiUsageStore`. |
-| Cmd+C     | Copia el emoji seleccionado al portapapeles sin ocultar la ventana ni pegar. Registra el uso. Solo activo en modo emoji (si `OnCopy` no es null). |
-| Cmd+Shift+F | Marca o desmarca el emoji seleccionado como favorito. Actualiza `IsFavorite` en la celda y persiste en `EmojiUsageStore`. |
+| Cmd+C     | Copia el emoji seleccionado al portapapeles, oculta el launcher y restaura el foco a la app anterior (sin pegar). Registra el uso. Solo activo en modo emoji (si `OnCopy` no es null). El shortcut exacto lo define `AppHandler.CopyShortcut` por plataforma (Ctrl+C en Windows/Linux). |
+| Cmd+Shift+F | Marca o desmarca el emoji seleccionado como favorito. Actualiza `IsFavorite` en la celda y persiste en `EmojiUsageStore`. El shortcut exacto lo define `AppHandler.ToggleFavoriteShortcut` (Ctrl+Shift+F en Windows/Linux). |
 
 **Invariante:** las teclas izquierda/derecha nunca escapan del grid. Las teclas arriba/abajo escapan solo cuando no hay fila disponible en esa direccion, permitiendo al usuario navegar a otros resultados de la lista.
 
-> **Verificar en:** `EmojiGridResultViewModel.SelectNext()`, `SelectPrevious()` (wrap circular), `SelectUp()`, `SelectDown()` (devuelven `bool`); `MainWindow.axaml.cs` -- `OnTunnelKeyDown()` maneja las flechas en fase tunnel; `OnKeyDown()` -- `Key.C` con Meta y `Key.F` con Meta+Shift.
+> **Verificar en:** `EmojiGridResultViewModel.SelectNext()`, `SelectPrevious()` (wrap circular), `SelectUp()`, `SelectDown()` (devuelven `bool`); `MainWindow.axaml.cs` -- `OnTunnelKeyDown()` maneja las flechas en fase tunnel; `OnKeyDown()` -- shortcuts de emoji via `AppHandler.Instance.CopyShortcut` y `ToggleFavoriteShortcut`; `AppHandler.cs` / `MacAppHandler.cs` -- definicion de shortcuts por plataforma.
 
 ---
 
@@ -65,24 +65,20 @@ La propiedad `IsEmojiMode` en `MainWindowViewModel` se recalcula cada vez que ca
 
 ## Favoritos y mas usados
 
-Al escribir `:` sin termino de busqueda, el grid por defecto muestra secciones diferenciadas con cabeceras visibles:
+Al escribir `:` sin termino de busqueda, el grid por defecto muestra secciones con cabeceras visibles:
 
-1. **Seccion "Favorites"**: emojis favoritos (marcados con Cmd+Shift+F), limitados a `EmojiMaxFavoriteRows * EmojiColumns` celdas. Cada celda tiene `Section = Favorite`.
-2. **Seccion "Frequently Used"**: emojis mas usados (excluyendo favoritos), limitados a `EmojiMaxMostUsedRows * EmojiColumns` celdas. Cada celda tiene `Section = MostUsed`.
-3. **Secciones por categoria Unicode**: la lista completa de emojis restantes en orden Unicode CLDR (`sort_order`), agrupados por su categoria ("Smileys & Emotion", "People & Body", etc.). Cada celda tiene `Section = Default` y la cabecera se toma de `Category`.
+1. **Seccion combinada "★ Favorites"**: favoritos primero (marcados con Cmd+Shift+F), hasta `EmojiMaxFavorites` celdas (maximo 4); despues los emojis mas usados (excluyendo favoritos), hasta `EmojiMaxMostUsed` celdas (maximo 10). Favoritos tienen `Section = Favorite`; los mas usados tienen `Section = MostUsed`. Ambos tipos comparten la misma cabecera de seccion visible. El pinned section no necesita alinearse a filas completas — el viewport de Default es independiente y siempre arranca en la primera celda de Default.
+2. **Secciones por categoria Unicode**: la lista completa de emojis restantes en orden Unicode CLDR (`sort_order`), agrupados por su categoria ("Smileys & Emotion", "People & Body", etc.). Cada celda tiene `Section = Default` y la cabecera se toma de `Category`.
 
 Las cabeceras de seccion se renderizan en la UI con estilos controlados por tema (`Theme.Emoji.SectionHeader.*`). Las secciones se calculan en `EmojiGridResultViewModel.VisibleSections` agrupando las celdas visibles del viewport por `EmojiSection` y `Category`.
 
 Las celdas de emojis favoritos tienen `IsFavorite = true` mostrando una estrella en la esquina. Las celdas con uso previo muestran un contador de uso (`UsageCount`).
 
-Al alternar favorito con `OnToggleFavorite`, se reconstruye el grid en ambos casos. El comportamiento del cursor depende de la accion:
+Al alternar favorito con `OnToggleFavorite`, se reconstruye el grid y el cursor se mantiene en el mismo indice numerico. El unico caso especial es cuando ese indice ya no existe (p.ej. el ultimo favorito se quitó y el grid encoge): en ese caso el cursor va al indice anterior (`Count - 1`), que es el emoji que estaba a su izquierda.
 
-- **Marcar como favorito**: el cursor sigue al emoji a su nueva posicion en la seccion de favoritos.
-- **Desmarcar favorito**: el cursor se mantiene en el mismo indice numerico (clampeado al nuevo total de celdas), apuntando al siguiente emoji disponible en lugar de seguir al emoji desmarcado.
+**Disposicion de secciones:** la seccion Default contiene SIEMPRE todos los emojis en orden Unicode CLDR, sin excluir favoritos ni frecuentes. Adicionalmente, los favoritos aparecen tambien en la seccion Favorites (al principio) y los mas usados en la seccion Frequently Used. Esto imita el comportamiento del picker de emoji del sistema operativo, donde los favoritos y frecuentes son secciones de acceso rapido que no desplazan al emoji de su posicion natural. No se muestran secciones vacias.
 
-**Invariante:** cada emoji aparece exactamente una vez en el grid. Si es favorito, en la seccion de favoritos; si no es favorito pero tiene uso, en frecuentes; el resto en su categoria Unicode. No se muestran secciones vacias.
-
-> **Verificar en:** `EmojiSearch.GetDefaultEmojis()` -- logica de merge con `EmojiSection`; `EmojiSearch.MakeGrid()` -- asignacion de `Section` y `UsageCount`; `EmojiUsageStore.Favorites`, `GetMostUsed()`, `GetUsageCount()`; `AppDefaults.EmojiMaxFavoriteRows`, `EmojiMaxMostUsedRows`; `EmojiGridResultViewModel.VisibleSections` -- agrupacion en secciones; `MainWindow.axaml.cs` -- `Key.F` handler invoca `RefreshSearch()`.
+> **Verificar en:** `EmojiSearch.GetDefaultEmojis()` -- logica de merge con `EmojiSection`; `EmojiSearch.MakeGrid()` -- asignacion de `Section` y `UsageCount`; `EmojiUsageStore.Favorites`, `GetMostUsed()`, `GetUsageCount()`; `AppDefaults.EmojiMaxFavorites`, `EmojiMaxMostUsed`; `EmojiGridResultViewModel.VisibleSections`, `PinnedCount()` y `SectionKey()` -- viewport por secciones y agrupacion (Favorite y MostUsed comparten la misma clave); `MainWindow.axaml.cs` -- `Key.F` handler invoca `RefreshSearch()`.
 
 ---
 

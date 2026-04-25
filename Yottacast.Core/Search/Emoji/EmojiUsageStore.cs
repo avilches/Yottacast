@@ -23,6 +23,12 @@ public class EmojiUsageStore(string filePath, ILogger<EmojiUsageStore> logger) {
             _favoriteSet.Remove(ch);
             _favorites.Remove(ch);
         } else {
+            if (_favorites.Count >= AppDefaults.EmojiMaxFavorites) {
+                // Evict the least-used favorite; ties broken by position (first = oldest added)
+                var evict = _favorites.MinBy(f => GetUsageCount(f))!;
+                _favoriteSet.Remove(evict);
+                _favorites.Remove(evict);
+            }
             _favoriteSet.Add(ch);
             _favorites.Add(ch);
         }

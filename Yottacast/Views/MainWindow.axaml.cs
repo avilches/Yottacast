@@ -185,6 +185,42 @@ public partial class MainWindow : Window {
                 e.Handled = true;
                 break;
         }
+
+        // Emoji shortcuts: handled in tunnel so the TextBox cannot consume them first.
+        // Copy (Cmd+C / Ctrl+C): copy to clipboard and hide the launcher (no paste).
+        var (copyMods, copyKey) = AppHandler.Instance.CopyShortcut;
+        if (e.Key == copyKey && e.KeyModifiers == copyMods && vm.SelectedResult is { OnCopy: { } copyAction }) {
+            copyAction();
+            vm.SearchText = "";
+            Hide();
+            AppHandler.Instance.OnHide();
+            e.Handled = true;
+            return;
+        }
+
+        // Toggle favorite (Cmd+Shift+F / Ctrl+Shift+F).
+        var (favMods, favKey) = AppHandler.Instance.ToggleFavoriteShortcut;
+        if (e.Key == favKey && e.KeyModifiers == favMods &&
+            vm.SelectedResult is EmojiGridResultViewModel { OnToggleFavorite: { } favAction } emojiGrid) {
+            var previousIndex = emojiGrid.SelectedEmojiIndex;
+            var prevSection = previousIndex < emojiGrid.Cells.Count ? emojiGrid.Cells[previousIndex].Section : EmojiSection.Default;
+            var selectedChar = prevSection == EmojiSection.Default ? emojiGrid.SelectedEmoji?.Char : null;
+            favAction();
+            vm.RefreshSearch();
+            if (vm.SelectedResult is EmojiGridResultViewModel newGrid) {
+                if (selectedChar != null) {
+                    // Cursor was in Default: the Favorites section may have grown/shrunk by 1,
+                    // shifting all Default indices. Find the same emoji in Default to stay put.
+                    var idx = newGrid.Cells.ToList().FindIndex(c => c.Char == selectedChar && c.Section == EmojiSection.Default);
+                    newGrid.SelectedEmojiIndex = idx >= 0 ? idx : Math.Min(previousIndex, newGrid.Cells.Count - 1);
+                } else {
+                    // Cursor was in Favorites or MostUsed: keep same numeric position,
+                    // clamped if the last favorite was removed.
+                    newGrid.SelectedEmojiIndex = Math.Min(previousIndex, newGrid.Cells.Count - 1);
+                }
+            }
+            e.Handled = true;
+        }
     }
 
     protected override void OnKeyDown(KeyEventArgs e) {
@@ -210,35 +246,6 @@ public partial class MainWindow : Window {
         if (vm is null) return;
 
         switch (e.Key) {
-            // Cmd+C in emoji mode: copy without hiding/pasting. Falls through to system Cmd+C when OnCopy is null.
-            case Key.C when e.KeyModifiers == KeyModifiers.Meta:
-                if (vm.SelectedResult is { OnCopy: { } copyAction }) {
-                    copyAction();
-                    e.Handled = true;
-                }
-                break;
-
-            // Cmd+Shift+F in emoji mode: toggle favorite on the selected emoji.
-            case Key.F when e.KeyModifiers == (KeyModifiers.Meta | KeyModifiers.Shift):
-                if (vm.SelectedResult is EmojiGridResultViewModel { OnToggleFavorite: { } favAction } emojiGrid) {
-                    var previousIndex = emojiGrid.SelectedEmojiIndex;
-                    var selectedChar = emojiGrid.SelectedEmoji?.Char;
-                    favAction();
-                    var justMarked = emojiGrid.SelectedEmoji?.IsFavorite ?? false;
-                    vm.RefreshSearch();
-                    if (vm.SelectedResult is EmojiGridResultViewModel newGrid) {
-                        if (justMarked && selectedChar != null) {
-                            // Marked: cursor follows the emoji to its new position in Favorites
-                            var idx = newGrid.Cells.ToList().FindIndex(c => c.Char == selectedChar);
-                            if (idx >= 0) newGrid.SelectedEmojiIndex = idx;
-                        } else {
-                            // Unmarked: cursor stays at same index position (clamped)
-                            newGrid.SelectedEmojiIndex = Math.Min(previousIndex, newGrid.Cells.Count - 1);
-                        }
-                    }
-                    e.Handled = true;
-                }
-                break;
 
             // Consume ALT+Space so macOS doesn't produce a beep for the unhandled key
             case Key.Space when e.KeyModifiers.HasFlag(KeyModifiers.Alt):

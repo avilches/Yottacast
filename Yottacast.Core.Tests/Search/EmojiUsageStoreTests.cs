@@ -41,6 +41,39 @@ public class EmojiUsageStoreTests {
         Assert.Equal(["🔥", "❤️", "👍"], store.Favorites);
     }
 
+    [Fact]
+    public void ToggleFavorite_EvictsLeastUsed_WhenAtMaxCapacity() {
+        var store = CreateStore(TempFile());
+        store.ToggleFavorite("A");
+        store.ToggleFavorite("B");
+        store.ToggleFavorite("C");
+        store.ToggleFavorite("D"); // 4 favorites, at cap
+
+        // A has 5 uses, B has 1, C has 3, D has 0
+        for (int i = 0; i < 5; i++) store.RecordUsage("A");
+        store.RecordUsage("B");
+        for (int i = 0; i < 3; i++) store.RecordUsage("C");
+
+        store.ToggleFavorite("E"); // should evict D (0 uses, least used)
+        Assert.Equal(["A", "B", "C", "E"], store.Favorites);
+        Assert.False(store.IsFavorite("D"));
+        Assert.True(store.IsFavorite("E"));
+    }
+
+    [Fact]
+    public void ToggleFavorite_EvictsFirst_WhenAllSameUsage() {
+        var store = CreateStore(TempFile());
+        store.ToggleFavorite("A");
+        store.ToggleFavorite("B");
+        store.ToggleFavorite("C");
+        store.ToggleFavorite("D"); // 4 favorites, all with 0 uses
+
+        store.ToggleFavorite("E"); // should evict A (first in list)
+        Assert.Equal(["B", "C", "D", "E"], store.Favorites);
+        Assert.False(store.IsFavorite("A"));
+        Assert.True(store.IsFavorite("E"));
+    }
+
     // ── Usage ────────────────────────────────────────────────────────────────
 
     [Fact]

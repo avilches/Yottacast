@@ -98,6 +98,8 @@ internal sealed class MacAppHandler : AppHandler {
 
     public override (KeyModifiers Modifiers, Key Key) CloseWindowShortcut => (KeyModifiers.Meta, Key.W);
     public override (KeyModifiers Modifiers, Key Key)? QuitShortcut => (KeyModifiers.Meta, Key.Q);
+    public override (KeyModifiers Modifiers, Key Key) CopyShortcut => (KeyModifiers.Meta, Key.C);
+    public override (KeyModifiers Modifiers, Key Key) ToggleFavoriteShortcut => (KeyModifiers.Meta | KeyModifiers.Shift, Key.F);
 
     public override string CtrlSymbol  => "⌃";
     public override string AltSymbol   => "⌥";

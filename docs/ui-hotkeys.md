@@ -197,3 +197,5 @@ Si el usuario pulsa el mismo hotkey que ya tenia, el hook global detecta que Set
 | Cmd+, (macOS)                | Ventana principal       | Abrir preferencias                        |
 | Cmd+W / Ctrl+F4 / Ctrl+W    | Ventana principal       | Ocultar ventana (no cerrar)               |
 | Cmd+Q (macOS)               | Ventana principal       | Cerrar la aplicacion completamente        |
+| Cmd+C / Ctrl+C              | Modo emoji              | Copiar emoji, ocultar launcher (sin pegar) |
+| Cmd+Shift+F / Ctrl+Shift+F  | Modo emoji              | Marcar/desmarcar emoji como favorito      |

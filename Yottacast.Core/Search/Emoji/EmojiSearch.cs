@@ -44,28 +44,28 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
 
     private IReadOnlyList<(EmojiEntry Entry, EmojiSection Section)> GetDefaultEmojis() {
         var charToEntry = _entries.ToDictionary(e => e.Char);
-        var seen = new HashSet<string>();
         var result = new List<(EmojiEntry Entry, EmojiSection Section)>();
 
-        // Favorites first, capped at MaxFavoriteRows * Columns
-        var maxFavorites = AppDefaults.EmojiMaxFavoriteRows * AppDefaults.EmojiColumns;
-        foreach (var ch in usageStore.Favorites.Take(maxFavorites)) {
-            if (charToEntry.TryGetValue(ch, out var entry) && seen.Add(ch))
+        // Favorites first, capped at EmojiMaxFavorites (4 cells).
+        // Favorites are NOT added to seen — they also appear in their Default position below.
+        var favSet = new HashSet<string>(usageStore.Favorites);
+        foreach (var ch in usageStore.Favorites.Take(AppDefaults.EmojiMaxFavorites)) {
+            if (charToEntry.TryGetValue(ch, out var entry))
                 result.Add((entry, EmojiSection.Favorite));
         }
 
-        // Most-used next, capped at MaxMostUsedRows * Columns
-        var maxMostUsed = AppDefaults.EmojiMaxMostUsedRows * AppDefaults.EmojiColumns;
-        foreach (var ch in usageStore.GetMostUsed(maxMostUsed)) {
-            if (charToEntry.TryGetValue(ch, out var entry) && seen.Add(ch))
+        // Most-used next, capped at EmojiMaxMostUsed (10 cells), excluding favorites.
+        // Most-used also appear in their Default position below.
+        var seenMostUsed = new HashSet<string>();
+        foreach (var ch in usageStore.GetMostUsed(AppDefaults.EmojiMaxMostUsed)) {
+            if (!favSet.Contains(ch) && charToEntry.TryGetValue(ch, out var entry) && seenMostUsed.Add(ch))
                 result.Add((entry, EmojiSection.MostUsed));
         }
 
-        // All emojis in normal sort order (excluding already-seen emojis)
-        foreach (var entry in _entries.Where(e => e.SortOrder > 0).OrderBy(e => e.SortOrder)) {
-            if (seen.Add(entry.Char))
-                result.Add((entry, EmojiSection.Default));
-        }
+        // All emojis in normal sort order — no exclusions.
+        // Favorites and MostUsed also appear here in their natural category position.
+        foreach (var entry in _entries.Where(e => e.SortOrder > 0).OrderBy(e => e.SortOrder))
+            result.Add((entry, EmojiSection.Default));
 
         return result;
     }

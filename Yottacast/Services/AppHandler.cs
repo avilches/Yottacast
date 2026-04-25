@@ -58,6 +58,18 @@ internal abstract class AppHandler {
     /// </summary>
     public virtual (KeyModifiers Modifiers, Key Key)? QuitShortcut => null;
 
+    /// <summary>
+    /// Platform-specific shortcut to copy the selected emoji to the clipboard and hide the launcher.
+    /// Cmd+C on macOS; Ctrl+C on Windows/Linux.
+    /// </summary>
+    public virtual (KeyModifiers Modifiers, Key Key) CopyShortcut => (KeyModifiers.Control, Key.C);
+
+    /// <summary>
+    /// Platform-specific shortcut to toggle the favorite status of the selected emoji.
+    /// Cmd+Shift+F on macOS; Ctrl+Shift+F on Windows/Linux.
+    /// </summary>
+    public virtual (KeyModifiers Modifiers, Key Key) ToggleFavoriteShortcut => (KeyModifiers.Control | KeyModifiers.Shift, Key.F);
+
     /// <summary>Visual symbol for each modifier key, localised per OS.</summary>
     public virtual string CtrlSymbol  => "Ctrl";
     public virtual string AltSymbol   => "Alt";

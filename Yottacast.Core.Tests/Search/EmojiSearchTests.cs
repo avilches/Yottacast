@@ -213,14 +213,18 @@ public class EmojiSearchTests {
         var search = await BuildSearchWithCache(json, usageStore);
         var grid = search.Search(":", 10).OfType<EmojiGridResultViewModel>().First();
 
-        // Favorite first
+        // Favorite section first
         Assert.Equal("🔥", grid.Cells[0].Char);
         Assert.True(grid.Cells[0].IsFavorite);
         Assert.Equal(EmojiSection.Favorite, grid.Cells[0].Section);
-        // Then remaining emojis in normal order (fire excluded — already in favorites)
+        // Then ALL emojis in sort order in Default section (including fire again)
         Assert.Equal("😀", grid.Cells[1].Char);
+        Assert.Equal(EmojiSection.Default, grid.Cells[1].Section);
         Assert.Equal("😃", grid.Cells[2].Char);
-        Assert.Equal(3, grid.Cells.Count);
+        Assert.Equal(EmojiSection.Default, grid.Cells[2].Section);
+        Assert.Equal("🔥", grid.Cells[3].Char);
+        Assert.Equal(EmojiSection.Default, grid.Cells[3].Section);
+        Assert.Equal(4, grid.Cells.Count);
     }
 
     [Fact]
@@ -245,21 +249,27 @@ public class EmojiSearchTests {
         var grid = search.Search(":", 10).OfType<EmojiGridResultViewModel>().First();
 
         // Favorite section
-        Assert.Equal("🔥", grid.Cells[0].Char);  // favorite
+        Assert.Equal("🔥", grid.Cells[0].Char);
         Assert.Equal(EmojiSection.Favorite, grid.Cells[0].Section);
-        // Most-used section (excluding favorite)
+        // Most-used section (excluding favorite 🔥)
         Assert.Equal("👍", grid.Cells[1].Char);  // most-used (2 uses)
         Assert.Equal(EmojiSection.MostUsed, grid.Cells[1].Section);
         Assert.Equal("😃", grid.Cells[2].Char);  // most-used (1 use)
         Assert.Equal(EmojiSection.MostUsed, grid.Cells[2].Section);
-        // Remaining emojis in sort order (excluding already-seen)
+        // Default section: ALL emojis in sort order (no exclusions)
         Assert.Equal("😀", grid.Cells[3].Char);
         Assert.Equal(EmojiSection.Default, grid.Cells[3].Section);
-        Assert.Equal(4, grid.Cells.Count);
+        Assert.Equal("😃", grid.Cells[4].Char);
+        Assert.Equal(EmojiSection.Default, grid.Cells[4].Section);
+        Assert.Equal("🔥", grid.Cells[5].Char);
+        Assert.Equal(EmojiSection.Default, grid.Cells[5].Section);
+        Assert.Equal("👍", grid.Cells[6].Char);
+        Assert.Equal(EmojiSection.Default, grid.Cells[6].Section);
+        Assert.Equal(7, grid.Cells.Count);
     }
 
     [Fact]
-    public async Task DefaultGrid_EachEmojiAppearsExactlyOnce() {
+    public async Task DefaultGrid_FavoriteAppearsInBothFavoritesAndDefault() {
         var json = """
         [
           ["😀","grinning face",["grinning"],"Smileys & Emotion",1],
@@ -270,18 +280,19 @@ public class EmojiSearchTests {
         Directory.CreateDirectory(dir);
         var usageStore = new EmojiUsageStore(Path.Combine(dir, "emoji-usage.json"), NullLogger<EmojiUsageStore>.Instance);
         usageStore.ToggleFavorite("🔥");
-        usageStore.RecordUsage("🔥");
 
         var search = await BuildSearchWithCache(json, usageStore);
         var grid = search.Search(":", 10).OfType<EmojiGridResultViewModel>().First();
 
-        // Fire appears once as favorite (not duplicated in normal section)
+        // Fire appears in Favorites section...
         Assert.Equal("🔥", grid.Cells[0].Char);
         Assert.Equal(EmojiSection.Favorite, grid.Cells[0].Section);
-        // Then remaining emojis in normal order
+        // ...AND also in its normal Default position
         Assert.Equal("😀", grid.Cells[1].Char);
         Assert.Equal(EmojiSection.Default, grid.Cells[1].Section);
-        Assert.Equal(2, grid.Cells.Count);
+        Assert.Equal("🔥", grid.Cells[2].Char);
+        Assert.Equal(EmojiSection.Default, grid.Cells[2].Section);
+        Assert.Equal(3, grid.Cells.Count);
     }
 
     [Fact]
@@ -292,7 +303,7 @@ public class EmojiSearchTests {
 
         Assert.NotNull(grid.OnCopy);
         Assert.True(grid.PasteAfterActivate); // the grid has PasteAfterActivate for Enter
-        // OnCopy is a separate action that just copies — the caller (MainWindow) does not hide/paste
+        // OnCopy copies and records usage; MainWindow hides the window (without paste) after invoking it
     }
 
     [Fact]
@@ -315,10 +326,14 @@ public class EmojiSearchTests {
         var search = await BuildSearchWithCache(json, usageStore);
         var grid = search.Search(":", 10).OfType<EmojiGridResultViewModel>().First();
 
-        Assert.Equal(EmojiSection.Favorite, grid.Cells[0].Section); // 🔥 is favorite
-        Assert.Equal(EmojiSection.MostUsed, grid.Cells[1].Section); // 👍 is most-used
-        Assert.Equal(EmojiSection.Default, grid.Cells[2].Section);  // 😀 is default
-        Assert.Equal(EmojiSection.Default, grid.Cells[3].Section);  // 😃 is default
+        // [0] 🔥 Favorite, [1] 👍 MostUsed, [2..5] all 4 emojis in Default (no exclusions)
+        Assert.Equal(EmojiSection.Favorite, grid.Cells[0].Section); // 🔥 favorite
+        Assert.Equal(EmojiSection.MostUsed, grid.Cells[1].Section); // 👍 most-used
+        Assert.Equal(EmojiSection.Default,  grid.Cells[2].Section); // 😀 default
+        Assert.Equal(EmojiSection.Default,  grid.Cells[3].Section); // 😃 default
+        Assert.Equal(EmojiSection.Default,  grid.Cells[4].Section); // 🔥 also in default
+        Assert.Equal(EmojiSection.Default,  grid.Cells[5].Section); // 👍 also in default
+        Assert.Equal(6, grid.Cells.Count);
     }
 
     [Fact]
@@ -407,7 +422,7 @@ public class EmojiSearchTests {
     }
 
     [Fact]
-    public async Task OnToggleFavorite_UnfavoriteUpdatesSingleCell() {
+    public async Task OnToggleFavorite_UnfavoriteUpdatesAllFireCells() {
         var json = """
         [
           ["😀","grinning face",["grinning"],"Smileys & Emotion",1],
@@ -422,16 +437,16 @@ public class EmojiSearchTests {
         var search = await BuildSearchWithCache(json, usageStore);
         var grid = search.Search(":", 10).OfType<EmojiGridResultViewModel>().First();
 
-        // Fire appears once as favorite (each emoji appears exactly once)
+        // Fire appears in both Favorites and Default sections
         var fireCells = grid.Cells.Where(c => c.Char == "🔥").ToList();
-        Assert.Single(fireCells);
-        Assert.True(fireCells[0].IsFavorite);
+        Assert.Equal(2, fireCells.Count);
+        Assert.All(fireCells, c => Assert.True(c.IsFavorite));
 
-        // Toggle off favorite
+        // Toggle off favorite: both cells are updated
         grid.SelectedEmojiIndex = 0;
         grid.OnToggleFavorite!();
 
-        Assert.False(fireCells[0].IsFavorite);
+        Assert.All(fireCells, c => Assert.False(c.IsFavorite));
         Assert.False(usageStore.IsFavorite("🔥"));
     }
 
@@ -469,7 +484,7 @@ public class EmojiSearchTests {
 
     [Fact]
     public async Task SelectDown_CrossesSectionBoundary() {
-        // Favorites: 2 emojis, Default: remaining. Down from favorites row should land in default section.
+        // Favorites: 2 emojis. Default section starts at index 2 (favorites also appear there).
         var json = MakeEmojiJson(15);
         var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(dir);
@@ -487,7 +502,7 @@ public class EmojiSearchTests {
         // Down should go to first cell of default section (index 2), not index 0+Columns
         grid.SelectDown();
         Assert.Equal(2, grid.SelectedEmojiIndex);
-        Assert.Equal(EmojiSection.Default, grid.Cells[grid.SelectedEmojiIndex].Section);
+        Assert.Equal(EmojiSection.Default, grid.Cells[2].Section);
     }
 
     [Fact]
@@ -502,7 +517,7 @@ public class EmojiSearchTests {
         var search = await BuildSearchWithCache(json, usageStore);
         var grid = search.Search(":", 100).OfType<EmojiGridResultViewModel>().First();
 
-        // Move to first cell of default section
+        // Default section starts at index 2 (E1 and E2 are in Favorites, then all 15 in Default)
         grid.SelectedEmojiIndex = 2;
         Assert.Equal(EmojiSection.Default, grid.Cells[2].Section);
 
@@ -514,9 +529,9 @@ public class EmojiSearchTests {
 
     [Fact]
     public async Task SelectDown_ClampsColumnToShorterSection() {
-        // Favorites: 2 emojis. If cursor is at col 5 in default section row 0,
-        // going up to favorites (2 items) should clamp to col 1, then going back
-        // down should go to col 1 (not col 5).
+        // Favorites: 2 emojis. Default starts at index 2.
+        // From col 5 in Default row 0 (index 7), going up clamps to Favorites col 1 (index 1).
+        // Going back down should go to Default col 1 (index 3), not col 5.
         var json = MakeEmojiJson(25);
         var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(dir);
@@ -527,7 +542,7 @@ public class EmojiSearchTests {
         var search = await BuildSearchWithCache(json, usageStore);
         var grid = search.Search(":", 100).OfType<EmojiGridResultViewModel>().First();
 
-        // Move to col 5 in default section (flat index 2 + 5 = 7)
+        // Default section starts at index 2; col 5 = index 2+5 = 7
         grid.SelectedEmojiIndex = 7;
         Assert.Equal(EmojiSection.Default, grid.Cells[7].Section);
 
@@ -535,14 +550,15 @@ public class EmojiSearchTests {
         grid.SelectUp();
         Assert.Equal(1, grid.SelectedEmojiIndex);
 
-        // Down: should go to col 1 of default (index 2 + 1 = 3), NOT col 5
+        // Down: should go to col 1 of Default (index 2+1=3), NOT col 5
         grid.SelectDown();
         Assert.Equal(3, grid.SelectedEmojiIndex);
     }
 
     [Fact]
     public async Task SelectDown_FromLastRowOfSection_GoesToNextSection() {
-        // Build a grid with 3 sections: favorite(3), mostused(3), default(20+)
+        // 3 favorites + 3 most-used = 6 cells in the combined pinned section (1 row, since 6 < 10 columns).
+        // SelectDown from pinned row 0 should jump directly to Default (no second pinned row).
         var json = MakeEmojiJson(30);
         var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(dir);
@@ -557,19 +573,47 @@ public class EmojiSearchTests {
         var search = await BuildSearchWithCache(json, usageStore);
         var grid = search.Search(":", 100).OfType<EmojiGridResultViewModel>().First();
 
-        // Verify layout: 3 favorites, 3 most-used, rest default
+        // Layout: [0-2] Favorites, [3-5] MostUsed (same combined section), [6+] Default
         Assert.Equal(EmojiSection.Favorite, grid.Cells[0].Section);
         Assert.Equal(EmojiSection.MostUsed, grid.Cells[3].Section);
         int defaultStart = 6;
         Assert.Equal(EmojiSection.Default, grid.Cells[defaultStart].Section);
 
-        // From favorites col 1 (index 1), down should go to most-used col 1 (index 4)
+        // Favorites and MostUsed share the same visual section (6 cells = 1 row).
+        // From combined section col 1 (index 1), down → Default col 1 (index defaultStart+1).
         grid.SelectedEmojiIndex = 1;
         grid.SelectDown();
-        Assert.Equal(4, grid.SelectedEmojiIndex);
-        Assert.Equal(EmojiSection.MostUsed, grid.Cells[4].Section);
+        Assert.Equal(defaultStart + 1, grid.SelectedEmojiIndex);
+        Assert.Equal(EmojiSection.Default, grid.Cells[defaultStart + 1].Section);
+    }
 
-        // From most-used col 1 (index 4), down should go to default col 1 (index 7)
+    [Fact]
+    public async Task SelectDown_WithinCombinedPinnedSection_TwoRows() {
+        // 4 favorites (max) + 10 most-used (max) = 14 cells in combined pinned section (2 rows: 10+4).
+        // SelectDown from row 0 should go to row 1 within the combined section.
+        var json = MakeEmojiJson(30);
+        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(dir);
+        var usageStore = new EmojiUsageStore(Path.Combine(dir, "emoji-usage.json"), NullLogger<EmojiUsageStore>.Instance);
+        for (int i = 1; i <= 4; i++) usageStore.ToggleFavorite($"E{i}");
+        for (int i = 5; i <= 14; i++) usageStore.RecordUsage($"E{i}");
+
+        var search = await BuildSearchWithCache(json, usageStore);
+        var grid = search.Search(":", 100).OfType<EmojiGridResultViewModel>().First();
+
+        // [0-3] Favorites, [4-13] MostUsed (same combined section, 14 cells = 2 rows), [14+] Default
+        Assert.Equal(EmojiSection.Favorite, grid.Cells[0].Section);
+        Assert.Equal(EmojiSection.MostUsed, grid.Cells[4].Section);
+        int defaultStart = 14;
+        Assert.Equal(EmojiSection.Default, grid.Cells[defaultStart].Section);
+
+        // From combined section col 1 (index 1), down → row 1, col 1 (index 11)
+        grid.SelectedEmojiIndex = 1;
+        grid.SelectDown();
+        Assert.Equal(11, grid.SelectedEmojiIndex);
+        Assert.Equal(EmojiSection.MostUsed, grid.Cells[11].Section);
+
+        // From combined section row 1, col 1 (index 11), down → Default col 1 (index defaultStart+1)
         grid.SelectDown();
         Assert.Equal(defaultStart + 1, grid.SelectedEmojiIndex);
         Assert.Equal(EmojiSection.Default, grid.Cells[defaultStart + 1].Section);

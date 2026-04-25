@@ -9,19 +9,30 @@ public class EmojiGridResultViewModel : ResultItemViewModel, INotifyPropertyChan
     public bool HasPinnedSection { get; init; }
     public string PinnedSectionHeader { get; init; } = "";
 
+    // Row offset within the Default section only. Pinned (Favorites + MostUsed) is
+    // always rendered in full; Default has its own independent viewport scroll.
     private int _viewportStartRow = 0;
 
-    public IReadOnlyList<EmojiCellViewModel> VisibleCells =>
-        Cells
-            .Skip(_viewportStartRow * AppDefaults.EmojiColumns)
-            .Take(AppDefaults.EmojiViewportRows * AppDefaults.EmojiColumns)
-            .ToList();
+    // Number of cells in the pinned section (Favorite + MostUsed), which always
+    // precede Default in the flat Cells list. O(pinned count) ≤ O(20).
+    private int PinnedCount() {
+        int i = 0;
+        while (i < Cells.Count && Cells[i].Section != EmojiSection.Default) i++;
+        return i;
+    }
 
     public IReadOnlyList<EmojiGridSection> VisibleSections {
         get {
+            var pinnedCount = PinnedCount();
+            var pinnedRows = (pinnedCount + AppDefaults.EmojiColumns - 1) / AppDefaults.EmojiColumns;
+            var defaultVisibleRows = Math.Max(0, AppDefaults.EmojiViewportRows - pinnedRows);
+
+            // Always show all pinned cells; Default scrolls independently.
             var visible = Cells
-                .Skip(_viewportStartRow * AppDefaults.EmojiColumns)
-                .Take(AppDefaults.EmojiViewportRows * AppDefaults.EmojiColumns)
+                .Take(pinnedCount)
+                .Concat(Cells
+                    .Skip(pinnedCount + _viewportStartRow * AppDefaults.EmojiColumns)
+                    .Take(defaultVisibleRows * AppDefaults.EmojiColumns))
                 .ToList();
 
             return GroupIntoSections(visible);
@@ -51,8 +62,7 @@ public class EmojiGridResultViewModel : ResultItemViewModel, INotifyPropertyChan
     }
 
     private static string SectionKey(EmojiCellViewModel cell) => cell.Section switch {
-        EmojiSection.Favorite => "\u2605 Favorites",
-        EmojiSection.MostUsed => "Frequently Used",
+        EmojiSection.Favorite or EmojiSection.MostUsed => "\u2605 Favorites",
         _ => cell.Category
     };
 
@@ -73,14 +83,27 @@ public class EmojiGridResultViewModel : ResultItemViewModel, INotifyPropertyChan
     }
 
     private void EnsureVisible() {
-        var row = _selectedEmojiIndex / AppDefaults.EmojiColumns;
-        if (row < _viewportStartRow) {
-            _viewportStartRow = row;
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(VisibleSections)));
-        } else if (row >= _viewportStartRow + AppDefaults.EmojiViewportRows) {
-            _viewportStartRow = row - AppDefaults.EmojiViewportRows + 1;
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(VisibleSections)));
+        var pinnedCount = PinnedCount();
+        var pinnedRows  = (pinnedCount + AppDefaults.EmojiColumns - 1) / AppDefaults.EmojiColumns;
+        var defaultVisibleRows = Math.Max(1, AppDefaults.EmojiViewportRows - pinnedRows);
+
+        if (_selectedEmojiIndex < pinnedCount) {
+            // Pinned cell selected: always fully visible; reset Default viewport to top.
+            if (_viewportStartRow == 0) return;
+            _viewportStartRow = 0;
+        } else {
+            // Default cell: scroll the Default viewport to keep it visible.
+            var defaultIndex = _selectedEmojiIndex - pinnedCount;
+            var row = defaultIndex / AppDefaults.EmojiColumns;
+            if (row < _viewportStartRow) {
+                _viewportStartRow = row;
+            } else if (row >= _viewportStartRow + defaultVisibleRows) {
+                _viewportStartRow = row - defaultVisibleRows + 1;
+            } else {
+                return;
+            }
         }
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(VisibleSections)));
     }
 
     public EmojiCellViewModel? SelectedEmoji =>
