@@ -1,8 +1,12 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:viewModels="clr-namespace:Yottacast.Core.ViewModels;assembly=Yottacast.Core"
+             xmlns:conv="using:Yottacast.Converters"
              x:Class="Yottacast.Views.Results.DictionaryResultItemView"
              x:DataType="viewModels:DictionaryResultViewModel">
+    <UserControl.Resources>
+        <conv:PathToAppIconConverter x:Key="PathToAppIcon"/>
+    </UserControl.Resources>
     <Grid ColumnDefinitions="Auto,*,Auto" MinHeight="56">
 
         <!-- Wiktionary icon -->
