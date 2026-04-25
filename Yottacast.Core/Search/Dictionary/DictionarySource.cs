@@ -62,7 +62,6 @@ public class DictionarySource(
 
         foreach (var (langCode, entries) in allEntries) {
             if (!languages.Contains(langCode)) continue;
-            if (results.Count >= limit) break;
 
             var defs = new List<DictionaryDefinitionEntry>();
             foreach (var entry in entries) {
@@ -99,6 +98,7 @@ public class DictionarySource(
                 Language = multiLang ? langName : null,
                 Definitions = defs,
                 Score = score,
+                BypassLimit = true,
                 OnActivate = () => {
                     var browser = settings.ActiveBrowser;
                     if (browser is not null)
