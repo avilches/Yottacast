@@ -20,7 +20,7 @@ using Yottacast.Services;
 namespace Yottacast.ViewModels;
 
 public enum SettingsSection {
-    General, AppSearch, WebSearch, FileSearch, Calculator, Clipboard, Emoji, Dictionary
+    General, AppSearch, WebSearch, FileSearch, Calculator, Clipboard, Emoji, Dictionary, History
 }
 
 public partial class SettingsWindowViewModel : ViewModelBase {
@@ -34,6 +34,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [NotifyPropertyChangedFor(nameof(IsClipboardSelected))]
     [NotifyPropertyChangedFor(nameof(IsEmojiSelected))]
     [NotifyPropertyChangedFor(nameof(IsDictionarySelected))]
+    [NotifyPropertyChangedFor(nameof(IsHistorySelected))]
     private SettingsSection _selectedSection = SettingsSection.General;
 
     partial void OnSelectedSectionChanged(SettingsSection oldValue, SettingsSection newValue) {
@@ -50,6 +51,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     public bool IsClipboardSelected  => SelectedSection == SettingsSection.Clipboard;
     public bool IsEmojiSelected      => SelectedSection == SettingsSection.Emoji;
     public bool IsDictionarySelected => SelectedSection == SettingsSection.Dictionary;
+    public bool IsHistorySelected    => SelectedSection == SettingsSection.History;
 
     [RelayCommand] private void SelectGeneral()   => SelectedSection = SettingsSection.General;
     [RelayCommand] private void SelectAppSearch() => SelectedSection = SettingsSection.AppSearch;
@@ -59,6 +61,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [RelayCommand] private void SelectClipboard()  => SelectedSection = SettingsSection.Clipboard;
     [RelayCommand] private void SelectEmoji()      => SelectedSection = SettingsSection.Emoji;
     [RelayCommand] private void SelectDictionary() => SelectedSection = SettingsSection.Dictionary;
+    [RelayCommand] private void SelectHistory()    => SelectedSection = SettingsSection.History;
 
     // ── General section ──────────────────────────────────────────────────────
     [ObservableProperty] private string? _selectedBrowser;
@@ -90,6 +93,9 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [ObservableProperty] private bool _enableWebSearch;
     [ObservableProperty] private bool _fileSearchOnlySpecificFolders;
     [ObservableProperty] private bool _stickyWindow;
+    [ObservableProperty] private bool _enableHistory;
+    [ObservableProperty] private int _historyMaxItems;
+    [ObservableProperty] private string _historyDisplayText = "(empty)";
 
     partial void OnEnableAppSearchChanged(bool value)               { _settings.EnableAppSearch              = value; _settings.Save(); _logger.LogInformation("Settings: EnableAppSearch = {Value}", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnEnableCalculatorChanged(bool value)              { _settings.EnableCalculator             = value; _settings.Save(); _logger.LogInformation("Settings: EnableCalculator = {Value}", value); _settings.NotifySearchSettingsChanged(); }
@@ -107,6 +113,19 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     }
     partial void OnFileSearchOnlySpecificFoldersChanged(bool value) { _settings.FileSearchOnlySpecificFolders = value; _settings.Save(); _logger.LogInformation("Settings: FileSearchOnlySpecificFolders = {Value}", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnStickyWindowChanged(bool value)                  { _settings.StickyWindow                 = value; _settings.Save(); _logger.LogInformation("Settings: StickyWindow = {Value}", value); }
+
+    partial void OnEnableHistoryChanged(bool value) {
+        _settings.EnableHistory = value;
+        _settings.Save();
+        _logger.LogInformation("Settings: EnableHistory = {Value}", value);
+    }
+
+    partial void OnHistoryMaxItemsChanged(int value) {
+        if (value is < 1 or > AppDefaults.HistoryMaxItems) return;
+        _settings.HistoryMaxItems = value;
+        _settings.Save();
+        _logger.LogInformation("Settings: HistoryMaxItems = {Value}", value);
+    }
 
     // ── Dictionary config ────────────────────────────────────────────────────
     [ObservableProperty] private bool _enableDictionary;
@@ -166,6 +185,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     private readonly TerminalDiscovery _terminalDiscovery;
     private readonly ILogger<SettingsWindowViewModel> _logger;
     private bool _appDirectoriesDirty;
+    private readonly HistoryService _historyService;
 
     public SettingsWindowViewModel(
         UserSettings settings,
@@ -175,6 +195,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         PlatformProvider platform,
         MathJsEngine mathJsEngine,
         PluginService pluginService,
+        HistoryService historyService,
         ILogger<SettingsWindowViewModel> logger) {
         _settings           = settings;
         _themeService       = themeService;
@@ -214,6 +235,12 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _enableDictionary                = settings.EnableDictionary;
         _dictionaryPrefix                = settings.DictionaryPrefix;
         _dictionaryShowAlways            = settings.DictionaryShowAlways;
+
+        _historyService = historyService;
+        _enableHistory = settings.EnableHistory;
+        _historyMaxItems = settings.HistoryMaxItems;
+        _historyDisplayText = BuildHistoryDisplayText();
+        historyService.Changed += OnHistoryChanged;
 
         var selectedLangs = new HashSet<string>(settings.DictionaryLanguages);
         DictionaryLanguages = new ObservableCollection<DictionaryLanguageItem>(
@@ -525,6 +552,27 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _settings.Save();
         _logger.LogInformation("Settings: Theme = \"{Value}\"", value.Id);
         _themeService.Apply(value.Id);
+    }
+
+    private void OnHistoryChanged() {
+        HistoryDisplayText = BuildHistoryDisplayText();
+    }
+
+    private string BuildHistoryDisplayText() {
+        if (_historyService.Entries.Count == 0) return "(empty)";
+        return string.Join("\n", _historyService.Entries
+            .AsEnumerable()
+            .Reverse()
+            .Select(e => {
+                var ts = e.Timestamp.ToString("yyyy-MM-dd HH:mm:ss");
+                var action = e.ActionName != null ? $" → {e.ActionName}" : "";
+                return $"[{ts}] \"{e.Query}\"{action}";
+            }));
+    }
+
+    [RelayCommand]
+    private void ClearHistory() {
+        _historyService.Clear();
     }
 }
 
