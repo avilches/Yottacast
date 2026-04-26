@@ -29,21 +29,19 @@ public record FormatConfig(
 
 /// <summary>
 /// Wraps a Jint engine loaded with math.js (embedded resource).
+/// All currency rates are loaded at construction time; the engine is immutable after init.
+/// When rates change, create a new engine via <see cref="MathJsEngineProvider"/>.
 /// Initialization runs on a background thread so the app startup is not blocked.
 /// Thread-safe: a lock guards the engine during evaluation.
 /// </summary>
 public sealed class MathJsEngine : IDisposable {
     private readonly Lock _lock = new();
-    private readonly ICurrencyRateProvider _currencyRates;
+    private readonly IReadOnlyDictionary<string, double> _rates;
+    private readonly string _knownCsv;
     private readonly FormatConfig _formatConfig;
     private volatile Engine? _engine;
 
     private readonly Task _initTask;
-
-    // Tracks rates registered in the JS engine; used to detect stale registrations without
-    // calling math.createUnit unnecessarily (repeated override calls can corrupt math.js state).
-    // Keyed by currency, value is the formatted string sent to JS (avoids float equality warnings).
-    private readonly Dictionary<string, string> _registeredRates = new(StringComparer.OrdinalIgnoreCase);
 
     private IReadOnlyDictionary<string, string> _inputAliases = new Dictionary<string, string>();
     private IReadOnlyDictionary<string, string> _displayNames = new Dictionary<string, string>();
@@ -58,8 +56,9 @@ public sealed class MathJsEngine : IDisposable {
         [property: JsonPropertyName("inputAliases")] Dictionary<string, string> InputAliases,
         [property: JsonPropertyName("displayNames")] Dictionary<string, string> DisplayNames);
 
-    public MathJsEngine(ICurrencyRateProvider currencyRates, FormatConfig? formatConfig = null) {
-        _currencyRates = currencyRates;
+    public MathJsEngine(IReadOnlyDictionary<string, double> rates, FormatConfig? formatConfig = null) {
+        _rates = rates;
+        _knownCsv = BuildKnownCsv(rates);
         _formatConfig = formatConfig ?? new FormatConfig();
         _initTask = Task.Run(Initialize);
     }
@@ -92,6 +91,14 @@ public sealed class MathJsEngine : IDisposable {
         // math.createUnit('USD') in mathjs-helpers.js already triggers math.js unit system
         // initialization, which serves as the JIT warmup for subsequent evaluations.
 
+        // Preload all currencies so the engine is immutable after creation.
+        // Calling registerCurrency() repeatedly during evaluation corrupts math.js state.
+        foreach (var (code, rate) in _rates) {
+            if (string.Equals(code, "USD", StringComparison.OrdinalIgnoreCase)) continue;
+            var rateStr = rate.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            engine.Evaluate($"registerCurrency('{code.ToUpperInvariant()}', {rateStr})");
+        }
+
         lock (_lock) {
             _engine = engine;
         }
@@ -118,37 +125,22 @@ public sealed class MathJsEngine : IDisposable {
         if (_engine == null) throw new InvalidOperationException("Engine not ready");
         lock (_lock) {
             if (_engine == null) throw new InvalidOperationException("Engine not ready");
-            var cachedRates = _currencyRates.CachedRates;
-            var knownCsv = BuildKnownCsv(cachedRates);
-            return NormalizeExpressionCore(expression, knownCsv);
+            return NormalizeExpressionCore(expression, _knownCsv);
         }
     }
 
     /// <summary>
     /// Evaluates a math expression using math.js.
     /// Returns a CalcResult, ConversionResult, or ErrorResult.
-    /// Currency rates are always refreshed from <see cref="ICurrencyRateProvider.CachedRates"/>
-    /// on each call so rate updates take effect immediately without restarting the engine.
+    /// All currency rates are baked in at construction; the engine is immutable.
     /// </summary>
     public EvalResult Evaluate(string expression) {
         if (_engine == null) return new ErrorResult("Engine not ready");
         lock (_lock) {
             if (_engine == null) return new ErrorResult("Engine not ready");
-            var cachedRates = _currencyRates.CachedRates;
-            var knownCsv = BuildKnownCsv(cachedRates);
             try {
-                var normalized = NormalizeExpressionCore(expression, knownCsv);
+                var normalized = NormalizeExpressionCore(expression, _knownCsv);
                 if (normalized == null) return new ErrorResult();
-
-                // Register currencies whose rates are new or have changed
-                foreach (var currency in normalized.Currencies) {
-                    if (string.Equals(currency, "USD", StringComparison.OrdinalIgnoreCase)) continue;
-                    if (!cachedRates.TryGetValue(currency, out var rate)) continue;
-                    var rateStr = rate.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                    if (_registeredRates.TryGetValue(currency, out var existing) && existing == rateStr) continue;
-                    _engine.Evaluate($"registerCurrency('{currency}', {rateStr})");
-                    _registeredRates[currency] = rateStr;
-                }
 
                 IReadOnlyList<AmbiguityHint>? hints = normalized.Ambiguities.Count > 0 ? normalized.Ambiguities : null;
 

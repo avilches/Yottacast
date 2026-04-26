@@ -13,19 +13,13 @@ namespace Yottacast.Core.Tests.Search;
 /// into the engine, keeping the snapshot limited to math.js built-in units only.
 /// </summary>
 public sealed class MathJsSnapshotFixture : IAsyncLifetime {
-    public MathJsEngine Engine { get; } = new(new EmptyCurrencyRateProvider());
+    public MathJsEngine Engine { get; } = new(new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase));
     public Task InitializeAsync() => Engine.WhenReady();
     public Task DisposeAsync() { Engine.Dispose(); return Task.CompletedTask; }
 }
 
 [CollectionDefinition("MathJsSnapshot")]
 public class MathJsSnapshotCollection : ICollectionFixture<MathJsSnapshotFixture>;
-
-file class EmptyCurrencyRateProvider : ICurrencyRateProvider {
-    public IReadOnlyDictionary<string, double> CachedRates =>
-        new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
-    public Task RefreshAsync(IReadOnlyList<string> currencyCodes) => Task.CompletedTask;
-}
 
 /// <summary>
 /// Generates and verifies the committed JSON files produced by mathjs-precompute.js.

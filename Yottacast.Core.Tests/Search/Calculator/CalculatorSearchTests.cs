@@ -144,7 +144,7 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
     }
 
     // ── Currency conversions ──────────────────────────────────────────────────
-    // Rates in StaticCurrencyRateProvider (units per 1 USD): EUR=0.92, JPY=150.5, MXN=17.1, GBP=0.79
+    // Rates in MathJsEngineFixture (units per 1 USD): EUR=0.92, JPY=150.5, MXN=17.1, GBP=0.79
 
     public static TheoryData<string, string> CurrencyConversionCases => new() {
         { "10 USD to EUR",          "9.2 EUR"   },   // basic USD→EUR

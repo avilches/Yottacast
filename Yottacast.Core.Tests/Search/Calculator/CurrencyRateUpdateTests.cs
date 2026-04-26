@@ -1,38 +1,49 @@
 using Xunit;
+using Yottacast.Core.Search.Calculator;
 
 namespace Yottacast.Core.Tests.Search.Calculator;
 
 [Collection("MathJsMutableRates")]
-public class CurrencyRateUpdateTests(MathJsEngineMutableRatesFixture fixture) {
+public class CurrencyRateUpdateTests(MathJsEngineWithRatesFixture fixture) {
 
-    /// <summary>
-    /// Verifies that MathJsEngine re-reads the provider's CachedRates on every Evaluate call,
-    /// so a rate change is reflected immediately in the next evaluation without restarting the engine.
-    /// </summary>
     [Fact]
-    public void CurrencyRate_WhenChanged_EvaluationReflectsNewRate() {
-        fixture.RateProvider.SetRate("EUR", 0.5); // 1 USD = 0.5 EUR → 10 USD = 5 EUR
-        var r1 = fixture.Engine.Evaluate("10 USD to EUR");
+    public void Engine_WithRate_EvaluatesCorrectly() {
+        // Engine has EUR=0.92 -> 10 USD = 9.2 EUR
+        var r = fixture.Engine.Evaluate("10 USD to EUR");
+        Assert.True(r.IsSuccess, r.Error);
+        Assert.Contains("9.2", r.Value!);
+    }
+
+    [Fact]
+    public async Task TwoEngines_WithDifferentRates_ProduceDifferentResults() {
+        // Engine 1: EUR=0.5 -> 10 USD = 5 EUR
+        var rates1 = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase) {
+            ["USD"] = 1.0, ["EUR"] = 0.5
+        };
+        using var engine1 = new MathJsEngine(rates1);
+        await engine1.WhenReady();
+        var r1 = engine1.Evaluate("10 USD to EUR");
+
+        // Engine 2: EUR=2.0 -> 10 USD = 20 EUR
+        var rates2 = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase) {
+            ["USD"] = 1.0, ["EUR"] = 2.0
+        };
+        using var engine2 = new MathJsEngine(rates2);
+        await engine2.WhenReady();
+        var r2 = engine2.Evaluate("10 USD to EUR");
+
         Assert.True(r1.IsSuccess, r1.Error);
-        Assert.Contains("5", r1.Value!);
-
-        fixture.RateProvider.SetRate("EUR", 2.0); // 1 USD = 2 EUR → 10 USD = 20 EUR
-        var r2 = fixture.Engine.Evaluate("10 USD to EUR");
         Assert.True(r2.IsSuccess, r2.Error);
+        Assert.Contains("5", r1.Value!);
         Assert.Contains("20", r2.Value!);
-
         Assert.NotEqual(r1.Value, r2.Value);
     }
 
     [Fact]
-    public void CurrencyRate_WhenUnchanged_ReturnsSameResult() {
-        fixture.RateProvider.SetRate("JPY", 150.0); // 1 USD = 150 JPY → 1 USD = 150 JPY
+    public void Engine_SameRate_ReturnsConsistentResults() {
         var r1 = fixture.Engine.Evaluate("1 USD to JPY");
-        Assert.True(r1.IsSuccess);
-
         var r2 = fixture.Engine.Evaluate("1 USD to JPY");
-        Assert.True(r2.IsSuccess);
-
+        Assert.True(r1.IsSuccess);
         Assert.Equal(r1.Value, r2.Value);
     }
 }

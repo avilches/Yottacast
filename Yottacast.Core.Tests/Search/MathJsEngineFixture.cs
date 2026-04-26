@@ -8,7 +8,13 @@ namespace Yottacast.Core.Tests.Search;
 /// Engine init loads ~700KB of JS; sharing avoids re-parsing per class.
 /// </summary>
 public sealed class MathJsEngineFixture : IAsyncLifetime {
-    public MathJsEngine Engine { get; } = new(new StaticCurrencyRateProvider());
+    public MathJsEngine Engine { get; } = new(new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase) {
+        ["USD"] = 1.0,
+        ["EUR"] = 0.92,
+        ["JPY"] = 150.5,
+        ["MXN"] = 17.1,
+        ["GBP"] = 0.79,
+    });
 
     public Task InitializeAsync() => Engine.WhenReady();
 
@@ -22,22 +28,16 @@ public sealed class MathJsEngineFixture : IAsyncLifetime {
 public class MathJsCollection : ICollectionFixture<MathJsEngineFixture>;
 
 /// <summary>
-/// Fixture that exposes a MutableCurrencyRateProvider so tests can change rates at runtime.
-/// Uses a separate engine instance from MathJsEngineFixture to avoid shared state.
+/// Fixture with standard test rates for currency tests.
+/// The engine is immutable; to test different rates, create a new engine in the test.
 /// </summary>
-public sealed class MathJsEngineMutableRatesFixture : IAsyncLifetime {
-    public MutableCurrencyRateProvider RateProvider { get; } = new([
-        new("USD", 1.0),
-        new("EUR", 0.92),
-        new("JPY", 150.5),
-        new("GBP", 0.79),
-    ]);
-
-    public MathJsEngine Engine { get; }
-
-    public MathJsEngineMutableRatesFixture() {
-        Engine = new MathJsEngine(RateProvider);
-    }
+public sealed class MathJsEngineWithRatesFixture : IAsyncLifetime {
+    public MathJsEngine Engine { get; } = new(new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase) {
+        ["USD"] = 1.0,
+        ["EUR"] = 0.92,
+        ["JPY"] = 150.5,
+        ["GBP"] = 0.79,
+    });
 
     public Task InitializeAsync() => Engine.WhenReady();
 
@@ -48,4 +48,4 @@ public sealed class MathJsEngineMutableRatesFixture : IAsyncLifetime {
 }
 
 [CollectionDefinition("MathJsMutableRates")]
-public class MathJsMutableRatesCollection : ICollectionFixture<MathJsEngineMutableRatesFixture>;
+public class MathJsMutableRatesCollection : ICollectionFixture<MathJsEngineWithRatesFixture>;
