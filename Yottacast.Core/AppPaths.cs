@@ -50,4 +50,7 @@ public static class AppPaths {
 
     /// <summary>Emoji usage data (favorites + usage counts) JSON file.</summary>
     public static readonly string EmojiUsageFile = Path.Combine(ConfigDir, "emoji-usage.json");
+
+    /// <summary>Search history JSON file.</summary>
+    public static readonly string HistoryFile = Path.Combine(ConfigDir, "history.json");
 }

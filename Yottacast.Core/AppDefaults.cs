@@ -82,4 +82,8 @@ public static class AppDefaults {
     // ── Updates ───────────────────────────────────────────────────────────────
     /// HTTP timeout for the version check request.
     public const int UpdateCheckTimeoutSeconds = 10;
+
+    // ── History ──────────────────────────────────────────────────────────────────
+    /// Maximum number of search history entries to keep.
+    public const int HistoryMaxItems = 100;
 }
