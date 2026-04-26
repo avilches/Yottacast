@@ -57,9 +57,13 @@ public partial class App : Application {
                 CurrencyA: s.CalculatorCurrencyA,
                 CurrencyB: s.CalculatorCurrencyB);
 
+            var appLogger = _services.GetRequiredService<ILogger<App>>();
             exchangeService.RatesUpdated += rates => {
                 var settings = _services.GetRequiredService<UserSettings>();
-                _ = Task.Run(() => engineProvider.RecreateAsync(rates, BuildFormatConfig(settings)));
+                _ = Task.Run(async () => {
+                    try { await engineProvider.RecreateAsync(rates, BuildFormatConfig(settings)); }
+                    catch (Exception ex) { appLogger.LogError(ex, "Failed to recreate MathJsEngine after rates update"); }
+                });
             };
 
             // Recreate engine when user changes calculator settings (format, toggles)

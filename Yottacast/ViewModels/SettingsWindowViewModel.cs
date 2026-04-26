@@ -169,14 +169,12 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _settings.CalculatorIncludeMetals = value;
         _settings.Save();
         _logger.LogInformation("Settings: CalculatorIncludeMetals = {Value}", value);
-        _exchangeRateService.NotifySettingsChanged();
         _settings.NotifySearchSettingsChanged();
     }
     partial void OnCalculatorIncludeCryptoChanged(bool value) {
         _settings.CalculatorIncludeCrypto = value;
         _settings.Save();
         _logger.LogInformation("Settings: CalculatorIncludeCrypto = {Value}", value);
-        _exchangeRateService.NotifySettingsChanged();
         _settings.NotifySearchSettingsChanged();
     }
     partial void OnExchangeRateRefreshIntervalHoursChanged(decimal value) {
