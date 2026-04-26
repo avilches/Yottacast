@@ -182,14 +182,16 @@ public partial class App : Application {
         services.AddSingleton<TerminalDiscovery>();
         services.AddSingleton<FileSearch>();
         services.AddSingleton<ClipboardService>();
-        services.AddSingleton<ICurrencyRateProvider, StaticCurrencyRateProvider>();
+        // TODO: will be replaced in Tarea D with ExchangeRateService + MathJsEngineProvider wiring
+        services.AddSingleton<MathJsEngineProvider>();
         services.AddSingleton<MathJsEngine>(sp => {
             var s = sp.GetRequiredService<UserSettings>();
             var fmt = new FormatConfig(
                 LargeNumberDecimals: s.CalculatorDecimalPlaces,
                 CurrencyA: s.CalculatorCurrencyA,
                 CurrencyB: s.CalculatorCurrencyB);
-            return new MathJsEngine(sp.GetRequiredService<ICurrencyRateProvider>(), fmt);
+            var baseRates = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase) { ["USD"] = 1.0 };
+            return new MathJsEngine(baseRates, fmt);
         });
         services.AddSingleton<CalculatorSearch>();
         services.AddSingleton<EmojiDataLoader>();
