@@ -73,16 +73,24 @@ public class DictionarySource(
                     if (string.IsNullOrWhiteSpace(cleanDef)) continue;
 
                     string? exampleText = null;
+                    string? exampleTranslation = null;
                     var example = def.ParsedExamples?.FirstOrDefault();
                     if (example is not null) {
                         var cleaned = DictionaryApiClient.StripHtml(example.Example);
-                        if (!string.IsNullOrWhiteSpace(cleaned)) exampleText = cleaned;
+                        if (!string.IsNullOrWhiteSpace(cleaned)) {
+                            exampleText = cleaned;
+                            if (example.Translation is not null) {
+                                var cleanedTr = DictionaryApiClient.StripHtml(example.Translation);
+                                if (!string.IsNullOrWhiteSpace(cleanedTr)) exampleTranslation = cleanedTr;
+                            }
+                        }
                     }
 
                     defs.Add(new DictionaryDefinitionEntry {
                         PartOfSpeech = entry.PartOfSpeech,
                         Definition = cleanDef,
                         Example = exampleText,
+                        ExampleTranslation = exampleTranslation,
                     });
                 }
                 if (defs.Count >= AppDefaults.DictionaryMaxDefinitionsPerItem) break;

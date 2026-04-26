@@ -74,13 +74,20 @@
                             </Grid>
 
                             <!-- Example (optional, same color as definition) -->
-                            <TextBlock IsVisible="{Binding Example, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                       Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
-                                       FontSize="{DynamicResource Theme.Results.Subtitle.Size}"
-                                       FontStyle="Italic"
-                                       Margin="0,0,0,0">
-                                <Run Text="&#x201C;"/><Run Text="{Binding Example}"/><Run Text="&#x201D;"/>
-                            </TextBlock>
+                            <StackPanel IsVisible="{Binding Example, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                        Orientation="Vertical" Spacing="1">
+                                <TextBlock Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
+                                           FontSize="{DynamicResource Theme.Results.Subtitle.Size}"
+                                           FontStyle="Italic">
+                                    <Run Text="&#x201C;"/><Run Text="{Binding Example}"/><Run Text="&#x201D;"/>
+                                </TextBlock>
+                                <TextBlock IsVisible="{Binding ExampleTranslation, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                           Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
+                                           FontSize="{DynamicResource Theme.Results.Subtitle.Size}"
+                                           FontStyle="Italic">
+                                    <Run Text="&#x201C;"/><Run Text="{Binding ExampleTranslation}"/><Run Text="&#x201D;"/>
+                                </TextBlock>
+                            </StackPanel>
 
                         </StackPanel>
                     </DataTemplate>

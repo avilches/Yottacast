@@ -27,6 +27,9 @@ public record WiktionaryDefinition {
 public record WiktionaryExample {
     [JsonPropertyName("example")]
     public string Example { get; init; } = "";
+
+    [JsonPropertyName("translation")]
+    public string? Translation { get; init; }
 }
 
 public static class DictionaryApiClient {

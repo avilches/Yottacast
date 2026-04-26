@@ -4,6 +4,7 @@ public record DictionaryDefinitionEntry {
     public string PartOfSpeech { get; init; } = "";
     public string Definition { get; init; } = "";
     public string? Example { get; init; }
+    public string? ExampleTranslation { get; init; }
 }
 
 public class DictionaryResultViewModel : BaseResultItemViewModel {
