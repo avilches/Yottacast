@@ -1032,6 +1032,36 @@ public class UserSettingsTests : IDisposable {
         Assert.True(fired);
     }
 
+    // ══════════════════════════════════════════════════════════════════════════
+    // EnableHistory / HistoryMaxItems
+    // ══════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void EnableHistory_DefaultTrue_RoundTrip() {
+        var settings = Load();
+        Assert.True(settings.EnableHistory);
+        Assert.Equal(100, settings.HistoryMaxItems);
+
+        settings.EnableHistory = false;
+        settings.HistoryMaxItems = 50;
+        settings.Save();
+
+        var reload = Load();
+        Assert.False(reload.EnableHistory);
+        Assert.Equal(50, reload.HistoryMaxItems);
+    }
+
+    [Fact]
+    public void HistoryMaxItems_ClampsOutOfRangeValues() {
+        File.WriteAllText(_settingsFile, """{"historyMaxItems": 999}""");
+        var settings = Load();
+        Assert.Equal(100, settings.HistoryMaxItems);
+
+        File.WriteAllText(_settingsFile, """{"historyMaxItems": 0}""");
+        var settings2 = Load();
+        Assert.Equal(100, settings2.HistoryMaxItems);
+    }
+
     /// <summary>Platform provider with configurable default search folders (no browsers/terminals).</summary>
     private sealed class PlatformWithSearchFolders(List<string> searchFolders) : PlatformProvider {
         public override bool? IsSystemDarkMode() => null;

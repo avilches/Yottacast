@@ -48,6 +48,8 @@ public class UserSettings {
     public string DictionaryPrefix { get; set; } = AppDefaults.DictionaryDefaultPrefix;
     public bool DictionaryShowAlways { get; set; } = false;
     public List<string> DictionaryLanguages { get; set; } = new(AppDefaults.DictionaryDefaultLanguages);
+    public bool EnableHistory { get; set; } = true;
+    public int HistoryMaxItems { get; set; } = AppDefaults.HistoryMaxItems;
 
     private string _hotkey = "Alt+Space";
     private HotkeyConfig? _parsedHotkey;
@@ -157,6 +159,8 @@ public class UserSettings {
         [JsonPropertyName("dictionaryPrefix")] public string DictionaryPrefix { get; init; } = AppDefaults.DictionaryDefaultPrefix;
         [JsonPropertyName("dictionaryShowAlways")] public bool DictionaryShowAlways { get; init; } = false;
         [JsonPropertyName("dictionaryLanguages")] public List<string>? DictionaryLanguages { get; init; }
+        [JsonPropertyName("enableHistory")] public bool EnableHistory { get; init; } = true;
+        [JsonPropertyName("historyMaxItems")] public int HistoryMaxItems { get; init; } = AppDefaults.HistoryMaxItems;
     }
 
     public static UserSettings Load(PlatformProvider platform, ILogger<UserSettings>? logger = null, string? settingsPath = null) {
@@ -210,6 +214,10 @@ public class UserSettings {
                     DictionaryPrefix = string.IsNullOrWhiteSpace(data.DictionaryPrefix) ? AppDefaults.DictionaryDefaultPrefix : data.DictionaryPrefix,
                     DictionaryShowAlways = data.DictionaryShowAlways,
                     DictionaryLanguages = data.DictionaryLanguages is { Count: > 0 } ? data.DictionaryLanguages : new(AppDefaults.DictionaryDefaultLanguages),
+                    EnableHistory = data.EnableHistory,
+                    HistoryMaxItems = data.HistoryMaxItems is >= 1 and <= AppDefaults.HistoryMaxItems
+                        ? data.HistoryMaxItems
+                        : AppDefaults.HistoryMaxItems,
                 };
             }
         } catch (Exception ex) {
@@ -312,6 +320,8 @@ public class UserSettings {
                 DictionaryPrefix = DictionaryPrefix,
                 DictionaryShowAlways = DictionaryShowAlways,
                 DictionaryLanguages = DictionaryLanguages,
+                EnableHistory = EnableHistory,
+                HistoryMaxItems = HistoryMaxItems,
                 WebSearchEngines = WebSearchEngines
                     .Select(s => new WebSearchEngineSettingsData {
                         Id = s.Id,
