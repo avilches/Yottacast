@@ -12,6 +12,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using Yottacast.Core;
 using Yottacast.Core.Platform;
+using Yottacast.Core.Search.Calculator;
 using Yottacast.Core.Search.WebSearch;
 using Yottacast.Core.Services;
 using Yottacast.Services;
@@ -140,6 +141,9 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [ObservableProperty] private string _calculatorCurrencyA = "EUR";
     [ObservableProperty] private string _calculatorCurrencyB = "USD";
     [ObservableProperty] private int _calculatorDecimalPlaces = 2;
+    [ObservableProperty] private bool _calculatorIncludeMetals;
+    [ObservableProperty] private bool _calculatorIncludeCrypto;
+    [ObservableProperty] private decimal _exchangeRateRefreshIntervalHours;
 
     partial void OnCalculatorCurrencyAChanged(string value) {
         var upper = value.ToUpperInvariant();
@@ -161,6 +165,35 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _logger.LogInformation("Settings: CalculatorDecimalPlaces = {Value}", value);
         _settings.NotifySearchSettingsChanged();
     }
+    partial void OnCalculatorIncludeMetalsChanged(bool value) {
+        _settings.CalculatorIncludeMetals = value;
+        _settings.Save();
+        _logger.LogInformation("Settings: CalculatorIncludeMetals = {Value}", value);
+        _exchangeRateService.NotifySettingsChanged();
+        _settings.NotifySearchSettingsChanged();
+    }
+    partial void OnCalculatorIncludeCryptoChanged(bool value) {
+        _settings.CalculatorIncludeCrypto = value;
+        _settings.Save();
+        _logger.LogInformation("Settings: CalculatorIncludeCrypto = {Value}", value);
+        _exchangeRateService.NotifySettingsChanged();
+        _settings.NotifySearchSettingsChanged();
+    }
+    partial void OnExchangeRateRefreshIntervalHoursChanged(decimal value) {
+        var clamped = (int)Math.Clamp(value, 1, 168);
+        _settings.ExchangeRateRefreshIntervalHours = clamped;
+        _settings.Save();
+        _logger.LogInformation("Settings: ExchangeRateRefreshIntervalHours = {Value}", clamped);
+    }
+
+    public string ExchangeRatesLastUpdatedText {
+        get {
+            var dt = _exchangeRateService.LastUpdated;
+            if (dt == null) return "Never";
+            var local = dt.Value.ToLocalTime();
+            return local.ToString("g");
+        }
+    }
 
     // ── App version ──────────────────────────────────────────────────────────
     public string AppVersion { get; } =
@@ -173,6 +206,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     private readonly PluginService _pluginService;
     private readonly BrowserDiscovery _browserDiscovery;
     private readonly TerminalDiscovery _terminalDiscovery;
+    private readonly ExchangeRateService _exchangeRateService;
     private readonly ILogger<SettingsWindowViewModel> _logger;
     private bool _appDirectoriesDirty;
     private readonly HistoryService _historyService;
@@ -185,14 +219,16 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         PlatformProvider platform,
         PluginService pluginService,
         HistoryService historyService,
+        ExchangeRateService exchangeRateService,
         ILogger<SettingsWindowViewModel> logger) {
-        _settings           = settings;
-        _themeService       = themeService;
-        _platform           = platform;
-        _pluginService      = pluginService;
-        _browserDiscovery   = browserDiscovery;
-        _terminalDiscovery  = terminalDiscovery;
-        _logger             = logger;
+        _settings             = settings;
+        _themeService         = themeService;
+        _platform             = platform;
+        _pluginService        = pluginService;
+        _browserDiscovery     = browserDiscovery;
+        _terminalDiscovery    = terminalDiscovery;
+        _exchangeRateService  = exchangeRateService;
+        _logger               = logger;
         _logger.LogInformation("Settings: opened");
 
         _themes = themeService.AvailableThemes();
@@ -217,10 +253,13 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _enableWebSearch                 = settings.EnableWebSearch;
         _fileSearchOnlySpecificFolders   = settings.FileSearchOnlySpecificFolders;
         _stickyWindow                    = settings.StickyWindow;
-        _calculatorCurrencyA             = settings.CalculatorCurrencyA;
-        _calculatorCurrencyB             = settings.CalculatorCurrencyB;
-        _calculatorDecimalPlaces         = settings.CalculatorDecimalPlaces;
-        _enableDictionary                = settings.EnableDictionary;
+        _calculatorCurrencyA                  = settings.CalculatorCurrencyA;
+        _calculatorCurrencyB                  = settings.CalculatorCurrencyB;
+        _calculatorDecimalPlaces              = settings.CalculatorDecimalPlaces;
+        _calculatorIncludeMetals              = settings.CalculatorIncludeMetals;
+        _calculatorIncludeCrypto              = settings.CalculatorIncludeCrypto;
+        _exchangeRateRefreshIntervalHours     = settings.ExchangeRateRefreshIntervalHours;
+        _enableDictionary                     = settings.EnableDictionary;
         _dictionaryPrefix                = settings.DictionaryPrefix;
         _dictionaryShowAlways            = settings.DictionaryShowAlways;
 

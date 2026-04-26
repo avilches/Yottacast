@@ -998,6 +998,36 @@
                         </Border>
                     </StackPanel>
 
+                    <!-- Exchange rates -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="label" Text="Exchange Rates"/>
+                        <CheckBox Content="Include metals (gold, silver, platinum, palladium)"
+                                  IsChecked="{Binding CalculatorIncludeMetals}"/>
+                        <CheckBox Content="Include cryptocurrencies"
+                                  IsChecked="{Binding CalculatorIncludeCrypto}"/>
+                    </StackPanel>
+
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="label" Text="Refresh Interval"/>
+                        <Border Classes="numeric-field"
+                                Width="130"
+                                HorizontalAlignment="Left"
+                                ClipToBounds="True">
+                            <NumericUpDown x:Name="ExchangeRateRefreshInput"
+                                           Value="{Binding ExchangeRateRefreshIntervalHours}"
+                                           Minimum="1"
+                                           Maximum="168"
+                                           Increment="1"
+                                           FormatString="0"/>
+                        </Border>
+                        <TextBlock Classes="description" Text="How often to check for updated exchange rates (hours)."/>
+                    </StackPanel>
+
+                    <StackPanel Spacing="4">
+                        <TextBlock Classes="label" Text="Last Rate Update"/>
+                        <TextBlock Classes="description" Text="{Binding ExchangeRatesLastUpdatedText}"/>
+                    </StackPanel>
+
                     </StackPanel> <!-- /EnableCalculator -->
                 </StackPanel>
 

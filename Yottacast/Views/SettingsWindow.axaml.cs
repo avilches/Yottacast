@@ -33,8 +33,9 @@ public partial class SettingsWindow : Window {
         Opened += (_, _) => AppHandler.Instance.DisableMinimizeButton(this);
         Closed += (_, _) => (DataContext as SettingsWindowViewModel)?.OnWindowClosed();
 
-        // Bloquear entrada de letras en el campo numérico; usamos Tunnel para interceptar antes del TextBox interior
+        // Bloquear entrada de letras en los campos numéricos; usamos Tunnel para interceptar antes del TextBox interior
         DecimalPlacesInput.AddHandler(InputElement.TextInputEvent, OnDecimalPlacesTextInputting, RoutingStrategies.Tunnel);
+        ExchangeRateRefreshInput.AddHandler(InputElement.TextInputEvent, OnDecimalPlacesTextInputting, RoutingStrategies.Tunnel);
     }
 
     protected override void OnKeyDown(KeyEventArgs e) {
