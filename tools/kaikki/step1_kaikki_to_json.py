@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """
-Step 1: Download kaikki.org JSONL and produce a lean basic JSONL per language.
+Step 1: Download kaikki.org native-edition JSONL and produce a lean basic JSONL per language.
+
+Each language is extracted from its own native Wiktionary edition (eswiktionary for Spanish,
+dewiktionary for German, etc.), so definitions are in the native language, not in English.
 
 Output format (one line per word+pos):
   {"w":"casa","p":"Noun","d":["def1","def2"],"e":"optional example"}
@@ -11,13 +14,12 @@ Usage:
   python step1_kaikki_to_json.py --lang es de # process Spanish and German
 
 Output: output/{lang_code}.jsonl
-Cache:  cache/{LangName}.jsonl  (raw kaikki JSONL, kept to avoid re-downloading)
+Cache:  cache/{lang_code}.jsonl.gz  (raw kaikki JSONL gz, kept to avoid re-downloading)
 """
 
 import argparse
 import gzip
 import json
-import os
 import sys
 import urllib.request
 from pathlib import Path
@@ -29,34 +31,33 @@ OUTPUT_DIR = SCRIPT_DIR / "output"
 CACHE_DIR.mkdir(exist_ok=True)
 OUTPUT_DIR.mkdir(exist_ok=True)
 
-# Language code → (kaikki language name, URL language name)
-LANGUAGES: dict[str, tuple[str, str]] = {
-    "en": ("English",    "English"),
-    "es": ("Spanish",    "Spanish"),
-    "fr": ("French",     "French"),
-    "de": ("German",     "German"),
-    "it": ("Italian",    "Italian"),
-    "pt": ("Portuguese", "Portuguese"),
-    "ru": ("Russian",    "Russian"),
-    "tr": ("Turkish",    "Turkish"),
-    "nl": ("Dutch",      "Dutch"),
-    "pl": ("Polish",     "Polish"),
-    "th": ("Thai",       "Thai"),
-    "ko": ("Korean",     "Korean"),
-    "ja": ("Japanese",   "Japanese"),
-    "zh": ("Chinese",    "Chinese"),
-    "el": ("Greek",      "Greek"),
-    "id": ("Indonesian", "Indonesian"),
+# Language code → display name
+# Downloads from: https://kaikki.org/downloads/{lang_code}/{lang_code}-extract.jsonl.gz
+# Each file contains words from that language's own Wiktionary edition (native definitions).
+LANGUAGES: dict[str, str] = {
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "de": "German",
+    "it": "Italian",
+    "pt": "Portuguese",
+    "ru": "Russian",
+    "tr": "Turkish",
+    "nl": "Dutch",
+    "pl": "Polish",
+    "th": "Thai",
+    "ko": "Korean",
+    "ja": "Japanese",
+    "zh": "Chinese",
+    "el": "Greek",
+    "id": "Indonesian",
 }
 
 MAX_DEFINITIONS = 5
 
 
-def kaikki_url(lang_name: str) -> str:
-    return (
-        f"https://kaikki.org/dictionary/{lang_name}/"
-        f"kaikki.org-dictionary-{lang_name}.jsonl"
-    )
+def kaikki_url(lang_code: str) -> str:
+    return f"https://kaikki.org/downloads/{lang_code}/{lang_code}-extract.jsonl.gz"
 
 
 def download_with_progress(url: str, dest: Path) -> None:
@@ -126,25 +127,25 @@ def extract_entry(obj: dict) -> dict | None:
 
 
 def process_language(lang_code: str) -> None:
-    lang_name, url_name = LANGUAGES[lang_code]
-    cache_file = CACHE_DIR / f"{lang_name}.jsonl"
+    lang_name = LANGUAGES[lang_code]
+    cache_file = CACHE_DIR / f"{lang_code}.jsonl.gz"
     output_file = OUTPUT_DIR / f"{lang_code}.jsonl"
 
     print(f"\n[{lang_code}] {lang_name}")
 
     # Download if not cached
     if not cache_file.exists():
-        download_with_progress(kaikki_url(url_name), cache_file)
+        download_with_progress(kaikki_url(lang_code), cache_file)
     else:
         print(f"  Using cached {cache_file.name}")
 
-    # Process
+    # Process (read gzip directly)
     print(f"  Processing → {output_file.name} ...", flush=True)
     written = 0
     skipped = 0
 
     with (
-        open(cache_file, encoding="utf-8") as src,
+        gzip.open(cache_file, "rt", encoding="utf-8") as src,
         open(output_file, "w", encoding="utf-8") as dst,
     ):
         for line in src:

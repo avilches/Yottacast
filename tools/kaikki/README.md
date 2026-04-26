@@ -5,8 +5,11 @@ Scripts para producir los ficheros de diccionario local que Yottacast usa en lug
 ## Contexto
 
 La API de `en.wiktionary.org` devuelve definiciones muy escasas para palabras en idiomas no ingleses
-(p.ej. "casa" en español → 1 definición). [kaikki.org](https://kaikki.org) extrae los dumps de cada
-edición del Wiktionary y ofrece JSONL estructurado con definiciones ricas en el idioma nativo.
+(p.ej. "casa" en español → 1 definición en inglés). [kaikki.org](https://kaikki.org) extrae los dumps
+de cada edición nativa del Wiktionary (eswiktionary para español, dewiktionary para alemán…) y ofrece
+JSONL estructurado con definiciones ricas **en el idioma nativo**.
+
+Los archivos se descargan desde `https://kaikki.org/downloads/{lang_code}/{lang_code}-extract.jsonl.gz`.
 
 El flujo completo:
 
@@ -35,7 +38,7 @@ python step1_kaikki_to_json.py --lang all       # todos los idiomas
 python step1_kaikki_to_json.py                  # equivalente a --lang all
 ```
 
-- Descarga el JSONL crudo de kaikki.org a `cache/{LangName}.jsonl` (se reutiliza en ejecuciones siguientes).
+- Descarga el JSONL crudo de kaikki.org a `cache/{lang_code}.jsonl.gz` (se reutiliza en ejecuciones siguientes).
 - Filtra entradas `form-of` (inflexiones gramaticales sin definición propia).
 - Extrae: palabra, parte del discurso, hasta 5 definiciones, primer ejemplo.
 - Escribe `output/{lang}.jsonl` (una línea JSON por entrada).
@@ -102,8 +105,8 @@ tools/kaikki/
 ├── step1_kaikki_to_json.py   ← descarga + extracción
 ├── step2_json_to_sqlite.py   ← conversión a SQLite (opcional)
 ├── README.md
-├── cache/                    ← JSONL crudos de kaikki (no subir al repo, son grandes)
-│   └── Spanish.jsonl
+├── cache/                    ← JSONL.gz crudos de kaikki (no subir al repo, son grandes)
+│   └── es.jsonl.gz
 └── output/                   ← basic JSONL y SQLite generados
     ├── es.jsonl
     └── es.db
