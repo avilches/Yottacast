@@ -11,16 +11,18 @@ namespace Yottacast.Core.Search.Calculator;
 /// When the expression fails with an actionable error (unknown unit, incompatible units) an
 /// informational error item is shown via LastHint.
 /// </summary>
-public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard, UserSettings settings, ILogger<CalculatorSearch> logger) : IInstantSearchSource, ISearchHintProvider {
+public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateService exchangeRateService, ClipboardService clipboard, UserSettings settings, ILogger<CalculatorSearch> logger) : IInstantSearchSource, ISearchHintProvider {
     public string? LastHint { get; private set; }
 
     public void Start() { }
-    public Task WhenReady() => engine.WhenReady();
+    public Task WhenReady() => Task.CompletedTask;
     public Task Stop() => Task.CompletedTask;
 
     public IReadOnlyList<BaseResultItemViewModel> Search(string query, int _) {
         LastHint = null;
         if (!settings.EnableCalculator) return [];
+        var engine = engineProvider.Current;
+        if (engine == null) return [];
         var q = query.Trim();
 
         switch (engine.Evaluate(q)) {
@@ -59,6 +61,7 @@ public class CalculatorSearch(MathJsEngine engine, ClipboardService clipboard, U
                     ToShort           = toShort,
                     ToLong            = toLong,
                     FromWasNormalized = r.FromWasNormalized,
+                    RatesAreStale     = exchangeRateService.IsStale,
                     OnLeft  = r.FromWasNormalized ? () => vm.MoveCellLeft() : null,
                     OnRight = r.FromWasNormalized ? () => vm.MoveCellRight() : null,
                     OnActivate = () => {

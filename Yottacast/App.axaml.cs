@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -46,6 +47,27 @@ public partial class App : Application {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop) {
             AppHandler.Instance.OnFrameworkInitializationCompleted();
             _services = BuildServices();
+
+            // Wire up live exchange rates
+            var exchangeService = _services.GetRequiredService<ExchangeRateService>();
+            var engineProvider = _services.GetRequiredService<MathJsEngineProvider>();
+
+            static FormatConfig BuildFormatConfig(UserSettings s) => new(
+                LargeNumberDecimals: s.CalculatorDecimalPlaces,
+                CurrencyA: s.CalculatorCurrencyA,
+                CurrencyB: s.CalculatorCurrencyB);
+
+            exchangeService.RatesUpdated += rates => {
+                var settings = _services.GetRequiredService<UserSettings>();
+                _ = Task.Run(() => engineProvider.RecreateAsync(rates, BuildFormatConfig(settings)));
+            };
+
+            // Recreate engine when user changes calculator settings (format, toggles)
+            _services.GetRequiredService<UserSettings>().SearchSettingsChanged += () => {
+                exchangeService.NotifySettingsChanged();
+            };
+
+            _ = exchangeService.StartAsync();
 
             var userSettings = _services.GetRequiredService<UserSettings>();
             var pluginService = _services.GetRequiredService<PluginService>();
@@ -182,17 +204,9 @@ public partial class App : Application {
         services.AddSingleton<TerminalDiscovery>();
         services.AddSingleton<FileSearch>();
         services.AddSingleton<ClipboardService>();
-        // TODO: will be replaced in Tarea D with ExchangeRateService + MathJsEngineProvider wiring
+        services.AddSingleton<HttpClient>();
+        services.AddSingleton<ExchangeRateService>();
         services.AddSingleton<MathJsEngineProvider>();
-        services.AddSingleton<MathJsEngine>(sp => {
-            var s = sp.GetRequiredService<UserSettings>();
-            var fmt = new FormatConfig(
-                LargeNumberDecimals: s.CalculatorDecimalPlaces,
-                CurrencyA: s.CalculatorCurrencyA,
-                CurrencyB: s.CalculatorCurrencyB);
-            var baseRates = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase) { ["USD"] = 1.0 };
-            return new MathJsEngine(baseRates, fmt);
-        });
         services.AddSingleton<CalculatorSearch>();
         services.AddSingleton<EmojiDataLoader>();
         services.AddSingleton<EmojiUsageStore>(sp => new EmojiUsageStore(

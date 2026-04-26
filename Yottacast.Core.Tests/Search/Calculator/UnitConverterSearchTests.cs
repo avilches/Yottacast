@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Net.Http;
 using Xunit;
 using Yottacast.Core.Search.Calculator;
 using Yottacast.Core.Services;
@@ -12,7 +13,9 @@ public class UnitConverterSearchTests(MathJsEngineFixture fixture) {
     private CalculatorSearch BuildSearch(out ClipboardService clipboard) {
         clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
         var settings = UserSettings.Load(new FakePlatformProvider([]));
-        return new CalculatorSearch(fixture.Engine, clipboard, settings, NullLogger<CalculatorSearch>.Instance);
+        var provider = MathJsEngineProvider.ForTesting(fixture.Engine);
+        var exchangeRateService = new ExchangeRateService(new HttpClient(), settings, NullLogger<ExchangeRateService>.Instance);
+        return new CalculatorSearch(provider, exchangeRateService, clipboard, settings, NullLogger<CalculatorSearch>.Instance);
     }
 
     private static IReadOnlyList<ViewModels.ConversionResultItemViewModel> SearchResults(

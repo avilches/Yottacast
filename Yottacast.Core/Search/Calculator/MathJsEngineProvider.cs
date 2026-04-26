@@ -7,6 +7,23 @@ namespace Yottacast.Core.Search.Calculator;
 public sealed class MathJsEngineProvider : IDisposable {
     private volatile MathJsEngine? _current;
     private readonly SemaphoreSlim _recreateLock = new(1, 1);
+    private readonly bool _ownsEngine;
+
+    public MathJsEngineProvider() {
+        _ownsEngine = true;
+    }
+
+    private MathJsEngineProvider(MathJsEngine engine) {
+        _current = engine;
+        _ownsEngine = false; // caller owns the engine lifetime
+    }
+
+    /// <summary>
+    /// Creates a provider pre-seeded with an already-initialized engine.
+    /// The provider does NOT dispose the engine when it is disposed — the caller retains ownership.
+    /// Use only in tests where the engine is managed by a shared fixture.
+    /// </summary>
+    public static MathJsEngineProvider ForTesting(MathJsEngine engine) => new(engine);
 
     /// <summary>
     /// The current engine, or null while the first engine is still initializing.
@@ -26,7 +43,7 @@ public sealed class MathJsEngineProvider : IDisposable {
             var next = new MathJsEngine(rates, config);
             await next.WhenReady();
             var old = Interlocked.Exchange(ref _current, next);
-            old?.Dispose();
+            if (_ownsEngine) old?.Dispose();
         } finally {
             _recreateLock.Release();
         }
@@ -35,6 +52,6 @@ public sealed class MathJsEngineProvider : IDisposable {
     public void Dispose() {
         _recreateLock.Dispose();
         var engine = Interlocked.Exchange(ref _current, null);
-        engine?.Dispose();
+        if (_ownsEngine) engine?.Dispose();
     }
 }

@@ -5,6 +5,7 @@ using Yottacast.Core.Search.Calculator;
 using Yottacast.Core.Services;
 using Yottacast.Core.Tests.Fakes;
 using Yottacast.Core.ViewModels;
+using System.Net.Http;
 
 namespace Yottacast.Core.Tests.Search.Calculator;
 
@@ -14,7 +15,9 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
     private CalculatorSearch BuildSearch(out ClipboardService clipboard) {
         clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
         var settings = UserSettings.Load(new FakePlatformProvider([]));
-        return new CalculatorSearch(fixture.Engine, clipboard, settings, NullLogger<CalculatorSearch>.Instance);
+        var provider = MathJsEngineProvider.ForTesting(fixture.Engine);
+        var exchangeRateService = new ExchangeRateService(new HttpClient(), settings, NullLogger<ExchangeRateService>.Instance);
+        return new CalculatorSearch(provider, exchangeRateService, clipboard, settings, NullLogger<CalculatorSearch>.Instance);
     }
 
     private static BaseResultItemViewModel SearchResult(CalculatorSearch search, string query) {

@@ -12,7 +12,6 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using Yottacast.Core;
 using Yottacast.Core.Platform;
-using Yottacast.Core.Search.Calculator;
 using Yottacast.Core.Search.WebSearch;
 using Yottacast.Core.Services;
 using Yottacast.Services;
@@ -147,7 +146,6 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _settings.CalculatorCurrencyA = upper;
         _settings.Save();
         _logger.LogInformation("Settings: CalculatorCurrencyA = \"{Value}\"", upper);
-        _mathJsEngine.UpdateConfig(BuildFormatConfig());
         _settings.NotifySearchSettingsChanged();
     }
     partial void OnCalculatorCurrencyBChanged(string value) {
@@ -155,21 +153,14 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _settings.CalculatorCurrencyB = upper;
         _settings.Save();
         _logger.LogInformation("Settings: CalculatorCurrencyB = \"{Value}\"", upper);
-        _mathJsEngine.UpdateConfig(BuildFormatConfig());
         _settings.NotifySearchSettingsChanged();
     }
     partial void OnCalculatorDecimalPlacesChanged(int value) {
         _settings.CalculatorDecimalPlaces = value;
         _settings.Save();
         _logger.LogInformation("Settings: CalculatorDecimalPlaces = {Value}", value);
-        _mathJsEngine.UpdateConfig(BuildFormatConfig());
         _settings.NotifySearchSettingsChanged();
     }
-
-    private FormatConfig BuildFormatConfig() => new(
-        LargeNumberDecimals: _settings.CalculatorDecimalPlaces,
-        CurrencyA: _settings.CalculatorCurrencyA,
-        CurrencyB: _settings.CalculatorCurrencyB);
 
     // ── App version ──────────────────────────────────────────────────────────
     public string AppVersion { get; } =
@@ -179,7 +170,6 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     private readonly UserSettings _settings;
     private readonly ThemeService _themeService;
     private readonly PlatformProvider _platform;
-    private readonly MathJsEngine _mathJsEngine;
     private readonly PluginService _pluginService;
     private readonly BrowserDiscovery _browserDiscovery;
     private readonly TerminalDiscovery _terminalDiscovery;
@@ -193,14 +183,12 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         TerminalDiscovery terminalDiscovery,
         ThemeService themeService,
         PlatformProvider platform,
-        MathJsEngine mathJsEngine,
         PluginService pluginService,
         HistoryService historyService,
         ILogger<SettingsWindowViewModel> logger) {
         _settings           = settings;
         _themeService       = themeService;
         _platform           = platform;
-        _mathJsEngine       = mathJsEngine;
         _pluginService      = pluginService;
         _browserDiscovery   = browserDiscovery;
         _terminalDiscovery  = terminalDiscovery;

@@ -29,6 +29,9 @@ public class ConversionResultItemViewModel : BaseResultItemViewModel, INotifyPro
     /// <summary>True when math.js changed the from unit — enables left/right cell navigation.</summary>
     public bool FromWasNormalized { get; init; }
 
+    /// <summary>True when exchange rates are stale (never downloaded or too old).</summary>
+    public bool RatesAreStale { get; init; }
+
     // ── Cell selection ───────────────────────────────────────────────────────
     private ConversionCell _selectedCell = ConversionCell.To;
     public ConversionCell SelectedCell {

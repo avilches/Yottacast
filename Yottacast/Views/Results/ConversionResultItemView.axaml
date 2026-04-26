@@ -3,11 +3,11 @@
              xmlns:viewModels="clr-namespace:Yottacast.Core.ViewModels;assembly=Yottacast.Core"
              x:Class="Yottacast.Views.Results.ConversionResultItemView"
              x:DataType="viewModels:ConversionResultItemViewModel">
-    <Grid ColumnDefinitions="*" MinHeight="68"
+    <Grid ColumnDefinitions="*" RowDefinitions="*,Auto" MinHeight="68"
           TextElement.FontFamily="{DynamicResource Theme.Conv.FontFamily}">
 
         <!-- 2-cell layout: From → To (when math.js did NOT simplify the from) -->
-        <Grid Grid.Column="0"
+        <Grid Grid.Row="0" Grid.Column="0"
               IsVisible="{Binding !FromWasNormalized}"
               ColumnDefinitions="*,Auto,*"
               VerticalAlignment="Center"
@@ -59,7 +59,7 @@
         </Grid>
 
         <!-- 3-cell layout: OrigFrom → NormFrom → To (when math.js simplified the from) -->
-        <Grid Grid.Column="0"
+        <Grid Grid.Row="0" Grid.Column="0"
               IsVisible="{Binding FromWasNormalized}"
               ColumnDefinitions="*,Auto,*,Auto,*"
               VerticalAlignment="Center"
@@ -134,6 +134,16 @@
                 </StackPanel>
             </Border>
         </Grid>
+
+        <!-- Stale rates indicator -->
+        <TextBlock Grid.Row="1"
+                   Text="&#x26A0; Exchange rates may be outdated"
+                   Foreground="{DynamicResource Theme.Conv.Subtitle.Color}"
+                   FontSize="11"
+                   Opacity="0.6"
+                   HorizontalAlignment="Center"
+                   Margin="0,0,0,4"
+                   IsVisible="{Binding RatesAreStale}"/>
 
     </Grid>
 </UserControl>
