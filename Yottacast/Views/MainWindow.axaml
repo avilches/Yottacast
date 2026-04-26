@@ -85,6 +85,10 @@
         <Style Selector="ListBoxItem:selected TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource Theme.Results.Selection.Color}"/>
         </Style>
+        <!-- Dictionary pills keep category color when selected -->
+        <Style Selector="ListBoxItem:selected TextBlock.dict-pill">
+            <Setter Property="Foreground" Value="{DynamicResource Theme.Results.Category.Color}"/>
+        </Style>
         <!-- Emoji ListBoxItem: no selection background (only the individual cell gets highlighted) -->
         <Style Selector="ListBoxItem.emoji-item:selected /template/ ContentPresenter">
             <Setter Property="Background" Value="Transparent"/>
@@ -95,6 +99,11 @@
         <!-- Emoji cell selection highlight: only when the ListBoxItem is selected -->
         <Style Selector="ListBoxItem:selected Border.emoji-selected">
             <Setter Property="Background" Value="{DynamicResource Theme.Results.Selection.Background}"/>
+        </Style>
+        <!-- Emoji placeholder cell: invisible spacer to pad sections to full rows -->
+        <Style Selector="Border.emoji-placeholder">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
         </Style>
         <!-- Conversion with navigable cells: suppress ListBoxItem selection background -->
         <Style Selector="ListBoxItem.conv-navigable:selected /template/ ContentPresenter">

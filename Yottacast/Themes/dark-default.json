@@ -24,7 +24,7 @@
   "results": {
     "cornerRadius": 8,
     "title":    { "color": "#EAEAEE", "size": 14 },
-    "subtitle": { "color": "#505055", "size": 12 },
+    "subtitle": { "color": "#9A9AA4", "size": 12 },
     "category": { "color": "#606068", "size": 12 },
     "icon":     { "background": "#252529", "cornerRadius": 8 },
     "shortcut": { "color": "#505055", "background": "#252529", "size": 12, "cornerRadius": 5 },

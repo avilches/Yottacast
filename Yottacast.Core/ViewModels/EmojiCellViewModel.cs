@@ -36,5 +36,9 @@ public class EmojiCellViewModel : INotifyPropertyChanged {
         }
     }
 
+    public bool IsPlaceholder { get; init; } = false;
+
+    public static EmojiCellViewModel Placeholder => new() { IsPlaceholder = true };
+
     public event PropertyChangedEventHandler? PropertyChanged;
 }

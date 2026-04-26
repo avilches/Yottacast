@@ -40,9 +40,11 @@
                 <Border Background="{DynamicResource Theme.Results.Shortcut.Background}"
                         CornerRadius="{DynamicResource Theme.Results.Shortcut.CornerRadius}"
                         Padding="5,2"
+                        Margin="0,-2,0,0"
                         VerticalAlignment="Center"
                         IsVisible="{Binding Language, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                     <TextBlock Text="{Binding Language}"
+                               Classes="dict-pill"
                                Foreground="{DynamicResource Theme.Results.Category.Color}"
                                FontSize="{DynamicResource Theme.Results.Category.Size}"/>
                 </Border>
@@ -60,9 +62,10 @@
                                         Background="{DynamicResource Theme.Results.Shortcut.Background}"
                                         CornerRadius="{DynamicResource Theme.Results.Shortcut.CornerRadius}"
                                         Padding="5,2"
-                                        Margin="0,1,6,0"
+                                        Margin="0,0,6,0"
                                         VerticalAlignment="Top">
                                     <TextBlock Text="{Binding PartOfSpeech}"
+                                               Classes="dict-pill"
                                                Foreground="{DynamicResource Theme.Results.Category.Color}"
                                                FontSize="{DynamicResource Theme.Results.Category.Size}"/>
                                 </Border>
@@ -70,6 +73,7 @@
                                            Text="{Binding Definition}"
                                            Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
                                            FontSize="{DynamicResource Theme.Results.Subtitle.Size}"
+                                           Margin="0,2,0,0"
                                            TextWrapping="Wrap"/>
                             </Grid>
 

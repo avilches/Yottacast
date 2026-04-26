@@ -27,7 +27,8 @@
                                     <Border Width="{DynamicResource Theme.Emoji.Cell.Size}"
                                             Height="{DynamicResource Theme.Emoji.Cell.Size}"
                                             CornerRadius="{DynamicResource Theme.Emoji.Cell.CornerRadius}" Margin="2"
-                                            Classes.emoji-selected="{Binding IsSelected}">
+                                            Classes.emoji-selected="{Binding IsSelected}"
+                                            Classes.emoji-placeholder="{Binding IsPlaceholder}">
                                         <Panel>
                                             <TextBlock Text="{Binding Char}"
                                                        FontSize="{DynamicResource Theme.Emoji.Char.Size}"

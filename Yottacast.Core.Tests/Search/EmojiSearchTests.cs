@@ -352,11 +352,12 @@ public class EmojiSearchTests {
         var sections = grid.VisibleSections;
         Assert.Equal(3, sections.Count);
         Assert.Equal("Smileys & Emotion", sections[0].Header);
-        Assert.Equal(2, sections[0].Cells.Count);
+        // Non-last sections are padded to a full row; count only real (non-placeholder) cells.
+        Assert.Equal(2, sections[0].Cells.Count(c => !c.IsPlaceholder));
         Assert.Equal("Travel & Places", sections[1].Header);
-        Assert.Single(sections[1].Cells);
+        Assert.Equal(1, sections[1].Cells.Count(c => !c.IsPlaceholder));
         Assert.Equal("People & Body", sections[2].Header);
-        Assert.Single(sections[2].Cells);
+        Assert.Single(sections[2].Cells); // last section: no padding
     }
 
     [Fact]
@@ -623,6 +624,85 @@ public class EmojiSearchTests {
         var entries = Enumerable.Range(1, count)
             .Select(i => $"""["E{i}","emoji {i}",["kw{i}"],"Cat A",{i}]""");
         return "[" + string.Join(",", entries) + "]";
+    }
+
+    // Each category gets a letter prefix (A=first cat, B=second, ...) so chars are unique.
+    private static string MakeEmojiJsonMultiCategory(params (int count, string cat)[] categories) {
+        int sortOrder = 1;
+        int catIdx = 0;
+        var entries = categories.SelectMany(c => {
+            var prefix = (char)('A' + catIdx++);
+            return Enumerable.Range(1, c.count)
+                .Select(_ => $"""["{prefix}{sortOrder}","emoji {sortOrder}",["kw"],"{c.cat}",{sortOrder++}]""");
+        });
+        return "[" + string.Join(",", entries) + "]";
+    }
+
+    // ── Viewport section-tail fix ─────────────────────────────────────────────
+
+    [Fact]
+    public async Task VisibleSections_SkipsSectionTailAtTop_WhenScrolledDown() {
+        // Cat A: 12 cells (tail = A11-A12, 2 cells in the last partial row).
+        // Cat B: 90 cells.
+        // No pinned. EmojiViewportRows=8, Columns=10 → defaultVisibleRows=8.
+        // Navigate to Cat B cell (index 80) → section-row-aligned DOWN scroll snaps past Cat A's
+        // partial tail → _viewportStartCell lands at Cat B start (index 12), Cat A is NOT at top.
+        var json = MakeEmojiJsonMultiCategory((12, "Cat A"), (90, "Cat B"));
+        var search = await BuildSearchWithCache(json);
+        var grid = search.Search(":", 100).OfType<EmojiGridResultViewModel>().First();
+
+        Assert.Equal(102, grid.Cells.Count);
+
+        // Navigate to Default index 80 (Cat B[68]) → triggers scroll
+        grid.SelectedEmojiIndex = 80;
+
+        var sections = grid.VisibleSections;
+
+        // Cat A tail must NOT appear as an orphan row at the top.
+        Assert.DoesNotContain(sections, s => s.Header == "Cat A");
+        Assert.Equal("Cat B", sections[0].Header);
+    }
+
+    [Fact]
+    public async Task VisibleSections_PadsSectionTailToFullRow_WhenTailIsAtTop() {
+        // Same layout. Navigate UP into Cat A's tail (index 10) → tail IS visible
+        // (selected cell is there) and is padded to a full row (no orphan visual).
+        var json = MakeEmojiJsonMultiCategory((12, "Cat A"), (90, "Cat B"));
+        var search = await BuildSearchWithCache(json);
+        var grid = search.Search(":", 100).OfType<EmojiGridResultViewModel>().First();
+
+        // Scroll down first, then navigate UP into Cat A's tail
+        grid.SelectedEmojiIndex = 80;  // scroll down
+        grid.SelectedEmojiIndex = 10;  // scroll up into Cat A tail
+
+        var sections = grid.VisibleSections;
+
+        // Cat A tail must be visible (selected cell is there) and padded to a full row.
+        var catA = sections.FirstOrDefault(s => s.Header == "Cat A");
+        Assert.NotNull(catA);
+        Assert.Equal(AppDefaults.EmojiColumns, catA.Cells.Count); // padded to one full row
+        Assert.False(catA.Cells[0].IsPlaceholder); // A11 is real
+        Assert.False(catA.Cells[1].IsPlaceholder); // A12 is real
+        Assert.All(catA.Cells.Skip(2), c => Assert.True(c.IsPlaceholder));
+    }
+
+    [Fact]
+    public async Task VisibleSections_ShowsTailAtTop_WhenSelectedCellIsInTail() {
+        // Same layout. First scroll DOWN (cell 90) → _viewportStartRow=2.
+        // Then scroll UP (cell 10, Cat A tail) → _viewportStartRow=1, defaultStart=10.
+        // Selected cell IS in tail → must NOT be skipped.
+        var json = MakeEmojiJsonMultiCategory((12, "Cat A"), (90, "Cat B"));
+        var search = await BuildSearchWithCache(json);
+        var grid = search.Search(":", 100).OfType<EmojiGridResultViewModel>().First();
+
+        grid.SelectedEmojiIndex = 90; // scroll down first
+        grid.SelectedEmojiIndex = 10; // scroll up into Cat A tail
+
+        var sections = grid.VisibleSections;
+
+        // Cat A tail must be visible because the selected cell is there.
+        Assert.Contains(sections, s => s.Header == "Cat A");
+        Assert.Contains(sections[0].Cells, c => c.Char == "A10" || c.Char == "A11");
     }
 }
 
