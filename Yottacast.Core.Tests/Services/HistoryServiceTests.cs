@@ -1,7 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
-using Yottacast.Core.Platform;
-using Yottacast.Core.Search.UserDocuments;
 using Yottacast.Core.Services;
 
 namespace Yottacast.Core.Tests.Services;
@@ -16,7 +14,7 @@ public class HistoryServiceTests : IDisposable {
         Directory.CreateDirectory(_tempDir);
         _historyFile = Path.Combine(_tempDir, "history.json");
         _settings = UserSettings.Load(
-            new MinimalPlatformForHistory(),
+            new MinimalPlatform(),
             settingsPath: Path.Combine(_tempDir, "settings.json"));
     }
 
@@ -26,23 +24,6 @@ public class HistoryServiceTests : IDisposable {
 
     private HistoryService MakeService() =>
         new(_settings, NullLogger<HistoryService>.Instance, _historyFile);
-
-    private sealed class MinimalPlatformForHistory : PlatformProvider {
-        public override bool? IsSystemDarkMode() => null;
-        public override string DefaultTheme() => "dark-default";
-        public override List<string> DefaultAppDirectories() => [];
-        public override List<string> DefaultSearchFolders() =>
-            [$"{Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}/Documents"];
-
-        public override Task ScanAppsAsync(Action<string> addApp, IReadOnlyList<string> dirs, CancellationToken ct) => Task.CompletedTask;
-        public override IReadOnlyList<FileSystemWatcher> CreateAppWatchers(IReadOnlyList<string> dirs, Action<string> onAdded, Action<string> onRemoved) => [];
-        public override void LaunchApp(string path) { }
-        public override Task SearchFilesAsync(string query, Action<FileResult> onResult, int maxResults, IReadOnlyList<string>? folders, CancellationToken ct) => Task.CompletedTask;
-        public override string[] KnownBrowserNames => [];
-        public override void OpenUrl(string url, string browserName) { }
-        public override string[] KnownTerminalNames => [];
-        public override void ExecuteCommand(string command, string terminalName) { }
-    }
 
     [Fact]
     public void Add_StoresEntryWithCorrectFields() {

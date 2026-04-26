@@ -45,8 +45,8 @@ public class HistoryService {
         if (!_settings.EnableHistory) return;
         if (string.IsNullOrWhiteSpace(query)) return;
         _entries.Add(new HistoryEntry { Query = query, ActionName = actionName, Timestamp = DateTime.Now });
-        while (_entries.Count > _settings.HistoryMaxItems)
-            _entries.RemoveAt(0);
+        if (_entries.Count > _settings.HistoryMaxItems)
+            _entries.RemoveRange(0, _entries.Count - _settings.HistoryMaxItems);
         Save();
         Changed?.Invoke();
     }
