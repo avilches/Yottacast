@@ -271,7 +271,7 @@ public partial class MainWindowViewModel(
     /// </summary>
     public void NavigateHistoryBack() {
         var entries = historyService.Entries;
-        if (entries.Count == 0) return;
+        if (entries.Count == 0) { _historyNavIndex = -1; return; }
         _historyNavIndex = Math.Min(_historyNavIndex + 1, entries.Count - 1);
         _navigatingHistory = true;
         SearchText = entries[entries.Count - 1 - _historyNavIndex].Query;
@@ -285,6 +285,8 @@ public partial class MainWindowViewModel(
         if (_historyNavIndex <= 0) return;
         _historyNavIndex--;
         var entries = historyService.Entries;
+        if (entries.Count == 0) { _historyNavIndex = -1; return; }
+        _historyNavIndex = Math.Min(_historyNavIndex, entries.Count - 1);
         _navigatingHistory = true;
         SearchText = entries[entries.Count - 1 - _historyNavIndex].Query;
         _navigatingHistory = false;
