@@ -61,6 +61,7 @@ public partial class MainWindowViewModel(
     private bool _userNavigated;
     private int _historyNavIndex = -1;
     private bool _navigatingHistory;
+    private bool _textIsFromHistory;
 
     public bool UserNavigated => _userNavigated;
 
@@ -183,7 +184,7 @@ public partial class MainWindowViewModel(
         _cts?.Cancel();
         _cts = new CancellationTokenSource();
         _userNavigated = false;
-        if (!_navigatingHistory) _historyNavIndex = -1;
+        if (!_navigatingHistory) { _historyNavIndex = -1; _textIsFromHistory = false; }
 
         if (string.IsNullOrWhiteSpace(value)) {
             IsSearching = false;
@@ -260,7 +261,7 @@ public partial class MainWindowViewModel(
     /// Call this instead of setting SearchText = "" directly, whenever a search ends.
     /// </summary>
     public void CleanAndSaveHistory(string? actionName) {
-        if (!string.IsNullOrWhiteSpace(SearchText))
+        if (!string.IsNullOrWhiteSpace(SearchText) && !_textIsFromHistory)
             historyService.Add(SearchText, actionName);
         SearchText = "";
     }
@@ -277,6 +278,7 @@ public partial class MainWindowViewModel(
         _navigatingHistory = true;
         SearchText = entries[entries.Count - 1 - _historyNavIndex].Query;
         _navigatingHistory = false;
+        _textIsFromHistory = true;
     }
 
     /// <summary>
@@ -292,6 +294,7 @@ public partial class MainWindowViewModel(
         _navigatingHistory = true;
         SearchText = entries[entries.Count - 1 - _historyNavIndex].Query;
         _navigatingHistory = false;
+        _textIsFromHistory = true;
     }
 
     private void RefreshResults() {
