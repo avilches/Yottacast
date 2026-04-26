@@ -380,7 +380,7 @@ public partial class MainWindow : Window {
         if (vm is null) return;
         if (vm.SelectedResult is { OnActivate: { } action } result) {
             action();
-            vm.SearchText = "";
+            vm.CleanAndSaveHistory(result.Title);
             Hide();
             if (result.PasteAfterActivate) {
                 AppHandler.Instance.OnHide();
