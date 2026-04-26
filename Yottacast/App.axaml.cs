@@ -220,6 +220,9 @@ public partial class App : Application {
 
         services.AddSingleton<GlobalSearch>();
         services.AddSingleton<UpdateChecker>();
+        services.AddSingleton<HistoryService>(sp => new HistoryService(
+            sp.GetRequiredService<UserSettings>(),
+            sp.GetRequiredService<ILogger<HistoryService>>()));
 
         services.AddTransient<MainWindowViewModel>();
         services.AddTransient<SettingsWindowViewModel>();
