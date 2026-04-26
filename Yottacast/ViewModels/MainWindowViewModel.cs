@@ -270,6 +270,7 @@ public partial class MainWindowViewModel(
     /// across SearchText changes by using _navigatingHistory guard.
     /// </summary>
     public void NavigateHistoryBack() {
+        if (!settings.EnableHistory) return;
         var entries = historyService.Entries;
         if (entries.Count == 0) { _historyNavIndex = -1; return; }
         _historyNavIndex = Math.Min(_historyNavIndex + 1, entries.Count - 1);
@@ -282,6 +283,7 @@ public partial class MainWindowViewModel(
     /// Navigates to a more recent history entry (newer entries).
     /// </summary>
     public void NavigateHistoryForward() {
+        if (!settings.EnableHistory) return;
         if (_historyNavIndex <= 0) return;
         _historyNavIndex--;
         var entries = historyService.Entries;
