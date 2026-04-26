@@ -57,44 +57,54 @@ public class DictionarySource(
         if (allEntries is null) yield break;
 
         var languages = new HashSet<string>(settings.DictionaryLanguages);
-        var wiktionaryUrl = $"https://en.wiktionary.org/wiki/{Uri.EscapeDataString(searchWord)}";
+        var multiLang = settings.DictionaryLanguages.Count > 1;
         var results = new List<BaseResultItemViewModel>();
 
         foreach (var (langCode, entries) in allEntries) {
             if (!languages.Contains(langCode)) continue;
 
+            var defs = new List<DictionaryDefinitionEntry>();
             foreach (var entry in entries) {
-                foreach (var def in entry.Definitions.Take(3)) {
-                    if (results.Count >= limit) break;
+                foreach (var def in entry.Definitions) {
+                    if (defs.Count >= AppDefaults.DictionaryMaxDefinitionsPerItem) break;
+                    if (DictionaryApiClient.IsFormOfDefinition(def.Definition)) continue;
 
                     var cleanDef = DictionaryApiClient.StripHtml(def.Definition);
                     if (string.IsNullOrWhiteSpace(cleanDef)) continue;
 
-                    var title = $"{searchWord} ({entry.PartOfSpeech}) [{entry.Language}]: {cleanDef}";
-
-                    var subtitle = "";
+                    string? exampleText = null;
                     var example = def.ParsedExamples?.FirstOrDefault();
                     if (example is not null) {
-                        subtitle = $"\"{DictionaryApiClient.StripHtml(example.Example)}\"";
+                        var cleaned = DictionaryApiClient.StripHtml(example.Example);
+                        if (!string.IsNullOrWhiteSpace(cleaned)) exampleText = cleaned;
                     }
 
-                    var capturedUrl = wiktionaryUrl;
-                    results.Add(new ResultItemViewModel {
-                        IconBytes = IconBytes,
-                        Title = title,
-                        Subtitle = subtitle,
-                        Category = "Definition",
-                        Score = score,
-                        OnActivate = () => {
-                            var browser = settings.ActiveBrowser;
-                            if (browser is not null)
-                                browserDiscovery.OpenUrl(capturedUrl, browser);
-                        },
+                    defs.Add(new DictionaryDefinitionEntry {
+                        PartOfSpeech = entry.PartOfSpeech,
+                        Definition = cleanDef,
+                        Example = exampleText,
                     });
                 }
-                if (results.Count >= limit) break;
+                if (defs.Count >= AppDefaults.DictionaryMaxDefinitionsPerItem) break;
             }
-            if (results.Count >= limit) break;
+
+            if (defs.Count == 0) continue;
+
+            var langName = entries.FirstOrDefault()?.Language ?? langCode;
+            var capturedUrl = $"https://{langCode}.wiktionary.org/wiki/{Uri.EscapeDataString(searchWord)}";
+            results.Add(new DictionaryResultViewModel {
+                IconBytes = IconBytes,
+                Word = searchWord,
+                Language = multiLang ? langName : null,
+                Definitions = defs,
+                Score = score,
+                BypassLimit = true,
+                OnActivate = () => {
+                    var browser = settings.ActiveBrowser;
+                    if (browser is not null)
+                        browserDiscovery.OpenUrl(capturedUrl, browser);
+                },
+            });
         }
 
         if (results.Count > 0) {

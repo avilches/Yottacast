@@ -33,8 +33,31 @@ public static class DictionaryApiClient {
     private const string BaseUrl = "https://en.wiktionary.org/api/rest_v1/page/definition/";
 
     private static readonly Regex HtmlTagRegex = new("<[^>]+>", RegexOptions.Compiled);
+    private static readonly Regex OlTagRegex = new(@"<ol[\s>].*", RegexOptions.Compiled | RegexOptions.Singleline);
+    private static readonly Regex FirstLiRegex = new(@"<li[^>]*>(.*?)</li>", RegexOptions.Compiled | RegexOptions.Singleline);
+    private static readonly Regex CollapseSpaceRegex = new(@"\s+", RegexOptions.Compiled);
 
-    public static string StripHtml(string html) => HtmlTagRegex.Replace(html, "").Trim();
+    /// <summary>Returns true if the HTML represents a grammatical inflection form, not a real definition.</summary>
+    public static bool IsFormOfDefinition(string html) =>
+        html.Contains("form-of-definition", StringComparison.Ordinal);
+
+    public static string StripHtml(string html) {
+        string candidate;
+        var olMatch = OlTagRegex.Match(html);
+        if (olMatch.Success) {
+            // Text before <ol> is the main definition; if empty, fall back to first <li>
+            candidate = HtmlTagRegex.Replace(html[..olMatch.Index], "").Trim();
+            if (string.IsNullOrWhiteSpace(candidate)) {
+                var liMatch = FirstLiRegex.Match(olMatch.Value);
+                candidate = liMatch.Success
+                    ? HtmlTagRegex.Replace(liMatch.Groups[1].Value, "").Trim()
+                    : "";
+            }
+        } else {
+            candidate = HtmlTagRegex.Replace(html, "").Trim();
+        }
+        return CollapseSpaceRegex.Replace(candidate, " ").Trim();
+    }
 
     public static async Task<Dictionary<string, List<WiktionaryEntry>>?> LookupAsync(
         HttpClient http, string word, ILogger logger, CancellationToken ct) {

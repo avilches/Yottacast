@@ -41,6 +41,8 @@ public static class AppDefaults {
     public const int DictionaryTimeoutSeconds = 5;
     /// Default prefix to activate dictionary lookup.
     public const string DictionaryDefaultPrefix = "define";
+    /// Maximum number of definitions shown inside a single dictionary result item.
+    public const int DictionaryMaxDefinitionsPerItem = 5;
     /// Default languages enabled for dictionary lookups.
     public static readonly List<string> DictionaryDefaultLanguages = ["en"];
     /// All languages available for dictionary lookups via Wiktionary.

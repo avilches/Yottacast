@@ -240,6 +240,11 @@
                         <results:ConversionResultItemView/>
                     </DataTemplate>
 
+                    <!-- Dictionary template (word + PoS pill + definition + example) -->
+                    <DataTemplate x:DataType="viewModels:DictionaryResultViewModel">
+                        <results:DictionaryResultItemView/>
+                    </DataTemplate>
+
                     <!-- Standard template (apps, files, etc.) -->
                     <DataTemplate x:DataType="viewModels:ResultItemViewModel">
                         <Grid ColumnDefinitions="Auto,*,Auto" MinHeight="44">
