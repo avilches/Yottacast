@@ -77,6 +77,21 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
         Assert.Equal(expected, StandardResult(BuildSearch(out _), query).Title);
     }
 
+    // ── Bare function references ──────────────────────────────────────────────
+
+    [Theory]
+    [InlineData("sin")]
+    [InlineData("sqrt")]
+    [InlineData("cos")]
+    [InlineData("abs")]
+    [InlineData("floor")]
+    [InlineData("ceil")]
+    [InlineData("round")]
+    [InlineData("log")]
+    public void BareFunctionName_ReturnsNoResult(string query) {
+        Assert.Empty(BuildSearch(out _).Search(query, 5));
+    }
+
     // ── Result shape ──────────────────────────────────────────────────────────
 
     [Fact]

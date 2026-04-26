@@ -417,6 +417,9 @@ function normalizeExpression(expression, knownCurrenciesCsv) {
     } else if (root.type === 'SymbolNode' && resolveUnitToken(root.name) !== null) {
         // Bare unit symbol with no value (e.g. "j", "m", "s") — not a meaningful expression
         return null;
+    } else if (root.type === 'SymbolNode' && _mathFunctionNames[root.name.toLowerCase()]) {
+        // Bare function reference with no arguments (e.g. "sin", "sqrt") — evaluates to "function", not useful
+        return null;
     } else {
         kind = 'calculation';
     }
