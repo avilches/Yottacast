@@ -45,6 +45,11 @@ public static class AppDefaults {
     public const int DictionaryMaxDefinitionsPerItem = 5;
     /// Default languages enabled for dictionary lookups.
     public static readonly List<string> DictionaryDefaultLanguages = ["en"];
+    /// Languages with data available in kaikki.org (subset of DictionaryAvailableLanguages).
+    /// These use local SQLite when the DB file is present; others fall back to the Wiktionary API.
+    public static readonly HashSet<string> KaikkiLanguages =
+        ["en", "es", "fr", "de", "it", "pt", "ru", "tr", "nl", "pl", "th", "ko", "ja", "zh", "el", "id"];
+
     /// All languages available for dictionary lookups via Wiktionary.
     public static readonly (string Code, string Name)[] DictionaryAvailableLanguages = [
         ("en", "English"),

@@ -31,17 +31,44 @@ Cada resultado usa `DictionaryResultViewModel` y se renderiza con `DictionaryRes
 
 La etiqueta de idioma **no aparece** cuando solo hay un idioma configurado (`DictionaryLanguages.Count == 1`).
 
-Se muestran hasta 3 definiciones por entrada (partOfSpeech), con un máximo global definido por `AppDefaults.SearchSourceLimit`. Las definiciones de inflexión gramatical (`form-of-definition` en el HTML) se descartan. El HTML del API se limpia extrayendo el texto antes del primer `<ol>` (o el contenido del primer `<li>` si no hay texto previo), eliminando las etiquetas restantes y colapsando espacios.
+Se muestran hasta 5 definiciones por entrada (ver `AppDefaults.DictionaryMaxDefinitionsPerItem`). Las definiciones de inflexión gramatical se descartan (kaikki: senses con campo `form_of`; API: HTML con `form-of-definition`).
 
 ## Accion al activar
 
-Al pulsar Enter sobre un resultado, se abre la pagina de Wiktionary del idioma correspondiente (`https://{langCode}.wiktionary.org/wiki/{word}`) en el navegador configurado por el usuario.
+Al pulsar Enter sobre un resultado, se abre la página de Wiktionary del idioma correspondiente (`https://{langCode}.wiktionary.org/wiki/{word}`) en el navegador configurado por el usuario.
 
-## API
+## Fuentes de datos: local vs API
 
-Usa la API REST de Wiktionary con una petición por idioma configurado, lanzadas en paralelo. Cada petición va a la edición Wiktionary del idioma correspondiente: `https://{langCode}.wiktionary.org/api/rest_v1/page/definition/{word}`. Así las definiciones llegan en el idioma nativo (la edición española define en español, la francesa en francés, etc.). Si la palabra no existe en la edición de un idioma, ese idioma no produce resultado. Las definiciones llegan en HTML que se limpia antes de mostrar.
+La fuente tiene dos modos de obtener definiciones, por idioma configurado:
 
-30 idiomas disponibles: English, Spanish, French, German, Italian, Portuguese, Russian, Arabic, Hindi, Japanese, Korean, Chinese, Turkish, Dutch, Polish, Swedish, Czech, Danish, Finnish, Greek, Hebrew, Hungarian, Indonesian, Norwegian, Romanian, Thai, Ukrainian, Vietnamese, Catalan, Galician. Ver `AppDefaults.DictionaryAvailableLanguages` para la lista completa con codigos ISO.
+**Local (SQLite)**: si existe `~/.cache/yottacast/dictionary/{lang}.db`, se usa para ese idioma. La búsqueda es instantánea y offline. Proviene de datos de kaikki.org, que extrae definiciones ricas del Wiktionary en el idioma nativo (ej: `es.db` tiene las 15+ definiciones de "casa" en español). 16 idiomas disponibles: ver `AppDefaults.KaikkiLanguages`.
+
+**API (fallback)**: si no existe DB local para un idioma, la app llama a `https://en.wiktionary.org/api/rest_v1/page/definition/{word}`. Una sola petición devuelve definiciones para todos los idiomas disponibles; los idiomas configurados sin DB local filtran qué secciones se muestran. Las definiciones llegan en HTML que se limpia antes de mostrar. La cobertura del Wiktionary inglés para palabras no inglesas es más escasa que la de las ediciones nativas.
+
+30 idiomas disponibles en total; 16 tienen soporte local (kaikki), los 14 restantes solo via API. Ver `AppDefaults.DictionaryAvailableLanguages` y `AppDefaults.KaikkiLanguages`.
+
+## Diccionario local (kaikki)
+
+Los ficheros de diccionario local se generan con los scripts en `tools/kaikki/` y se colocan manualmente en `~/.cache/yottacast/dictionary/`.
+
+**Formato de los ficheros básicos (JSONL)**:
+```
+{"w":"casa","p":"Noun","d":["edificación destinada a vivienda","domicilio"],"e":"Vivo en una casa grande."}
+```
+
+**Rutas** (ver `AppPaths`):
+- JSONL: `~/.cache/yottacast/dictionary/{lang}.jsonl`
+- SQLite: `~/.cache/yottacast/dictionary/{lang}.db`
+
+**Conversión automática**: si al arrancar existe un `.jsonl` pero no el `.db` correspondiente, `DictionarySource.Start()` lanza la conversión en background (`LocalDictionaryConverter`). Mientras convierte, las búsquedas de ese idioma usan la API. Tras completar, las búsquedas siguientes usan el DB local.
+
+**Generación de los ficheros**:
+```bash
+cd tools/kaikki
+python step1_kaikki_to_json.py --lang es   # descarga kaikki y produce es.jsonl
+python step2_json_to_sqlite.py --lang es   # convierte a es.db
+cp output/es.db ~/.cache/yottacast/dictionary/
+```
 
 ## Settings del usuario
 
@@ -64,4 +91,4 @@ En la ventana de Settings, la seccion "Dictionary" permite:
 
 El icono de los resultados es un PNG embebido (`Search/Dictionary/Icons/wiktionary.png`), cargado una sola vez al inicializar la source.
 
-> **Verificar en:** `DictionarySource.cs` (SearchAsync, LoadIcon), `DictionaryApi.cs` (LookupAsync, StripHtml, IsFormOfDefinition), `DictionaryResultViewModel.cs`, `DictionaryResultItemView.axaml`, `UserSettings.cs` (EnableDictionary, DictionaryPrefix, DictionaryShowAlways, DictionaryLanguages), `AppDefaults.cs` (DictionaryTimeoutSeconds, DictionaryDefaultPrefix, DictionaryAvailableLanguages, DictionaryDefaultLanguages), `SettingsWindowViewModel.cs` (DictionaryLanguageItem, DictionaryLanguages).
+> **Verificar en:** `DictionarySource.cs` (Start, ConvertInBackground, SearchAsync, BuildDefsFromLocal), `LocalDictionaryDb.cs` (Lookup, Exists), `LocalDictionaryConverter.cs` (ConvertAsync), `DictionaryApi.cs` (LookupAsync, StripHtml, IsFormOfDefinition), `DictionaryResultViewModel.cs`, `DictionaryResultItemView.axaml`, `UserSettings.cs` (EnableDictionary, DictionaryPrefix, DictionaryShowAlways, DictionaryLanguages), `AppDefaults.cs` (DictionaryTimeoutSeconds, DictionaryDefaultPrefix, DictionaryAvailableLanguages, DictionaryDefaultLanguages, KaikkiLanguages), `AppPaths.cs` (DictionaryDir, DictionaryDb, DictionaryJsonl), `SettingsWindowViewModel.cs` (DictionaryLanguageItem, DictionaryLanguages). Tests: `LocalDictionaryTests.cs`.

@@ -27,6 +27,8 @@ disco obtiene la ruta de una unica clase centralizada. Esto garantiza que:
 | App icons    | Cache           | `app-icons/`       | Iconos de aplicaciones instaladas                        |
 | File icons   | Cache           | `file-icons/`      | Iconos de tipo de fichero (por extension), cacheados     |
 | Badge icons  | Cache           | `badge-icons/`     | Iconos de la app predeterminada por extension de fichero |
+| Dict JSONL   | Cache           | `dictionary/{lang}.jsonl` | Diccionario basico descargable (kaikki, 1 linea por entrada) |
+| Dict SQLite  | Cache           | `dictionary/{lang}.db`    | Diccionario local compilado; la app lo genera del JSONL si no existe |
 
 ### Invariantes
 
@@ -60,6 +62,10 @@ definen en una unica clase de constantes. Esto permite:
 | Emojis            | Columnas del grid       | 8             | Columnas en la cuadricula del picker de emojis               |
 | UI                | Delay de pegado         | 150 ms        | Espera antes de simular Cmd+V / Ctrl+V tras seleccionar      |
 | Actualizaciones   | Timeout HTTP            | 10 s          | Timeout del request de comprobacion de version               |
+| Diccionario       | Timeout HTTP            | 5 s           | Timeout de peticion a la API de Wiktionary                   |
+| Diccionario       | Max definiciones        | 5             | Definiciones mostradas por entrada (parte del discurso)      |
+| Diccionario       | Prefijo por defecto     | `"define"`    | Prefijo en modo PrefixOnly                                   |
+| Diccionario       | Idiomas kaikki          | 16 codigos    | Idiomas con soporte de DB local (ver `KaikkiLanguages`)      |
 
 ### Invariantes
 
@@ -69,7 +75,7 @@ definen en una unica clase de constantes. Esto permite:
 
 > **Verificar en:** `Yottacast.Core/AppDefaults.cs` (definiciones), consumidores: `MainWindowViewModel.cs`,
 `MacAppHandler.cs`, `WindowsAppHandler.cs`, `UserDocumentSearch.cs`, `EmojiSearch.cs`, `EmojiGridResultViewModel.cs`,
-`UpdateChecker.cs`.
+`UpdateChecker.cs`, `DictionarySource.cs`, `LocalDictionaryConverter.cs`.
 
 ## Convencion para nuevos elementos
 

@@ -50,4 +50,13 @@ public static class AppPaths {
 
     /// <summary>Emoji usage data (favorites + usage counts) JSON file.</summary>
     public static readonly string EmojiUsageFile = Path.Combine(ConfigDir, "emoji-usage.json");
+
+    /// <summary>Directory for local dictionary files (kaikki JSONL and SQLite DBs).</summary>
+    public static readonly string DictionaryDir = Path.Combine(CacheDir, "dictionary");
+
+    /// <summary>Path to the local SQLite dictionary DB for a given language code.</summary>
+    public static string DictionaryDb(string lang) => Path.Combine(DictionaryDir, $"{lang}.db");
+
+    /// <summary>Path to the local kaikki basic JSONL file for a given language code.</summary>
+    public static string DictionaryJsonl(string lang) => Path.Combine(DictionaryDir, $"{lang}.jsonl");
 }
