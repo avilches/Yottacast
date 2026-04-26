@@ -97,7 +97,7 @@ public static class AppDefaults {
 
     // ── Search — exchange rates ───────────────────────────────────────────────
     /// Default interval in hours between exchange rate refreshes.
-    public const int ExchangeRateRefreshHours = 4;
+    public const int ExchangeRateRefreshIntervalHours = 4;
     /// HTTP timeout for exchange rate API requests.
     public const int ExchangeRateTimeoutSeconds = 10;
 }

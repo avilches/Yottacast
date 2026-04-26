@@ -46,7 +46,7 @@ public class UserSettings {
     public int CalculatorDecimalPlaces { get; set; } = 2;
     public bool CalculatorIncludeMetals { get; set; } = true;
     public bool CalculatorIncludeCrypto { get; set; } = false;
-    public int ExchangeRateRefreshIntervalHours { get; set; } = AppDefaults.ExchangeRateRefreshHours;
+    public int ExchangeRateRefreshIntervalHours { get; set; } = AppDefaults.ExchangeRateRefreshIntervalHours;
     public bool EnableDictionary { get; set; } = true;
     public string DictionaryPrefix { get; set; } = AppDefaults.DictionaryDefaultPrefix;
     public bool DictionaryShowAlways { get; set; } = false;
@@ -160,7 +160,7 @@ public class UserSettings {
         [JsonPropertyName("calculatorDecimalPlaces")] public int CalculatorDecimalPlaces { get; init; } = 2;
         [JsonPropertyName("calculatorIncludeMetals")] public bool CalculatorIncludeMetals { get; init; } = true;
         [JsonPropertyName("calculatorIncludeCrypto")] public bool CalculatorIncludeCrypto { get; init; } = false;
-        [JsonPropertyName("exchangeRateRefreshIntervalHours")] public int ExchangeRateRefreshIntervalHours { get; init; } = AppDefaults.ExchangeRateRefreshHours;
+        [JsonPropertyName("exchangeRateRefreshIntervalHours")] public int ExchangeRateRefreshIntervalHours { get; init; } = AppDefaults.ExchangeRateRefreshIntervalHours;
         [JsonPropertyName("enableDictionary")] public bool EnableDictionary { get; init; } = true;
         [JsonPropertyName("dictionaryPrefix")] public string DictionaryPrefix { get; init; } = AppDefaults.DictionaryDefaultPrefix;
         [JsonPropertyName("dictionaryShowAlways")] public bool DictionaryShowAlways { get; init; } = false;
@@ -218,7 +218,7 @@ public class UserSettings {
                     CalculatorDecimalPlaces = data.CalculatorDecimalPlaces is >= 0 and <= 10 ? data.CalculatorDecimalPlaces : 2,
                     CalculatorIncludeMetals = data.CalculatorIncludeMetals,
                     CalculatorIncludeCrypto = data.CalculatorIncludeCrypto,
-                    ExchangeRateRefreshIntervalHours = data.ExchangeRateRefreshIntervalHours is >= 1 and <= 168 ? data.ExchangeRateRefreshIntervalHours : AppDefaults.ExchangeRateRefreshHours,
+                    ExchangeRateRefreshIntervalHours = data.ExchangeRateRefreshIntervalHours is >= 1 and <= 168 ? data.ExchangeRateRefreshIntervalHours : AppDefaults.ExchangeRateRefreshIntervalHours,
                     EnableDictionary = data.EnableDictionary,
                     DictionaryPrefix = string.IsNullOrWhiteSpace(data.DictionaryPrefix) ? AppDefaults.DictionaryDefaultPrefix : data.DictionaryPrefix,
                     DictionaryShowAlways = data.DictionaryShowAlways,
