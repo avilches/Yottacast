@@ -19,16 +19,17 @@ disco obtiene la ruta de una unica clase centralizada. Esto garantiza que:
 
 ### Ficheros concretos
 
-| Fichero      | Directorio base | Nombre             | Descripcion                                              |
-|--------------|-----------------|--------------------|----------------------------------------------------------|
-| Settings     | Configuracion   | `settings.json`    | Preferencias del usuario (JSON)                          |
-| Emoji cache  | Configuracion   | `emoji-cache.json` | Cache compacta de datos de emojis                        |
-| Log pattern  | Logs            | `yottacast-.log`   | Patron de Serilog para log diario                        |
-| App icons    | Cache           | `app-icons/`       | Iconos de aplicaciones instaladas                        |
-| File icons   | Cache           | `file-icons/`      | Iconos de tipo de fichero (por extension), cacheados     |
-| Badge icons  | Cache           | `badge-icons/`     | Iconos de la app predeterminada por extension de fichero |
-| Dict JSONL   | Cache           | `dictionary/{lang}.jsonl` | Diccionario basico descargable (kaikki, 1 linea por entrada) |
-| Dict SQLite  | Cache           | `dictionary/{lang}.db`    | Diccionario local compilado; la app lo genera del JSONL si no existe |
+| Fichero          | Directorio base | Nombre                        | Descripcion                                                          |
+|------------------|-----------------|-------------------------------|----------------------------------------------------------------------|
+| Settings         | Configuracion   | `settings.json`               | Preferencias del usuario (JSON)                                      |
+| Emoji cache      | Configuracion   | `emoji-cache.json`            | Cache compacta de datos de emojis                                    |
+| Exchange rates   | Configuracion   | `exchange-rates.json`         | Cache de tasas de cambio descargadas (JSON)                          |
+| Log pattern      | Logs            | `yottacast-.log`              | Patron de Serilog para log diario                                    |
+| App icons        | Cache           | `app-icons/`                  | Iconos de aplicaciones instaladas                                    |
+| File icons       | Cache           | `file-icons/`                 | Iconos de tipo de fichero (por extension), cacheados                 |
+| Badge icons      | Cache           | `badge-icons/`                | Iconos de la app predeterminada por extension de fichero             |
+| Dict JSONL       | Cache           | `dictionary/{lang}.jsonl`     | Diccionario basico descargable (kaikki, 1 linea por entrada)         |
+| Dict SQLite      | Cache           | `dictionary/{lang}.db`        | Diccionario local compilado; la app lo genera del JSONL si no existe |
 
 ### Invariantes
 
@@ -39,7 +40,7 @@ disco obtiene la ruta de una unica clase centralizada. Esto garantiza que:
   que la app no falla si el directorio no existe aun.
 
 > **Verificar en:** `Yottacast.Core/AppPaths.cs` (definiciones), consumidores: `App.axaml.cs`, `AppIconCache.cs`,
-`FileIconCache.cs`, `UserDocumentSearch.cs`, `UserSettings.cs`, `EmojiDataLoader.cs`.
+`FileIconCache.cs`, `UserDocumentSearch.cs`, `UserSettings.cs`, `EmojiDataLoader.cs`, `ExchangeRateService.cs`.
 
 ## Todos los valores por defecto estan centralizados
 
@@ -66,6 +67,8 @@ definen en una unica clase de constantes. Esto permite:
 | Diccionario       | Max definiciones        | 5             | Definiciones mostradas por entrada (parte del discurso)      |
 | Diccionario       | Prefijo por defecto     | `"define"`    | Prefijo en modo PrefixOnly                                   |
 | Diccionario       | Idiomas kaikki          | 16 codigos    | Idiomas con soporte de DB local (ver `KaikkiLanguages`)      |
+| Exchange rates    | Intervalo por defecto   | 4 h           | Frecuencia de refresco de tasas de cambio (configurable)     |
+| Exchange rates    | Timeout HTTP            | 10 s          | Timeout de cada llamada a la API de tasas                    |
 
 ### Invariantes
 
@@ -75,7 +78,7 @@ definen en una unica clase de constantes. Esto permite:
 
 > **Verificar en:** `Yottacast.Core/AppDefaults.cs` (definiciones), consumidores: `MainWindowViewModel.cs`,
 `MacAppHandler.cs`, `WindowsAppHandler.cs`, `UserDocumentSearch.cs`, `EmojiSearch.cs`, `EmojiGridResultViewModel.cs`,
-`UpdateChecker.cs`, `DictionarySource.cs`, `LocalDictionaryConverter.cs`.
+`UpdateChecker.cs`, `DictionarySource.cs`, `LocalDictionaryConverter.cs`, `ExchangeRateService.cs`, `UserSettings.cs`.
 
 ## Convencion para nuevos elementos
 

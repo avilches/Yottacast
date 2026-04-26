@@ -43,15 +43,19 @@ una conversion valida, aparece un resultado sin necesidad de pulsar Enter ni sel
 
 ### 1.3 Arranque y disponibilidad
 
-El motor de evaluacion se inicializa en un hilo de fondo desde el momento en que se construye el singleton. Hasta que la
-inicializacion finalice, cualquier evaluacion devuelve un error sin bloquear. En la practica, la inicializacion termina
-antes de que la UI sea interactiva.
+`CalculatorSearch` no bloquea el arranque: `WhenReady()` devuelve inmediatamente. Mientras el engine aun no esta listo
+(primeros ~2 s hasta que `ExchangeRateService` descarga tasas y `MathJsEngineProvider` termina de inicializar el engine),
+`Search()` devuelve una lista vacia sin errores. El engine de la calculadora tarda en promedio 2 s en inicializarse
+porque precarga todas las divisas activas en math.js.
 
-La inicializacion incluye un warmup: el registro de la unidad `USD` fuerza la inicializacion interna del sistema de
-unidades de math.js, lo que actua como calentamiento JIT del engine JavaScript.
+`ExchangeRateService` arranca en background al inicio: primero lee la cache de disco (si existe y es reciente) y dispara
+`RatesUpdated` de inmediato; si la cache es antigua o no existe, la descarga de la API ocurre tambien en background. En
+cualquier caso el proceso de UI no se bloquea.
 
-> **Verificar en:** constructor de `MathJsEngine` y metodo `Initialize()` en
-`Yottacast.Core/Search/Calculator/MathJsEngine.cs`; `WhenReady()` en `CalculatorSearch.cs`
+> **Verificar en:** `CalculatorSearch.WhenReady()` y `CalculatorSearch.Search()` en `CalculatorSearch.cs`;
+`ExchangeRateService.StartAsync()` en `ExchangeRateService.cs`;
+`MathJsEngineProvider.RecreateAsync()` en `MathJsEngineProvider.cs`;
+constructor y `Initialize()` de `MathJsEngine` en `MathJsEngine.cs`
 
 ---
 
@@ -271,15 +275,38 @@ Al arrancar, el motor registra unidades que math.js no incluye por defecto:
 
 ## 8. Divisas
 
-Las tasas de cambio se proporcionan via `ICurrencyRateProvider`. Se registran dinamicamente en el motor en cada llamada
-a `Evaluate()`, actualizandose si la tasa ha cambiado. Los codigos de divisa se normalizan a mayusculas en el AST.
+Las tasas de cambio se descargan de la API publica fawazahmed0 (200+ monedas, actualizacion diaria) y se cachean en
+disco en `AppPaths.ExchangeRatesCache`. El motor se construye con todas las tasas activas precargadas; no se inyectan
+divisas durante la vida del engine. Cuando cambia el conjunto de tasas activas, `MathJsEngineProvider` crea un nuevo
+engine en background y hace un swap atomico con `Interlocked.Exchange`, de modo que las busquedas en curso siguen
+sirviendo el engine anterior hasta que el nuevo esta listo (~2 s).
 
-Al escribir solo una divisa (ej. `10 USD`), se convierte al otro miembro del par de divisas configurado. El par por defecto es EUR/USD y se puede cambiar en Settings → Calculator. La divisa "home" (izquierda del par) es el destino de cualquier divisa desconocida; la divisa "home" convierte a la de la derecha. El par se aplica en caliente sin reiniciar la app.
+Las divisas se clasifican en tres categorias por `CurrencyClassifier`:
+
+| Categoria | Ejemplos            | Incluida por defecto |
+|-----------|---------------------|----------------------|
+| Forex     | USD, EUR, GBP, JPY  | Siempre              |
+| Metales   | XAU, XAG, XPT, XPD | Si (configurable)    |
+| Cripto    | Todo lo demas       | No (configurable)    |
+
+Los toggles "Include metals" e "Include cryptocurrencies" de Settings → Calculator filtran las tasas antes de recrear el
+engine. Al cambiar un toggle, `ExchangeRateService.NotifySettingsChanged()` recalcula `ActiveRates` y dispara el evento
+`RatesUpdated`, que a su vez lanza la recreacion del engine.
+
+Al escribir solo una divisa (ej. `10 USD`), se convierte al otro miembro del par de divisas configurado. El par por
+defecto es EUR/USD y se puede cambiar en Settings → Calculator. La divisa "home" (izquierda del par) es el destino de
+cualquier divisa desconocida; la divisa "home" convierte a la de la derecha. El par se aplica en caliente sin reiniciar
+la app.
 
 Las tasas son relativas a USD: `EUR = 0.92` significa `1 USD = 0.92 EUR`.
 
-> **Verificar en:** `Evaluate()` y `registerCurrency()` en `MathJsEngine.cs` / `mathjs-helpers.js`;
-`ICurrencyRateProvider` en `Yottacast.Core/Search/Calculator/ICurrencyRateProvider.cs`
+Cuando las tasas no se han podido descargar o estan desactualizadas, el resultado de conversion muestra un aviso
+"Exchange rates may be outdated" debajo del resultado (`RatesAreStale = true` en `ConversionResultItemViewModel`).
+
+> **Verificar en:** `ExchangeRateService` en `Yottacast.Core/Search/Calculator/ExchangeRateService.cs`;
+`MathJsEngineProvider` en `Yottacast.Core/Search/Calculator/MathJsEngineProvider.cs`;
+`CurrencyClassifier` en `Yottacast.Core/Search/Calculator/CurrencyClassifier.cs`;
+`PreloadAllCurrencies()` e `Initialize()` en `MathJsEngine.cs`; `registerCurrency()` en `mathjs-helpers.js`
 
 ---
 
@@ -428,15 +455,17 @@ En tests, se inicializa con un delegate de captura, sin necesidad de Avalonia.
 Los tests usan `MathJsEngineFixture` (coleccion `"MathJs"`) para compartir una sola instancia del engine, y
 `MathJsSnapshotFixture` (coleccion `"MathJsSnapshot"`) para tests de snapshot con provider de divisas vacio.
 
-| Clase de test                         | Cobertura                                         |
-|---------------------------------------|---------------------------------------------------|
-| `CalculatorSearchTests.cs`            | Aritmetica y funciones                            |
-| `UnitConverterSearchTests.cs`         | Conversiones de unidades                          |
-| `DefaultConversionTests.cs`           | Conversiones por defecto y nombres largos         |
-| `DefaultConversionTestsFormatting.cs` | Formateo de resultados de conversion              |
-| `ClassifyErrorTests.cs`               | Clasificacion de errores                          |
-| `NormalizeExpressionTests.cs`         | Normalizacion de expresiones y deteccion de kinds |
-| `CurrencyRateUpdateTests.cs`          | Actualizacion dinamica de tasas de cambio         |
-| `MathJsUnitSnapshotTests.cs`          | Snapshot de regresion y casing de unidades        |
+| Clase de test                         | Cobertura                                                    |
+|---------------------------------------|--------------------------------------------------------------|
+| `CalculatorSearchTests.cs`            | Aritmetica y funciones                                       |
+| `UnitConverterSearchTests.cs`         | Conversiones de unidades                                     |
+| `DefaultConversionTests.cs`           | Conversiones por defecto y nombres largos                    |
+| `DefaultConversionTestsFormatting.cs` | Formateo de resultados de conversion                         |
+| `ClassifyErrorTests.cs`               | Clasificacion de errores                                     |
+| `NormalizeExpressionTests.cs`         | Normalizacion de expresiones y deteccion de kinds            |
+| `CurrencyRateUpdateTests.cs`          | Engine con tasas distintas produce resultados distintos       |
+| `CurrencyClassifierTests.cs`          | Clasificacion de divisas en Forex / Metal / Crypto           |
+| `MathJsEngineProviderTests.cs`        | Ciclo de vida del provider: null inicial, swap, Dispose      |
+| `MathJsUnitSnapshotTests.cs`          | Snapshot de regresion y casing de unidades                   |
 
 > **Verificar en:** `Yottacast.Core.Tests/Search/Calculator/` y `Yottacast.Core.Tests/Search/MathJsUnitSnapshotTests.cs`
