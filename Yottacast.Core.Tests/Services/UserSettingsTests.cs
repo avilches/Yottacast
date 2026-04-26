@@ -38,38 +38,7 @@ public class UserSettingsTests : IDisposable {
 
     // ── Minimal platform providers ────────────────────────────────────────────
 
-    /// <summary>Platform provider with no browsers/terminals and a fixed default theme.</summary>
-    private sealed class MinimalPlatform : PlatformProvider {
-        private readonly string _defaultTheme;
-        private readonly string _searchFolderDefault;
-
-        /// <summary>
-        /// The search folder passed to the constructor must be a path that exists on disk,
-        /// because UserSettings filters defaults to existing directories on first launch.
-        /// </summary>
-        public MinimalPlatform(string defaultTheme = "dark-default", string? searchFolderDefault = null) {
-            _defaultTheme = defaultTheme;
-            _searchFolderDefault = searchFolderDefault
-                ?? $"{Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}/Documents";
-        }
-
-        public override bool? IsSystemDarkMode() => null;
-        public override string DefaultTheme() => _defaultTheme;
-        public override List<string> DefaultAppDirectories() => ["/apps"];
-        public override List<string> DefaultSearchFolders() => [_searchFolderDefault];
-
-        public override Task ScanAppsAsync(Action<string> addApp, IReadOnlyList<string> dirs, CancellationToken ct) => Task.CompletedTask;
-        public override IReadOnlyList<FileSystemWatcher> CreateAppWatchers(IReadOnlyList<string> dirs, Action<string> onAdded, Action<string> onRemoved) => [];
-        public override void LaunchApp(string path) { }
-        public override Task SearchFilesAsync(string query, Action<FileResult> onResult, int maxResults, IReadOnlyList<string>? folders, CancellationToken ct) => Task.CompletedTask;
-
-        public override string[] KnownBrowserNames => [];
-        public override void OpenUrl(string url, string browserName) { }
-
-        public override string[] KnownTerminalNames => [];
-        public override void ExecuteCommand(string command, string terminalName) { }
-
-    }
+    // MinimalPlatform is defined in TestHelpers.cs (shared across test classes)
 
     /// <summary>
     /// Platform provider where browser/terminal paths are backed by real temp files
@@ -1030,6 +999,36 @@ public class UserSettingsTests : IDisposable {
         settings.SearchSettingsChanged += () => fired = true;
         settings.NotifySearchSettingsChanged();
         Assert.True(fired);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // EnableHistory / HistoryMaxItems
+    // ══════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void EnableHistory_DefaultTrue_RoundTrip() {
+        var settings = Load();
+        Assert.True(settings.EnableHistory);
+        Assert.Equal(100, settings.HistoryMaxItems);
+
+        settings.EnableHistory = false;
+        settings.HistoryMaxItems = 50;
+        settings.Save();
+
+        var reload = Load();
+        Assert.False(reload.EnableHistory);
+        Assert.Equal(50, reload.HistoryMaxItems);
+    }
+
+    [Fact]
+    public void HistoryMaxItems_ClampsOutOfRangeValues() {
+        File.WriteAllText(_settingsFile, """{"historyMaxItems": 999}""");
+        var settings = Load();
+        Assert.Equal(100, settings.HistoryMaxItems);
+
+        File.WriteAllText(_settingsFile, """{"historyMaxItems": 0}""");
+        var settings2 = Load();
+        Assert.Equal(100, settings2.HistoryMaxItems);
     }
 
     /// <summary>Platform provider with configurable default search folders (no browsers/terminals).</summary>

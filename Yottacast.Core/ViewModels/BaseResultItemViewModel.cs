@@ -6,6 +6,7 @@ namespace Yottacast.Core.ViewModels;
 /// </summary>
 public abstract class BaseResultItemViewModel {
     public double Score { get; init; }
+    public string Title { get; init; } = "";
     public Action? OnActivate { get; init; }
     /// <summary>
     /// Copy action (e.g. Cmd+C in emoji mode): copies without hiding the window or pasting.

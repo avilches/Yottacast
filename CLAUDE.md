@@ -213,6 +213,7 @@ Si un fichero de doc empieza a ser demasiado grande, sugiere dividirlo en dos.
   carga sincrona/asincrona, actualizacion reactiva de UI via IconLoaded.
 - `docs/search-scoring.md` — Algoritmo de puntuacion y ordenacion de resultados entre fuentes.
 - `docs/search-dictionary.md` — Definiciones de diccionario: fuente local (kaikki/SQLite) con fallback a API Wiktionary, modos prefix/showAlways, conversion automatica JSONL→SQLite, settings. Leer tambien `tools/kaikki/README.md` si se toca la generacion de datos.
+- `docs/search-history.md` — Historial de búsquedas: qué se guarda, persistencia, navegación con ↑/Ctrl+↑/Ctrl+↓, settings.
 
 **Internals:**
 

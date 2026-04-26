@@ -23,7 +23,8 @@ public partial class MainWindowViewModel(
     ApplicationSearch appSearch,
     FileIconCache fileIconCache,
     UserDocumentSearch userDocumentSearch,
-    UpdateChecker updateChecker)
+    UpdateChecker updateChecker,
+    HistoryService historyService)
     : ViewModelBase {
 
     [ObservableProperty] private string _searchText = "";
@@ -58,6 +59,11 @@ public partial class MainWindowViewModel(
     private IReadOnlyList<BaseResultItemViewModel> _instantSnapshot = [];
     private IReadOnlyList<BaseResultItemViewModel> _deferredSnapshot = [];
     private bool _userNavigated;
+    private int _historyNavIndex = -1;
+    private bool _navigatingHistory;
+    private bool _textIsFromHistory;
+
+    public bool UserNavigated => _userNavigated;
 
     private readonly List<AppInfo> _pendingAppInfos = [];
     private bool _appCacheRefreshPending;
@@ -178,6 +184,7 @@ public partial class MainWindowViewModel(
         _cts?.Cancel();
         _cts = new CancellationTokenSource();
         _userNavigated = false;
+        if (!_navigatingHistory) { _historyNavIndex = -1; _textIsFromHistory = false; }
 
         if (string.IsNullOrWhiteSpace(value)) {
             IsSearching = false;
@@ -247,6 +254,47 @@ public partial class MainWindowViewModel(
 
     partial void OnSelectedResultChanged(BaseResultItemViewModel? value) {
         OnPropertyChanged(nameof(IsEmojiMode));
+    }
+
+    /// <summary>
+    /// Single point of history saving. Saves current query if non-empty, then clears the search field.
+    /// Call this instead of setting SearchText = "" directly, whenever a search ends.
+    /// </summary>
+    public void CleanAndSaveHistory(string? actionName) {
+        if (!string.IsNullOrWhiteSpace(SearchText) && !_textIsFromHistory)
+            historyService.Add(SearchText, actionName);
+        SearchText = "";
+    }
+
+    /// <summary>
+    /// Navigates to a previous history entry (older entries). Maintains _historyNavIndex
+    /// across SearchText changes by using _navigatingHistory guard.
+    /// </summary>
+    public void NavigateHistoryBack() {
+        if (!settings.EnableHistory) return;
+        var entries = historyService.Entries;
+        if (entries.Count == 0) { _historyNavIndex = -1; return; }
+        _historyNavIndex = Math.Min(_historyNavIndex + 1, entries.Count - 1);
+        _navigatingHistory = true;
+        SearchText = entries[entries.Count - 1 - _historyNavIndex].Query;
+        _navigatingHistory = false;
+        _textIsFromHistory = true;
+    }
+
+    /// <summary>
+    /// Navigates to a more recent history entry (newer entries).
+    /// </summary>
+    public void NavigateHistoryForward() {
+        if (!settings.EnableHistory) return;
+        if (_historyNavIndex <= 0) return;
+        _historyNavIndex--;
+        var entries = historyService.Entries;
+        if (entries.Count == 0) { _historyNavIndex = -1; return; }
+        _historyNavIndex = Math.Min(_historyNavIndex, entries.Count - 1);
+        _navigatingHistory = true;
+        SearchText = entries[entries.Count - 1 - _historyNavIndex].Query;
+        _navigatingHistory = false;
+        _textIsFromHistory = true;
     }
 
     private void RefreshResults() {

@@ -59,4 +59,7 @@ public static class AppPaths {
 
     /// <summary>Path to the local kaikki basic JSONL file for a given language code.</summary>
     public static string DictionaryJsonl(string lang) => Path.Combine(DictionaryDir, $"{lang}.jsonl");
+
+    /// <summary>Search history JSON file.</summary>
+    public static readonly string HistoryFile = Path.Combine(ConfigDir, "history.json");
 }

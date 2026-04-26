@@ -47,6 +47,8 @@ El fichero de preferencias se crea automaticamente en la primera ejecucion y se 
 | ShowDisabledWebSearchEngines | `true` | Si muestra los motores deshabilitados en la UI de Settings |
 | WebSearchEngines | Lista predeterminada de 20 motores | Configuracion por motor de busqueda web |
 | DictionaryLanguages | `["en"]` | Idiomas en los que buscar definiciones de diccionario |
+| EnableHistory | `true` | Activa/desactiva el guardado del historial de búsquedas |
+| HistoryMaxItems | `100` | Número máximo de entradas de historial a conservar (1–100) |
 | WindowX | `null` | Posicion X de la ventana principal en coordenadas de pantalla (pixels fisicos) |
 | WindowY | `null` | Posicion Y de la ventana principal en coordenadas de pantalla (pixels fisicos) |
 
