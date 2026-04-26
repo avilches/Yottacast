@@ -323,10 +323,8 @@ public partial class App : Application {
                                 AppHandler.Instance.FocusWindow(window);
                                 if (settingsOpen)
                                     _settingsWindow!.Activate();
-                            } else if (settingsOpen) {
-                                // Settings is open → just focus main window, never close settings
-                                AppHandler.Instance.FocusWindow(window);
                             } else {
+                                // App or settings is focused → hide main window; settings stays open
                                 window.Hide();
                                 AppHandler.Instance.OnHide();
                             }

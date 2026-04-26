@@ -23,7 +23,7 @@ En modo sticky la ventana permanece visible cuando pierde el foco: el usuario pu
 
 En modo no-sticky la ventana se oculta automaticamente en cuanto pierde el foco (comportamiento tipo Alfred). El hotkey siempre oculta si esta visible porque al perder el foco se habrá ocultado antes de que el usuario pueda pulsarlo.
 
-La ventana no se oculta automaticamente cuando quien toma el foco es la propia ventana de Settings de Yottacast.
+La ventana no se oculta automaticamente cuando quien toma el foco es la propia ventana de Settings de Yottacast. Si el usuario pulsa el hotkey estando la ventana principal o la de Settings en primer plano, la ventana principal se oculta pero Settings permanece abierta — solo el usuario la puede cerrar manualmente.
 
 El setting se configura en Settings → General ("Sticky window") y se persiste en `UserSettings.StickyWindow`.
 
