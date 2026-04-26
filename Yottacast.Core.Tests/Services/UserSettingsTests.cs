@@ -1031,6 +1031,92 @@ public class UserSettingsTests : IDisposable {
         Assert.Equal(100, settings2.HistoryMaxItems);
     }
 
+    // CalculatorIncludeMetals / CalculatorIncludeCrypto / ExchangeRateRefreshIntervalHours
+    // ══════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void Load_WhenFileDoesNotExist_CalculatorIncludeMetalsDefaultsToTrue() {
+        var settings = Load();
+
+        Assert.True(settings.CalculatorIncludeMetals);
+    }
+
+    [Fact]
+    public void Load_WhenFileDoesNotExist_CalculatorIncludeCryptoDefaultsToFalse() {
+        var settings = Load();
+
+        Assert.False(settings.CalculatorIncludeCrypto);
+    }
+
+    [Fact]
+    public void Load_WhenFileDoesNotExist_ExchangeRateRefreshIntervalHoursDefaultsToFour() {
+        var settings = Load();
+
+        Assert.Equal(4, settings.ExchangeRateRefreshIntervalHours);
+    }
+
+    [Fact]
+    public void Load_ExchangeRateRefreshIntervalHours_ClampsToMinimum() {
+        WriteSettingsJson("""
+            {
+                "browser": "",
+                "terminal": "",
+                "theme": "dark-default",
+                "searchFolders": ["/docs"],
+                "appDirectories": ["/apps"],
+                "exchangeRateRefreshIntervalHours": 0
+            }
+            """);
+
+        var settings = Load();
+
+        // Out-of-range values (< 1) fall back to the default (4)
+        Assert.Equal(4, settings.ExchangeRateRefreshIntervalHours);
+    }
+
+    [Fact]
+    public void Load_ExchangeRateRefreshIntervalHours_ClampsToMaximum() {
+        WriteSettingsJson("""
+            {
+                "browser": "",
+                "terminal": "",
+                "theme": "dark-default",
+                "searchFolders": ["/docs"],
+                "appDirectories": ["/apps"],
+                "exchangeRateRefreshIntervalHours": 999
+            }
+            """);
+
+        var settings = Load();
+
+        // Out-of-range values (> 168) fall back to the default (4)
+        Assert.Equal(4, settings.ExchangeRateRefreshIntervalHours);
+    }
+
+    [Fact]
+    public void RoundTrip_CalculatorIncludeMetals() {
+        var settings = Load();
+        settings.CalculatorIncludeMetals = false;
+        settings.Save();
+
+        WaitForSettingsFile("calculatorIncludeMetals");
+        var reloaded = Load();
+
+        Assert.False(reloaded.CalculatorIncludeMetals);
+    }
+
+    [Fact]
+    public void RoundTrip_CalculatorIncludeCrypto() {
+        var settings = Load();
+        settings.CalculatorIncludeCrypto = true;
+        settings.Save();
+
+        WaitForSettingsFile("calculatorIncludeCrypto");
+        var reloaded = Load();
+
+        Assert.True(reloaded.CalculatorIncludeCrypto);
+    }
+
     /// <summary>Platform provider with configurable default search folders (no browsers/terminals).</summary>
     private sealed class PlatformWithSearchFolders(List<string> searchFolders) : PlatformProvider {
         public override bool? IsSystemDarkMode() => null;
