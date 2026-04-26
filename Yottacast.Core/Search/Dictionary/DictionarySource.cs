@@ -53,15 +53,19 @@ public class DictionarySource(
 
         if (string.IsNullOrEmpty(searchWord)) yield break;
 
-        var allEntries = await DictionaryApiClient.LookupAsync(Http, searchWord, logger, ct);
-        if (allEntries is null) yield break;
+        var languages = settings.DictionaryLanguages;
+        var multiLang = languages.Count > 1;
 
-        var languages = new HashSet<string>(settings.DictionaryLanguages);
-        var multiLang = settings.DictionaryLanguages.Count > 1;
+        var lookupTasks = languages
+            .Select(lang => (lang, task: DictionaryApiClient.LookupAsync(Http, searchWord, lang, logger, ct)))
+            .ToList();
+        await Task.WhenAll(lookupTasks.Select(x => x.task));
+
         var results = new List<BaseResultItemViewModel>();
 
-        foreach (var (langCode, entries) in allEntries) {
-            if (!languages.Contains(langCode)) continue;
+        foreach (var (langCode, task) in lookupTasks) {
+            var entries = task.Result;
+            if (entries is null) continue;
 
             var defs = new List<DictionaryDefinitionEntry>();
             foreach (var entry in entries) {

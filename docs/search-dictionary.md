@@ -35,11 +35,11 @@ Se muestran hasta 3 definiciones por entrada (partOfSpeech), con un máximo glob
 
 ## Accion al activar
 
-Al pulsar Enter sobre un resultado, se abre la pagina de Wiktionary para esa palabra (`https://en.wiktionary.org/wiki/{word}`) en el navegador configurado por el usuario.
+Al pulsar Enter sobre un resultado, se abre la pagina de Wiktionary del idioma correspondiente (`https://{langCode}.wiktionary.org/wiki/{word}`) en el navegador configurado por el usuario.
 
 ## API
 
-Usa la API REST de Wiktionary (`https://en.wiktionary.org/api/rest_v1/page/definition/{word}`). Una unica peticion devuelve definiciones para todos los idiomas disponibles; los idiomas configurados por el usuario filtran que secciones de la respuesta se muestran. Las definiciones llegan en HTML que se limpia antes de mostrar.
+Usa la API REST de Wiktionary con una petición por idioma configurado, lanzadas en paralelo. Cada petición va a la edición Wiktionary del idioma correspondiente: `https://{langCode}.wiktionary.org/api/rest_v1/page/definition/{word}`. Así las definiciones llegan en el idioma nativo (la edición española define en español, la francesa en francés, etc.). Si la palabra no existe en la edición de un idioma, ese idioma no produce resultado. Las definiciones llegan en HTML que se limpia antes de mostrar.
 
 30 idiomas disponibles: English, Spanish, French, German, Italian, Portuguese, Russian, Arabic, Hindi, Japanese, Korean, Chinese, Turkish, Dutch, Polish, Swedish, Czech, Danish, Finnish, Greek, Hebrew, Hungarian, Indonesian, Norwegian, Romanian, Thai, Ukrainian, Vietnamese, Catalan, Galician. Ver `AppDefaults.DictionaryAvailableLanguages` para la lista completa con codigos ISO.
 

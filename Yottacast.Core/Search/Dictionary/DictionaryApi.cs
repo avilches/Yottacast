@@ -33,8 +33,6 @@ public record WiktionaryExample {
 }
 
 public static class DictionaryApiClient {
-    private const string BaseUrl = "https://en.wiktionary.org/api/rest_v1/page/definition/";
-
     private static readonly Regex HtmlTagRegex = new("<[^>]+>", RegexOptions.Compiled);
     private static readonly Regex OlTagRegex = new(@"<ol[\s>].*", RegexOptions.Compiled | RegexOptions.Singleline);
     private static readonly Regex FirstLiRegex = new(@"<li[^>]*>(.*?)</li>", RegexOptions.Compiled | RegexOptions.Singleline);
@@ -62,25 +60,26 @@ public static class DictionaryApiClient {
         return CollapseSpaceRegex.Replace(candidate, " ").Trim();
     }
 
-    public static async Task<Dictionary<string, List<WiktionaryEntry>>?> LookupAsync(
-        HttpClient http, string word, ILogger logger, CancellationToken ct) {
+    public static async Task<List<WiktionaryEntry>?> LookupAsync(
+        HttpClient http, string word, string langCode, ILogger logger, CancellationToken ct) {
         try {
-            var url = BaseUrl + Uri.EscapeDataString(word);
+            var url = $"https://{langCode}.wiktionary.org/api/rest_v1/page/definition/{Uri.EscapeDataString(word)}";
             var response = await http.GetAsync(url, ct);
             if (!response.IsSuccessStatusCode) {
-                logger.LogDebug("Wiktionary API {Status} for '{Word}'", response.StatusCode, word);
+                logger.LogDebug("Wiktionary API {Status} for '{Word}' [{Lang}]", response.StatusCode, word, langCode);
                 return null;
             }
             var json = await response.Content.ReadAsStringAsync(ct);
-            return JsonSerializer.Deserialize<Dictionary<string, List<WiktionaryEntry>>>(json);
+            var allEntries = JsonSerializer.Deserialize<Dictionary<string, List<WiktionaryEntry>>>(json);
+            return allEntries?.GetValueOrDefault(langCode);
         } catch (HttpRequestException ex) {
-            logger.LogDebug("Wiktionary API error for '{Word}': {Message}", word, ex.Message);
+            logger.LogDebug("Wiktionary API error for '{Word}' [{Lang}]: {Message}", word, langCode, ex.Message);
             return null;
         } catch (JsonException ex) {
-            logger.LogDebug("Wiktionary API parse error for '{Word}': {Message}", word, ex.Message);
+            logger.LogDebug("Wiktionary API parse error for '{Word}' [{Lang}]: {Message}", word, langCode, ex.Message);
             return null;
         } catch (Exception ex) when (ex is not OperationCanceledException) {
-            logger.LogWarning("Wiktionary API unexpected error for '{Word}': {Message}", word, ex.Message);
+            logger.LogWarning("Wiktionary API unexpected error for '{Word}' [{Lang}]: {Message}", word, langCode, ex.Message);
             return null;
         }
     }
