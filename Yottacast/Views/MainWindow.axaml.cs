@@ -191,7 +191,7 @@ public partial class MainWindow : Window {
         var (copyMods, copyKey) = AppHandler.Instance.CopyShortcut;
         if (e.Key == copyKey && e.KeyModifiers == copyMods && vm.SelectedResult is { OnCopy: { } copyAction }) {
             copyAction();
-            vm.SearchText = "";
+            vm.CleanAndSaveHistory("Copy");
             Hide();
             AppHandler.Instance.OnHide();
             e.Handled = true;
@@ -260,9 +260,9 @@ public partial class MainWindow : Window {
             case Key.Escape:
                 if (vm.IsSearching) {
                     vm.CancelDeferredSearch();
-                    vm.SearchText = "";
+                    vm.CleanAndSaveHistory(null);
                 } else if (!string.IsNullOrEmpty(vm.SearchText)) {
-                    vm.SearchText = "";
+                    vm.CleanAndSaveHistory(null);
                 } else {
                     Hide();
                 }
@@ -270,19 +270,32 @@ public partial class MainWindow : Window {
                 break;
 
             case Key.Down:
-                SelectNext(vm, +1);
+                if (e.KeyModifiers.HasFlag(KeyModifiers.Control)) {
+                    vm.NavigateHistoryForward();
+                    SearchBox.CaretIndex = int.MaxValue;
+                } else {
+                    SelectNext(vm, +1);
+                }
                 e.Handled = true;
                 break;
 
             case Key.Up:
-                SelectNext(vm, -1);
+                if (e.KeyModifiers.HasFlag(KeyModifiers.Control)) {
+                    vm.NavigateHistoryBack();
+                    SearchBox.CaretIndex = int.MaxValue;
+                } else if (!vm.UserNavigated) {
+                    vm.NavigateHistoryBack();
+                    SearchBox.CaretIndex = int.MaxValue;
+                } else {
+                    SelectNext(vm, -1);
+                }
                 e.Handled = true;
                 break;
 
             case Key.Return:
                 if (vm.SelectedResult is { OnActivate: { } action } result) {
                     action();
-                    vm.SearchText = "";
+                    vm.CleanAndSaveHistory(result.Title);
                     Hide();
                     if (result.PasteAfterActivate) {
                         AppHandler.Instance.OnHide();
