@@ -15,9 +15,13 @@ public sealed class ExchangeRateService : IAsyncDisposable {
     private const string PrimaryUrl = "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json";
     private const string FallbackUrl = "https://latest.currency-api.pages.dev/v1/currencies/usd.json";
 
+    private static readonly JsonSerializerOptions CacheJsonOptions = new() { WriteIndented = false };
+
     private readonly HttpClient _http;
     private readonly UserSettings _settings;
     private readonly ILogger<ExchangeRateService> _logger;
+    private readonly CancellationTokenSource _cts = new();
+    private readonly SemaphoreSlim _downloadLock = new(1, 1);
 
     private IReadOnlyDictionary<string, double> _allRates = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
     private DateTimeOffset? _lastUpdated;
@@ -59,6 +63,7 @@ public sealed class ExchangeRateService : IAsyncDisposable {
     /// and starts the background refresh timer.
     /// </summary>
     public async Task StartAsync() {
+        if (_timer != null) return; // already started
         await LoadCacheFromDiskAsync();
 
         // If cache is missing or stale, download immediately
@@ -99,6 +104,7 @@ public sealed class ExchangeRateService : IAsyncDisposable {
     }
 
     private async Task DownloadAndUpdateAsync() {
+        if (!await _downloadLock.WaitAsync(0)) return; // already a download in progress
         try {
             var rates = await FetchRatesAsync();
             if (rates == null || rates.Count == 0) return;
@@ -113,6 +119,8 @@ public sealed class ExchangeRateService : IAsyncDisposable {
             FireRatesUpdated();
         } catch (Exception ex) {
             _logger.LogWarning(ex, "Exchange rate download failed — using cached rates");
+        } finally {
+            _downloadLock.Release();
         }
     }
 
@@ -120,7 +128,9 @@ public sealed class ExchangeRateService : IAsyncDisposable {
         string? json = null;
         foreach (var url in new[] { PrimaryUrl, FallbackUrl }) {
             try {
-                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(AppDefaults.ExchangeRateTimeoutSeconds));
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(
+                    _cts.Token,
+                    new CancellationTokenSource(TimeSpan.FromSeconds(AppDefaults.ExchangeRateTimeoutSeconds)).Token);
                 json = await _http.GetStringAsync(url, cts.Token);
                 break;
             } catch (Exception ex) {
@@ -176,7 +186,7 @@ public sealed class ExchangeRateService : IAsyncDisposable {
         try {
             Directory.CreateDirectory(Path.GetDirectoryName(AppPaths.ExchangeRatesCache)!);
             var cache = new RateCache { LastUpdated = updated, Rates = rates.ToDictionary(k => k.Key, k => k.Value) };
-            var json = JsonSerializer.Serialize(cache, new JsonSerializerOptions { WriteIndented = false });
+            var json = JsonSerializer.Serialize(cache, CacheJsonOptions);
             await File.WriteAllTextAsync(AppPaths.ExchangeRatesCache, json);
             _logger.LogDebug("Saved exchange rates to disk ({Count} currencies)", rates.Count);
         } catch (Exception ex) {
@@ -191,7 +201,10 @@ public sealed class ExchangeRateService : IAsyncDisposable {
     }
 
     public async ValueTask DisposeAsync() {
+        _cts.Cancel();
         if (_timer != null) await _timer.DisposeAsync();
+        _cts.Dispose();
+        _downloadLock.Dispose();
     }
 
     private sealed class RateCache {
