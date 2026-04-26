@@ -94,4 +94,10 @@ public static class AppDefaults {
     // ── History ──────────────────────────────────────────────────────────────────
     /// Maximum number of search history entries to keep.
     public const int HistoryMaxItems = 100;
+
+    // ── Search — exchange rates ───────────────────────────────────────────────
+    /// Default interval in hours between exchange rate refreshes.
+    public const int ExchangeRateRefreshHours = 4;
+    /// HTTP timeout for exchange rate API requests.
+    public const int ExchangeRateTimeoutSeconds = 10;
 }

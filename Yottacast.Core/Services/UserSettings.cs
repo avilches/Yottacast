@@ -44,6 +44,9 @@ public class UserSettings {
     public string CalculatorCurrencyA { get; set; } = "EUR";
     public string CalculatorCurrencyB { get; set; } = "USD";
     public int CalculatorDecimalPlaces { get; set; } = 2;
+    public bool CalculatorIncludeMetals { get; set; } = true;
+    public bool CalculatorIncludeCrypto { get; set; } = false;
+    public int ExchangeRateRefreshIntervalHours { get; set; } = AppDefaults.ExchangeRateRefreshHours;
     public bool EnableDictionary { get; set; } = true;
     public string DictionaryPrefix { get; set; } = AppDefaults.DictionaryDefaultPrefix;
     public bool DictionaryShowAlways { get; set; } = false;
@@ -155,6 +158,9 @@ public class UserSettings {
         [JsonPropertyName("calculatorCurrencyA")] public string CalculatorCurrencyA { get; init; } = "EUR";
         [JsonPropertyName("calculatorCurrencyB")] public string CalculatorCurrencyB { get; init; } = "USD";
         [JsonPropertyName("calculatorDecimalPlaces")] public int CalculatorDecimalPlaces { get; init; } = 2;
+        [JsonPropertyName("calculatorIncludeMetals")] public bool CalculatorIncludeMetals { get; init; } = true;
+        [JsonPropertyName("calculatorIncludeCrypto")] public bool CalculatorIncludeCrypto { get; init; } = false;
+        [JsonPropertyName("exchangeRateRefreshIntervalHours")] public int ExchangeRateRefreshIntervalHours { get; init; } = AppDefaults.ExchangeRateRefreshHours;
         [JsonPropertyName("enableDictionary")] public bool EnableDictionary { get; init; } = true;
         [JsonPropertyName("dictionaryPrefix")] public string DictionaryPrefix { get; init; } = AppDefaults.DictionaryDefaultPrefix;
         [JsonPropertyName("dictionaryShowAlways")] public bool DictionaryShowAlways { get; init; } = false;
@@ -210,6 +216,9 @@ public class UserSettings {
                     CalculatorCurrencyA = string.IsNullOrWhiteSpace(data.CalculatorCurrencyA) ? "EUR" : data.CalculatorCurrencyA.ToUpperInvariant(),
                     CalculatorCurrencyB = string.IsNullOrWhiteSpace(data.CalculatorCurrencyB) ? "USD" : data.CalculatorCurrencyB.ToUpperInvariant(),
                     CalculatorDecimalPlaces = data.CalculatorDecimalPlaces is >= 0 and <= 10 ? data.CalculatorDecimalPlaces : 2,
+                    CalculatorIncludeMetals = data.CalculatorIncludeMetals,
+                    CalculatorIncludeCrypto = data.CalculatorIncludeCrypto,
+                    ExchangeRateRefreshIntervalHours = data.ExchangeRateRefreshIntervalHours is >= 1 and <= 168 ? data.ExchangeRateRefreshIntervalHours : AppDefaults.ExchangeRateRefreshHours,
                     EnableDictionary = data.EnableDictionary,
                     DictionaryPrefix = string.IsNullOrWhiteSpace(data.DictionaryPrefix) ? AppDefaults.DictionaryDefaultPrefix : data.DictionaryPrefix,
                     DictionaryShowAlways = data.DictionaryShowAlways,
@@ -316,6 +325,9 @@ public class UserSettings {
                 CalculatorCurrencyA = CalculatorCurrencyA,
                 CalculatorCurrencyB = CalculatorCurrencyB,
                 CalculatorDecimalPlaces = CalculatorDecimalPlaces,
+                CalculatorIncludeMetals = CalculatorIncludeMetals,
+                CalculatorIncludeCrypto = CalculatorIncludeCrypto,
+                ExchangeRateRefreshIntervalHours = ExchangeRateRefreshIntervalHours,
                 EnableDictionary = EnableDictionary,
                 DictionaryPrefix = DictionaryPrefix,
                 DictionaryShowAlways = DictionaryShowAlways,
