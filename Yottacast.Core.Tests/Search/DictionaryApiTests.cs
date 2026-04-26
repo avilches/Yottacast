@@ -16,48 +16,40 @@ public class DictionaryApiTests {
     }
 
     [Fact]
-    public async Task LookupAsync_UsesCorrectDomain_ForSpanish() {
+    public async Task LookupAsync_CallsEnWiktionary() {
         var handler = new CapturingHandler("{}", HttpStatusCode.NotFound);
-        await DictionaryApiClient.LookupAsync(new HttpClient(handler), "casa", "es", NullLogger.Instance, CancellationToken.None);
-        Assert.Contains("es.wiktionary.org", handler.LastRequest!.RequestUri!.ToString());
-    }
-
-    [Fact]
-    public async Task LookupAsync_UsesCorrectDomain_ForEnglish() {
-        var handler = new CapturingHandler("{}", HttpStatusCode.NotFound);
-        await DictionaryApiClient.LookupAsync(new HttpClient(handler), "house", "en", NullLogger.Instance, CancellationToken.None);
+        await DictionaryApiClient.LookupAsync(new HttpClient(handler), "casa", NullLogger.Instance, CancellationToken.None);
         Assert.Contains("en.wiktionary.org", handler.LastRequest!.RequestUri!.ToString());
     }
 
     [Fact]
     public async Task LookupAsync_ReturnsNull_On404() {
         var handler = new CapturingHandler("{}", HttpStatusCode.NotFound);
-        var result = await DictionaryApiClient.LookupAsync(new HttpClient(handler), "xyz", "es", NullLogger.Instance, CancellationToken.None);
+        var result = await DictionaryApiClient.LookupAsync(new HttpClient(handler), "xyz", NullLogger.Instance, CancellationToken.None);
         Assert.Null(result);
     }
 
     [Fact]
-    public async Task LookupAsync_ReturnsOnlyRequestedLang() {
+    public async Task LookupAsync_ReturnsAllLanguages() {
         var json = """
             {
-              "es": [{"partOfSpeech":"Noun","language":"Spanish","definitions":[{"definition":"<p>Edificio.</p>"}]}],
-              "en": [{"partOfSpeech":"Noun","language":"English","definitions":[{"definition":"<p>House.</p>"}]}]
+              "es": [{"partOfSpeech":"Noun","language":"Spanish","definitions":[{"definition":"<p>House.</p>"}]}],
+              "en": [{"partOfSpeech":"Noun","language":"English","definitions":[{"definition":"<p>A house.</p>"}]}]
             }
             """;
         var handler = new CapturingHandler(json);
-        var result = await DictionaryApiClient.LookupAsync(new HttpClient(handler), "casa", "es", NullLogger.Instance, CancellationToken.None);
+        var result = await DictionaryApiClient.LookupAsync(new HttpClient(handler), "casa", NullLogger.Instance, CancellationToken.None);
 
         Assert.NotNull(result);
-        Assert.Single(result);
-        Assert.Equal("Spanish", result[0].Language);
+        Assert.True(result.ContainsKey("es"));
+        Assert.True(result.ContainsKey("en"));
     }
 
     [Fact]
-    public async Task LookupAsync_ReturnsNull_WhenLangNotInResponse() {
-        var json = """{"en": [{"partOfSpeech":"Noun","language":"English","definitions":[{"definition":"<p>Hi.</p>"}]}]}""";
-        var handler = new CapturingHandler(json);
-        var result = await DictionaryApiClient.LookupAsync(new HttpClient(handler), "casa", "es", NullLogger.Instance, CancellationToken.None);
-
-        Assert.Null(result);
+    public async Task LookupAsync_ReturnsNull_OnEmptyJson() {
+        var handler = new CapturingHandler("{}");
+        var result = await DictionaryApiClient.LookupAsync(new HttpClient(handler), "xyz", NullLogger.Instance, CancellationToken.None);
+        Assert.NotNull(result);
+        Assert.Empty(result);
     }
 }
