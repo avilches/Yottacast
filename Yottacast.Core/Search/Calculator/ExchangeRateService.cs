@@ -128,9 +128,8 @@ public sealed class ExchangeRateService : IAsyncDisposable {
         string? json = null;
         foreach (var url in new[] { PrimaryUrl, FallbackUrl }) {
             try {
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(
-                    _cts.Token,
-                    new CancellationTokenSource(TimeSpan.FromSeconds(AppDefaults.ExchangeRateTimeoutSeconds)).Token);
+                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(AppDefaults.ExchangeRateTimeoutSeconds));
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, timeoutCts.Token);
                 json = await _http.GetStringAsync(url, cts.Token);
                 break;
             } catch (Exception ex) {
