@@ -29,6 +29,8 @@ public static class AppDefaults {
     public const int EmojiViewportRows = 8;
     /// Maximum number of favorite emojis shown in the pinned section.
     public const int EmojiMaxFavorites = 4;
+    /// Maximum number of most-used emojis shown in the pinned section.
+    public const int EmojiMaxMostUsed = 6;
     /// Maximum total pinned emojis shown (favorites + most-used combined).
     public const int EmojiMaxPinnedTotal = 10;
     /// Half-life in days for the emoji usage decay score.

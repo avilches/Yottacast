@@ -158,4 +158,84 @@ public class EmojiUsageStoreTests {
         Assert.Empty(store.Favorites);
         Assert.Empty(store.GetMostUsed(10));
     }
+
+    // ── Decay score ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetMostUsed_RecentBeatsHigherCount_WhenDecayJustifies() {
+        // With halfLife=30, an emoji used 20 times on 2024-01-01 has score ~20 × 0.25 = 5 (after ~60 days).
+        // An emoji with 6 uses far in the future scores 6 × 1.0 = 6. The recent one wins.
+        var path = TempFile();
+        var json = """
+            {
+              "favorites": [],
+              "usage": {
+                "🔥": { "count": 20, "lastUsedAt": "2024-01-01T00:00:00Z" },
+                "😂": { "count": 6,  "lastUsedAt": "2099-12-31T00:00:00Z" }
+              }
+            }
+            """;
+        await File.WriteAllTextAsync(path, json);
+
+        var store = CreateStore(path);
+        await store.LoadAsync();
+
+        var mostUsed = store.GetMostUsed(10);
+        Assert.Equal("😂", mostUsed[0]);
+        Assert.Equal("🔥", mostUsed[1]);
+    }
+
+    [Fact]
+    public async Task LoadAsync_MigratesOldIntegerFormat() {
+        // Old format: usage value is a plain integer
+        var path = TempFile();
+        var json = """
+            {
+              "favorites": [],
+              "usage": {
+                "🔥": 42,
+                "😂": 15
+              }
+            }
+            """;
+        await File.WriteAllTextAsync(path, json);
+
+        var store = CreateStore(path);
+        await store.LoadAsync();
+
+        Assert.Equal(42, store.GetUsageCount("🔥"));
+        Assert.Equal(15, store.GetUsageCount("😂"));
+
+        // Both loaded with lastUsedAt = UtcNow (same moment), so order is by count
+        var mostUsed = store.GetMostUsed(10);
+        Assert.Equal("🔥", mostUsed[0]);
+        Assert.Equal("😂", mostUsed[1]);
+    }
+
+    [Fact]
+    public void RecordUsage_UpdatesCount() {
+        var store = CreateStore(TempFile());
+        store.RecordUsage("😀");
+        store.RecordUsage("😀");
+        Assert.Equal(2, store.GetUsageCount("😀"));
+    }
+
+    [Fact]
+    public async Task SaveAndReload_PreservesCountAndOrder() {
+        var path = TempFile();
+        var store1 = CreateStore(path);
+        store1.RecordUsage("🔥");
+        store1.RecordUsage("🔥");
+        store1.RecordUsage("😂");
+
+        var store2 = CreateStore(path);
+        await store2.LoadAsync();
+
+        Assert.Equal(2, store2.GetUsageCount("🔥"));
+        Assert.Equal(1, store2.GetUsageCount("😂"));
+
+        var mostUsed = store2.GetMostUsed(10);
+        Assert.Equal("🔥", mostUsed[0]);
+        Assert.Equal("😂", mostUsed[1]);
+    }
 }
