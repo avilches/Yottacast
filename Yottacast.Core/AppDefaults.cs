@@ -29,8 +29,11 @@ public static class AppDefaults {
     public const int EmojiViewportRows = 8;
     /// Maximum number of favorite emojis shown in the pinned section.
     public const int EmojiMaxFavorites = 4;
-    /// Maximum number of most-used emojis shown after favorites in the pinned section.
-    public const int EmojiMaxMostUsed = 10;
+    /// Maximum total pinned emojis shown (favorites + most-used combined).
+    public const int EmojiMaxPinnedTotal = 10;
+    /// Half-life in days for the emoji usage decay score.
+    /// After this many days without use, a score is halved.
+    public const int EmojiHalfLifeDays = 30;
 
     // ── UI — paste simulation ─────────────────────────────────────────────────
     /// Delay before simulating Cmd+V / Ctrl+V after selecting an emoji.
