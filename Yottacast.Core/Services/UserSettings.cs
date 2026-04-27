@@ -49,6 +49,7 @@ public class UserSettings {
     public int ExchangeRateRefreshIntervalHours { get; set; } = AppDefaults.ExchangeRateRefreshIntervalHours;
     public bool EnableDictionary { get; set; } = true;
     public string DictionaryPrefix { get; set; } = AppDefaults.DictionaryDefaultPrefix;
+    public bool EnableSystemSettings { get; set; } = true;
     public bool DictionaryShowAlways { get; set; } = false;
     public List<string> DictionaryLanguages { get; set; } = new(AppDefaults.DictionaryDefaultLanguages);
     public bool EnableHistory { get; set; } = true;
@@ -166,6 +167,7 @@ public class UserSettings {
         [JsonPropertyName("enableDictionary")] public bool EnableDictionary { get; init; } = true;
         [JsonPropertyName("dictionaryPrefix")] public string DictionaryPrefix { get; init; } = AppDefaults.DictionaryDefaultPrefix;
         [JsonPropertyName("dictionaryShowAlways")] public bool DictionaryShowAlways { get; init; } = false;
+        [JsonPropertyName("enableSystemSettings")] public bool EnableSystemSettings { get; init; } = true;
         [JsonPropertyName("dictionaryLanguages")] public List<string>? DictionaryLanguages { get; init; }
         [JsonPropertyName("enableHistory")] public bool EnableHistory { get; init; } = true;
         [JsonPropertyName("historyMaxItems")] public int HistoryMaxItems { get; init; } = AppDefaults.HistoryMaxItems;
@@ -235,6 +237,7 @@ public class UserSettings {
                     KeepValueWhenHideDuration = data.KeepValueWhenHideDuration >= 0
                         ? data.KeepValueWhenHideDuration
                         : AppDefaults.KeepValueWhenHideDuration,
+                    EnableSystemSettings = data.EnableSystemSettings,
                 };
             }
         } catch (Exception ex) {
@@ -344,6 +347,7 @@ public class UserSettings {
                 HistoryMaxItems = HistoryMaxItems,
                 KeepValueWhenHide = KeepValueWhenHide,
                 KeepValueWhenHideDuration = KeepValueWhenHideDuration,
+                EnableSystemSettings = EnableSystemSettings,
                 WebSearchEngines = WebSearchEngines
                     .Select(s => new WebSearchEngineSettingsData {
                         Id = s.Id,
