@@ -107,7 +107,10 @@ public class EmojiDataLoader(ILogger<EmojiDataLoader> logger) {
                 ? textsProp.EnumerateArray().Select(e => e.GetString()).OfType<string>().ToArray()
                 : [];
 
-            var keywords = shortNames.Concat(texts).Distinct().ToArray();
+            var keywords = shortNames.Concat(texts)
+                .Select(k => k.Replace('_', ' '))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
 
             var category = item.TryGetProperty("category", out var catProp)
                 ? catProp.GetString() ?? ""
