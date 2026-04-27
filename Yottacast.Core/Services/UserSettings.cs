@@ -46,6 +46,7 @@ public class UserSettings {
     public int CalculatorDecimalPlaces { get; set; } = 2;
     public bool EnableDictionary { get; set; } = true;
     public string DictionaryPrefix { get; set; } = AppDefaults.DictionaryDefaultPrefix;
+    public bool EnableSystemSettings { get; set; } = true;
     public bool DictionaryShowAlways { get; set; } = false;
     public List<string> DictionaryLanguages { get; set; } = new(AppDefaults.DictionaryDefaultLanguages);
     public bool EnableHistory { get; set; } = true;
@@ -158,6 +159,7 @@ public class UserSettings {
         [JsonPropertyName("enableDictionary")] public bool EnableDictionary { get; init; } = true;
         [JsonPropertyName("dictionaryPrefix")] public string DictionaryPrefix { get; init; } = AppDefaults.DictionaryDefaultPrefix;
         [JsonPropertyName("dictionaryShowAlways")] public bool DictionaryShowAlways { get; init; } = false;
+        [JsonPropertyName("enableSystemSettings")] public bool EnableSystemSettings { get; init; } = true;
         [JsonPropertyName("dictionaryLanguages")] public List<string>? DictionaryLanguages { get; init; }
         [JsonPropertyName("enableHistory")] public bool EnableHistory { get; init; } = true;
         [JsonPropertyName("historyMaxItems")] public int HistoryMaxItems { get; init; } = AppDefaults.HistoryMaxItems;
@@ -214,6 +216,7 @@ public class UserSettings {
                     DictionaryPrefix = string.IsNullOrWhiteSpace(data.DictionaryPrefix) ? AppDefaults.DictionaryDefaultPrefix : data.DictionaryPrefix,
                     DictionaryShowAlways = data.DictionaryShowAlways,
                     DictionaryLanguages = data.DictionaryLanguages is { Count: > 0 } ? data.DictionaryLanguages : new(AppDefaults.DictionaryDefaultLanguages),
+                    EnableSystemSettings = data.EnableSystemSettings,
                     EnableHistory = data.EnableHistory,
                     HistoryMaxItems = data.HistoryMaxItems is >= 1 and <= AppDefaults.HistoryMaxItems
                         ? data.HistoryMaxItems
@@ -320,6 +323,7 @@ public class UserSettings {
                 DictionaryPrefix = DictionaryPrefix,
                 DictionaryShowAlways = DictionaryShowAlways,
                 DictionaryLanguages = DictionaryLanguages,
+                EnableSystemSettings = EnableSystemSettings,
                 EnableHistory = EnableHistory,
                 HistoryMaxItems = HistoryMaxItems,
                 WebSearchEngines = WebSearchEngines
