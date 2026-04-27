@@ -47,6 +47,9 @@ public abstract class PlatformProvider {
     /// <summary>Opens the given file with the system default application.</summary>
     public virtual void OpenFile(string filePath) { }
 
+    /// <summary>Opens a URL using the OS default handler (e.g. x-apple.systempreferences: on macOS).</summary>
+    public virtual void LaunchUrl(string url) { }
+
     public virtual byte[]? GetAppIconBytes(string appPath) => null;
     public virtual byte[]? GetFileIconBytes(string filePath) => null;
     public virtual string? GetDefaultAppPath(string filePath) => null;

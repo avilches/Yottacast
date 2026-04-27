@@ -110,6 +110,14 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
         }
     }
 
+    public override void LaunchUrl(string url) {
+        try {
+            Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true });
+        } catch (Exception ex) {
+            logger.LogWarning(ex, "LaunchUrl failed: {Url}", url);
+        }
+    }
+
     // ── File search ───────────────────────────────────────────────────────────
 
     public override async Task SearchFilesAsync(
