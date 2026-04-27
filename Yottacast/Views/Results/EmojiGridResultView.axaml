@@ -47,7 +47,7 @@
                                                        Opacity="{DynamicResource Theme.Emoji.UsageCount.Opacity}"
                                                        HorizontalAlignment="Center" VerticalAlignment="Bottom"
                                                        Margin="0,0,0,1"
-                                                       IsVisible="{Binding HasUsageCount}"/>
+                                                       IsVisible="{Binding ShowUsage}"/>
                                         </Panel>
                                     </Border>
                                 </DataTemplate>

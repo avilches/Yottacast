@@ -101,7 +101,7 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
             Category = "Emoji",
             Score    = 3.5,
             HasPinnedSection = hasPinned,
-            PinnedSectionHeader = hasPinned ? "★ Favorites & most used" : "",
+            PinnedSectionHeader = hasPinned ? "Favorites & recently used" : "",
             PasteAfterActivate = true,
             OnActivate = () => {
                 var cell = grid.Cells[grid.SelectedEmojiIndex];

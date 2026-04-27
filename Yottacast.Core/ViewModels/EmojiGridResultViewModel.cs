@@ -107,7 +107,7 @@ public class EmojiGridResultViewModel : ResultItemViewModel, INotifyPropertyChan
     }
 
     private static string SectionKey(EmojiCellViewModel cell) => cell.Section switch {
-        EmojiSection.Favorite or EmojiSection.MostUsed => "\u2605 Favorites",
+        EmojiSection.Favorite or EmojiSection.MostUsed => "Favorites & recently used",
         _ => cell.Category
     };
 
@@ -292,6 +292,11 @@ public class EmojiGridResultViewModel : ResultItemViewModel, INotifyPropertyChan
             return true;
         }
         return false;
+    }
+
+    public void SetShowUsageCount(bool show) {
+        foreach (var cell in Cells)
+            cell.ShowUsage = show && cell.HasUsageCount;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

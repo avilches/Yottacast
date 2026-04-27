@@ -36,6 +36,16 @@ public class EmojiCellViewModel : INotifyPropertyChanged {
         }
     }
 
+    private bool _showUsage;
+    public bool ShowUsage {
+        get => _showUsage;
+        set {
+            if (_showUsage == value) return;
+            _showUsage = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowUsage)));
+        }
+    }
+
     public bool IsPlaceholder { get; init; } = false;
 
     public static EmojiCellViewModel Placeholder => new() { IsPlaceholder = true };

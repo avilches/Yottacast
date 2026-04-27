@@ -377,7 +377,7 @@ public class EmojiSearchTests {
         var grid = search.Search(":", 10).OfType<EmojiGridResultViewModel>().First();
 
         var sections = grid.VisibleSections;
-        Assert.Equal("\u2605 Favorites", sections[0].Header);
+        Assert.Equal("Favorites & recently used", sections[0].Header);
         Assert.Equal("🔥", sections[0].Cells[0].Char);
         Assert.Equal("Smileys & Emotion", sections[1].Header);
     }
@@ -468,7 +468,7 @@ public class EmojiSearchTests {
         var grid = search.Search(":", 10).OfType<EmojiGridResultViewModel>().First();
 
         Assert.True(grid.HasPinnedSection);
-        Assert.Equal("★ Favorites & most used", grid.PinnedSectionHeader);
+        Assert.Equal("Favorites & recently used", grid.PinnedSectionHeader);
     }
 
     [Fact]
