@@ -385,13 +385,9 @@
                     <!-- Footer: emoji mode -->
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16"
                                 IsVisible="{Binding IsEmojiMode}">
-                        <TextBlock Foreground="{DynamicResource Theme.Footer.Color}" FontSize="{DynamicResource Theme.Footer.Size}">
-                            <Run Text="{Binding MetaSymbol}"/><Run Text="C  copy"/>
-                        </TextBlock>
-                        <TextBlock Text="↵  paste" Foreground="{DynamicResource Theme.Footer.Color}" FontSize="{DynamicResource Theme.Footer.Size}"/>
-                        <TextBlock Foreground="{DynamicResource Theme.Footer.Color}" FontSize="{DynamicResource Theme.Footer.Size}">
-                            <Run Text="{Binding MetaSymbol}"/><Run Text="{Binding ShiftSymbol}"/><Run Text="F  fav"/>
-                        </TextBlock>
+                        <TextBlock Text="{Binding EmojiCopyShortcut}" Foreground="{DynamicResource Theme.Footer.Color}" FontSize="{DynamicResource Theme.Footer.Size}"/>
+                        <TextBlock Text="↵  paste"                   Foreground="{DynamicResource Theme.Footer.Color}" FontSize="{DynamicResource Theme.Footer.Size}"/>
+                        <TextBlock Text="{Binding EmojiFavShortcut}"  Foreground="{DynamicResource Theme.Footer.Color}" FontSize="{DynamicResource Theme.Footer.Size}"/>
                     </StackPanel>
                 </Grid>
             </Border>

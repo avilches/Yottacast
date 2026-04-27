@@ -46,6 +46,8 @@ public partial class MainWindowViewModel(
     public bool IsEmojiMode => SelectedResult is EmojiGridResultViewModel;
     public string MetaSymbol => AppHandler.Instance.MetaSymbol;
     public string ShiftSymbol => AppHandler.Instance.ShiftSymbol;
+    public string EmojiCopyShortcut  => $"{MetaSymbol}C  copy";
+    public string EmojiFavShortcut   => $"{MetaSymbol}{ShiftSymbol}F  fav";
 
     public ObservableCollection<BaseResultItemViewModel> Results { get; } = [];
 

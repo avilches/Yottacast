@@ -60,12 +60,11 @@
 
         <!-- Info panel -->
         <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Margin="0,6,0,0" Spacing="2">
-            <TextBlock Foreground="{DynamicResource Theme.Emoji.Name.Color}"
+            <TextBlock Text="{Binding SelectedEmoji.Name}"
+                       Foreground="{DynamicResource Theme.Emoji.Name.Color}"
                        FontSize="{DynamicResource Theme.Emoji.Name.Size}"
                        FontWeight="Medium"
-                       HorizontalAlignment="Center">
-                <Run Text="{Binding SelectedEmoji.Category}"/><Run Text=": "/><Run Text="{Binding SelectedEmoji.Name}"/>
-            </TextBlock>
+                       HorizontalAlignment="Center"/>
             <TextBlock Text="{Binding SelectedEmoji.KeywordsText}"
                        Foreground="{DynamicResource Theme.Emoji.Keywords.Color}"
                        FontSize="{DynamicResource Theme.Emoji.Keywords.Size}"
