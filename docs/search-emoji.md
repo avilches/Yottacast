@@ -74,11 +74,15 @@ Las cabeceras de seccion se renderizan en la UI con estilos controlados por tema
 
 Las celdas de emojis favoritos tienen `IsFavorite = true` mostrando una estrella en la esquina. Las celdas con uso previo muestran un contador de uso (`UsageCount`).
 
+**Ranking de más usados:** el orden usa un *decay score*: `count × 0.5^(días_desde_último_uso / halfLifeDays)` con `halfLifeDays = AppDefaults.EmojiHalfLifeDays` (30 días por defecto). Un emoji usado hace más de 30 días sin volver a usarse baja en el ranking; uno usado recientemente con menos usos totales puede superarlo. Tras ~4 meses sin uso, el score decae hasta ser despreciable.
+
+**Límite total de la sección pinned:** favoritos + más usados juntos nunca superan `AppDefaults.EmojiMaxPinnedTotal` (10). El número de más usados se calcula como `EmojiMaxPinnedTotal - favorites.Count`. Con 0 favoritos: hasta 10 más usados. Con 4 favoritos: hasta 6 más usados.
+
 Al alternar favorito con `OnToggleFavorite`, se reconstruye el grid y el cursor se mantiene en el mismo indice numerico. El unico caso especial es cuando ese indice ya no existe (p.ej. el ultimo favorito se quitó y el grid encoge): en ese caso el cursor va al indice anterior (`Count - 1`), que es el emoji que estaba a su izquierda.
 
 **Disposicion de secciones:** la seccion Default contiene SIEMPRE todos los emojis en orden Unicode CLDR, sin excluir favoritos ni frecuentes. Adicionalmente, los favoritos aparecen tambien en la seccion Favorites (al principio) y los mas usados en la seccion Frequently Used. Esto imita el comportamiento del picker de emoji del sistema operativo, donde los favoritos y frecuentes son secciones de acceso rapido que no desplazan al emoji de su posicion natural. No se muestran secciones vacias.
 
-> **Verificar en:** `EmojiSearch.GetDefaultEmojis()` -- logica de merge con `EmojiSection`; `EmojiSearch.MakeGrid()` -- asignacion de `Section` y `UsageCount`; `EmojiUsageStore.Favorites`, `GetMostUsed()`, `GetUsageCount()`; `AppDefaults.EmojiMaxFavorites`, `EmojiMaxMostUsed`; `EmojiGridResultViewModel.VisibleSections`, `PinnedCount()` y `SectionKey()` -- viewport por secciones y agrupacion (Favorite y MostUsed comparten la misma clave); `MainWindow.axaml.cs` -- `Key.F` handler invoca `RefreshSearch()`.
+> **Verificar en:** `EmojiSearch.GetDefaultEmojis()` -- lógica de merge con `EmojiSection` y cálculo de límite dinámico; `EmojiSearch.MakeGrid()` -- asignación de `Section` y `UsageCount`; `EmojiUsageStore.Favorites`, `GetMostUsed()`, `GetUsageCount()`, `DecayScore()`; `AppDefaults.EmojiMaxFavorites`, `EmojiMaxPinnedTotal`, `EmojiHalfLifeDays`; `EmojiGridResultViewModel.VisibleSections`, `PinnedCount()` y `SectionKey()` -- viewport por secciones y agrupación (Favorite y MostUsed comparten la misma clave); `MainWindow.axaml.cs` -- `Key.F` handler invoca `RefreshSearch()`.
 
 ---
 
@@ -87,10 +91,18 @@ Al alternar favorito con `OnToggleFavorite`, se reconstruye el grid y el cursor 
 Los favoritos y contadores de uso se persisten en un fichero JSON separado (`AppPaths.EmojiUsageFile`, por defecto `emoji-usage.json` en el directorio de configuracion). El formato es:
 
 ```json
-{ "favorites": ["emoji1", "emoji2"], "usage": { "emoji1": 42, "emoji2": 15 } }
+{
+  "favorites": ["emoji1", "emoji2"],
+  "usage": {
+    "emoji1": { "count": 42, "lastUsedAt": "2026-04-20T10:30:00Z" },
+    "emoji2": { "count": 15, "lastUsedAt": "2026-01-01T00:00:00Z" }
+  }
+}
 ```
 
 `EmojiUsageStore` carga el fichero de forma asincrona durante `EmojiSearch.Start()`. Si el fichero no existe o esta corrupto, arranca con datos vacios sin error visible.
+
+El formato acepta valores enteros en `usage` como migración automática (formato anterior): se leen como `count` con `lastUsedAt = DateTime.UtcNow` en el momento de la carga.
 
 La escritura es atomica (fichero temporal + `File.Move`), el mismo patron que `EmojiDataLoader.WriteCompactCache`, para evitar corrupcion ante cierres inesperados.
 

@@ -4,14 +4,19 @@ using Microsoft.Extensions.Logging;
 namespace Yottacast.Core.Search.Emoji;
 
 /// <summary>
-/// Persists emoji favorites and usage counts to a JSON file.
-/// Favorites are user-toggled; usage counts are incremented on every emoji activation or copy.
+/// Persists emoji favorites and usage records to a JSON file.
+/// Each record stores a use count and the timestamp of last use.
+/// Most-used ranking uses a decay score: count × 0.5^(daysSinceLastUse / halfLifeDays),
+/// so recently-used emojis rank above equally-counted but stale ones.
+/// Favorites are user-toggled and stored separately.
 /// The file is written atomically (temp file + File.Move) to avoid corruption.
 /// </summary>
 public class EmojiUsageStore(string filePath, ILogger<EmojiUsageStore> logger) {
 
+    private record UsageRecord(int Count, DateTime LastUsedAt);
+
     private List<string> _favorites = [];
-    private Dictionary<string, int> _usage = new();
+    private Dictionary<string, UsageRecord> _usage = new();
     private readonly HashSet<string> _favoriteSet = new();
 
     public IReadOnlyList<string> Favorites => _favorites;
@@ -36,20 +41,31 @@ public class EmojiUsageStore(string filePath, ILogger<EmojiUsageStore> logger) {
     }
 
     public void RecordUsage(string ch) {
-        _usage.TryGetValue(ch, out var count);
-        _usage[ch] = count + 1;
+        _usage.TryGetValue(ch, out var existing);
+        _usage[ch] = new UsageRecord(
+            Count: (existing?.Count ?? 0) + 1,
+            LastUsedAt: DateTime.UtcNow
+        );
         Save();
     }
 
-    public int GetUsageCount(string ch) => _usage.TryGetValue(ch, out var count) ? count : 0;
+    public int GetUsageCount(string ch) =>
+        _usage.TryGetValue(ch, out var rec) ? rec.Count : 0;
 
     public IReadOnlyList<string> GetMostUsed(int max) =>
         _usage
             .Where(kv => !_favoriteSet.Contains(kv.Key))
-            .OrderByDescending(kv => kv.Value)
+            .OrderByDescending(kv => DecayScore(kv.Value))
             .Take(max)
             .Select(kv => kv.Key)
             .ToList();
+
+    private static double DecayScore(UsageRecord rec) {
+        var daysSince = (DateTime.UtcNow - rec.LastUsedAt).TotalDays;
+        // Clamp negative days (future timestamps used in tests) to 0
+        if (daysSince < 0) daysSince = 0;
+        return rec.Count * Math.Pow(0.5, daysSince / AppDefaults.EmojiHalfLifeDays);
+    }
 
     public async Task LoadAsync() {
         if (!File.Exists(filePath)) return;
@@ -69,10 +85,18 @@ public class EmojiUsageStore(string filePath, ILogger<EmojiUsageStore> logger) {
             }
 
             if (root.TryGetProperty("usage", out var usageProp) && usageProp.ValueKind == JsonValueKind.Object) {
-                _usage = new Dictionary<string, int>();
+                _usage = new Dictionary<string, UsageRecord>();
                 foreach (var prop in usageProp.EnumerateObject()) {
-                    if (prop.Value.TryGetInt32(out var count))
-                        _usage[prop.Name] = count;
+                    // Migrate old format: integer value → UsageRecord with LastUsedAt = UtcNow
+                    if (prop.Value.ValueKind == JsonValueKind.Number && prop.Value.TryGetInt32(out var legacyCount)) {
+                        _usage[prop.Name] = new UsageRecord(legacyCount, DateTime.UtcNow);
+                    } else if (prop.Value.ValueKind == JsonValueKind.Object) {
+                        var count = prop.Value.TryGetProperty("count", out var cp) && cp.TryGetInt32(out var c) ? c : 0;
+                        var lastUsedAt = prop.Value.TryGetProperty("lastUsedAt", out var lp) && lp.TryGetDateTimeOffset(out var dt)
+                            ? dt.UtcDateTime
+                            : DateTime.UtcNow;
+                        _usage[prop.Name] = new UsageRecord(count, lastUsedAt);
+                    }
                 }
             }
 
@@ -81,7 +105,7 @@ public class EmojiUsageStore(string filePath, ILogger<EmojiUsageStore> logger) {
         } catch (Exception ex) {
             logger.LogWarning("Failed to load emoji usage file, starting fresh: {Message}", ex.Message);
             _favorites = [];
-            _usage = new Dictionary<string, int>();
+            _usage = new Dictionary<string, UsageRecord>();
             _favoriteSet.Clear();
         }
     }
@@ -102,8 +126,13 @@ public class EmojiUsageStore(string filePath, ILogger<EmojiUsageStore> logger) {
 
                 writer.WritePropertyName("usage");
                 writer.WriteStartObject();
-                foreach (var (ch, count) in _usage)
-                    writer.WriteNumber(ch, count);
+                foreach (var (ch, rec) in _usage) {
+                    writer.WritePropertyName(ch);
+                    writer.WriteStartObject();
+                    writer.WriteNumber("count", rec.Count);
+                    writer.WriteString("lastUsedAt", rec.LastUsedAt.ToString("O"));
+                    writer.WriteEndObject();
+                }
                 writer.WriteEndObject();
 
                 writer.WriteEndObject();
