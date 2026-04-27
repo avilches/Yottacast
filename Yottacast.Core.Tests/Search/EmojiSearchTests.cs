@@ -590,8 +590,8 @@ public class EmojiSearchTests {
 
     [Fact]
     public async Task SelectDown_WithinCombinedPinnedSection_TwoRows() {
-        // 4 favorites (max) + 10 most-used (max) = 14 cells in combined pinned section (2 rows: 10+4).
-        // SelectDown from row 0 should go to row 1 within the combined section.
+        // 4 favorites (max) + 6 most-used (10 - 4 = 6) = 10 cells in combined pinned section (1 row of 10).
+        // SelectDown from row 0 goes directly to Default section (no second pinned row).
         var json = MakeEmojiJson(30);
         var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(dir);
@@ -602,19 +602,14 @@ public class EmojiSearchTests {
         var search = await BuildSearchWithCache(json, usageStore);
         var grid = search.Search(":", 100).OfType<EmojiGridResultViewModel>().First();
 
-        // [0-3] Favorites, [4-13] MostUsed (same combined section, 14 cells = 2 rows), [14+] Default
+        // [0-3] Favorites, [4-9] MostUsed (combined section, 10 cells = 1 row), [10+] Default
         Assert.Equal(EmojiSection.Favorite, grid.Cells[0].Section);
         Assert.Equal(EmojiSection.MostUsed, grid.Cells[4].Section);
-        int defaultStart = 14;
+        int defaultStart = 10;
         Assert.Equal(EmojiSection.Default, grid.Cells[defaultStart].Section);
 
-        // From combined section col 1 (index 1), down → row 1, col 1 (index 11)
+        // From combined section col 1 (index 1), down → Default col 1 (index defaultStart+1)
         grid.SelectedEmojiIndex = 1;
-        grid.SelectDown();
-        Assert.Equal(11, grid.SelectedEmojiIndex);
-        Assert.Equal(EmojiSection.MostUsed, grid.Cells[11].Section);
-
-        // From combined section row 1, col 1 (index 11), down → Default col 1 (index defaultStart+1)
         grid.SelectDown();
         Assert.Equal(defaultStart + 1, grid.SelectedEmojiIndex);
         Assert.Equal(EmojiSection.Default, grid.Cells[defaultStart + 1].Section);
