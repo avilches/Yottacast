@@ -15,6 +15,7 @@ public class EmojiCellViewModel : INotifyPropertyChanged {
     public string UsageCountText => UsageCount > 0 ? UsageCount.ToString() : "";
 
     public string KeywordsText => Keywords.Length > 0 ? string.Join(", ", Keywords) : "";
+    public string InfoLine => Keywords.Length > 0 ? $"{Name}  ·  {KeywordsText}" : Name;
 
     private bool _isFavorite;
     public bool IsFavorite {

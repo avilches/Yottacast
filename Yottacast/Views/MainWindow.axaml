@@ -378,12 +378,14 @@
                     </StackPanel>
                     <!-- Footer: normal mode -->
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16"
+                                VerticalAlignment="Center"
                                 IsVisible="{Binding !IsEmojiMode}">
-                        <TextBlock Text="↑↓  navigate"  Foreground="{DynamicResource Theme.Footer.Color}" FontSize="{DynamicResource Theme.Footer.Size}"/>
-                        <TextBlock Text="↵  open"        Foreground="{DynamicResource Theme.Footer.Color}" FontSize="{DynamicResource Theme.Footer.Size}"/>
+                        <TextBlock Text="↑↓  navigate" Foreground="{DynamicResource Theme.Footer.Color}" FontSize="{DynamicResource Theme.Footer.Size}"/>
+                        <TextBlock Text="↵  open"       Foreground="{DynamicResource Theme.Footer.Color}" FontSize="{DynamicResource Theme.Footer.Size}"/>
                     </StackPanel>
                     <!-- Footer: emoji mode -->
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16"
+                                VerticalAlignment="Center"
                                 IsVisible="{Binding IsEmojiMode}">
                         <TextBlock Text="{Binding EmojiCopyShortcut}" Foreground="{DynamicResource Theme.Footer.Color}" FontSize="{DynamicResource Theme.Footer.Size}"/>
                         <TextBlock Text="↵  paste"                   Foreground="{DynamicResource Theme.Footer.Color}" FontSize="{DynamicResource Theme.Footer.Size}"/>

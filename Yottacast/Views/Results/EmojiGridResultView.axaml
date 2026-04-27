@@ -59,17 +59,12 @@
         </ItemsControl>
 
         <!-- Info panel -->
-        <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Margin="0,6,0,0" Spacing="2">
-            <TextBlock Text="{Binding SelectedEmoji.Name}"
-                       Foreground="{DynamicResource Theme.Emoji.Name.Color}"
-                       FontSize="{DynamicResource Theme.Emoji.Name.Size}"
-                       FontWeight="Medium"
-                       HorizontalAlignment="Center"/>
-            <TextBlock Text="{Binding SelectedEmoji.KeywordsText}"
-                       Foreground="{DynamicResource Theme.Emoji.Keywords.Color}"
-                       FontSize="{DynamicResource Theme.Emoji.Keywords.Size}"
-                       Opacity="{DynamicResource Theme.Emoji.Keywords.Opacity}"
-                       HorizontalAlignment="Center" TextWrapping="Wrap" MaxWidth="400"/>
-        </StackPanel>
+        <TextBlock Text="{Binding SelectedEmoji.InfoLine}"
+                   Foreground="{DynamicResource Theme.Emoji.Keywords.Color}"
+                   FontSize="{DynamicResource Theme.Emoji.Keywords.Size}"
+                   Opacity="{DynamicResource Theme.Emoji.Keywords.Opacity}"
+                   HorizontalAlignment="Center"
+                   TextTrimming="CharacterEllipsis"
+                   Margin="0,6,0,0"/>
     </StackPanel>
 </UserControl>
