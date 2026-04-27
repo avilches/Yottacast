@@ -699,6 +699,29 @@ public class EmojiSearchTests {
         Assert.Contains(sections, s => s.Header == "Cat A");
         Assert.Contains(sections[0].Cells, c => c.Char == "A10" || c.Char == "A11");
     }
+
+    [Fact]
+    public async Task GetDefaultEmojis_PinnedNeverExceedsTen_WhenMaxFavorites() {
+        // 4 favorites + 6 most-used (10 - 4 = 6) = 10 pinned cells total.
+        var json = MakeEmojiJson(20);
+        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(dir);
+        var usageStore = new EmojiUsageStore(Path.Combine(dir, "emoji-usage.json"), NullLogger<EmojiUsageStore>.Instance);
+
+        for (int i = 1; i <= 4; i++) usageStore.ToggleFavorite($"E{i}");
+        for (int i = 5; i <= 14; i++) usageStore.RecordUsage($"E{i}");
+
+        var search = await BuildSearchWithCache(json, usageStore);
+        var results = search.Search(":", 100);
+        Assert.Single(results);
+
+        var grid = Assert.IsType<EmojiGridResultViewModel>(results[0]);
+        var pinnedCount = grid.Cells.Count(c => c.Section is EmojiSection.Favorite or EmojiSection.MostUsed);
+
+        Assert.Equal(10, pinnedCount);
+        Assert.Equal(4, grid.Cells.Count(c => c.Section == EmojiSection.Favorite));
+        Assert.Equal(6, grid.Cells.Count(c => c.Section == EmojiSection.MostUsed));
+    }
 }
 
 // ── Integration tests against the real embedded emoji-data.json ───────────────
