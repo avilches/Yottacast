@@ -54,10 +54,10 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
                 result.Add((entry, EmojiSection.Favorite));
         }
 
-        // Most-used next, capped at EmojiMaxMostUsed (10 cells), excluding favorites.
+        // Most-used next, capped at EmojiMaxPinnedTotal (10 cells), excluding favorites.
         // Most-used also appear in their Default position below.
         var seenMostUsed = new HashSet<string>();
-        foreach (var ch in usageStore.GetMostUsed(AppDefaults.EmojiMaxMostUsed)) {
+        foreach (var ch in usageStore.GetMostUsed(AppDefaults.EmojiMaxPinnedTotal)) {
             if (!favSet.Contains(ch) && charToEntry.TryGetValue(ch, out var entry) && seenMostUsed.Add(ch))
                 result.Add((entry, EmojiSection.MostUsed));
         }
