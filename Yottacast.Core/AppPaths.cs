@@ -65,4 +65,18 @@ public static class AppPaths {
 
     /// <summary>Exchange rates cache JSON file.</summary>
     public static readonly string ExchangeRatesCache = Path.Combine(CacheDir, "exchange-rates.json");
+
+    // ── System Settings (macOS) ──────────────────────────────────────────────
+
+    /// <summary>System Settings.app path on macOS.</summary>
+    public static readonly string SystemSettingsAppPath =
+        "/System/Applications/System Settings.app";
+
+    /// <summary>System-wide Preference Panes directory on macOS.</summary>
+    public static readonly string SystemPreferencePanesDir = "/Library/PreferencePanes";
+
+    /// <summary>User Preference Panes directory on macOS.</summary>
+    public static readonly string UserPreferencePanesDir = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+        "Library", "PreferencePanes");
 }

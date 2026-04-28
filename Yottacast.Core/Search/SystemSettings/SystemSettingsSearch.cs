@@ -14,13 +14,9 @@ public sealed class SystemSettingsSearch(
     IReadOnlyList<string>? thirdPartyDirs = null)
     : IInstantSearchSource {
 
-    private static readonly string SystemSettingsAppPath =
-        "/System/Applications/System Settings.app";
-
     private static readonly IReadOnlyList<string> DefaultThirdPartyDirs = [
-        "/Library/PreferencePanes",
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            "Library/PreferencePanes"),
+        AppPaths.SystemPreferencePanesDir,
+        AppPaths.UserPreferencePanesDir,
     ];
 
     private readonly IReadOnlyList<string> _thirdPartyDirs =
@@ -33,7 +29,7 @@ public sealed class SystemSettingsSearch(
             _readyTcs.TrySetResult();
             return;
         }
-        _ = LoadAsync();
+        Task.Run(Load);
     }
 
     public Task WhenReady() => _readyTcs.Task;
@@ -58,7 +54,7 @@ public sealed class SystemSettingsSearch(
         var identifier = panel.UrlIdentifier;
         return new ResultItemViewModel {
             Icon      = "⚙️",
-            IconBytes = iconCache.Get(SystemSettingsAppPath),
+            IconBytes = iconCache.Get(AppPaths.SystemSettingsAppPath),
             Title     = panel.Name,
             Subtitle  = panel.IsBuiltin ? "System Settings" : "System Settings · Preference Pane",
             Category  = "System Settings",
@@ -70,26 +66,30 @@ public sealed class SystemSettingsSearch(
         };
     }
 
-    private async Task LoadAsync() {
-        foreach (var panel in BuiltinPanels.All)
-            _panels.Add(panel);
+    private void Load() {
+        try {
+            foreach (var panel in BuiltinPanels.All)
+                _panels.Add(panel);
 
-        foreach (var dir in _thirdPartyDirs) {
-            if (!Directory.Exists(dir)) continue;
-            foreach (var bundlePath in Directory.EnumerateDirectories(dir, "*.prefPane")) {
-                var plistPath = Path.Combine(bundlePath, "Contents", "Info.plist");
-                var parsed = TryReadPlist(plistPath);
-                if (parsed is null) continue;
-                var (name, bundleId) = parsed.Value;
-                if (_panels.Any(p => p.UrlIdentifier == bundleId)) continue;
-                _panels.Add(new SystemSettingsPanel(name, bundleId, IsBuiltin: false));
+            foreach (var dir in _thirdPartyDirs) {
+                if (!Directory.Exists(dir)) continue;
+                foreach (var bundlePath in Directory.EnumerateDirectories(dir, "*.prefPane")) {
+                    var plistPath = Path.Combine(bundlePath, "Contents", "Info.plist");
+                    var parsed = TryReadPlist(plistPath);
+                    if (parsed is null) continue;
+                    var (name, bundleId) = parsed.Value;
+                    if (_panels.Any(p => p.UrlIdentifier == bundleId)) continue;
+                    _panels.Add(new SystemSettingsPanel(name, bundleId, IsBuiltin: false));
+                }
             }
-        }
 
-        iconCache.PreloadAsync(SystemSettingsAppPath);
-        logger.LogInformation("SystemSettings: loaded {Count} panels", _panels.Count);
-        _readyTcs.TrySetResult();
-        await Task.CompletedTask;
+            iconCache.PreloadAsync(AppPaths.SystemSettingsAppPath);
+            logger.LogInformation("SystemSettings: loaded {Count} panels", _panels.Count);
+        } catch (Exception ex) {
+            logger.LogWarning(ex, "SystemSettings: error loading panels, using partial results");
+        } finally {
+            _readyTcs.TrySetResult();
+        }
     }
 
     private static (string Name, string BundleId)? TryReadPlist(string plistPath) {

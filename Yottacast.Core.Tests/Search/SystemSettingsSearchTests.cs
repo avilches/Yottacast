@@ -7,12 +7,6 @@ using Yottacast.Core.ViewModels;
 
 namespace Yottacast.Core.Tests.Search;
 
-internal sealed class TrackingPlatformProvider : FakePlatformProvider {
-    public List<string> LaunchedUrls { get; } = new();
-    public TrackingPlatformProvider() : base([]) { }
-    public override void LaunchUrl(string url) => LaunchedUrls.Add(url);
-}
-
 public class SystemSettingsSearchTests {
     private static (SystemSettingsSearch search, UserSettings settings, TrackingPlatformProvider platform)
         Build(IReadOnlyList<string>? thirdPartyDirs = null) {
