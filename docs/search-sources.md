@@ -211,7 +211,38 @@ Los iconos de apps se gestionan en dos capas: carga (plataforma + cache) y rende
 
 ---
 
-## 7. RandomSearch (solo testing)
+## 7. Búsqueda de paneles de System Settings (macOS 13+)
+
+Permite al usuario buscar y abrir paneles de System Settings directamente desde el launcher. Solo disponible en macOS 13+ (Ventura).
+
+### Invariantes
+
+- Solo se activa en macOS. En otras plataformas la fuente no se registra y no genera resultados.
+- Si `EnableSystemSettings = false`, `Search()` devuelve `[]` siempre.
+- Los paneles compiten por score con el resto de resultados usando `NameMatcher` (mismo algoritmo que apps, rango 0.0–1.0).
+- Las queries que empiezan por `:` (modo emoji) no activan esta fuente.
+- Al activar un resultado, abre System Settings en el panel correspondiente via URL scheme `x-apple.systempreferences:{identifier}`.
+- Paneles de terceros con el mismo `CFBundleIdentifier` que uno builtin se omiten para evitar duplicados.
+
+### Datos de paneles
+
+- **Builtin**: ~45 entradas estáticas definidas en `BuiltinPanels.cs` para los paneles de Apple de macOS 13+.
+- **Terceros**: se escanean `/Library/PreferencePanes/` y `~/Library/PreferencePanes/` en startup. El nombre se extrae del `Info.plist` del bundle (`CFBundleDisplayName` → `CFBundleName` → nombre de fichero). La lectura del plist usa `XDocument` con `DtdProcessing.Ignore` para no realizar peticiones de red al DTD de Apple.
+
+### Resultado visible
+
+| Campo | Builtin | Tercero |
+|-------|---------|---------|
+| Título | nombre del panel (ej: `"Wi-Fi"`) | nombre del bundle |
+| Subtítulo | `"System Settings"` | `"System Settings · Preference Pane"` |
+| Categoría | `"System Settings"` | `"System Settings"` |
+| Icono | icono de System Settings.app | icono de System Settings.app |
+
+> **Verificar en:** `Search/SystemSettings/SystemSettingsSearch.cs` (Start, Search, Load, TryReadPlist, BuildResult), `Search/SystemSettings/BuiltinPanels.cs`, `Platform/PlatformProvider.cs` (LaunchUrl), `Platform/MacOsPlatformProvider.cs` (LaunchUrl), `Yottacast.Core.Tests/Search/SystemSettingsSearchTests.cs`.
+
+---
+
+## 8. RandomSearch (solo testing)
 
 `RandomSearch` es una fuente deferred de prueba. Esta registrada como singleton en el contenedor DI pero la linea que la conecta como `IDeferredSearchSource` esta comentada en `App.axaml.cs`. Emite hasta 5 resultados con scores aleatorios (0.5 a 1.0) con delays progresivos (200 ms + 50 ms por resultado). Cada snapshot es acumulativo.
 
