@@ -39,17 +39,23 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
                 var toUnit        = engine.DisplayUnit(r.ToUnit);
                 var fromShort     = $"{r.FromValue} {fromUnit}".Trim();
                 var toShort       = $"{r.ToValue} {toUnit}".Trim();
-                var fromLong      = LongForm(r.FromValue, r.FromUnitLong, r.FromUnit);
-                var toLong        = string.IsNullOrEmpty(r.ToUnit)
-                    ? (r.ToUnitLong is not null && r.ToUnitLong != toShort ? r.ToUnitLong : null)
-                    : LongForm(r.ToValue, r.ToUnitLong, r.ToUnit);
+                var fromLong      = engine.IsKnownCurrency(r.FromUnit)
+                    ? CurrencyClassifier.GetDisplayName(r.FromUnit)
+                    : LongForm(r.FromValue, r.FromUnitLong, r.FromUnit);
+                var toLong        = !string.IsNullOrEmpty(r.ToUnit) && engine.IsKnownCurrency(r.ToUnit)
+                    ? CurrencyClassifier.GetDisplayName(r.ToUnit)
+                    : string.IsNullOrEmpty(r.ToUnit)
+                        ? (r.ToUnitLong is not null && r.ToUnitLong != toShort ? r.ToUnitLong : null)
+                        : LongForm(r.ToValue, r.ToUnitLong, r.ToUnit);
                 LastHint = BuildHints(r.AmbiguityHints) is { Length: > 0 } h ? h : null;
 
                 string? normFromShort = null, normFromLong = null;
                 if (r.NormFromUnit != null && r.NormFromValue != null) {
                     var normFromUnit = engine.DisplayUnit(r.NormFromUnit);
                     normFromShort = $"{r.NormFromValue} {normFromUnit}".Trim();
-                    normFromLong  = LongForm(r.NormFromValue, r.NormFromUnitLong, r.NormFromUnit);
+                    normFromLong  = engine.IsKnownCurrency(r.NormFromUnit)
+                        ? CurrencyClassifier.GetDisplayName(r.NormFromUnit)
+                        : LongForm(r.NormFromValue, r.NormFromUnitLong, r.NormFromUnit);
                 }
 
                 logger.LogDebug("Calculator query=\"{Query}\" → conversion {From} → {To}", q, fromShort, toShort);

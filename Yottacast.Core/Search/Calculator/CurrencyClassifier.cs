@@ -38,4 +38,50 @@ public static class CurrencyClassifier {
         if (Metals.Contains(code)) return CurrencyType.Metal;
         return CurrencyType.Crypto;
     }
+
+    /// <summary>
+    /// Human-readable names for major currencies and precious metals.
+    /// Minor/exotic forex codes not listed here return null.
+    /// </summary>
+    private static readonly Dictionary<string, string> Names = new(StringComparer.OrdinalIgnoreCase) {
+        // Metals
+        ["XAU"] = "Gold",     ["XAG"] = "Silver",
+        ["XPT"] = "Platinum", ["XPD"] = "Palladium",
+        // Majors
+        ["USD"] = "US Dollar",          ["EUR"] = "Euro",
+        ["GBP"] = "British Pound",      ["JPY"] = "Japanese Yen",
+        ["CHF"] = "Swiss Franc",        ["CAD"] = "Canadian Dollar",
+        ["AUD"] = "Australian Dollar",  ["NZD"] = "New Zealand Dollar",
+        ["CNY"] = "Chinese Yuan",       ["HKD"] = "Hong Kong Dollar",
+        ["SGD"] = "Singapore Dollar",   ["SEK"] = "Swedish Krona",
+        ["NOK"] = "Norwegian Krone",    ["DKK"] = "Danish Krone",
+        ["MXN"] = "Mexican Peso",       ["BRL"] = "Brazilian Real",
+        ["INR"] = "Indian Rupee",       ["KRW"] = "South Korean Won",
+        ["ZAR"] = "South African Rand", ["TRY"] = "Turkish Lira",
+        ["RUB"] = "Russian Ruble",      ["PLN"] = "Polish Zloty",
+        ["CZK"] = "Czech Koruna",       ["HUF"] = "Hungarian Forint",
+        ["RON"] = "Romanian Leu",       ["ILS"] = "Israeli Shekel",
+        ["AED"] = "UAE Dirham",         ["SAR"] = "Saudi Riyal",
+        ["QAR"] = "Qatari Riyal",       ["KWD"] = "Kuwaiti Dinar",
+        ["THB"] = "Thai Baht",          ["MYR"] = "Malaysian Ringgit",
+        ["IDR"] = "Indonesian Rupiah",  ["PHP"] = "Philippine Peso",
+        ["VND"] = "Vietnamese Dong",    ["TWD"] = "Taiwan Dollar",
+        ["EGP"] = "Egyptian Pound",     ["PKR"] = "Pakistani Rupee",
+        ["NGN"] = "Nigerian Naira",     ["BDT"] = "Bangladeshi Taka",
+        ["UAH"] = "Ukrainian Hryvnia",  ["CLP"] = "Chilean Peso",
+        ["COP"] = "Colombian Peso",     ["ARS"] = "Argentine Peso",
+        ["PEN"] = "Peruvian Sol",       ["ISK"] = "Icelandic Króna",
+        ["HRK"] = "Croatian Kuna",      ["BGN"] = "Bulgarian Lev",
+    };
+
+    /// <summary>
+    /// Returns a display label for the given currency code.
+    /// Crypto always returns "Crypto". Known major currencies return their full name.
+    /// Minor currencies and unknown codes return null.
+    /// </summary>
+    public static string? GetDisplayName(string code) {
+        var type = Classify(code);
+        if (type == CurrencyType.Crypto) return "Crypto";
+        return Names.TryGetValue(code, out var name) ? name : null;
+    }
 }

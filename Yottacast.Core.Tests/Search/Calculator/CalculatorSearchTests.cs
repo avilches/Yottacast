@@ -392,10 +392,10 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
     }
 
     [Fact]
-    public void Conversion_Currency_NoLongForm() {
+    public void Conversion_Currency_ShowsDisplayName() {
         var item = Assert.IsType<ConversionResultItemViewModel>(SearchResult(BuildSearch(out _), "10 USD to EUR"));
-        Assert.Null(item.ToLong);
-        Assert.Null(item.FromLong);
+        Assert.Equal("US Dollar", item.FromLong);
+        Assert.Equal("Euro",      item.ToLong);
     }
 
     // ── Ambiguity hints en ConversionResultItemViewModel ──────────────────────
