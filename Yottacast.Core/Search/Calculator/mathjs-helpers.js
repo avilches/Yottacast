@@ -1,4 +1,5 @@
 math.createUnit('USD');
+var _currencySet = new Set(['USD']);
 
 // Velocidad: mph y kmh como unidades simples
 math.createUnit('kmh', { definition: math.unit(1000/3600, 'm/s') });
@@ -16,6 +17,7 @@ math.createUnit('Tbps', { definition: '1000 Gbps' });
 
 function registerCurrency(name, rateVsUSD) {
     // rateVsUSD: units of 'name' per 1 USD (e.g. EUR=0.92 means 1 USD = 0.92 EUR)
+    _currencySet.add(name);
     math.createUnit(name, { definition: (1 / rateVsUSD) + ' USD' }, { override: true });
 }
 
@@ -526,6 +528,18 @@ function smartFormat(r) {
             var decimals = Math.max(0, mantissaDecimals - exp);
             s = num.toFixed(decimals) + suffix;
         }
+    }
+    // Convert negative-exponent scientific notation to fixed decimal for currency amounts.
+    // Physical units like "1e-9 W" or "1e-6 kg" keep scientific notation; only currencies
+    // (e.g. "8.1e-8 USD", "1.23e-7 SHIB") are converted to fixed point.
+    // After conversion, _FMT_SMALL_SIG_FIGS trimming applies in the decimal branch below.
+    var sciNeg = /^(-?\d+\.?\d*)[eE]-(\d+)(\s.*)?$/.exec(s);
+    if (sciNeg && _currencySet.has((sciNeg[3] || '').trim())) {
+        var expN = parseInt(sciNeg[2], 10);
+        var dotN  = sciNeg[1].indexOf('.');
+        var mDecN = dotN >= 0 ? sciNeg[1].length - dotN - 1 : 0;
+        var numN  = parseFloat(sciNeg[1] + 'e-' + sciNeg[2]);
+        s = numN.toFixed(Math.min(expN + mDecN, 20)) + (sciNeg[3] || '');
     }
     // Only post-process strings with a plain decimal number (no scientific notation).
     // The pattern requires digits.digits followed immediately by whitespace or end of string.

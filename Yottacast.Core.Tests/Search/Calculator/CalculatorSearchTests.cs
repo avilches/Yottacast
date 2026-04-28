@@ -146,6 +146,24 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
         Assert.Empty(BuildSearch(out _).Search(query, 5));
     }
 
+    // ── Crypto — no scientific notation for very small values ────────────────
+    // SHIB rate: 1 USD = 12,345,678 SHIB → 1 SHIB ≈ 8.1e-8 USD (should show as fixed decimal)
+
+    [Fact]
+    public void Crypto_SmallResult_NoScientificNotation() {
+        var engine = new MathJsEngine(new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase) {
+            ["USD"] = 1.0,
+            ["SHIB"] = 12_345_678.0,  // 1 USD = 12,345,678 SHIB → 1 SHIB ≈ 8.1e-8 USD
+        });
+        engine.WhenReady().GetAwaiter().GetResult();
+        var result = engine.Evaluate("1 SHIB to USD");
+        Assert.True(result.IsSuccess, result.Error);
+        Assert.DoesNotContain("e-", result.Value!, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("e+", result.Value!, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("0.0000000", result.Value!);  // fixed-point decimal
+        engine.Dispose();
+    }
+
     // ── Currency conversions ──────────────────────────────────────────────────
     // Rates in MathJsEngineFixture (units per 1 USD): EUR=0.92, JPY=150.5, MXN=17.1, GBP=0.79
 
