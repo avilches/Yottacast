@@ -25,6 +25,14 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
         if (engine == null) return [];
         var q = query.Trim();
 
+        // "EUR" → "1 EUR": bare currency code without a value should trigger the default-pair conversion.
+        // Non-currency tokens (e.g. "km") are not registered as currencies in the engine so they are unaffected.
+        if (q.Length is >= 2 and <= 10 && q.All(char.IsLetter)) {
+            var upper = q.ToUpperInvariant();
+            if (engine.IsKnownCurrency(upper))
+                q = "1 " + upper;
+        }
+
         switch (engine.Evaluate(q)) {
             case ConversionResult r: {
                 var fromUnit      = engine.DisplayUnit(r.FromUnit);

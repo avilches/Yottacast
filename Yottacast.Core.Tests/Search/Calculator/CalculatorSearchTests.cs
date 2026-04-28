@@ -286,6 +286,32 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
         Assert.Contains("EUR", ValueOf(SearchResult(BuildSearch(out _), query)));
     }
 
+    public static TheoryData<string> BareCurrencyCases => new() {
+        { "EUR" },   // bare code → treated as "1 EUR" → converts to default pair
+        { "usd" },   // lowercase bare code
+        { "GBP" },
+        { "JPY" },
+    };
+
+    [Theory]
+    [MemberData(nameof(BareCurrencyCases))]
+    public void BareCurrencyCode_ConvertsToDefaultPair(string query) {
+        // "EUR" alone should produce a ConversionResult (not EUR→EUR),
+        // same as typing "1 EUR"
+        var result = SearchResult(BuildSearch(out _), query);
+        Assert.IsType<ConversionResultItemViewModel>(result);
+        var conv = (ConversionResultItemViewModel)result;
+        Assert.NotEqual(conv.FromShort, conv.ToShort);
+    }
+
+    [Fact]
+    public void BareCurrencyCode_NonCurrency_ReturnsNoResult() {
+        // "km" is not a currency — bare unit tokens should not be auto-expanded
+        var search = BuildSearch(out _);
+        var results = search.Search("km", 5);
+        Assert.Empty(results);
+    }
+
     public static TheoryData<string> SumOrArithmeticCurrencyCases => new() {
         { "10 USD + 5 MXN"       },   // raíz es +
         { "(10 USD + 5 MXN) / 2" },   // raíz es /

@@ -116,6 +116,9 @@ public sealed class MathJsEngine : IDisposable {
 
     public Task WhenReady() => _initTask;
 
+    /// <summary>Returns true if <paramref name="code"/> is registered as a currency in this engine (case-insensitive).</summary>
+    public bool IsKnownCurrency(string code) => _rates.ContainsKey(code);
+
     /// <summary>
     /// Normalizes a math expression using math.js: cleans the AST, fixes unit/function casing,
     /// detects ambiguous tokens, and determines the expression kind (calculation, unit_entry,
