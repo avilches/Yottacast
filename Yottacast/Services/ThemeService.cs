@@ -119,10 +119,10 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
         var filePath = ThemeFilePath(themeId);
         if (filePath == null) return;
         _activeThemeWatcher = new FileSystemWatcher(AppPaths.PluginsDir, Path.GetFileName(filePath)) {
-            NotifyFilter = NotifyFilters.LastWrite,
+            NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName,
             EnableRaisingEvents = true
         };
-        _activeThemeWatcher.Changed += (_, _) => {
+        void OnChanged(object? _, FileSystemEventArgs __) {
             var cts = new CancellationTokenSource();
             var prevCts = Interlocked.Exchange(ref _debounceCts, cts);
             prevCts?.Cancel();
@@ -131,7 +131,10 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
                 if (!ct.IsCancellationRequested)
                     Dispatcher.UIThread.Post(() => Apply(themeId));
             }, ct);
-        };
+        }
+        _activeThemeWatcher.Changed += OnChanged;
+        _activeThemeWatcher.Created += OnChanged;
+        _activeThemeWatcher.Renamed += OnChanged;  // editores con guardado atómico (write-rename)
     }
 
     public void Apply(string themeName) {
@@ -214,10 +217,12 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
             var calc = json["calculator"];
             if (calc != null) {
                 SetFontFamily(app, "Theme.Calc.FontFamily",        calc["fontFamily"]);
-                SetBrush(app,      "Theme.Calc.Expression.Color",  calc["expression"]?["color"]);
-                SetDouble(app,     "Theme.Calc.Expression.Size",   calc["expression"]?["size"]);
-                SetBrush(app,      "Theme.Calc.Result.Color",      calc["result"]?["color"]);
-                SetDouble(app,     "Theme.Calc.Result.Size",       calc["result"]?["size"]);
+                SetBrush(app,       "Theme.Calc.Expression.Color",      calc["expression"]?["color"]);
+                SetDouble(app,      "Theme.Calc.Expression.Size",       calc["expression"]?["size"]);
+                SetFontWeight(app,  "Theme.Calc.Expression.FontWeight",  calc["expression"]?["fontWeight"]);
+                SetBrush(app,       "Theme.Calc.Result.Color",           calc["result"]?["color"]);
+                SetDouble(app,      "Theme.Calc.Result.Size",            calc["result"]?["size"]);
+                SetFontWeight(app,  "Theme.Calc.Result.FontWeight",      calc["result"]?["fontWeight"]);
                 SetBrush(app,      "Theme.Calc.Subtitle.Color",    calc["subtitle"]?["color"]);
                 SetDouble(app,     "Theme.Calc.Subtitle.Size",     calc["subtitle"]?["size"]);
                 SetOpacity(app,    "Theme.Calc.Subtitle.Opacity",  calc["subtitle"]?["opacity"]);
@@ -321,12 +326,12 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
         app.Resources["Theme.Window.Background"]    = B("#F21C1C22");
         app.Resources["Theme.Window.Width"]          = 730.0;
         app.Resources["Theme.Window.CornerRadius"]   = new CornerRadius(14);
-        app.Resources["Theme.Window.FontFamily"]     = FontFamily.Default;
+        app.Resources["Theme.Window.FontFamily"]     = new FontFamily("SF Pro Text, Segoe UI, Inter");
 
         // ── Search ──
         app.Resources["Theme.Search.Color"]       = B("#FFFFFF");
         app.Resources["Theme.Search.Size"]        = 18.0;
-        app.Resources["Theme.Search.FontFamily"]  = FontFamily.Default;
+        app.Resources["Theme.Search.FontFamily"]  = new FontFamily("SF Pro Text, Segoe UI, Inter");
         app.Resources["Theme.Search.Placeholder"] = B("#505055");
         app.Resources["Theme.Search.Caret"]       = B("#5E8FFF");
         app.Resources["Theme.Search.Selection"]   = B("#3560EE");
@@ -340,7 +345,7 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
         app.Resources["Theme.Results.CornerRadius"]              = new CornerRadius(8);
         app.Resources["Theme.Results.Title.Color"]               = B("#EAEAEE");
         app.Resources["Theme.Results.Title.Size"]                = 14.0;
-        app.Resources["Theme.Results.Subtitle.Color"]            = B("#505055");
+        app.Resources["Theme.Results.Subtitle.Color"]            = B("#9A9AA4");
         app.Resources["Theme.Results.Subtitle.Size"]             = 12.0;
         app.Resources["Theme.Results.Category.Color"]            = B("#606068");
         app.Resources["Theme.Results.Category.Size"]             = 12.0;
@@ -357,11 +362,13 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
         app.Resources["Theme.Results.Hover.Background"]          = B("#20FFFFFF");
 
         // ── Calculator ──
-        app.Resources["Theme.Calc.FontFamily"]        = FontFamily.Default;
-        app.Resources["Theme.Calc.Expression.Color"]  = B("#EAEAEE");
-        app.Resources["Theme.Calc.Expression.Size"]   = 20.0;
-        app.Resources["Theme.Calc.Result.Color"]      = B("#EAEAEE");
-        app.Resources["Theme.Calc.Result.Size"]       = 20.0;
+        app.Resources["Theme.Calc.FontFamily"]        = new FontFamily("SF Pro Text, Segoe UI, Inter");
+        app.Resources["Theme.Calc.Expression.Color"]       = B("#EAEAEE");
+        app.Resources["Theme.Calc.Expression.Size"]        = 20.0;
+        app.Resources["Theme.Calc.Expression.FontWeight"]  = FontWeight.Medium;
+        app.Resources["Theme.Calc.Result.Color"]           = B("#EAEAEE");
+        app.Resources["Theme.Calc.Result.Size"]            = 20.0;
+        app.Resources["Theme.Calc.Result.FontWeight"]      = FontWeight.Medium;
         app.Resources["Theme.Calc.Subtitle.Color"]    = B("#EAEAEE");
         app.Resources["Theme.Calc.Subtitle.Size"]     = 13.0;
         app.Resources["Theme.Calc.Subtitle.Opacity"]  = 0.55;
@@ -370,7 +377,7 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
         app.Resources["Theme.Calc.Cell.CornerRadius"]  = new CornerRadius(6);
 
         // ── Converter ──
-        app.Resources["Theme.Conv.FontFamily"]        = FontFamily.Default;
+        app.Resources["Theme.Conv.FontFamily"]        = new FontFamily("SF Pro Text, Segoe UI, Inter");
         app.Resources["Theme.Conv.Value.Color"]       = B("#EAEAEE");
         app.Resources["Theme.Conv.Value.Size"]        = 20.0;
         app.Resources["Theme.Conv.Subtitle.Color"]    = B("#EAEAEE");
@@ -453,6 +460,22 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
         app.Resources[key] = string.IsNullOrWhiteSpace(value)
             ? FontFamily.Default
             : new FontFamily(value);
+    }
+
+    private static void SetFontWeight(Application app, string key, JsonNode? node) {
+        if (node == null) return;
+        app.Resources[key] = node.GetValue<string>() switch {
+            "Thin"       => FontWeight.Thin,
+            "ExtraLight" => FontWeight.ExtraLight,
+            "Light"      => FontWeight.Light,
+            "Regular"    => FontWeight.Regular,
+            "Medium"     => FontWeight.Medium,
+            "SemiBold"   => FontWeight.SemiBold,
+            "Bold"       => FontWeight.Bold,
+            "ExtraBold"  => FontWeight.ExtraBold,
+            "Black"      => FontWeight.Black,
+            _            => FontWeight.Regular,
+        };
     }
 
     private static void SetCornerRadius(Application app, string key, JsonNode? node) {

@@ -14,7 +14,8 @@
         TransparencyLevelHint="Transparent"
         Background="Transparent"
         CanResize="False"
-        ShowInTaskbar="False">
+        ShowInTaskbar="False"
+        RenderOptions.TextRenderingMode="Antialias">
 
     <Window.Resources>
         <conv:PathToAppIconConverter x:Key="PathToAppIcon"/>

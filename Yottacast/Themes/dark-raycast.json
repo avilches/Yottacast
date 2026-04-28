@@ -7,11 +7,11 @@
     "background": "#F01A1917",
     "width": 730,
     "cornerRadius": 12,
-    "fontFamily": ""
+    "fontFamily": "SF Pro Text, Segoe UI, Inter"
   },
 
   "search": {
-    "text":        { "color": "#F5F5F0", "size": 18, "fontFamily": "" },
+    "text":        { "color": "#F5F5F0", "size": 18, "fontFamily": "SF Pro Text, Segoe UI, Inter" },
     "placeholder": { "color": "#4A4A44" },
     "caret":       { "color": "#FF6B35" },
     "selection":   { "color": "#CC5228" },
@@ -38,16 +38,16 @@
   },
 
   "calculator": {
-    "fontFamily": "",
-    "expression": { "color": "#F0F0EA", "size": 20 },
-    "result":     { "color": "#F0F0EA", "size": 20 },
+    "fontFamily": "SF Pro Text, Segoe UI, Inter",
+    "expression": { "color": "#F0F0EA", "size": 20, "fontWeight": "Medium" },
+    "result":     { "color": "#F0F0EA", "size": 20, "fontWeight": "Medium" },
     "subtitle":   { "color": "#F0F0EA", "size": 13, "opacity": 0.55 },
     "separator":  { "color": "#F0F0EA" },
     "cell":       { "background": "#252520", "cornerRadius": 6 }
   },
 
   "converter": {
-    "fontFamily": "",
+    "fontFamily": "SF Pro Text, Segoe UI, Inter",
     "value":    { "color": "#F0F0EA", "size": 20 },
     "subtitle": { "color": "#F0F0EA", "size": 13, "opacity": 0.55 },
     "arrow":    { "color": "#F0F0EA" },
