@@ -13,16 +13,14 @@ public partial class ConversionResultItemView : UserControl {
 
     protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e) {
         base.OnAttachedToVisualTree(e);
-        if (DataContext is ConversionResultItemViewModel { FromWasNormalized: true }) {
-            var parent = this.GetVisualParent();
-            while (parent != null) {
-                if (parent is ListBoxItem lbi) {
-                    lbi.Classes.Add("conv-navigable");
-                    _taggedItem = lbi;
-                    break;
-                }
-                parent = parent.GetVisualParent();
+        var parent = this.GetVisualParent();
+        while (parent != null) {
+            if (parent is ListBoxItem lbi) {
+                lbi.Classes.Add("conv-navigable");
+                _taggedItem = lbi;
+                break;
             }
+            parent = parent.GetVisualParent();
         }
     }
 

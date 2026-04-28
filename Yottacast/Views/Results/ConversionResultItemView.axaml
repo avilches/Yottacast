@@ -38,7 +38,8 @@
                        Margin="8,0"/>
             <!-- To -->
             <Border Grid.Column="2" CornerRadius="{DynamicResource Theme.Conv.Cell.CornerRadius}" Padding="6,4"
-                    HorizontalAlignment="Stretch">
+                    HorizontalAlignment="Stretch"
+                    Classes.conv-cell-selected="{Binding IsToHighlighted}">
                 <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
                     <TextBlock Text="{Binding ToShort}"
                                Foreground="{DynamicResource Theme.Calc.Result.Color}"

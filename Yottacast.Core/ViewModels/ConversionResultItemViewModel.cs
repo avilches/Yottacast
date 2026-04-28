@@ -49,6 +49,7 @@ public class ConversionResultItemViewModel : BaseResultItemViewModel, INotifyPro
 
     /// <summary>Move selection one cell to the left (NormFrom ↔ To only). Returns true if consumed.</summary>
     public bool MoveCellLeft() {
+        if (!FromWasNormalized) return false;
         if (SelectedCell == ConversionCell.To) {
             SelectedCell = ConversionCell.NormFrom;
             return true;
