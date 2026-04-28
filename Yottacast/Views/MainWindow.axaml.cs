@@ -35,7 +35,20 @@ public partial class MainWindow : Window {
         Opened += (_, _) => SearchBox.Focus();
         // Restore focus to SearchBox when the window regains key status (e.g. after
         // MacAppHandler's makeKeyWindow call re-makes us key without activating the app).
-        Activated += (_, _) => SearchBox.Focus();
+        Activated += (_, _) => {
+            SearchBox.Focus();
+            if (DataContext is MainWindowViewModel vm)
+                vm.CancelDecayTimer();
+        };
+        Deactivated += (_, _) => {
+            // In sticky mode the window stays visible on deactivation — start the decay timer.
+            // In non-sticky mode, App.axaml.cs calls Hide() which sets IsVisible=false,
+            // and OnPropertyChanged handles it.
+            if (_settings.StickyWindow
+                && DataContext is MainWindowViewModel vm) {
+                vm.StartDecayTimer();
+            }
+        };
         // Intercept LEFT/RIGHT in the tunnel phase so items with OnLeft/OnRight
         // can capture them before the TextBox moves its cursor.
         AddHandler(KeyDownEvent, OnTunnelKeyDown, RoutingStrategies.Tunnel);
@@ -56,10 +69,17 @@ public partial class MainWindow : Window {
                 _positionDirty = false;
                 _screenPosKnown = false;
                 SearchBox.Focus();
-            } else {
-                SavePosition(); // flush to disk on hide
                 if (DataContext is MainWindowViewModel vm)
+                    vm.CancelDecayTimer();
+            } else {
+                SavePosition();
+                if (DataContext is MainWindowViewModel vm) {
                     vm.IsAltPressed = false;
+                    if (!_settings.KeepValueWhenHide)
+                        vm.CleanAndSaveHistory(null);
+                    else
+                        vm.StartDecayTimer();
+                }
             }
         }
     }
