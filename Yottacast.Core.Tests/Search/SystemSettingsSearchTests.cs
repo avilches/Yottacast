@@ -78,9 +78,9 @@ public class SystemSettingsSearchTests {
         var bluetooth = results.First(r => r.Title == "Bluetooth");
         bluetooth.OnActivate?.Invoke();
 
-        Assert.Single(platform.LaunchedUrls);
+        Assert.Single(platform.LaunchedApps);
         Assert.Equal("x-apple.systempreferences:com.apple.preferences.Bluetooth",
-            platform.LaunchedUrls[0]);
+            platform.LaunchedApps[0]);
     }
 
     [Fact]

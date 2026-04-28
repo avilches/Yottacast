@@ -236,10 +236,16 @@ public sealed class MathJsEngine : IDisposable {
         // math.js from auto-simplifying to a custom unit (e.g. "kmh") registered in the same dimension.
         bool isCompoundLeft = normalized.FromUnit?.Contains('/') == true;
 
+        // "USD to EUR": bare currency code as LHS → math.js evaluates "USD" as a bare symbol and
+        // returns "USD" without a coefficient. Prepend "1 " so From displays as "1 USD".
+        var leftExpr = normalized.LeftExpr!;
+        if (normalized.FromUnit == null && IsKnownCurrency(leftExpr))
+            leftExpr = "1 " + leftExpr;
+
         // Original from: force the user's unit to preserve the magnitude as written
         var origLeftResult = normalized.FromUnit != null
-            ? EvalJs($"{normalized.LeftExpr!} to {normalized.FromUnit}")
-            : EvalJs(normalized.LeftExpr!);
+            ? EvalJs($"{leftExpr} to {normalized.FromUnit}")
+            : EvalJs(leftExpr);
         var (fromValue, fromUnit) = origLeftResult != null
             ? SplitValueUnit(origLeftResult)
             : ("", normalized.FromUnit ?? "");

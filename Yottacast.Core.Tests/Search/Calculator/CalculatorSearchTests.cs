@@ -150,12 +150,12 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
     // SHIB rate: 1 USD = 12,345,678 SHIB → 1 SHIB ≈ 8.1e-8 USD (should show as fixed decimal)
 
     [Fact]
-    public void Crypto_SmallResult_NoScientificNotation() {
+    public async Task Crypto_SmallResult_NoScientificNotation() {
         var engine = new MathJsEngine(new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase) {
             ["USD"] = 1.0,
             ["SHIB"] = 12_345_678.0,  // 1 USD = 12,345,678 SHIB → 1 SHIB ≈ 8.1e-8 USD
         });
-        engine.WhenReady().GetAwaiter().GetResult();
+        await engine.WhenReady();
         var result = engine.Evaluate("1 SHIB to USD");
         Assert.True(result.IsSuccess, result.Error);
         Assert.DoesNotContain("e-", result.Value!, StringComparison.OrdinalIgnoreCase);
@@ -169,6 +169,7 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
 
     public static TheoryData<string, string> CurrencyConversionCases => new() {
         { "10 USD to EUR",          "9.2 EUR"   },   // basic USD→EUR
+        { "USD to EUR",             "0.92 EUR"  },   // bare currency code — from should be "1 USD"
         { "100 uSd to EUR",         "92 EUR"    },   // case-insensitive input
         { "10 USD to MXN",          "171 MXN"   },   // USD→MXN  (10 × 17.1)
         { "100 USD to JPY",         "15050 JPY" },   // USD→JPY  (100 × 150.5)
@@ -181,6 +182,13 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
     [MemberData(nameof(CurrencyConversionCases))]
     public void Currency_Converts(string query, string expectedFragment) {
         Assert.Contains(expectedFragment, ValueOf(SearchResult(BuildSearch(out _), query)));
+    }
+
+    [Fact]
+    public void Currency_BareCodeWithTo_FromShowsOne() {
+        // "USD to EUR" → From must show "1 USD", not bare "USD"
+        var item = Assert.IsType<ConversionResultItemViewModel>(SearchResult(BuildSearch(out _), "USD to EUR"));
+        Assert.Equal("1 USD", item.FromShort);
     }
 
     // ── Unit case-insensitivity ───────────────────────────────────────────────

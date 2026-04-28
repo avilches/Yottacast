@@ -3,7 +3,7 @@ using Yottacast.Core.Platform;
 namespace Yottacast.Core.Tests.Fakes;
 
 internal sealed class TrackingPlatformProvider : FakePlatformProvider {
-    public List<string> LaunchedUrls { get; } = new();
+    public List<string> LaunchedApps { get; } = new();
     public TrackingPlatformProvider() : base([]) { }
-    public override void LaunchUrl(string url) => LaunchedUrls.Add(url);
+    public override void LaunchApp(string path) => LaunchedApps.Add(path);
 }

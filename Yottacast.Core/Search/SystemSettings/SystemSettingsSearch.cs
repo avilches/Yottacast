@@ -61,7 +61,7 @@ public sealed class SystemSettingsSearch(
             Score     = score,
             OnActivate = () => {
                 logger.LogInformation("SystemSettings: open panel={Panel}", panel.Name);
-                platform.LaunchUrl($"x-apple.systempreferences:{identifier}");
+                platform.LaunchApp($"x-apple.systempreferences:{identifier}");
             },
         };
     }
