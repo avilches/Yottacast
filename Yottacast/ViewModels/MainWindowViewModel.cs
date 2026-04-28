@@ -306,6 +306,7 @@ public partial class MainWindowViewModel(
     /// </summary>
     public void StartDecayTimer() {
         _decayCts?.Cancel();
+        _decayCts?.Dispose();
         _decayCts = null;
 
         if (!settings.KeepValueWhenHide || settings.KeepValueWhenHideDuration <= 0) return;
@@ -329,6 +330,7 @@ public partial class MainWindowViewModel(
     /// </summary>
     public void CancelDecayTimer() {
         _decayCts?.Cancel();
+        _decayCts?.Dispose();
         _decayCts = null;
     }
 
