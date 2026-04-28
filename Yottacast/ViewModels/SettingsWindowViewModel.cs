@@ -146,6 +146,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         if (value?.Seconds != null) {
             _settings.KeepValueWhenHideDuration = value.Seconds.Value;
             _settings.Save();
+            _logger.LogInformation("Settings: KeepValueWhenHideDuration = {Value}", value.Seconds);
         }
         // When "Customize..." (Seconds == null) is selected, wait for text input
     }
@@ -156,6 +157,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         if (parsed != null) {
             _settings.KeepValueWhenHideDuration = parsed.Value;
             _settings.Save();
+            _logger.LogInformation("Settings: KeepValueWhenHideDuration (custom) = {Value}", parsed.Value);
         }
     }
 
