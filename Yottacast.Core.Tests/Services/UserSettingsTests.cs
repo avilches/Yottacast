@@ -1031,6 +1031,78 @@ public class UserSettingsTests : IDisposable {
         Assert.Equal(100, settings2.HistoryMaxItems);
     }
 
+    // ══════════════════════════════════════════════════════════════════════════
+    // KeepValueWhenHide persistence
+    // ══════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void KeepValueWhenHide_DefaultIsTrue() {
+        var settings = Load();
+        Assert.True(settings.KeepValueWhenHide);
+    }
+
+    [Fact]
+    public void KeepValueWhenHide_SaveAndLoad_RoundTrips() {
+        var settings = Load();
+        settings.KeepValueWhenHide = false;
+        settings.Save();
+
+        WaitForSettingsFile("keepValueWhenHide");
+        var reloaded = Load();
+
+        Assert.False(reloaded.KeepValueWhenHide);
+    }
+
+    [Fact]
+    public void KeepValueWhenHide_MissingFromJson_DefaultsToTrue() {
+        WriteSettingsJson("""
+            {
+                "browser": "",
+                "terminal": ""
+            }
+            """);
+
+        var settings = Load();
+
+        Assert.True(settings.KeepValueWhenHide);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // KeepValueWhenHideDuration persistence
+    // ══════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void KeepValueWhenHideDuration_DefaultIs60() {
+        var settings = Load();
+        Assert.Equal(60, settings.KeepValueWhenHideDuration);
+    }
+
+    [Fact]
+    public void KeepValueWhenHideDuration_SaveAndLoad_RoundTrips() {
+        var settings = Load();
+        settings.KeepValueWhenHideDuration = 300;
+        settings.Save();
+
+        WaitForSettingsFile("keepValueWhenHideDuration");
+        var reloaded = Load();
+
+        Assert.Equal(300, reloaded.KeepValueWhenHideDuration);
+    }
+
+    [Fact]
+    public void KeepValueWhenHideDuration_MissingFromJson_DefaultsTo60() {
+        WriteSettingsJson("""
+            {
+                "browser": "",
+                "terminal": ""
+            }
+            """);
+
+        var settings = Load();
+
+        Assert.Equal(60, settings.KeepValueWhenHideDuration);
+    }
+
     /// <summary>Platform provider with configurable default search folders (no browsers/terminals).</summary>
     private sealed class PlatformWithSearchFolders(List<string> searchFolders) : PlatformProvider {
         public override bool? IsSystemDarkMode() => null;

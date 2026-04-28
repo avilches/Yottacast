@@ -94,4 +94,9 @@ public static class AppDefaults {
     // ── History ──────────────────────────────────────────────────────────────────
     /// Maximum number of search history entries to keep.
     public const int HistoryMaxItems = 100;
+
+    // ── Window behavior ────────────────────────────────────────────────────────
+    /// Default duration in seconds before auto-clearing the search text after hide.
+    /// 0 means "always keep" (never auto-clear).
+    public const int KeepValueWhenHideDuration = 60;
 }
