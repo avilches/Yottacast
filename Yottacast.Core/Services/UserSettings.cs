@@ -53,6 +53,8 @@ public class UserSettings {
     public List<string> DictionaryLanguages { get; set; } = new(AppDefaults.DictionaryDefaultLanguages);
     public bool EnableHistory { get; set; } = true;
     public int HistoryMaxItems { get; set; } = AppDefaults.HistoryMaxItems;
+    public bool KeepValueWhenHide { get; set; } = true;
+    public int KeepValueWhenHideDuration { get; set; } = AppDefaults.KeepValueWhenHideDuration;
 
     private string _hotkey = "Alt+Space";
     private HotkeyConfig? _parsedHotkey;
@@ -167,6 +169,8 @@ public class UserSettings {
         [JsonPropertyName("dictionaryLanguages")] public List<string>? DictionaryLanguages { get; init; }
         [JsonPropertyName("enableHistory")] public bool EnableHistory { get; init; } = true;
         [JsonPropertyName("historyMaxItems")] public int HistoryMaxItems { get; init; } = AppDefaults.HistoryMaxItems;
+        [JsonPropertyName("keepValueWhenHide")] public bool KeepValueWhenHide { get; init; } = true;
+        [JsonPropertyName("keepValueWhenHideDuration")] public int KeepValueWhenHideDuration { get; init; } = AppDefaults.KeepValueWhenHideDuration;
     }
 
     public static UserSettings Load(PlatformProvider platform, ILogger<UserSettings>? logger = null, string? settingsPath = null) {
@@ -227,6 +231,10 @@ public class UserSettings {
                     HistoryMaxItems = data.HistoryMaxItems is >= 1 and <= AppDefaults.HistoryMaxItems
                         ? data.HistoryMaxItems
                         : AppDefaults.HistoryMaxItems,
+                    KeepValueWhenHide = data.KeepValueWhenHide,
+                    KeepValueWhenHideDuration = data.KeepValueWhenHideDuration >= 0
+                        ? data.KeepValueWhenHideDuration
+                        : AppDefaults.KeepValueWhenHideDuration,
                 };
             }
         } catch (Exception ex) {
@@ -334,6 +342,8 @@ public class UserSettings {
                 DictionaryLanguages = DictionaryLanguages,
                 EnableHistory = EnableHistory,
                 HistoryMaxItems = HistoryMaxItems,
+                KeepValueWhenHide = KeepValueWhenHide,
+                KeepValueWhenHideDuration = KeepValueWhenHideDuration,
                 WebSearchEngines = WebSearchEngines
                     .Select(s => new WebSearchEngineSettingsData {
                         Id = s.Id,

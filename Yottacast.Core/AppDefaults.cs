@@ -100,4 +100,9 @@ public static class AppDefaults {
     public const int ExchangeRateRefreshIntervalHours = 4;
     /// HTTP timeout for exchange rate API requests.
     public const int ExchangeRateTimeoutSeconds = 10;
+
+    // ── Window behavior ────────────────────────────────────────────────────────
+    /// Default duration in seconds before auto-clearing the search text after hide.
+    /// 0 means "always keep" (never auto-clear).
+    public const int KeepValueWhenHideDuration = 60;
 }

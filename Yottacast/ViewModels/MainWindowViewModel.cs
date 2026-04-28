@@ -57,6 +57,7 @@ public partial class MainWindowViewModel(
 
     private CancellationTokenSource? _cts;
     private CancellationTokenSource? _deferredCts;
+    private CancellationTokenSource? _decayCts;
 
     private IReadOnlyList<BaseResultItemViewModel> _instantSnapshot = [];
     private IReadOnlyList<BaseResultItemViewModel> _deferredSnapshot = [];
@@ -297,6 +298,40 @@ public partial class MainWindowViewModel(
         SearchText = entries[entries.Count - 1 - _historyNavIndex].Query;
         _navigatingHistory = false;
         _textIsFromHistory = true;
+    }
+
+    /// <summary>
+    /// Starts (or resets) the decay timer. When it fires, clears the search text as if Escape was pressed.
+    /// No-op if KeepValueWhenHide is false or duration is 0 (Always).
+    /// </summary>
+    public void StartDecayTimer() {
+        _decayCts?.Cancel();
+        _decayCts?.Dispose();
+        _decayCts = null;
+
+        if (!settings.KeepValueWhenHide || settings.KeepValueWhenHideDuration <= 0) return;
+
+        var cts = new CancellationTokenSource();
+        _decayCts = cts;
+        var delay = TimeSpan.FromSeconds(settings.KeepValueWhenHideDuration);
+
+        _ = Task.Run(async () => {
+            try {
+                await Task.Delay(delay, cts.Token);
+                Dispatcher.UIThread.Post(() => CleanAndSaveHistory(null));
+            } catch (OperationCanceledException) {
+                // Timer cancelled — keep the value
+            }
+        });
+    }
+
+    /// <summary>
+    /// Cancels any pending decay timer, preserving the current search text.
+    /// </summary>
+    public void CancelDecayTimer() {
+        _decayCts?.Cancel();
+        _decayCts?.Dispose();
+        _decayCts = null;
     }
 
     private void RefreshResults() {

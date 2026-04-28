@@ -270,3 +270,21 @@ La posicion se actualiza en memoria en cada movimiento via `PositionChanged` (si
 | Altura maxima de la lista de resultados | 416 px con scroll vertical automatico, sin scroll horizontal |
 
 > **Verificar en:** `MainWindow.axaml` -- atributos del `Window` y propiedades del `ListBox`.
+
+---
+
+## 15. Preservación del texto al ocultar (decay timer)
+
+El comportamiento del campo de búsqueda al ocultar la ventana depende del setting `KeepValueWhenHide`:
+
+| Setting | Comportamiento al ocultar |
+|---|---|
+| `KeepValueWhenHide = false` | El texto se limpia inmediatamente (`CleanAndSaveHistory(null)`), igual que pulsar Escape |
+| `KeepValueWhenHide = true`, duración > 0 | Se inicia un timer; si la ventana reaparece antes de que expire, el texto se conserva; si expira, se limpia |
+| `KeepValueWhenHide = true`, duración = 0 (Siempre) | No se inicia timer; el texto se conserva indefinidamente (comportamiento histórico) |
+
+En modo sticky, el timer también se inicia al perder el foco (aunque la ventana siga visible), y se cancela al recuperarlo.
+
+El timer vive en `MainWindowViewModel` como un `CancellationTokenSource` (`_decayCts`). `MainWindow` lo arranca y cancela desde los eventos `IsVisible`, `Deactivated` y `Activated`.
+
+> **Verificar en:** `MainWindowViewModel.StartDecayTimer()`, `MainWindowViewModel.CancelDecayTimer()` — `Yottacast/ViewModels/MainWindowViewModel.cs`. Hooks en `MainWindow.OnPropertyChanged`, `Activated`, `Deactivated` — `Yottacast/Views/MainWindow.axaml.cs`.

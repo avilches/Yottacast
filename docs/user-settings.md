@@ -51,6 +51,8 @@ El fichero de preferencias se crea automaticamente en la primera ejecucion y se 
 | HistoryMaxItems | `100` | Número máximo de entradas de historial a conservar (1–100) |
 | WindowX | `null` | Posicion X de la ventana principal en coordenadas de pantalla (pixels fisicos) |
 | WindowY | `null` | Posicion Y de la ventana principal en coordenadas de pantalla (pixels fisicos) |
+| KeepValueWhenHide | `true` | Si el texto se preserva al ocultar la ventana; `false` lo limpia inmediatamente |
+| KeepValueWhenHideDuration | `60` | Segundos antes de borrar el texto tras ocultar; `0` = nunca (Siempre) |
 
 **Nota sobre `EnableClipboard`**: se expone en Settings y se persiste en JSON, pero no tiene efecto funcional porque no existe una fuente de búsqueda de clipboard todavía.
 
@@ -292,7 +294,7 @@ Cuando el usuario modifica un setting que afecta a los resultados de busqueda, l
 - Cambios en `AppDirectories` (al hacer flush)
 
 **Settings que NO disparan refresco** (no afectan que resultados aparecen):
-- `Browser`, `Terminal`, `Theme`, `Hotkey`, `StickyWindow`, `WindowX`/`WindowY`, `ShowDisabledWebSearchEngines`
+- `Browser`, `Terminal`, `Theme`, `Hotkey`, `StickyWindow`, `WindowX`/`WindowY`, `ShowDisabledWebSearchEngines`, `KeepValueWhenHide`, `KeepValueWhenHideDuration`
 
 **Mecanismo:** `UserSettings` expone un evento `SearchSettingsChanged`. `SettingsWindowViewModel` lo dispara tras cada cambio relevante. `MainWindowViewModel` se suscribe y re-lanza `SearchAsync` con la query actual, cancelando cualquier busqueda en vuelo.
 

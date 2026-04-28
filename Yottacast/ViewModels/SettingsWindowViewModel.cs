@@ -93,6 +93,28 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [ObservableProperty] private bool _enableWebSearch;
     [ObservableProperty] private bool _fileSearchOnlySpecificFolders;
     [ObservableProperty] private bool _stickyWindow;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsCustomDuration))]
+    private KeepValuePreset? _selectedKeepValuePreset;
+
+    [ObservableProperty] private bool _keepValueWhenHide;
+    [ObservableProperty] private string _customDurationText = "";
+    [ObservableProperty] private bool _isCustomDurationTextValid = true;
+
+    public bool IsCustomDuration => SelectedKeepValuePreset?.Seconds == null;
+
+    public IReadOnlyList<KeepValuePreset> KeepValuePresets { get; } = [
+        new("15 seconds", 15),
+        new("30 seconds", 30),
+        new("1 minute", 60),
+        new("5 minutes", 300),
+        new("30 minutes", 1800),
+        new("1 hour", 3600),
+        new("Always", 0),
+        new("Customize...", null),
+    ];
+
     [ObservableProperty] private bool _enableHistory;
     [ObservableProperty] private int _historyMaxItems;
     [ObservableProperty] private string _historyDisplayText = "(empty)";
@@ -113,6 +135,31 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     }
     partial void OnFileSearchOnlySpecificFoldersChanged(bool value) { _settings.FileSearchOnlySpecificFolders = value; _settings.Save(); _logger.LogInformation("Settings: FileSearchOnlySpecificFolders = {Value}", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnStickyWindowChanged(bool value)                  { _settings.StickyWindow                 = value; _settings.Save(); _logger.LogInformation("Settings: StickyWindow = {Value}", value); }
+
+    partial void OnKeepValueWhenHideChanged(bool value) {
+        _settings.KeepValueWhenHide = value;
+        _settings.Save();
+        _logger.LogInformation("Settings: KeepValueWhenHide = {Value}", value);
+    }
+
+    partial void OnSelectedKeepValuePresetChanged(KeepValuePreset? value) {
+        if (value?.Seconds != null) {
+            _settings.KeepValueWhenHideDuration = value.Seconds.Value;
+            _settings.Save();
+            _logger.LogInformation("Settings: KeepValueWhenHideDuration = {Value}", value.Seconds);
+        }
+        // When "Customize..." (Seconds == null) is selected, wait for text input
+    }
+
+    partial void OnCustomDurationTextChanged(string value) {
+        var parsed = ParseDuration(value);
+        IsCustomDurationTextValid = parsed != null;
+        if (parsed != null) {
+            _settings.KeepValueWhenHideDuration = parsed.Value;
+            _settings.Save();
+            _logger.LogInformation("Settings: KeepValueWhenHideDuration (custom) = {Value}", parsed.Value);
+        }
+    }
 
     partial void OnEnableHistoryChanged(bool value) {
         _settings.EnableHistory = value;
@@ -251,6 +298,15 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _enableWebSearch                 = settings.EnableWebSearch;
         _fileSearchOnlySpecificFolders   = settings.FileSearchOnlySpecificFolders;
         _stickyWindow                    = settings.StickyWindow;
+        _keepValueWhenHide = settings.KeepValueWhenHide;
+        var dur = settings.KeepValueWhenHideDuration;
+        var matchedPreset = KeepValuePresets.FirstOrDefault(p => p.Seconds == dur);
+        if (matchedPreset != null) {
+            _selectedKeepValuePreset = matchedPreset;
+        } else {
+            _selectedKeepValuePreset = KeepValuePresets.Last(); // "Customize..."
+            _customDurationText = FormatDuration(dur);
+        }
         _calculatorCurrencyA                  = settings.CalculatorCurrencyA;
         _calculatorCurrencyB                  = settings.CalculatorCurrencyB;
         _calculatorDecimalPlaces              = settings.CalculatorDecimalPlaces;
@@ -599,6 +655,28 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     private void ClearHistory() {
         _historyService.Clear();
     }
+
+    private static string FormatDuration(int seconds) {
+        if (seconds > 0 && seconds % 86400 == 0) return $"{seconds / 86400}d";
+        if (seconds > 0 && seconds % 3600 == 0) return $"{seconds / 3600}h";
+        if (seconds > 0 && seconds % 60 == 0) return $"{seconds / 60}m";
+        return $"{seconds}s";
+    }
+
+    private static int? ParseDuration(string? text) {
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        text = text.Trim().ToLowerInvariant();
+        if (text.Length < 2) return null;
+        var unit = text[^1];
+        if (!int.TryParse(text[..^1], out var n) || n <= 0) return null;
+        return unit switch {
+            's' => n,
+            'm' => n * 60,
+            'h' => n * 3600,
+            'd' => n * 86400,
+            _ => null
+        };
+    }
 }
 
 public partial class DictionaryLanguageItem : ObservableObject {
@@ -611,6 +689,8 @@ public partial class DictionaryLanguageItem : ObservableObject {
         _isSelected = isSelected;
     }
 }
+
+public sealed record KeepValuePreset(string Label, int? Seconds);
 
 public record SearchFolderItem {
     public string RawPath { get; }
