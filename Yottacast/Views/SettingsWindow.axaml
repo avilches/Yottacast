@@ -588,6 +588,7 @@
                         <CheckBox Content="Keep value when hide"
                                   IsChecked="{Binding KeepValueWhenHide}"/>
                         <TextBlock Classes="description"
+                                   Margin="0"
                                    Text="Preserve the search text when the window hides. Auto-clears after the chosen duration."/>
                         <StackPanel Orientation="Horizontal" Spacing="8"
                                     IsVisible="{Binding KeepValueWhenHide}"
@@ -603,11 +604,12 @@
                             </ComboBox>
                             <Border BorderThickness="1"
                                     CornerRadius="4"
+                                    BorderBrush="#868686"
                                     IsVisible="{Binding IsCustomDuration}"
                                     Classes.invalid="{Binding !IsCustomDurationTextValid}">
                                 <Border.Styles>
                                     <Style Selector="Border.invalid">
-                                        <Setter Property="BorderBrush" Value="Red"/>
+                                        <Setter Property="BorderBrush" Value="#FF3B30"/>
                                     </Style>
                                 </Border.Styles>
                                 <TextBox BorderThickness="0"
