@@ -23,6 +23,7 @@ using Yottacast.Core.Search.Calculator;
 using Yottacast.Core.Search.Emoji;
 using Yottacast.Core.Search.UserDocuments;
 using Yottacast.Core.Search.Dictionary;
+using Yottacast.Core.Search.SystemSettings;
 using Yottacast.Core.Search.WebSearch;
 using Yottacast.Core.Services;
 using Yottacast.Services;
@@ -234,6 +235,15 @@ public partial class App : Application {
         services.AddSingleton<IInstantSearchSource>(sp => sp.GetRequiredService<EmojiSearch>());
         services.AddSingleton<IInstantSearchSource>(sp => sp.GetRequiredService<WebSearchSource>());
         services.AddSingleton<DictionarySource>();
+        if (OperatingSystem.IsMacOS()) {
+            services.AddSingleton<SystemSettingsSearch>(sp => new SystemSettingsSearch(
+                sp.GetRequiredService<UserSettings>(),
+                sp.GetRequiredService<PlatformProvider>(),
+                sp.GetRequiredService<AppIconCache>(),
+                sp.GetRequiredService<ILogger<SystemSettingsSearch>>()));
+            services.AddSingleton<IInstantSearchSource>(
+                sp => sp.GetRequiredService<SystemSettingsSearch>());
+        }
         services.AddSingleton<IDeferredSearchSource>(sp => sp.GetRequiredService<UserDocumentSearch>());
         services.AddSingleton<IDeferredSearchSource>(sp => sp.GetRequiredService<DictionarySource>());
         // services.AddSingleton<IDeferredSearchSource>(sp => sp.GetRequiredService<RandomSearch>());
