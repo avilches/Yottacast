@@ -115,6 +115,8 @@ internal sealed class MacAppHandler : AppHandler {
     public override void ShowCursor() =>
         ObjcMsgSendBool(ObjcGetClass("NSCursor"), SelRegisterName("setHiddenUntilMouseMoves:"), false);
 
+    public override bool SupportsSystemSettingsSearch => true;
+
     // CGEvent coordinate space: origin at upper-left of primary display, Y increasing downward.
     // This matches Avalonia's PixelPoint coordinate space directly, no Y-flip needed.
     public override PixelPoint? GetMousePosition() {

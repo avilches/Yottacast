@@ -108,6 +108,9 @@ internal abstract class AppHandler {
     /// <summary>Hides the system mouse cursor.</summary>
     public virtual void HideCursor() { }
 
+    /// <summary>True on macOS: System Settings panels can be opened via URL scheme.</summary>
+    public virtual bool SupportsSystemSettingsSearch => false;
+
     /// <summary>Restores the system mouse cursor.</summary>
     public virtual void ShowCursor() { }
 

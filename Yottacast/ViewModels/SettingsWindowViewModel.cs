@@ -20,7 +20,7 @@ using Yottacast.Services;
 namespace Yottacast.ViewModels;
 
 public enum SettingsSection {
-    General, AppSearch, WebSearch, FileSearch, Calculator, Clipboard, Emoji, Dictionary, History
+    General, AppSearch, WebSearch, FileSearch, Calculator, Clipboard, Emoji, Dictionary, History, SystemSettings
 }
 
 public partial class SettingsWindowViewModel : ViewModelBase {
@@ -35,6 +35,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [NotifyPropertyChangedFor(nameof(IsEmojiSelected))]
     [NotifyPropertyChangedFor(nameof(IsDictionarySelected))]
     [NotifyPropertyChangedFor(nameof(IsHistorySelected))]
+    [NotifyPropertyChangedFor(nameof(IsSystemSettingsSelected))]
     private SettingsSection _selectedSection = SettingsSection.General;
 
     partial void OnSelectedSectionChanged(SettingsSection oldValue, SettingsSection newValue) {
@@ -50,8 +51,10 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     public bool IsCalculatorSelected => SelectedSection == SettingsSection.Calculator;
     public bool IsClipboardSelected  => SelectedSection == SettingsSection.Clipboard;
     public bool IsEmojiSelected      => SelectedSection == SettingsSection.Emoji;
-    public bool IsDictionarySelected => SelectedSection == SettingsSection.Dictionary;
-    public bool IsHistorySelected    => SelectedSection == SettingsSection.History;
+    public bool IsDictionarySelected          => SelectedSection == SettingsSection.Dictionary;
+    public bool IsHistorySelected             => SelectedSection == SettingsSection.History;
+    public bool IsSystemSettingsSelected      => SelectedSection == SettingsSection.SystemSettings;
+    public bool IsSystemSettingsSectionVisible => AppHandler.Instance.SupportsSystemSettingsSearch;
 
     [RelayCommand] private void SelectGeneral()   => SelectedSection = SettingsSection.General;
     [RelayCommand] private void SelectAppSearch() => SelectedSection = SettingsSection.AppSearch;
@@ -60,8 +63,9 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [RelayCommand] private void SelectCalculator() => SelectedSection = SettingsSection.Calculator;
     [RelayCommand] private void SelectClipboard()  => SelectedSection = SettingsSection.Clipboard;
     [RelayCommand] private void SelectEmoji()      => SelectedSection = SettingsSection.Emoji;
-    [RelayCommand] private void SelectDictionary() => SelectedSection = SettingsSection.Dictionary;
-    [RelayCommand] private void SelectHistory()    => SelectedSection = SettingsSection.History;
+    [RelayCommand] private void SelectDictionary()     => SelectedSection = SettingsSection.Dictionary;
+    [RelayCommand] private void SelectHistory()        => SelectedSection = SettingsSection.History;
+    [RelayCommand] private void SelectSystemSettings() => SelectedSection = SettingsSection.SystemSettings;
 
     // ── General section ──────────────────────────────────────────────────────
     [ObservableProperty] private string? _selectedBrowser;
@@ -183,6 +187,10 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     partial void OnEnableDictionaryChanged(bool value)    { _settings.EnableDictionary    = value; _settings.Save(); _logger.LogInformation("Settings: EnableDictionary = {Value}", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnDictionaryPrefixChanged(string value)  { _settings.DictionaryPrefix    = value; _settings.Save(); _logger.LogInformation("Settings: DictionaryPrefix = \"{Value}\"", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnDictionaryShowAlwaysChanged(bool value) { _settings.DictionaryShowAlways = value; _settings.Save(); _logger.LogInformation("Settings: DictionaryShowAlways = {Value}", value); _settings.NotifySearchSettingsChanged(); }
+
+    // ── System Settings config ───────────────────────────────────────────────
+    [ObservableProperty] private bool _enableSystemSettings;
+    partial void OnEnableSystemSettingsChanged(bool value) { _settings.EnableSystemSettings = value; _settings.Save(); _logger.LogInformation("Settings: EnableSystemSettings = {Value}", value); _settings.NotifySearchSettingsChanged(); }
 
     // ── Calculator config ────────────────────────────────────────────────────
     [ObservableProperty] private string _calculatorCurrencyA = "EUR";
@@ -314,6 +322,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _calculatorIncludeCrypto              = settings.CalculatorIncludeCrypto;
         _exchangeRateRefreshIntervalHours     = settings.ExchangeRateRefreshIntervalHours;
         _enableDictionary                     = settings.EnableDictionary;
+        _enableSystemSettings                 = settings.EnableSystemSettings;
         _dictionaryPrefix                = settings.DictionaryPrefix;
         _dictionaryShowAlways            = settings.DictionaryShowAlways;
 
