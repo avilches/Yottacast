@@ -156,6 +156,14 @@ aceptables para utilidades puras sin dependencias (helpers de conversion, parser
 Cada `CLAUDE.md` de paquete lista los ficheros de test relevantes para su area. Ejecutar
 `cd Yottacast.Core.Tests && dotnet test` para verificar que todo pasa antes de dar la tarea por terminada.
 
+**Acceso rapido a datos de runtime**: el directorio `user-data/` en la raiz del proyecto contiene symlinks a los
+directorios de datos de la app en la maquina local (config, logs, cache). Usar estos symlinks para inspeccionar
+ficheros de configuracion, cache y logs sin necesidad de navegar a rutas del sistema.
+- `user-data/config/` → `~/Library/Application Support/Yottacast` (settings.json, exchange-rates.json, etc.)
+- `user-data/logs/` → `~/Library/Logs/Yottacast` (logs diarios `yottacast-*.log`)
+- `user-data/cache/` → `~/.cache/yottacast` (app-icons/, exchange-rates.json, etc.)
+Ver `docs/app-paths.md` para el inventario completo de ficheros y sus rutas.
+
 **IMPORTANTE — Cambios de color o estilo en temas**: cada vez que se modifique un color, fuente u otro estilo visual,
 el cambio debe hacerse en el fichero JSON del tema que el usuario indique. Si no especifica cual, preguntarle antes de
 hacer ningun cambio. Si hace falta anadir un nuevo token de tema (nuevo color, nueva propiedad), preguntar al usuario

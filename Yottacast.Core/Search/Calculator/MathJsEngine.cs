@@ -93,10 +93,13 @@ public sealed class MathJsEngine : IDisposable {
 
         // Preload all currencies so the engine is immutable after creation.
         // Calling registerCurrency() repeatedly during evaluation corrupts math.js state.
+        // Skip codes that are invalid as math.js unit names (e.g. "1INCH" starts with a digit).
         foreach (var (code, rate) in _rates) {
             if (string.Equals(code, "USD", StringComparison.OrdinalIgnoreCase)) continue;
+            var upper = code.ToUpperInvariant();
+            if (!IsValidUnitName(upper)) continue;
             var rateStr = rate.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            engine.Evaluate($"registerCurrency('{code.ToUpperInvariant()}', {rateStr})");
+            engine.Evaluate($"registerCurrency('{upper}', {rateStr})");
         }
 
         lock (_lock) {
@@ -302,6 +305,14 @@ public sealed class MathJsEngine : IDisposable {
 
     private static string BuildKnownCsv(IReadOnlyDictionary<string, double> rates) =>
         string.Join(",", rates.Keys.Select(k => k.ToUpperInvariant()).Distinct(StringComparer.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// Returns true if <paramref name="code"/> is a valid math.js unit name:
+    /// must start with a letter and contain only letters and digits.
+    /// Codes like "1INCH" (starts with a digit) are rejected.
+    /// </summary>
+    private static bool IsValidUnitName(string code) =>
+        code.Length > 0 && char.IsLetter(code[0]) && code.All(char.IsLetterOrDigit);
 
     private (CalcErrorKind Kind, string? Token) ClassifyError(string errorMessage) {
         try {
