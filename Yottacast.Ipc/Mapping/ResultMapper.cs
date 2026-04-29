@@ -18,7 +18,7 @@ public static class ResultMapper {
                 msg.Type = "emoji_grid";
                 foreach (var cell in emoji.Cells)
                     msg.EmojiCells.Add(MapEmojiCell(cell));
-                msg.SelectedEmojiIndex = 0;
+                msg.SelectedEmojiIndex = emoji.SelectedEmojiIndex;
                 break;
 
             case ConversionResultItemViewModel conv:
