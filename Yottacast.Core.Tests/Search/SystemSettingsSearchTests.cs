@@ -140,4 +140,132 @@ public class SystemSettingsSearchTests {
             Directory.Delete(tempDir, recursive: true);
         }
     }
+
+    // ── Tests de items dinámicos ─────────────────────────────────────────────────
+
+    private static (SystemSettingsSearch search, UserSettings settings)
+        BuildWithPlatform(FakePlatformProvider platform, IReadOnlyList<string>? thirdPartyDirs = null) {
+        var settings = UserSettings.Load(platform);
+        var iconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
+        var search = new SystemSettingsSearch(
+            settings, platform, iconCache,
+            NullLogger<SystemSettingsSearch>.Instance,
+            thirdPartyDirs,
+            dynamicCacheTtl: TimeSpan.FromHours(1)); // no expira durante el test
+        return (search, settings);
+    }
+
+    [Fact]
+    public async Task Search_WifiConnected_ShowsDynamicItem() {
+        var platform = new DynamicFakePlatformProvider { WifiNetwork = "MyHomeWifi" };
+        var (search, _) = BuildWithPlatform(platform);
+        search.Start();
+        await search.WhenReady();
+
+        var results = search.Search("MyHomeWifi", 10).Cast<ResultItemViewModel>().ToList();
+
+        Assert.Single(results);
+        Assert.Equal("Wi-Fi · MyHomeWifi", results[0].Title);
+        Assert.Equal("System Settings › Network", results[0].Subtitle);
+    }
+
+    [Fact]
+    public async Task Search_WifiDisconnected_NoDynamicWifiItem() {
+        var platform = new DynamicFakePlatformProvider { WifiNetwork = null };
+        var (search, _) = BuildWithPlatform(platform);
+        search.Start();
+        await search.WhenReady();
+
+        var results = search.Search("Wi-Fi", 10).Cast<ResultItemViewModel>().ToList();
+
+        Assert.DoesNotContain(results, r => r.Title.StartsWith("Wi-Fi ·"));
+    }
+
+    [Fact]
+    public async Task Search_VpnActive_ShowsDynamicVpnItem() {
+        var platform = new DynamicFakePlatformProvider { VpnNames = ["Work VPN"] };
+        var (search, _) = BuildWithPlatform(platform);
+        search.Start();
+        await search.WhenReady();
+
+        var results = search.Search("Work VPN", 10).Cast<ResultItemViewModel>().ToList();
+
+        Assert.Single(results);
+        Assert.Equal("VPN · Work VPN", results[0].Title);
+    }
+
+    [Fact]
+    public async Task Search_DynamicItems_CachesWithinTtl() {
+        var platform = new CountingDynamicProvider { WifiNetwork = "TestNet" };
+        var settings = UserSettings.Load(platform);
+        var iconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
+        var search = new SystemSettingsSearch(
+            settings, platform, iconCache,
+            NullLogger<SystemSettingsSearch>.Instance,
+            thirdPartyDirs: [],
+            dynamicCacheTtl: TimeSpan.FromHours(1));
+        search.Start();
+        await search.WhenReady();
+
+        _ = search.Search("TestNet", 10);
+        _ = search.Search("TestNet", 10);
+
+        Assert.Equal(1, platform.WifiCallCount);
+    }
+
+    [Fact]
+    public async Task Search_DynamicItems_RefreshesAfterTtlExpiry() {
+        var platform = new CountingDynamicProvider { WifiNetwork = "TestNet" };
+        var settings = UserSettings.Load(platform);
+        var iconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
+        var search = new SystemSettingsSearch(
+            settings, platform, iconCache,
+            NullLogger<SystemSettingsSearch>.Instance,
+            thirdPartyDirs: [],
+            dynamicCacheTtl: TimeSpan.Zero); // expira inmediatamente
+        search.Start();
+        await search.WhenReady();
+
+        _ = search.Search("TestNet", 10);
+        _ = search.Search("TestNet", 10);
+
+        Assert.Equal(2, platform.WifiCallCount);
+    }
+
+    [Fact(Skip = "manual — abre System Settings para verificar visualmente cada anchor")]
+    public async Task Manual_AllAnchorsOpen() {
+        var (search, _, _) = Build();
+        search.Start();
+        await search.WhenReady();
+
+        // Busca términos representativos de sub-secciones del catálogo para abrirlas una a una
+        var probes = new[] {
+            "Camera", "Microphone", "Location Services", "Full Disk Access", "FileVault", "Firewall",
+            "Keyboard Shortcuts", "Night Shift", "Hot Corners", "Login Items", "AirDrop",
+            "Time Zone", "Screen Sharing", "VoiceOver", "Battery Options",
+        };
+        foreach (var query in probes) {
+            var results = search.Search(query, 1).Cast<ResultItemViewModel>().ToList();
+            foreach (var r in results) r.OnActivate?.Invoke();
+            await Task.Delay(1200);
+        }
+    }
+
+    // ── Fakes para tests dinámicos ───────────────────────────────────────────────
+
+    private sealed class DynamicFakePlatformProvider : FakePlatformProvider {
+        public string? WifiNetwork { get; init; }
+        public IReadOnlyList<string> VpnNames { get; init; } = [];
+        public DynamicFakePlatformProvider() : base([]) { }
+        public override string? GetCurrentWifiNetworkName() => WifiNetwork;
+        public override IReadOnlyList<string> GetActiveVpnNames() => VpnNames;
+    }
+
+    private sealed class CountingDynamicProvider : FakePlatformProvider {
+        public string? WifiNetwork { get; set; }
+        public int WifiCallCount { get; private set; }
+        public CountingDynamicProvider() : base([]) { }
+        public override string? GetCurrentWifiNetworkName() { WifiCallCount++; return WifiNetwork; }
+        public override IReadOnlyList<string> GetActiveVpnNames() => [];
+    }
 }
