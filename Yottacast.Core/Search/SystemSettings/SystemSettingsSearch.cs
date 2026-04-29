@@ -11,7 +11,8 @@ public sealed class SystemSettingsSearch(
     PlatformProvider platform,
     AppIconCache iconCache,
     ILogger<SystemSettingsSearch> logger,
-    IReadOnlyList<string>? thirdPartyDirs = null)
+    IReadOnlyList<string>? thirdPartyDirs = null,
+    TimeSpan? dynamicCacheTtl = null)
     : IInstantSearchSource {
 
     private static readonly IReadOnlyList<string> DefaultThirdPartyDirs = [
@@ -21,8 +22,12 @@ public sealed class SystemSettingsSearch(
 
     private readonly IReadOnlyList<string> _thirdPartyDirs =
         thirdPartyDirs ?? DefaultThirdPartyDirs;
+    private readonly TimeSpan _cacheTtl = dynamicCacheTtl ?? AppDefaults.SystemSettingsDynamicCacheTtl;
     private readonly List<SystemSettingsPanel> _panels = [];
     private readonly TaskCompletionSource _readyTcs = new();
+
+    private IReadOnlyList<SystemSettingsPanel> _dynamicCache = [];
+    private DateTime _dynamicCacheTime = DateTime.MinValue;
 
     public void Start() {
         if (!settings.EnableSystemSettings) {
@@ -41,7 +46,7 @@ public sealed class SystemSettingsSearch(
 
     public IReadOnlyList<BaseResultItemViewModel> Search(string query, int limit) {
         if (!settings.EnableSystemSettings) return [];
-        return _panels
+        return _panels.Concat(GetDynamicPanels())
             .Select(p => (panel: p, score: NameMatcher.Score(p.Name, query)))
             .Where(x => x.score > 0)
             .OrderByDescending(x => x.score)
@@ -50,13 +55,44 @@ public sealed class SystemSettingsSearch(
             .ToList();
     }
 
+    private IReadOnlyList<SystemSettingsPanel> GetDynamicPanels() {
+        if (DateTime.UtcNow - _dynamicCacheTime < _cacheTtl)
+            return _dynamicCache;
+
+        var items = new List<SystemSettingsPanel>();
+
+        var wifi = platform.GetCurrentWifiNetworkName();
+        if (wifi is not null)
+            items.Add(new SystemSettingsPanel(
+                $"Wi-Fi · {wifi}",
+                "com.apple.preference.network",
+                IsBuiltin: true,
+                ParentName: "Network"));
+
+        foreach (var vpn in platform.GetActiveVpnNames())
+            items.Add(new SystemSettingsPanel(
+                $"VPN · {vpn}",
+                "com.apple.preference.network",
+                IsBuiltin: true,
+                ParentName: "Network"));
+
+        _dynamicCache = items;
+        _dynamicCacheTime = DateTime.UtcNow;
+        return _dynamicCache;
+    }
+
     private ResultItemViewModel BuildResult(SystemSettingsPanel panel, double score) {
         var identifier = panel.UrlIdentifier;
+        var subtitle = panel.ParentName is { } parent
+            ? $"System Settings › {parent}"
+            : panel.IsBuiltin
+                ? "System Settings"
+                : "System Settings · Preference Pane";
         return new ResultItemViewModel {
             Icon      = "⚙️",
             IconBytes = iconCache.Get(AppPaths.SystemSettingsAppPath),
             Title     = panel.Name,
-            Subtitle  = panel.IsBuiltin ? "System Settings" : "System Settings · Preference Pane",
+            Subtitle  = subtitle,
             Category  = "System Settings",
             Score     = score,
             OnActivate = () => {
