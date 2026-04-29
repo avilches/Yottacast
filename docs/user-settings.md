@@ -32,7 +32,7 @@ El fichero de preferencias se crea automaticamente en la primera ejecucion y se 
 |---|---|---|
 | Browser | `""` (auto-selecciona el primero disponible) | Navegador preferido para abrir URLs |
 | Terminal | `""` (auto-selecciona el primero disponible) | Terminal preferido |
-| Theme | Deteccion automatica del SO | Tema visual (oscuro o claro) |
+| Theme | `"dark-default"` (auto-deteccion en `Load()` si vacio) | Tema visual. Si el JSON tiene `""`, se detecta el modo del SO |
 | Hotkey | `Alt+Space` | Atajo global para mostrar/ocultar el launcher |
 | SearchFolders | Carpetas por defecto de la plataforma | Directorios donde buscar archivos del usuario |
 | AppDirectories | Directorios por defecto de la plataforma | Directorios donde buscar aplicaciones |
@@ -45,8 +45,19 @@ El fichero de preferencias se crea automaticamente en la primera ejecucion y se 
 | FileSearchOnlySpecificFolders | `false` | Si `true`, solo busca en las carpetas configuradas en `SearchFolders`; si `false`, busca en toda la home |
 | LastLaunchedVersion | `""` | Version del ultimo arranque (para migraciones) |
 | ShowDisabledWebSearchEngines | `true` | Si muestra los motores deshabilitados en la UI de Settings |
-| WebSearchEngines | Lista predeterminada de 20 motores | Configuracion por motor de busqueda web |
+| StickyWindow | `true` | La ventana permanece visible al perder el foco; `false` = se oculta al estilo Alfred |
+| WebSearchEngines | Lista predeterminada de 22 motores | Configuracion por motor de busqueda web |
+| CalculatorCurrencyA | `"EUR"` | Primera divisa del par por defecto en conversiones |
+| CalculatorCurrencyB | `"USD"` | Segunda divisa del par por defecto en conversiones |
+| CalculatorDecimalPlaces | `2` | Numero de decimales en resultados de calculadora |
+| CalculatorIncludeMetals | `true` | Incluir metales preciosos (XAU, XAG, XPT, XPD) en las tasas de cambio |
+| CalculatorIncludeCrypto | `false` | Incluir criptomonedas en las tasas de cambio |
+| ExchangeRateRefreshIntervalHours | `4` | Intervalo en horas entre refrescos de tasas de cambio |
+| EnableDictionary | `true` | Activa/desactiva la fuente de diccionario |
+| DictionaryPrefix | `"define"` | Prefijo que activa la busqueda de diccionario en modo PrefixOnly |
+| DictionaryShowAlways | `false` | Si `true`, el diccionario busca con cualquier query (no solo con prefijo) |
 | DictionaryLanguages | `["en"]` | Idiomas en los que buscar definiciones de diccionario |
+| EnableSystemSettings | `true` | Activa/desactiva la busqueda de paneles de System Settings (solo macOS) |
 | EnableHistory | `true` | Activa/desactiva el guardado del historial de búsquedas |
 | HistoryMaxItems | `100` | Número máximo de entradas de historial a conservar (1–100) |
 | WindowX | `null` | Posicion X de la ventana principal en coordenadas de pantalla (pixels fisicos) |

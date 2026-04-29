@@ -259,7 +259,7 @@ pegado tras activar un resultado.
 
 | Plataforma | Comportamiento                                                                                                                                                                                      |
 |------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| macOS      | Captura `NSWorkspace.frontmostApplication` con `objc_retain`. Llama `window.Show()`, re-activa la app anterior con `activateWithOptions:`, y hace la ventana de Yottacast key con `makeKeyAndOrderFront:` |
+| macOS      | Captura `NSWorkspace.frontmostApplication` con `objc_retain`. Llama `window.Show()` y hace la ventana de Yottacast key con `makeKeyWindow`. No se llama a `activateWithOptions:` en ShowWindow (solo en `OnHide`) |
 | Windows    | `window.Show()` + `window.Activate()` (Windows gestiona el foco automaticamente)                                                                                                                    |
 | Linux      | `window.Show()` + `window.Activate()`                                                                                                                                                               |
 
@@ -339,7 +339,7 @@ independientemente del orden de parseo.
 
 ### 11.2 Mapa de teclas (`KeyNameMap`)
 
-Cubre: teclas nombradas (`Space`, `Enter`, `Tab`, `Backspace`, `Delete`, `Escape`), A-Z, 0-9 y F1-F12. Los nombres se
+Cubre: teclas nombradas (`Space`, `Enter`, `Tab`, `Backspace`, `Delete`, `Escape`), A-Z, 0-9, F1-F12 y teclas de puntuacion (`,`, `.`, `-`, `=`, `;`, `/`, `[`, `]`, `\`, `'`, `` ` ``). Los nombres se
 mapean a los valores de `SharpHook.KeyCode` (quitando el prefijo `Vc`). Un nombre no reconocido produce
 `KeyCode.VcUndefined` y nunca activara el hotkey.
 

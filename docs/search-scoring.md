@@ -65,7 +65,7 @@ Los emojis se activan cuando la query comienza con `:`. El sistema aplica un sco
 
 **Invariantes:**
 - "fire" siempre aparece antes que "fireworks" cuando el termino es "fire", porque el match exacto (3.0) supera al match por prefijo (2.0).
-- Cuando la query es solo `:` (sin texto), se muestran los primeros 20 emojis ordenados por `SortOrder` ascendente (orden Unicode), sin aplicar scoring.
+- Cuando la query es solo `:` (sin texto), se muestran todos los emojis ordenados por `SortOrder` ascendente (orden Unicode), sin aplicar scoring. El viewport del grid limita las filas visibles simultaneamente.
 - Los tokens del nombre del emoji se pre-computan al cargar los datos (tokenizacion simple por espacios, sin CamelCase), evitando re-tokenizar en cada keystroke.
 - Activar un emoji copia el caracter al portapapeles.
 
@@ -106,7 +106,22 @@ La busqueda web genera items para abrir la query en un motor de busqueda del nav
 
 ---
 
-## 7. Busqueda de archivos
+## 7. Diccionario
+
+La busqueda de diccionario es una fuente diferida. Se activa en dos modos:
+
+| Modo | Activacion | Score |
+|------|-----------|-------|
+| PrefixOnly (default) | Solo con el prefijo configurado (ej. "define hello") | 3.5 |
+| ShowAlways | Con cualquier query no vacia (sin modo emoji) | 2.5 |
+
+En modo ShowAlways, el score (2.5) es inferior al de web search (3.0) para que las definiciones no dominen sobre los resultados de busqueda web. Los resultados de diccionario siempre tienen `BypassLimit = true` y no estan sujetos al limite global.
+
+> **Verificar en:** `Search/Dictionary/DictionarySource.cs` (metodo `SearchAsync`, scores en lineas 65/72)
+
+---
+
+## 8. Busqueda de archivos
 
 La busqueda de archivos es una fuente diferida (accede a disco). Se activa tras un debounce de 250 ms y solo para queries de 2+ caracteres. Produce snapshots progresivos cada 200 ms mientras los resultados llegan.
 
@@ -128,7 +143,7 @@ La busqueda de archivos es una fuente diferida (accede a disco). Se activa tras 
 
 ---
 
-## 8. Jerarquia de scores entre fuentes
+## 9. Jerarquia de scores entre fuentes
 
 La siguiente tabla resume los rangos de score por fuente, de mayor a menor prioridad:
 
@@ -137,8 +152,11 @@ La siguiente tabla resume los rangos de score por fuente, de mayor a menor prior
 | 4.0 | Calculadora / Conversor | Score fijo. Siempre domina la lista |
 | 3.5 | Emoji (grilla) | Score fijo de la grilla como item global |
 | 3.5 | Busqueda web (PrefixOnly) | Cuando el usuario uso un prefijo explicito |
+| 3.5 | Diccionario (PrefixOnly) | Cuando el usuario uso el prefijo (ej. "define") |
 | 3.0 | Busqueda web (ShowAlways) | Cuando no hay PrefixOnly activo |
+| 2.5 | Diccionario (ShowAlways) | Cuando no hay prefijo, inferior a web search |
 | 0.0 - 1.0 | Aplicaciones | Segun NameMatcher |
+| 0.0 - 1.0 | System Settings (macOS) | Segun NameMatcher |
 | 0.0 - 1.0 | Archivos | Segun relevancia del nombre |
 
 **Invariantes:**
@@ -146,11 +164,11 @@ La siguiente tabla resume los rangos de score por fuente, de mayor a menor prior
 - La busqueda web siempre aparece por encima de apps y archivos, pero por debajo de la calculadora.
 - Los emojis (como grilla) aparecen al mismo nivel que busqueda web PrefixOnly (3.5).
 
-> **Verificar en:** `CalculatorSearch.cs` (score 4), `EmojiSearch.cs` (score 3.5), `WebSearchSource.cs` (scores 3.0 y 3.5), `ApplicationSearch.cs` (score de NameMatcher), `UserDocumentSearch.cs` (scores 0.5-1.0)
+> **Verificar en:** `CalculatorSearch.cs` (score 4), `EmojiSearch.cs` (score 3.5), `WebSearchSource.cs` (scores 3.0 y 3.5), `DictionarySource.cs` (scores 2.5 y 3.5), `ApplicationSearch.cs` (score de NameMatcher), `SystemSettingsSearch.cs` (score de NameMatcher), `UserDocumentSearch.cs` (scores 0.5-1.0)
 
 ---
 
-## 9. Flujo de busqueda en dos fases
+## 10. Flujo de busqueda en dos fases
 
 La busqueda se ejecuta en dos fases para dar respuesta inmediata al usuario:
 

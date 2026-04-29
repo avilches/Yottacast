@@ -220,7 +220,7 @@ Cuando una fuente instant proporciona un hint (ej. la calculadora detecta un err
 
 ---
 
-## 14. Posicionamiento y arrastre
+## 13. Posicionamiento y arrastre
 
 ### Arrastre con el raton
 
@@ -257,7 +257,7 @@ La posicion se actualiza en memoria en cada movimiento via `PositionChanged` (si
 
 ---
 
-## 13. Layout de la ventana
+## 14. Layout de la ventana
 
 | Propiedad | Valor |
 |---|---|

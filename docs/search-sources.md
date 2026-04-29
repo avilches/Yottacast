@@ -238,7 +238,7 @@ Permite al usuario buscar y abrir paneles de System Settings directamente desde 
 | Categoría | `"System Settings"` | `"System Settings"` |
 | Icono | icono de System Settings.app | icono de System Settings.app |
 
-> **Verificar en:** `Search/SystemSettings/SystemSettingsSearch.cs` (Start, Search, Load, TryReadPlist, BuildResult), `Search/SystemSettings/BuiltinPanels.cs`, `Platform/PlatformProvider.cs` (LaunchUrl), `Platform/MacOsPlatformProvider.cs` (LaunchUrl), `Yottacast.Core.Tests/Search/SystemSettingsSearchTests.cs`.
+> **Verificar en:** `Search/SystemSettings/SystemSettingsSearch.cs` (Start, Search, Load, TryReadPlist, BuildResult), `Search/SystemSettings/BuiltinPanels.cs`, `Platform/PlatformProvider.cs` (LaunchApp), `Platform/MacOsPlatformProvider.cs` (LaunchApp), `Yottacast.Core.Tests/Search/SystemSettingsSearchTests.cs`.
 
 ---
 

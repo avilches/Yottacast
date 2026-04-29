@@ -37,7 +37,7 @@ Los temas solo afectan a la **ventana principal de busqueda** (MainWindow). La v
 
 > **Verificar en:**
 > - `SettingsWindow.axaml.cs` — constructor, detección OS y asignación de `RequestedThemeVariant`.
-> - `SettingsWindow.axaml` — sección `Window.Resources` / `ResourceDictionary.ThemeDictionaries`.
+> - `MacAppHandler.cs`, `LinuxAppHandler.cs`, `WindowsAppHandler.cs` — `ApplySettingsTheme()` inyecta `ThemeDictionaries` via C# (no hay bloque en AXAML).
 
 ---
 
@@ -148,8 +148,10 @@ Si el valor de `variant` no es `"light"`, se asume `"dark"`.
 | `calculator.fontFamily` | `Theme.Calc.FontFamily` |
 | `calculator.expression.color` | `Theme.Calc.Expression.Color` |
 | `calculator.expression.size` | `Theme.Calc.Expression.Size` |
+| `calculator.expression.fontWeight` | `Theme.Calc.Expression.FontWeight` |
 | `calculator.result.color` | `Theme.Calc.Result.Color` |
 | `calculator.result.size` | `Theme.Calc.Result.Size` |
+| `calculator.result.fontWeight` | `Theme.Calc.Result.FontWeight` |
 | `calculator.subtitle.color` | `Theme.Calc.Subtitle.Color` |
 | `calculator.subtitle.size` | `Theme.Calc.Subtitle.Size` |
 | `calculator.subtitle.opacity` | `Theme.Calc.Subtitle.Opacity` |
@@ -187,6 +189,15 @@ Si el valor de `variant` no es `"light"`, se asume `"dark"`.
 | `emoji.keywords.color` | `Theme.Emoji.Keywords.Color` |
 | `emoji.keywords.size` | `Theme.Emoji.Keywords.Size` |
 | `emoji.keywords.opacity` | `Theme.Emoji.Keywords.Opacity` |
+| `emoji.sectionHeader.color` | `Theme.Emoji.SectionHeader.Color` |
+| `emoji.sectionHeader.size` | `Theme.Emoji.SectionHeader.Size` |
+| `emoji.sectionHeader.opacity` | `Theme.Emoji.SectionHeader.Opacity` |
+| `emoji.favorite.color` | `Theme.Emoji.Favorite.Color` |
+| `emoji.favorite.size` | `Theme.Emoji.Favorite.Size` |
+| `emoji.favorite.opacity` | `Theme.Emoji.Favorite.Opacity` |
+| `emoji.usageCount.color` | `Theme.Emoji.UsageCount.Color` |
+| `emoji.usageCount.size` | `Theme.Emoji.UsageCount.Size` |
+| `emoji.usageCount.opacity` | `Theme.Emoji.UsageCount.Opacity` |
 
 ### No Results
 

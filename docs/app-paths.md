@@ -16,6 +16,7 @@ disco obtiene la ruta de una unica clase centralizada. Esto garantiza que:
 | Configuracion | Ajustes de usuario y caches ligeras | `~/Library/Application Support/Yottacast` | `%APPDATA%/Yottacast`           |
 | Logs          | Ficheros de log rotados diariamente | `~/Library/Logs/Yottacast`                | `%LOCALAPPDATA%/Yottacast/Logs` |
 | Cache         | Datos regenerables (iconos de apps) | `~/.cache/yottacast`                      | `~/.cache/yottacast`            |
+| Plugins       | Plugins del usuario (WebSearch, temas) | `{Configuracion}/plugins`              | `{Configuracion}/plugins`       |
 
 ### Ficheros concretos
 
@@ -23,11 +24,14 @@ disco obtiene la ruta de una unica clase centralizada. Esto garantiza que:
 |------------------|-----------------|-------------------------------|----------------------------------------------------------------------|
 | Settings         | Configuracion   | `settings.json`               | Preferencias del usuario (JSON)                                      |
 | Emoji cache      | Configuracion   | `emoji-cache.json`            | Cache compacta de datos de emojis                                    |
-| Exchange rates   | Configuracion   | `exchange-rates.json`         | Cache de tasas de cambio descargadas (JSON)                          |
+| Emoji usage      | Configuracion   | `emoji-usage.json`            | Favoritos y contadores de uso de emojis (JSON)                       |
+| History          | Configuracion   | `history.json`                | Historial de busquedas del usuario (JSON)                            |
 | Log pattern      | Logs            | `yottacast-.log`              | Patron de Serilog para log diario                                    |
 | App icons        | Cache           | `app-icons/`                  | Iconos de aplicaciones instaladas                                    |
 | File icons       | Cache           | `file-icons/`                 | Iconos de tipo de fichero (por extension), cacheados                 |
 | Badge icons      | Cache           | `badge-icons/`                | Iconos de la app predeterminada por extension de fichero             |
+| Plugin icons     | Cache           | `plugin-icons/`               | Iconos descargados de plugins WebSearch                              |
+| Exchange rates   | Cache           | `exchange-rates.json`         | Cache de tasas de cambio descargadas (JSON)                          |
 | Dict JSONL       | Cache           | `dictionary/{lang}.jsonl`     | Diccionario basico descargable (kaikki, 1 linea por entrada)         |
 | Dict SQLite      | Cache           | `dictionary/{lang}.db`        | Diccionario local compilado; la app lo genera del JSONL si no existe |
 
@@ -40,7 +44,8 @@ disco obtiene la ruta de una unica clase centralizada. Esto garantiza que:
   que la app no falla si el directorio no existe aun.
 
 > **Verificar en:** `Yottacast.Core/AppPaths.cs` (definiciones), consumidores: `App.axaml.cs`, `AppIconCache.cs`,
-`FileIconCache.cs`, `UserDocumentSearch.cs`, `UserSettings.cs`, `EmojiDataLoader.cs`, `ExchangeRateService.cs`.
+`FileIconCache.cs`, `UserDocumentSearch.cs`, `UserSettings.cs`, `EmojiDataLoader.cs`, `ExchangeRateService.cs`,
+`PluginService.cs`, `EmojiUsageStore.cs`, `HistoryService.cs`, `SystemSettingsSearch.cs`.
 
 ## Todos los valores por defecto estan centralizados
 
@@ -59,8 +64,11 @@ definen en una unica clase de constantes. Esto permite:
 | Busqueda global   | Limite por fuente       | 10 resultados | Maximo de resultados que cada fuente devuelve                |
 | Busqueda ficheros | Timeout                 | 20 s          | Tiempo maximo para una consulta a Spotlight / Windows Search |
 | Busqueda ficheros | Intervalo de snapshot   | 200 ms        | Frecuencia minima de actualizacion progresiva de resultados  |
-| Emojis            | Limite por defecto      | 20            | Emojis mostrados cuando el filtro esta vacio (solo `:`)      |
-| Emojis            | Columnas del grid       | 8             | Columnas en la cuadricula del picker de emojis               |
+| Emojis            | Columnas del grid       | 10            | Columnas en la cuadricula del picker de emojis               |
+| Emojis            | Filas del viewport      | 8             | Filas visibles simultaneamente en el picker de emojis        |
+| Emojis            | Max favoritos           | 4             | Maximo de emojis marcados como favorito en la seccion pinned |
+| Emojis            | Max pinned total        | 10            | Maximo total de emojis en la seccion pinned (fav + most-used)|
+| Emojis            | Half-life (dias)        | 30            | Vida media del decay score de uso de emojis                  |
 | UI                | Delay de pegado         | 150 ms        | Espera antes de simular Cmd+V / Ctrl+V tras seleccionar      |
 | Actualizaciones   | Timeout HTTP            | 10 s          | Timeout del request de comprobacion de version               |
 | Diccionario       | Timeout HTTP            | 5 s           | Timeout de peticion a la API de Wiktionary                   |
@@ -69,6 +77,8 @@ definen en una unica clase de constantes. Esto permite:
 | Diccionario       | Idiomas kaikki          | 16 codigos    | Idiomas con soporte de DB local (ver `KaikkiLanguages`)      |
 | Exchange rates    | Intervalo por defecto   | 4 h           | Frecuencia de refresco de tasas de cambio (configurable)     |
 | Exchange rates    | Timeout HTTP            | 10 s          | Timeout de cada llamada a la API de tasas                    |
+| Historial         | Max entradas            | 100           | Numero maximo de entradas en el historial de busqueda        |
+| Ventana           | Decay timer             | 60 s          | Duracion por defecto antes de limpiar el texto al ocultar    |
 
 ### Invariantes
 
@@ -93,9 +103,9 @@ en `.gitignore` y no se sube al repositorio.
 
 | Symlink  | Destino (macOS)                           | Contenido                           |
 |----------|-------------------------------------------|-------------------------------------|
-| `config` | `~/Library/Application Support/Yottacast` | `settings.json`, `emoji-cache.json` |
+| `config` | `~/Library/Application Support/Yottacast` | `settings.json`, `emoji-cache.json`, `emoji-usage.json`, `history.json`, `plugins/` |
 | `logs`   | `~/Library/Logs/Yottacast`                | Logs diarios (`yottacast-*.log`)    |
-| `cache`  | `~/.cache/yottacast`                      | `app-icons/`, `file-icons/`, `badge-icons/` |
+| `cache`  | `~/.cache/yottacast`                      | `app-icons/`, `file-icons/`, `badge-icons/`, `plugin-icons/`, `exchange-rates.json`, `dictionary/` |
 
 Si los symlinks se pierden, ejecutar:
 

@@ -132,7 +132,7 @@ Invariantes:
 
 ---
 
-## 6. Abrir preferencias (Cmd+,)
+## 7. Abrir preferencias (Cmd+,)
 
 Pulsar `Cmd+,` mientras la ventana principal esta visible abre la ventana de preferencias. Si la SettingsWindow ya esta visible, simplemente se activa (se trae al frente) sin crear una nueva instancia. Si no esta visible, se crea una nueva instancia de `SettingsWindow` con un `SettingsWindowViewModel` transient.
 
@@ -140,7 +140,7 @@ Pulsar `Cmd+,` mientras la ventana principal esta visible abre la ventana de pre
 
 ---
 
-## 7. Control del SearchBox segun visibilidad
+## 8. Control del SearchBox segun visibilidad
 
 Cuando la ventana principal se oculta, el SearchBox se desactiva (`IsEnabled = false`). Cuando se muestra de nuevo, se reactiva y recibe el foco automaticamente. Adicionalmente, al ocultar la ventana se desactiva el flag `IsAltPressed` del ViewModel para evitar estados residuales.
 
@@ -148,7 +148,7 @@ Cuando la ventana principal se oculta, el SearchBox se desactiva (`IsEnabled = f
 
 ---
 
-## 8. Ocultacion automatica del cursor del raton
+## 9. Ocultacion automatica del cursor del raton
 
 Mientras el usuario escribe, el cursor del raton se oculta automaticamente para no distraer. Se restaura cuando el usuario mueve el raton a una posicion diferente de la que tenia al ocultarse. El sistema rastrea la posicion en coordenadas de pantalla para distinguir movimientos reales de movimientos sinteticos causados por cambios de tamano de la ventana (cuando aparecen o desaparecen resultados).
 
@@ -161,7 +161,7 @@ Invariantes:
 
 ---
 
-## 9. Captura de hotkey en preferencias
+## 10. Captura de hotkey en preferencias
 
 El campo hotkey muestra siempre 4 badges de modificadores (⌃/Ctrl, ⌥/Alt, ⇧, ⌘/Meta con simbolos especificos por OS) y el nombre de la tecla. Los badges activos (el modificador forma parte del hotkey guardado) se muestran con opacidad plena; los inactivos, atenuados.
 

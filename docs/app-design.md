@@ -44,7 +44,7 @@ El arranque es secuencial e intencionalmente bloqueante. La ventana no aparece h
 - Las migraciones se completan antes de que cualquier componente lea los settings.
 - La comprobación de actualizaciones nunca bloquea la aparición de la ventana.
 
-> **Verificar en:** `App.axaml.cs` → `OnFrameworkInitializationCompleted` (orden de los 12 pasos),
+> **Verificar en:** `App.axaml.cs` → `OnFrameworkInitializationCompleted` (orden de los pasos),
 `GlobalSearch.Start()`, `ShowWhenInstantReadyAsync()`.
 
 ### Mostrar / Ocultar
@@ -203,8 +203,7 @@ simplemente llama `clipboardService.CopyText(text)`.
 - La validación de browser/terminal activos no ocurre en el arranque; se auto-repara en el momento de uso.
 - Las migraciones comparan la versión de la app con la última versión ejecutada y se ejecutan síncronamente antes de que
   nadie consuma los settings.
-- La ventana de Settings solo se abre cuando el caché de apps está poblado, para que el descubrimiento de browsers y
-  terminales funcione correctamente.
+- La ventana de Settings se abre inmediatamente cuando el usuario pulsa Cmd+, (no espera al caché de apps). El descubrimiento de browsers y terminales se realiza de forma lazy al abrir el dropdown correspondiente.
 
 > **Verificar en:** `UserSettings` → `Load`/`Save`, `App.axaml.cs` → `RunMigrations`, `App.OpenSettings`. Detalle en
 `docs/user-settings.md`.
@@ -226,10 +225,11 @@ documenta la intención de cada grupo:
 |-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|-----------|----------------------------|
 | Plataforma        | `PlatformProvider`, `ProcessRunner`                                                                                                           | Singleton | Abstracción de OS          |
 | Config            | `UserSettings`                                                                                                                                | Singleton | Configuración persistente  |
-| Búsqueda instant  | `ApplicationSearch`, `CalculatorSearch`, `EmojiSearch`, `WebSearchSource`                                                                     | Singleton | Fuentes rápidas en memoria |
-| Búsqueda deferred | `UserDocumentSearch`                                                                                                                          | Singleton | Fuentes lentas (disco/red) |
+| Búsqueda instant  | `ApplicationSearch`, `CalculatorSearch`, `EmojiSearch`, `WebSearchSource`, `SystemSettingsSearch` (macOS)                                      | Singleton | Fuentes rápidas en memoria |
+| Búsqueda deferred | `UserDocumentSearch`, `DictionarySource`                                                                                                      | Singleton | Fuentes lentas (disco/red) |
 | Orquestación      | `GlobalSearch`                                                                                                                                | Singleton | Agrega y mezcla fuentes    |
-| Soporte           | `UpdateChecker`, `BrowserDiscovery`, `TerminalDiscovery`, `FileSearch`, `ClipboardService`, `MathJsEngine`, `EmojiDataLoader`, `ThemeService` | Singleton | Servicios auxiliares       |
+| Cache de iconos   | `AppIconCache`, `FileIconCache`                                                                                                               | Singleton | Cache dos niveles (mem+disco) |
+| Soporte           | `UpdateChecker`, `BrowserDiscovery`, `TerminalDiscovery`, `FileSearch`, `ClipboardService`, `MathJsEngineProvider`, `ExchangeRateService`, `EmojiDataLoader`, `EmojiUsageStore`, `PluginService`, `HistoryService`, `ThemeService`, `HttpClient` | Singleton | Servicios auxiliares       |
 | ViewModels        | `MainWindowViewModel`, `SettingsWindowViewModel`                                                                                              | Transient | Estado de UI por ventana   |
 
 > **Verificar en:** `App.axaml.cs` → `BuildServices()`.

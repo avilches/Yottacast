@@ -139,7 +139,7 @@ arranquen.
 
 3. Ejecutar la app. En los logs aparecera:
    ```
-   Version changed: '1.0.0' -> '1.1.0' -- running migrations
+   Version changed: '1.0.0' → '1.1.0' — running migrations
    ```
    En sucesivos arranques el mensaje no vuelve a aparecer.
 

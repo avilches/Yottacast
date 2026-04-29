@@ -10,7 +10,7 @@ Yottacast permite buscar e insertar emojis en cualquier aplicacion. El usuario e
 
 | Query         | Comportamiento                                                                        |
 |---------------|---------------------------------------------------------------------------------------|
-| `:`           | Muestra los 20 emojis con menor `sort_order` positivo (orden Unicode CLDR). Se excluyen los que tienen `sort_order == 0`. |
+| `:`           | Muestra todos los emojis ordenados por `sort_order` positivo ascendente (orden Unicode CLDR). Se excluyen los que tienen `sort_order == 0`. El viewport muestra las primeras filas visibles. |
 | `:smile`      | Filtra todos los emojis cuyo nombre o keywords coincidan con "smile", ordenados por relevancia descendente, limitados por el parametro `limit` de la pipeline. |
 | `: smile`     | Equivalente a `:smile` -- los espacios tras los dos puntos se ignoran.                |
 | `smile`       | Sin `:` inicial, la busqueda de emojis no se activa. El usuario nunca ve emojis si no escribe `:`. |
@@ -67,7 +67,7 @@ La propiedad `IsEmojiMode` en `MainWindowViewModel` se recalcula cada vez que ca
 
 Al escribir `:` sin termino de busqueda, el grid por defecto muestra secciones con cabeceras visibles:
 
-1. **Seccion combinada "★ Favorites"**: favoritos primero (marcados con Cmd+Shift+F), hasta `EmojiMaxFavorites` celdas (maximo 4); despues los emojis mas usados (excluyendo favoritos), hasta `EmojiMaxMostUsed` celdas (maximo 10). Favoritos tienen `Section = Favorite`; los mas usados tienen `Section = MostUsed`. Ambos tipos comparten la misma cabecera de seccion visible. El pinned section no necesita alinearse a filas completas — el viewport de Default es independiente y siempre arranca en la primera celda de Default.
+1. **Seccion combinada "Favorites & recently used"**: favoritos primero (marcados con Cmd+Shift+F), hasta `EmojiMaxFavorites` celdas (maximo 4); despues los emojis mas usados (excluyendo favoritos), hasta completar `EmojiMaxPinnedTotal` celdas (maximo 10 entre favoritos + mas usados). Favoritos tienen `Section = Favorite`; los mas usados tienen `Section = MostUsed`. Ambos tipos comparten la misma cabecera de seccion visible. El pinned section no necesita alinearse a filas completas — el viewport de Default es independiente y siempre arranca en la primera celda de Default.
 2. **Secciones por categoria Unicode**: la lista completa de emojis restantes en orden Unicode CLDR (`sort_order`), agrupados por su categoria ("Smileys & Emotion", "People & Body", etc.). Cada celda tiene `Section = Default` y la cabecera se toma de `Category`.
 
 Las cabeceras de seccion se renderizan en la UI con estilos controlados por tema (`Theme.Emoji.SectionHeader.*`). Las secciones se calculan en `EmojiGridResultViewModel.VisibleSections` agrupando las celdas visibles del viewport por `EmojiSection` y `Category`.
