@@ -22,7 +22,7 @@ public sealed class SystemSettingsSearch(
 
     private readonly IReadOnlyList<string> _thirdPartyDirs =
         thirdPartyDirs ?? DefaultThirdPartyDirs;
-    private readonly TimeSpan _cacheTtl = dynamicCacheTtl ?? TimeSpan.FromSeconds(10);
+    private readonly TimeSpan _cacheTtl = dynamicCacheTtl ?? AppDefaults.SystemSettingsDynamicCacheTtl;
     private readonly List<SystemSettingsPanel> _panels = [];
     private readonly TaskCompletionSource _readyTcs = new();
 

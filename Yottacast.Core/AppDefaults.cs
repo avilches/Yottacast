@@ -101,6 +101,10 @@ public static class AppDefaults {
     /// HTTP timeout for exchange rate API requests.
     public const int ExchangeRateTimeoutSeconds = 10;
 
+    // ── Search — System Settings ──────────────────────────────────────────────
+    /// TTL for dynamic System Settings panels cache (Wi-Fi, VPN, etc).
+    public static readonly TimeSpan SystemSettingsDynamicCacheTtl = TimeSpan.FromSeconds(10);
+
     // ── Window behavior ────────────────────────────────────────────────────────
     /// Default duration in seconds before auto-clearing the search text after hide.
     /// 0 means "always keep" (never auto-clear).
