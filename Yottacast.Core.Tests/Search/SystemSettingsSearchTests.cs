@@ -84,6 +84,31 @@ public class SystemSettingsSearchTests {
     }
 
     [Fact]
+    public async Task Search_SubItem_ShowsParentInSubtitle() {
+        var (search, _, _) = Build();
+        search.Start();
+        await search.WhenReady();
+
+        var results = search.Search("Camera", 10).Cast<ResultItemViewModel>().ToList();
+
+        var camera = results.FirstOrDefault(r => r.Title == "Camera");
+        Assert.NotNull(camera);
+        Assert.Equal("System Settings › Privacy & Security", camera.Subtitle);
+    }
+
+    [Fact]
+    public async Task Search_TopLevelPanel_KeepsPlainSubtitle() {
+        var (search, _, _) = Build();
+        search.Start();
+        await search.WhenReady();
+
+        var results = search.Search("Bluetooth", 10).Cast<ResultItemViewModel>().ToList();
+
+        var bt = results.First(r => r.Title == "Bluetooth" && r.Subtitle == "System Settings");
+        Assert.Equal("System Settings", bt.Subtitle);
+    }
+
+    [Fact]
     public async Task Search_ThirdPartyPane_AppearsInResults() {
         var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         try {

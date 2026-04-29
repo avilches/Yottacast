@@ -52,11 +52,16 @@ public sealed class SystemSettingsSearch(
 
     private ResultItemViewModel BuildResult(SystemSettingsPanel panel, double score) {
         var identifier = panel.UrlIdentifier;
+        var subtitle = panel.ParentName is { } parent
+            ? $"System Settings › {parent}"
+            : panel.IsBuiltin
+                ? "System Settings"
+                : "System Settings · Preference Pane";
         return new ResultItemViewModel {
             Icon      = "⚙️",
             IconBytes = iconCache.Get(AppPaths.SystemSettingsAppPath),
             Title     = panel.Name,
-            Subtitle  = panel.IsBuiltin ? "System Settings" : "System Settings · Preference Pane",
+            Subtitle  = subtitle,
             Category  = "System Settings",
             Score     = score,
             OnActivate = () => {
