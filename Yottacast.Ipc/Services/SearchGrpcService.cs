@@ -84,4 +84,66 @@ public class SearchGrpcService(
             logger.LogDebug("Deferred search cancelled for query '{Query}'", request.Query);
         }
     }
+
+    public override Task<ActivateResponse> Activate(
+        ActivateRequest request,
+        ServerCallContext context) {
+
+        if (!_registry.TryGetValue(request.ResultId, out var vm)) {
+            throw new RpcException(new Status(StatusCode.NotFound,
+                $"Result '{request.ResultId}' not found in current session"));
+        }
+
+        _lastCopiedText = null;
+
+        // For emoji_grid, set selected index before activating
+        if (vm is EmojiGridResultViewModel emojiGrid) {
+            emojiGrid.SelectByIndex(request.EmojiIndex);
+        }
+
+        switch (request.Action) {
+            case ActionType.Default:
+                vm.OnActivate?.Invoke();
+                break;
+            case ActionType.Copy:
+                vm.OnCopy?.Invoke();
+                break;
+            case ActionType.Favorite:
+                vm.OnToggleFavorite?.Invoke();
+                break;
+        }
+
+        return Task.FromResult(new ActivateResponse {
+            PasteAfterActivate = vm.PasteAfterActivate,
+            ClipboardText = _lastCopiedText ?? "",
+        });
+    }
+
+    public override Task<NavigateResponse> Navigate(
+        NavigateRequest request,
+        ServerCallContext context) {
+
+        if (!_registry.TryGetValue(request.ResultId, out var vm)) {
+            throw new RpcException(new Status(StatusCode.NotFound,
+                $"Result '{request.ResultId}' not found in current session"));
+        }
+
+        bool consumed = request.Direction switch {
+            Direction.Left  => vm.OnLeft?.Invoke()  ?? false,
+            Direction.Right => vm.OnRight?.Invoke() ?? false,
+            Direction.Up    => vm.OnUp?.Invoke()    ?? false,
+            Direction.Down  => vm.OnDown?.Invoke()  ?? false,
+            _ => false,
+        };
+
+        // For emoji_grid, return updated selected index after navigation
+        int newIndex = request.CurrentIndex;
+        if (vm is EmojiGridResultViewModel emojiGrid2)
+            newIndex = emojiGrid2.SelectedEmojiIndex;
+
+        return Task.FromResult(new NavigateResponse {
+            Consumed = consumed,
+            NewIndex = newIndex,
+        });
+    }
 }

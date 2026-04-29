@@ -226,6 +226,11 @@ public class EmojiGridResultViewModel : ResultItemViewModel, INotifyPropertyChan
     public void SelectNext()     => SelectedEmojiIndex = (SelectedEmojiIndex + 1)       % Cells.Count;
     public void SelectPrevious() => SelectedEmojiIndex = (SelectedEmojiIndex - 1 + Cells.Count) % Cells.Count;
 
+    public void SelectByIndex(int index) {
+        if (index >= 0 && index < Cells.Count)
+            SelectedEmojiIndex = index;
+    }
+
     private record SectionRange(int Start, int Count);
 
     private IReadOnlyList<SectionRange> GetSectionRanges() {
