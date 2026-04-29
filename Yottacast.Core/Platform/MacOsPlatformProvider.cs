@@ -525,6 +525,56 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
         EntryPoint = "CFRelease")]
     private static extern void CfRelease(IntPtr cf);
 
+    // ── Dynamic settings ──────────────────────────────────────────────────────
+
+    public override string? GetCurrentWifiNetworkName() {
+        try {
+            foreach (var iface in new[] { "en0", "en1" }) {
+                using var p = Process.Start(new ProcessStartInfo {
+                    FileName               = "networksetup",
+                    Arguments              = $"-getairportnetwork {iface}",
+                    UseShellExecute        = false,
+                    RedirectStandardOutput = true,
+                });
+                if (p is null) continue;
+                var output = p.StandardOutput.ReadToEnd().Trim();
+                p.WaitForExit();
+                const string prefix = "Current Wi-Fi Network: ";
+                if (output.StartsWith(prefix, StringComparison.Ordinal))
+                    return output[prefix.Length..];
+            }
+            return null;
+        } catch {
+            return null;
+        }
+    }
+
+    public override IReadOnlyList<string> GetActiveVpnNames() {
+        try {
+            using var p = Process.Start(new ProcessStartInfo {
+                FileName               = "scutil",
+                Arguments              = "--nc list",
+                UseShellExecute        = false,
+                RedirectStandardOutput = true,
+            });
+            if (p is null) return [];
+            var output = p.StandardOutput.ReadToEnd();
+            p.WaitForExit();
+            var names = new List<string>();
+            // Format: "* (Connected)   UUID   Name   <Type>"
+            foreach (var line in output.Split('\n')) {
+                if (!line.Contains("(Connected)", StringComparison.Ordinal)) continue;
+                var match = System.Text.RegularExpressions.Regex.Match(
+                    line, @"\(Connected\)\s+[\dA-Fa-f-]{36}\s+(.+?)\s+<");
+                if (match.Success)
+                    names.Add(match.Groups[1].Value.Trim().Trim('"'));
+            }
+            return names;
+        } catch {
+            return [];
+        }
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private static void RunAppleScript(string script) {

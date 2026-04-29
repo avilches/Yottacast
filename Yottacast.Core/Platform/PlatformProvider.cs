@@ -52,6 +52,12 @@ public abstract class PlatformProvider {
     public virtual string? GetDefaultAppPath(string filePath) => null;
     public virtual bool AreIconsSame(string path1, string path2) => false;
 
+    /// <summary>Returns the name of the currently connected Wi-Fi network, or null if not connected.</summary>
+    public virtual string? GetCurrentWifiNetworkName() => null;
+
+    /// <summary>Returns the names of currently active (Connected) VPN connections.</summary>
+    public virtual IReadOnlyList<string> GetActiveVpnNames() => [];
+
     public static string ExpandPath(string path) {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         if (path == "$HOME" || path == "~")
