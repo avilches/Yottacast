@@ -19,13 +19,22 @@ public class SettingsGrpcService(
         settings.AppDirectoriesChanged += BroadcastCurrentSettings;
     }
 
-    private void BroadcastCurrentSettings() {
+    private async void BroadcastCurrentSettings() {
         List<IServerStreamWriter<SettingsMessage>> snapshot;
         lock (_lock) { snapshot = [.._watchers]; }
 
         var msg = SettingsMapper.ToProto(settings);
-        foreach (var writer in snapshot)
-            _ = writer.WriteAsync(msg);
+        List<IServerStreamWriter<SettingsMessage>> failed = [];
+        foreach (var writer in snapshot) {
+            try {
+                await writer.WriteAsync(msg);
+            } catch {
+                failed.Add(writer);
+            }
+        }
+        if (failed.Count > 0) {
+            lock (_lock) { foreach (var w in failed) _watchers.Remove(w); }
+        }
     }
 
     public override Task<SettingsMessage> GetSettings(Empty request, ServerCallContext context) =>

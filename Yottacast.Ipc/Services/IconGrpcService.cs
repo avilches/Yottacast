@@ -28,13 +28,22 @@ public class IconGrpcService(
         userDocumentSearch.BadgeIconLoaded += () => BroadcastIconLoaded("");
     }
 
-    private void BroadcastIconLoaded(string iconId) {
+    private async void BroadcastIconLoaded(string iconId) {
         List<IServerStreamWriter<IconLoadedEvent>> snapshot;
         lock (_lock) { snapshot = [.._watchers]; }
 
         var evt = new IconLoadedEvent { IconId = iconId };
-        foreach (var writer in snapshot)
-            _ = writer.WriteAsync(evt);
+        List<IServerStreamWriter<IconLoadedEvent>> failed = [];
+        foreach (var writer in snapshot) {
+            try {
+                await writer.WriteAsync(evt);
+            } catch {
+                failed.Add(writer);
+            }
+        }
+        if (failed.Count > 0) {
+            lock (_lock) { foreach (var w in failed) _watchers.Remove(w); }
+        }
     }
 
     public override Task<IconResponse> GetIcon(IconRequest request, ServerCallContext context) {
@@ -72,8 +81,9 @@ public class IconGrpcService(
             await Task.Delay(Timeout.Infinite, context.CancellationToken);
         } catch (OperationCanceledException) { }
         finally {
-            lock (_lock) { _watchers.Remove(responseStream); }
-            logger.LogDebug("WatchIconsLoaded: client disconnected (total={Count})", _watchers.Count);
+            int remaining;
+            lock (_lock) { _watchers.Remove(responseStream); remaining = _watchers.Count; }
+            logger.LogDebug("WatchIconsLoaded: client disconnected (total={Count})", remaining);
         }
     }
 }

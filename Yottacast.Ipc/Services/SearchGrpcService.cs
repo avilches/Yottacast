@@ -20,10 +20,11 @@ public class SearchGrpcService(
     ILogger<SearchGrpcService> logger) : SearchService.SearchServiceBase {
 
     // Registry: latest snapshot of results, keyed by sequential string ID ("0", "1", ...)
-    private readonly ConcurrentDictionary<string, BaseResultItemViewModel> _registry = new();
+    // Volatile so reference swaps in BuildResponse are visible across threads atomically
+    private volatile ConcurrentDictionary<string, BaseResultItemViewModel> _registry = new();
 
     // Captured clipboard text from the last Activate call
-    private string? _lastCopiedText;
+    private volatile string? _lastCopiedText;
 
     public void Initialize() {
         clipboardService.Initialize(text => _lastCopiedText = text);
@@ -34,7 +35,7 @@ public class SearchGrpcService(
         string? hint,
         bool isSearching) {
 
-        _registry.Clear();
+        var newRegistry = new ConcurrentDictionary<string, BaseResultItemViewModel>();
         var response = new SearchResponse {
             Hint = hint ?? "",
             IsSearching = isSearching,
@@ -42,10 +43,11 @@ public class SearchGrpcService(
 
         for (int i = 0; i < items.Count; i++) {
             var id = i.ToString();
-            _registry[id] = items[i];
+            newRegistry[id] = items[i];
             response.Results.Add(ResultMapper.Map(items[i], id));
         }
 
+        _registry = newRegistry;  // atomic reference swap (volatile)
         return response;
     }
 
@@ -73,12 +75,8 @@ public class SearchGrpcService(
                 await responseStream.WriteAsync(response, ct);
             }
 
-            // Final message: deferred search complete
-            var final = new SearchResponse { IsSearching = false };
-            final.Results.AddRange(_registry
-                .OrderBy(kv => int.Parse(kv.Key))
-                .Select(kv => ResultMapper.Map(kv.Value, kv.Key)));
-            await responseStream.WriteAsync(final, ct);
+            // Signal that deferred search is complete
+            await responseStream.WriteAsync(new SearchResponse { IsSearching = false }, ct);
 
         } catch (OperationCanceledException) {
             logger.LogDebug("Deferred search cancelled for query '{Query}'", request.Query);

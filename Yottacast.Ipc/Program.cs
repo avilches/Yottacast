@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Yottacast.Core;
 using Yottacast.Core.Search;
@@ -113,12 +114,19 @@ search.Initialize();
 settingsSvc.Initialize();
 iconSvc.Initialize();
 
+var startupLogger = app.Services.GetRequiredService<ILogger<WebApplication>>();
+
 _ = Task.Run(async () => {
-    globalSearch.Start();
-    await globalSearch.WhenInstantReady();
-    lifecycle.SetInstantReady();
-    await globalSearch.WhenReady();
-    lifecycle.SetFullyReady();
+    try {
+        globalSearch.Start();
+        await globalSearch.WhenInstantReady();
+        lifecycle.SetInstantReady();
+        await globalSearch.WhenReady();
+        lifecycle.SetFullyReady();
+    } catch (Exception ex) {
+        startupLogger.LogCritical(ex, "Startup sequence failed — shutting down");
+        appLifetime.StopApplication();
+    }
 });
 
 // ── Graceful shutdown ─────────────────────────────────────────────────────────
@@ -132,6 +140,8 @@ Console.CancelKeyPress += (_, e) => {
     e.Cancel = true;
     appLifetime.StopApplication();
 };
+
+PosixSignalRegistration.Create(PosixSignal.SIGTERM, _ => appLifetime.StopApplication());
 
 app.Run();
 return 0;
