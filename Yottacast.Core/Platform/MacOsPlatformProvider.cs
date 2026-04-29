@@ -535,6 +535,7 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
                     Arguments              = $"-getairportnetwork {iface}",
                     UseShellExecute        = false,
                     RedirectStandardOutput = true,
+                    RedirectStandardError  = true,
                 });
                 if (p is null) continue;
                 var output = p.StandardOutput.ReadToEnd().Trim();
@@ -556,6 +557,7 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
                 Arguments              = "--nc list",
                 UseShellExecute        = false,
                 RedirectStandardOutput = true,
+                RedirectStandardError  = true,
             });
             if (p is null) return [];
             var output = p.StandardOutput.ReadToEnd();
