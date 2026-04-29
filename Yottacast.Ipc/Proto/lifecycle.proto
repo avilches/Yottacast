@@ -1,0 +1,20 @@
+syntax = "proto3";
+option csharp_namespace = "Yottacast.Ipc.Proto";
+package yottacast;
+
+import "google/protobuf/empty.proto";
+
+service LifecycleService {
+  rpc GetStatus(google.protobuf.Empty) returns (StatusResponse);
+  rpc WatchStatus(google.protobuf.Empty) returns (stream StatusResponse);
+  rpc Shutdown(google.protobuf.Empty) returns (google.protobuf.Empty);
+}
+
+message StatusResponse {
+  enum State {
+    STARTING = 0;
+    INSTANT_READY = 1;
+    FULLY_READY = 2;
+  }
+  State state = 1;
+}
