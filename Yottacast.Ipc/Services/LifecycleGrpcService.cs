@@ -11,7 +11,7 @@ namespace Yottacast.Ipc.Services;
 public class LifecycleGrpcService(IHostApplicationLifetime lifetime)
     : LifecycleService.LifecycleServiceBase {
 
-    private StatusResponse.Types.State _state = StatusResponse.Types.State.Starting;
+    private volatile StatusResponse.Types.State _state = StatusResponse.Types.State.Starting;
     private readonly List<IServerStreamWriter<StatusResponse>> _watchers = [];
     private readonly Lock _lock = new();
 
