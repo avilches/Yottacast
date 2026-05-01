@@ -4,15 +4,21 @@
   "variant": "dark",
 
   "window": {
-    "background": "#F21C1C22",
+    "background": "#1C1C22",
     "width": 730,
     "cornerRadius": 14,
-    "fontFamily": "SF Pro Text, Segoe UI, Inter"
+    "fontFamily": "SF Pro Text, Lucida Grande, Segoe UI, Inter"
   },
 
   "search": {
-    "background": "Transparent",
-    "text":        { "color": "#FFFFFF", "size": 18, "fontFamily": "SF Pro Text, Segoe UI, Inter" },
+    "background": "#0D0D12",
+    "input": {
+      "cornerRadius": 0,
+      "margin": "0",
+      "padding": "18,12",
+      "border": { "color": "#5E8FFF", "thickness": "0,0,0,1" }
+    },
+    "text":        { "color": "#FFFFFF", "size": 18, "fontFamily": "SF Pro Text, Lucida Grande, Segoe UI, Inter" },
     "placeholder": { "color": "#505055" },
     "caret":       { "color": "#5E8FFF" },
     "selection":   { "color": "#3560EE" },
@@ -23,7 +29,7 @@
   "spinner": { "color": "#505055" },
 
   "results": {
-    "background": "#0D0D12",
+    "background": "#1C1C22",
     "padding": 8,
     "cornerRadius": 8,
     "selectionBar": { "color": "#2C5AF0", "width": 4 },
@@ -32,12 +38,11 @@
     "category": { "color": "#606068", "size": 12 },
     "icon":     { "background": "#252529", "cornerRadius": 8 },
     "shortcut": { "color": "#505055", "background": "#252529", "size": 12, "cornerRadius": 5 },
-    "selection": { "background": "#2C5AF0", "color": "#FFFFFF" },
-    "hover": { "background": "#20FFFFFF" }
+    "selection": { "background": "#2C5AF0", "color": "#FFFFFF" }
   },
 
   "calculator": {
-    "fontFamily": "SF Pro Text, Segoe UI, Inter",
+    "fontFamily": "SF Pro Text, Lucida Grande, Segoe UI, Inter",
     "expression": { "color": "#EAEAEE", "size": 20, "fontWeight": "Medium" },
     "result":     { "color": "#EAEAEE", "size": 20, "fontWeight": "Medium" },
     "subtitle":   { "color": "#EAEAEE", "size": 13, "opacity": 0.55 },
@@ -46,7 +51,7 @@
   },
 
   "converter": {
-    "fontFamily": "SF Pro Text, Segoe UI, Inter",
+    "fontFamily": "SF Pro Text, Lucida Grande, Segoe UI, Inter",
     "value":    { "color": "#EAEAEE", "size": 20 },
     "subtitle": { "color": "#EAEAEE", "size": 13, "opacity": 0.55 },
     "arrow":    { "color": "#EAEAEE" },

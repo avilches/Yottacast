@@ -134,61 +134,69 @@
         <DockPanel>
 
             <!-- ── Search row + hint ── -->
-            <StackPanel DockPanel.Dock="Top"
-                        Background="{DynamicResource Theme.Search.Background}">
-                <Grid ColumnDefinitions="*,Auto"
-                      Margin="18,0"
-                      Height="64">
+            <!-- StackPanel is transparent: window.background colors this header zone -->
+            <StackPanel DockPanel.Dock="Top">
 
-                    <!-- Search input -->
-                    <TextBox Grid.Column="0"
-                             x:Name="SearchBox"
-                             Text="{Binding SearchText}"
-                             Watermark="Search for apps, files, commands…"
-                             FontFamily="{DynamicResource Theme.Search.FontFamily}"
-                             FontSize="{DynamicResource Theme.Search.Size}"
-                             FontWeight="Regular"
-                             VerticalAlignment="Center"
-                             VerticalContentAlignment="Center"
-                             Foreground="{DynamicResource Theme.Search.Color}"
-                             CaretBrush="{DynamicResource Theme.Search.Caret}"
-                             SelectionBrush="{DynamicResource Theme.Search.Selection}">
-                        <!-- Override Fluent theme resources so background stays transparent in all states -->
-                        <TextBox.Resources>
-                            <SolidColorBrush x:Key="TextControlBackground" Color="Transparent"/>
-                            <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="Transparent"/>
-                            <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="Transparent"/>
-                            <SolidColorBrush x:Key="TextControlBackgroundDisabled" Color="Transparent"/>
-                        </TextBox.Resources>
-                    </TextBox>
+                <!-- Input box: margin/padding/radius/border all configurable via theme -->
+                <Border Background="{DynamicResource Theme.Search.Background}"
+                        CornerRadius="{DynamicResource Theme.Search.Input.CornerRadius}"
+                        Margin="{DynamicResource Theme.Search.Input.Margin}"
+                        Padding="{DynamicResource Theme.Search.Input.Padding}"
+                        BorderBrush="{DynamicResource Theme.Search.Input.BorderColor}"
+                        BorderThickness="{DynamicResource Theme.Search.Input.BorderThickness}">
+                    <Grid ColumnDefinitions="*,Auto"
+                          MinHeight="46">
 
-                    <!-- Right side: spinner while searching, ESC badge when idle and empty -->
-                    <Panel Grid.Column="1" VerticalAlignment="Center">
+                        <!-- Search input -->
+                        <TextBox Grid.Column="0"
+                                 x:Name="SearchBox"
+                                 Text="{Binding SearchText}"
+                                 Watermark="Search for apps, files, commands…"
+                                 FontFamily="{DynamicResource Theme.Search.FontFamily}"
+                                 FontSize="{DynamicResource Theme.Search.Size}"
+                                 FontWeight="Regular"
+                                 VerticalAlignment="Center"
+                                 VerticalContentAlignment="Center"
+                                 Foreground="{DynamicResource Theme.Search.Color}"
+                                 CaretBrush="{DynamicResource Theme.Search.Caret}"
+                                 SelectionBrush="{DynamicResource Theme.Search.Selection}">
+                            <!-- Override Fluent theme resources so background stays transparent in all states -->
+                            <TextBox.Resources>
+                                <SolidColorBrush x:Key="TextControlBackground" Color="Transparent"/>
+                                <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="Transparent"/>
+                                <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="Transparent"/>
+                                <SolidColorBrush x:Key="TextControlBackgroundDisabled" Color="Transparent"/>
+                            </TextBox.Resources>
+                        </TextBox>
 
-                        <!-- ESC badge (visible only when text is empty and not searching) -->
-                        <Border Background="{DynamicResource Theme.Esc.Background}"
-                                CornerRadius="{DynamicResource Theme.Esc.CornerRadius}"
-                                Padding="8,4"
-                                IsVisible="{Binding SearchText, Converter={x:Static StringConverters.IsNullOrEmpty}}">
-                            <TextBlock Text="ESC"
-                                       Foreground="{DynamicResource Theme.Esc.Color}"
-                                       FontSize="{DynamicResource Theme.Esc.Size}"
-                                       FontWeight="Medium"/>
-                        </Border>
+                        <!-- Right side: spinner while searching, ESC badge when idle and empty -->
+                        <Panel Grid.Column="1" VerticalAlignment="Center">
 
-                        <!-- Spinner (visible while deferred search is running) -->
-                        <Ellipse Classes="spinner"
-                                 Width="16" Height="16"
-                                 Fill="{DynamicResource Theme.Spinner.Color}"
-                                 IsVisible="{Binding IsSearching}"/>
-                    </Panel>
-                </Grid>
+                            <!-- ESC badge (visible only when text is empty and not searching) -->
+                            <Border Background="{DynamicResource Theme.Esc.Background}"
+                                    CornerRadius="{DynamicResource Theme.Esc.CornerRadius}"
+                                    Padding="8,4"
+                                    IsVisible="{Binding SearchText, Converter={x:Static StringConverters.IsNullOrEmpty}}">
+                                <TextBlock Text="ESC"
+                                           Foreground="{DynamicResource Theme.Esc.Color}"
+                                           FontSize="{DynamicResource Theme.Esc.Size}"
+                                           FontWeight="Medium"/>
+                            </Border>
+
+                            <!-- Spinner (visible while deferred search is running) -->
+                            <Ellipse Classes="spinner"
+                                     Width="16" Height="16"
+                                     Fill="{DynamicResource Theme.Spinner.Color}"
+                                     IsVisible="{Binding IsSearching}"/>
+                        </Panel>
+                    </Grid>
+                </Border>
 
                 <!-- Error hint (shown below the input when calculator detects an actionable error) -->
                 <TextBlock Text="{Binding SearchHint}"
                            Foreground="{DynamicResource Theme.Search.Hint}"
                            FontSize="{DynamicResource Theme.Results.Category.Size}"
-                           Margin="18,0,18,8"
+                           Margin="20,0,20,8"
                            Opacity="0"
                            TextTrimming="CharacterEllipsis"
                            IsVisible="{Binding SearchHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
@@ -243,7 +251,8 @@
                      Background="{DynamicResource Theme.Results.Background}"
                      IsVisible="{Binding HasResults}"
                      ScrollViewer.VerticalScrollBarVisibility="Auto"
-                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     ScrollViewer.AllowAutoHide="True">
                 <ListBox.DataTemplates>
                     <!-- Template for emoji grid (more specific type first) -->
                     <DataTemplate x:DataType="viewModels:EmojiGridResultViewModel">
@@ -395,6 +404,8 @@
                                 IsVisible="{Binding !IsEmojiMode}">
                         <TextBlock Text="↑↓  navigate" Foreground="{DynamicResource Theme.Footer.Color}" FontSize="{DynamicResource Theme.Footer.Size}"/>
                         <TextBlock Text="↵  open"       Foreground="{DynamicResource Theme.Footer.Color}" FontSize="{DynamicResource Theme.Footer.Size}"/>
+                        <!-- TEST: compare Mac symbols with emoji footer and Settings badges. REMOVE after investigation. -->
+                        <TextBlock Text="⌘ ⇧ ⌥ ⌃ ↑ ↓ ↵  test" Foreground="{DynamicResource Theme.Footer.Color}" FontSize="{DynamicResource Theme.Footer.Size}"/>
                     </StackPanel>
                     <!-- Footer: emoji mode -->
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16"

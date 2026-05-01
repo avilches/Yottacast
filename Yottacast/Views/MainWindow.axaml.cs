@@ -56,6 +56,18 @@ public partial class MainWindow : Window {
         ResultsList.AddHandler(PointerMovedEvent, OnResultsPointerMoved, RoutingStrategies.Bubble);
         ResultsList.AddHandler(Gestures.TappedEvent, OnResultsTapped, RoutingStrategies.Bubble);
         PositionChanged += (_, _) => UpdatePositionInMemory();
+        // Font diagnostics: log at startup and on first emoji activation. REMOVE after investigation.
+        DataContextChanged += (_, _) => {
+            if (DataContext is not MainWindowViewModel vm) return;
+            LogFontDiagnostics("startup");
+            var emojiLogged = false;
+            vm.PropertyChanged += (_, args) => {
+                if (args.PropertyName == nameof(MainWindowViewModel.IsEmojiMode) && vm.IsEmojiMode && !emojiLogged) {
+                    emojiLogged = true;
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() => LogFontDiagnostics("after-first-emoji"), Avalonia.Threading.DispatcherPriority.Background);
+                }
+            };
+        };
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change) {
@@ -135,6 +147,64 @@ public partial class MainWindow : Window {
         s == null ? "null" : $"WorkingArea={s.WorkingArea} Scaling={s.Scaling}";
 
     private void Log(string msg) => _logger.LogDebug("{Msg}", msg);
+
+    // ── Font diagnostics ──────────────────────────────────────────────────────
+    // Logs which font Avalonia actually uses to render each keyboard symbol.
+    // Used to diagnose the font-change bug that occurs after emoji grid renders.
+    // REMOVE after investigation is complete.
+    private void LogFontDiagnostics(string context) {
+        _logger.LogInformation("[FontDiag] === {Context} ===", context);
+
+        // Part A: which fonts in the tested list have the glyph directly
+        var fm = Avalonia.Media.FontManager.Current;
+        var symbols = new (uint cp, string label)[] {
+            (0x21E7, "⇧"), (0x2318, "⌘"), (0x2191, "↑"),
+            (0x2325, "⌥"), (0x2303, "⌃"), (0x21B5, "↵")
+        };
+        var families = new[] {
+            "SF Pro Text", "SF Pro", "SF Pro Display", ".SF NS Text",
+            "Apple Symbols", "Helvetica Neue", "Arial", "Arial Unicode MS",
+            "Lucida Grande", "New York", "Geneva", "Segoe UI",
+            "Apple Color Emoji", "Noto Sans"
+        };
+        foreach (var (cp, label) in symbols) {
+            var found = new System.Collections.Generic.List<string>();
+            foreach (var fam in families) {
+                try {
+                    var tf = new Avalonia.Media.Typeface(fam);
+                    if (fm.TryGetGlyphTypeface(tf, out var gt) && gt.GetGlyph(cp) != 0)
+                        found.Add(fam);
+                } catch { }
+            }
+            _logger.LogInformation("[FontDiag-A] U+{CP:X4} {Label} has glyph in: {Fonts}",
+                cp, label, found.Count > 0 ? string.Join(", ", found) : "(none)");
+        }
+
+        // Part B: which typeface Avalonia actually selects when shaping the window font chain
+        // NOTE: only run this AFTER emoji loads (not at startup) to avoid cache interference.
+        if (context != "startup") {
+            try {
+                var windowFont = (Avalonia.Media.FontFamily)(Application.Current?.Resources["Theme.Window.FontFamily"]
+                                 ?? new Avalonia.Media.FontFamily("SF Pro Text, Segoe UI, Inter"));
+                var typeface   = new Avalonia.Media.Typeface(windowFont);
+                var testText   = "⇧⌘⌥⌃↑↵";
+                var layout     = new Avalonia.Media.TextFormatting.TextLayout(
+                    testText, typeface, 13.0,
+                    Avalonia.Media.Brushes.Black);
+                foreach (var line in layout.TextLines) {
+                    foreach (var run in line.TextRuns) {
+                        if (run is Avalonia.Media.TextFormatting.ShapedTextRun shaped) {
+                            var family = shaped.ShapedBuffer.GlyphTypeface.FamilyName;
+                            _logger.LogInformation("[FontDiag-B] Shaped run (len={Len}) → typeface family: {Family}",
+                                run.Length, family);
+                        }
+                    }
+                }
+            } catch (Exception ex) {
+                _logger.LogWarning("[FontDiag-B] TextLayout failed: {Msg}", ex.Message);
+            }
+        }
+    }
 
     private void OnRootPointerPressed(object? sender, PointerPressedEventArgs e) {
         if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;

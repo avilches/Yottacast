@@ -178,6 +178,14 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
             var search = json["search"];
             if (search != null) {
                 SetBrush(app,      "Theme.Search.Background",  search["background"]);
+                var input = search["input"];
+                if (input != null) {
+                    SetCornerRadius(app, "Theme.Search.Input.CornerRadius",      input["cornerRadius"]);
+                    SetThickness(app,    "Theme.Search.Input.Margin",            input["margin"]);
+                    SetThickness(app,    "Theme.Search.Input.Padding",           input["padding"]);
+                    SetBrush(app,        "Theme.Search.Input.BorderColor",       input["border"]?["color"]);
+                    SetThickness(app,    "Theme.Search.Input.BorderThickness",   input["border"]?["thickness"]);
+                }
                 SetBrush(app,      "Theme.Search.Color",       search["text"]?["color"]);
                 SetDouble(app,     "Theme.Search.Size",        search["text"]?["size"]);
                 SetFontFamily(app, "Theme.Search.FontFamily",  search["text"]?["fontFamily"]);
@@ -228,7 +236,6 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
                     SetBrush(app, "Theme.Results.Selection.Color",      sel["color"]);
                 }
 
-                SetBrush(app, "Theme.Results.Hover.Background", results["hover"]?["background"]);
             }
 
             // ── Calculator ──
@@ -342,14 +349,19 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
         static SolidColorBrush B(string hex) => new(Color.Parse(hex));
 
         // ── Window ──
-        app.Resources["Theme.Window.Background"]         = B("#F21C1C22");
+        app.Resources["Theme.Window.Background"]         = B("#1C1C22");
         app.Resources["Theme.Window.Width"]               = 730.0;
         app.Resources["Theme.Window.CornerRadius"]        = new CornerRadius(14);
         app.Resources["Theme.Window.CornerRadius.Bottom"] = new CornerRadius(0, 0, 14, 14);
-        app.Resources["Theme.Window.FontFamily"]          = new FontFamily("SF Pro Text, Segoe UI, Inter");
+        app.Resources["Theme.Window.FontFamily"]          = new FontFamily("SF Pro Text, Lucida Grande, Segoe UI, Inter");
 
         // ── Search ──
-        app.Resources["Theme.Search.Background"]  = new SolidColorBrush(Colors.Transparent);
+        app.Resources["Theme.Search.Background"]             = new SolidColorBrush(Colors.Transparent);
+        app.Resources["Theme.Search.Input.CornerRadius"]     = new CornerRadius(0);
+        app.Resources["Theme.Search.Input.Margin"]           = new Thickness(0);
+        app.Resources["Theme.Search.Input.Padding"]          = new Thickness(18, 0, 18, 0);
+        app.Resources["Theme.Search.Input.BorderColor"]      = new SolidColorBrush(Colors.Transparent);
+        app.Resources["Theme.Search.Input.BorderThickness"]  = new Thickness(0);
         app.Resources["Theme.Search.Color"]       = B("#FFFFFF");
         app.Resources["Theme.Search.Size"]        = 18.0;
         app.Resources["Theme.Search.FontFamily"]  = new FontFamily("SF Pro Text, Segoe UI, Inter");
@@ -383,7 +395,6 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
         app.Resources["Theme.Results.Shortcut.CornerRadius"]     = new CornerRadius(5);
         app.Resources["Theme.Results.Selection.Background"] = B("#2C5AF0");
         app.Resources["Theme.Results.Selection.Color"]     = B("#FFFFFF");
-        app.Resources["Theme.Results.Hover.Background"]          = B("#20FFFFFF");
 
         // ── Calculator ──
         app.Resources["Theme.Calc.FontFamily"]        = new FontFamily("SF Pro Text, Segoe UI, Inter");
@@ -506,6 +517,25 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
     private static void SetThicknessLeft(Application app, string key, JsonNode? node) {
         if (node == null) return;
         app.Resources[key] = new Thickness(node.GetValue<double>(), 0, 0, 0);
+    }
+
+    // Parses "l,t,r,b" | "h,v" | "uniform" strings or a bare number
+    private static void SetThickness(Application app, string key, JsonNode? node) {
+        if (node == null) return;
+        try {
+            var s = node.GetValue<string>();
+            var parts = s.Split(',')
+                .Select(p => double.Parse(p.Trim(), System.Globalization.CultureInfo.InvariantCulture))
+                .ToArray();
+            app.Resources[key] = parts.Length switch {
+                1 => new Thickness(parts[0]),
+                2 => new Thickness(parts[0], parts[1], parts[0], parts[1]),
+                4 => new Thickness(parts[0], parts[1], parts[2], parts[3]),
+                _ => new Thickness(0)
+            };
+        } catch {
+            try { app.Resources[key] = new Thickness(node.GetValue<double>()); } catch { }
+        }
     }
 
     private static void SetCornerRadius(Application app, string key, JsonNode? node) {

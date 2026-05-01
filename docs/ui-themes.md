@@ -142,7 +142,6 @@ Si el valor de `variant` no es `"light"`, se asume `"dark"`.
 | `results.shortcut.cornerRadius` | `Theme.Results.Shortcut.CornerRadius` |
 | `results.selection.background` | `Theme.Results.Selection.Background` |
 | `results.selection.color` | `Theme.Results.Selection.Color` |
-| `results.hover.background` | `Theme.Results.Hover.Background` |
 
 ### Calculator
 

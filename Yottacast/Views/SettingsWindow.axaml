@@ -195,6 +195,7 @@
             <Setter Property="Width"        Value="22"/>
         </Style>
         <Style Selector="Border.modifier-badge TextBlock">
+            <Setter Property="FontFamily"          Value="SF Pro Text, Lucida Grande, Segoe UI, Inter"/>
             <Setter Property="FontSize"           Value="13"/>
             <Setter Property="Foreground"         Value="#565656"/>
             <Setter Property="FontWeight"         Value="Bold"/>
