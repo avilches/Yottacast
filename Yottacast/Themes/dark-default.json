@@ -11,6 +11,7 @@
   },
 
   "search": {
+    "background": "Transparent",
     "text":        { "color": "#FFFFFF", "size": 18, "fontFamily": "SF Pro Text, Segoe UI, Inter" },
     "placeholder": { "color": "#505055" },
     "caret":       { "color": "#5E8FFF" },
@@ -23,6 +24,7 @@
 
   "results": {
     "background": "#0D0D12",
+    "padding": 8,
     "cornerRadius": 8,
     "selectionBar": { "color": "#2C5AF0", "width": 4 },
     "title":    { "color": "#EAEAEE", "size": 14 },
@@ -30,12 +32,7 @@
     "category": { "color": "#606068", "size": 12 },
     "icon":     { "background": "#252529", "cornerRadius": 8 },
     "shortcut": { "color": "#505055", "background": "#252529", "size": 12, "cornerRadius": 5 },
-    "selection": {
-      "background": "#2C5AF0",
-      "hoverBackground": "#3564FF",
-      "color": "#FFFFFF",
-      "iconBackground": "#30FFFFFF"
-    },
+    "selection": { "background": "#2C5AF0", "color": "#FFFFFF" },
     "hover": { "background": "#20FFFFFF" }
   },
 

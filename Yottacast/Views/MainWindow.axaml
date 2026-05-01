@@ -134,7 +134,8 @@
         <DockPanel>
 
             <!-- ── Search row + hint ── -->
-            <StackPanel DockPanel.Dock="Top">
+            <StackPanel DockPanel.Dock="Top"
+                        Background="{DynamicResource Theme.Search.Background}">
                 <Grid ColumnDefinitions="*,Auto"
                       Margin="18,0"
                       Height="64">
@@ -238,7 +239,7 @@
                      ItemsSource="{Binding Results}"
                      SelectedItem="{Binding SelectedResult}"
                      MaxHeight="540"
-                     Padding="8,6"
+                     Padding="{DynamicResource Theme.Results.Padding}"
                      Background="{DynamicResource Theme.Results.Background}"
                      IsVisible="{Binding HasResults}"
                      ScrollViewer.VerticalScrollBarVisibility="Auto"

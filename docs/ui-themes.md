@@ -103,6 +103,7 @@ Si el valor de `variant` no es `"light"`, se asume `"dark"`.
 
 | JSON path | Recurso Avalonia |
 |---|---|
+| `search.background` | `Theme.Search.Background` |
 | `search.text.color` | `Theme.Search.Color` |
 | `search.text.size` | `Theme.Search.Size` |
 | `search.text.fontFamily` | `Theme.Search.FontFamily` |
@@ -123,6 +124,7 @@ Si el valor de `variant` no es `"light"`, se asume `"dark"`.
 | JSON path | Recurso Avalonia |
 |---|---|
 | `results.background` | `Theme.Results.Background` |
+| `results.padding` | `Theme.Results.Padding` |
 | `results.selectionBar.color` | `Theme.Results.SelectionBar.Color` |
 | `results.selectionBar.width` | `Theme.Results.SelectionBar.Thickness` |
 | `results.cornerRadius` | `Theme.Results.CornerRadius` |
@@ -139,9 +141,7 @@ Si el valor de `variant` no es `"light"`, se asume `"dark"`.
 | `results.shortcut.size` | `Theme.Results.Shortcut.Size` |
 | `results.shortcut.cornerRadius` | `Theme.Results.Shortcut.CornerRadius` |
 | `results.selection.background` | `Theme.Results.Selection.Background` |
-| `results.selection.hoverBackground` | `Theme.Results.Selection.HoverBackground` |
 | `results.selection.color` | `Theme.Results.Selection.Color` |
-| `results.selection.iconBackground` | `Theme.Results.Selection.IconBackground` |
 | `results.hover.background` | `Theme.Results.Hover.Background` |
 
 ### Calculator

@@ -177,6 +177,7 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
             // ── Search ──
             var search = json["search"];
             if (search != null) {
+                SetBrush(app,      "Theme.Search.Background",  search["background"]);
                 SetBrush(app,      "Theme.Search.Color",       search["text"]?["color"]);
                 SetDouble(app,     "Theme.Search.Size",        search["text"]?["size"]);
                 SetFontFamily(app, "Theme.Search.FontFamily",  search["text"]?["fontFamily"]);
@@ -194,6 +195,10 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
             var results = json["results"];
             if (results != null) {
                 SetBrush(app, "Theme.Results.Background", results["background"]);
+                if (results["padding"] != null) {
+                    var p = results["padding"]!.GetValue<double>();
+                    app.Resources["Theme.Results.Padding"] = new Thickness(p);
+                }
                 var selBar = results["selectionBar"];
                 if (selBar != null) {
                     SetBrush(app, "Theme.Results.SelectionBar.Color", selBar["color"]);
@@ -219,10 +224,8 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
 
                 var sel = results["selection"];
                 if (sel != null) {
-                    SetBrush(app, "Theme.Results.Selection.Background",     sel["background"]);
-                    SetBrush(app, "Theme.Results.Selection.HoverBackground", sel["hoverBackground"]);
-                    SetBrush(app, "Theme.Results.Selection.Color",          sel["color"]);
-                    SetBrush(app, "Theme.Results.Selection.IconBackground", sel["iconBackground"]);
+                    SetBrush(app, "Theme.Results.Selection.Background", sel["background"]);
+                    SetBrush(app, "Theme.Results.Selection.Color",      sel["color"]);
                 }
 
                 SetBrush(app, "Theme.Results.Hover.Background", results["hover"]?["background"]);
@@ -346,6 +349,7 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
         app.Resources["Theme.Window.FontFamily"]          = new FontFamily("SF Pro Text, Segoe UI, Inter");
 
         // ── Search ──
+        app.Resources["Theme.Search.Background"]  = new SolidColorBrush(Colors.Transparent);
         app.Resources["Theme.Search.Color"]       = B("#FFFFFF");
         app.Resources["Theme.Search.Size"]        = 18.0;
         app.Resources["Theme.Search.FontFamily"]  = new FontFamily("SF Pro Text, Segoe UI, Inter");
@@ -360,6 +364,7 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
 
         // ── Results ──
         app.Resources["Theme.Results.Background"]                = B("#0D0D12");
+        app.Resources["Theme.Results.Padding"]                   = new Thickness(8);
         app.Resources["Theme.Results.SelectionBar.Color"]          = B("#2C5AF0");
         app.Resources["Theme.Results.SelectionBar.Thickness"]      = new Thickness(4, 0, 0, 0);
         app.Resources["Theme.Results.SelectionBar.ContentPadding"] = new Thickness(6, 0, 10, 0);
@@ -376,10 +381,8 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
         app.Resources["Theme.Results.Shortcut.Background"]       = B("#252529");
         app.Resources["Theme.Results.Shortcut.Size"]             = 12.0;
         app.Resources["Theme.Results.Shortcut.CornerRadius"]     = new CornerRadius(5);
-        app.Resources["Theme.Results.Selection.Background"]      = B("#2C5AF0");
-        app.Resources["Theme.Results.Selection.HoverBackground"] = B("#3564FF");
-        app.Resources["Theme.Results.Selection.Color"]           = B("#FFFFFF");
-        app.Resources["Theme.Results.Selection.IconBackground"]  = B("#30FFFFFF");
+        app.Resources["Theme.Results.Selection.Background"] = B("#2C5AF0");
+        app.Resources["Theme.Results.Selection.Color"]     = B("#FFFFFF");
         app.Resources["Theme.Results.Hover.Background"]          = B("#20FFFFFF");
 
         // ── Calculator ──
