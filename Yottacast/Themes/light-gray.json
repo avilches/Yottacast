@@ -22,7 +22,9 @@
   "spinner": { "color": "#9CA3AF" },
 
   "results": {
+    "background": "#F8F9FA",
     "cornerRadius": 8,
+    "selectionBar": { "color": "#374151", "width": 4 },
     "title":    { "color": "#111827", "size": 14 },
     "subtitle": { "color": "#6B7280", "size": 12 },
     "category": { "color": "#9CA3AF", "size": 11 },
@@ -73,8 +75,9 @@
   },
 
   "footer": {
-    "border": "#E5E7EB",
-    "text": { "color": "#9CA3AF", "size": 11 }
+    "background": "#EBEBED",
+    "border": "#D1D5DB",
+    "text": { "color": "#6B7280", "size": 12 }
   },
 
   "escBadge": {

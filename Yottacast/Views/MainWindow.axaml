@@ -117,6 +117,13 @@
         <Style Selector="ListBoxItem:selected Border.conv-cell-selected">
             <Setter Property="Background" Value="{DynamicResource Theme.Results.Selection.Background}"/>
         </Style>
+        <!-- Selection bar: left accent on selected standard items (not emoji/conv which have cell selection) -->
+        <!-- ContentPadding compensates for the bar width so content doesn't shift right -->
+        <Style Selector="ListBoxItem:selected:not(.emoji-item):not(.conv-navigable)">
+            <Setter Property="BorderBrush" Value="{DynamicResource Theme.Results.SelectionBar.Color}"/>
+            <Setter Property="BorderThickness" Value="{DynamicResource Theme.Results.SelectionBar.Thickness}"/>
+            <Setter Property="Padding" Value="{DynamicResource Theme.Results.SelectionBar.ContentPadding}"/>
+        </Style>
     </Window.Styles>
 
     <Border Margin="28"
@@ -210,6 +217,7 @@
             <!-- ── No results ── -->
             <Border DockPanel.Dock="Top"
                     Padding="0,28,0,28"
+                    Background="{DynamicResource Theme.Results.Background}"
                     IsVisible="{Binding ShowNoResults}">
                 <StackPanel HorizontalAlignment="Center" Spacing="8">
                     <TextBlock Text="No results"
@@ -231,6 +239,7 @@
                      SelectedItem="{Binding SelectedResult}"
                      MaxHeight="540"
                      Padding="8,6"
+                     Background="{DynamicResource Theme.Results.Background}"
                      IsVisible="{Binding HasResults}"
                      ScrollViewer.VerticalScrollBarVisibility="Auto"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled">
@@ -365,9 +374,11 @@
 
             <!-- ── Footer ── -->
             <Border DockPanel.Dock="Bottom"
-                    Padding="18,7"
+                    Padding="18,10"
+                    Background="{DynamicResource Theme.Footer.Background}"
                     BorderBrush="{DynamicResource Theme.Footer.Border}"
                     BorderThickness="0,1,0,0"
+                    CornerRadius="{DynamicResource Theme.Window.CornerRadius.Bottom}"
                     IsVisible="{Binding HasResults}">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4">

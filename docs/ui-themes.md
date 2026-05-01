@@ -71,12 +71,12 @@ Cada tema es un fichero `.json` en la carpeta `Themes/` del directorio de la apl
 | `window` | Fondo, ancho, cornerRadius y fontFamily de la ventana |
 | `search` | Texto, placeholder, caret, seleccion, hint de error |
 | `divider` / `spinner` | Color del separador y del spinner de carga |
-| `results` | Titulo, subtitulo, categoria, icono, shortcut, seleccion, hover |
+| `results` | Fondo del area, barra de seleccion lateral, titulo, subtitulo, categoria, icono, shortcut, seleccion, hover |
 | `calculator` | Expresion, resultado, subtitulo, separador, celda |
 | `converter` | Valor, subtitulo, flecha, hint, celda |
 | `emoji` | Columnas, filas visibles, celda, caracter, nombre, keywords |
 | `noResults` | Titulo y subtitulo cuando no hay resultados |
-| `footer` | Borde y texto del pie |
+| `footer` | Fondo, borde superior y texto del pie |
 | `escBadge` | Fondo, cornerRadius y texto del badge ESC |
 | `updateBanner` | Fondo y texto del banner de actualizacion |
 
@@ -122,6 +122,9 @@ Si el valor de `variant` no es `"light"`, se asume `"dark"`.
 
 | JSON path | Recurso Avalonia |
 |---|---|
+| `results.background` | `Theme.Results.Background` |
+| `results.selectionBar.color` | `Theme.Results.SelectionBar.Color` |
+| `results.selectionBar.width` | `Theme.Results.SelectionBar.Thickness` |
 | `results.cornerRadius` | `Theme.Results.CornerRadius` |
 | `results.title.color` | `Theme.Results.Title.Color` |
 | `results.title.size` | `Theme.Results.Title.Size` |
@@ -212,6 +215,7 @@ Si el valor de `variant` no es `"light"`, se asume `"dark"`.
 
 | JSON path | Recurso Avalonia |
 |---|---|
+| `footer.background` | `Theme.Footer.Background` |
 | `footer.border` | `Theme.Footer.Border` |
 | `footer.text.color` | `Theme.Footer.Color` |
 | `footer.text.size` | `Theme.Footer.Size` |

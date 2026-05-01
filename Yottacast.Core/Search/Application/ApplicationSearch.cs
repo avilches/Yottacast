@@ -78,7 +78,7 @@ public sealed class ApplicationSearch(
         IconBytes = iconCache.Get(app.Path),
         Title = app.Name,
         Subtitle = app.Path,
-        Category = "Applications",
+        Category = "Application",
         Score = score,
         OnActivate = () => platform.LaunchApp(app.Path),
     };

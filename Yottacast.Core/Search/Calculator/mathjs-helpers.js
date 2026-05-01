@@ -669,7 +669,11 @@ function computeNormalization(valueStr, unit) {
         if (isLastInChain || willHitCap) {
             var fracAmt = remaining / step.factorInBase;
             if (fracAmt > epsilon / step.factorInBase) {
-                components.push({ value: smartFormat(fracAmt), unit: step.unit,
+                // isLastInChain: unidad más pequeña de la cadena (ej. ms) → decimales válidos.
+                // willHitCap && !isLastInChain: unidad intermedia forzada a ser última por el cap
+                // (ej. min cuando ya hay year+day+h) → redondear a entero para evitar "46.67 min".
+                var valStr = isLastInChain ? smartFormat(fracAmt) : Math.round(fracAmt).toString();
+                components.push({ value: valStr, unit: step.unit,
                                   display: step.display, longName: step.longName });
             }
             break;

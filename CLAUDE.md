@@ -227,6 +227,10 @@ Si un fichero de doc empieza a ser demasiado grande, sugiere dividirlo en dos.
 
 - `docs/app-paths.md` — Rutas centralizadas (AppPaths) y constantes numericas (AppDefaults). Convencion para anadir
   nuevas.
+- `docs/result-viewmodels.md` — Jerarquia de ViewModels de resultado: Base, ResultItem, Calculator, Conversion (3
+  celdas navegables), EmojiGrid (viewport + secciones), Dictionary. Contrato de datos entre fuentes y UI.
+- `docs/plugin-system.md` — Sistema de plugins: PluginService, formato de plugins WebSearch y temas, FileSystemWatcher,
+  iconos, evento PluginsChanged.
 - `docs/release-workflow.md` — Versionado, migraciones, comprobacion de actualizaciones, flujo de publicacion.
 - `docs/multi-platform.md` — Diferencias por OS: PlatformProvider (Core) y AppHandler (UI), P/Invoke, escaneo de apps,
   paste simulado.

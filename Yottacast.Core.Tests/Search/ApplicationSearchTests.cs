@@ -327,7 +327,7 @@ public class ApplicationSearchTests {
         await StartAndWaitAsync(search);
         var results = SearchAll(search, "Safari");
         Assert.Single(results);
-        Assert.Equal("Applications", results[0].Category);
+        Assert.Equal("Application", results[0].Category);
         Assert.Equal("/Applications/Safari.app", results[0].Subtitle);
     }
 

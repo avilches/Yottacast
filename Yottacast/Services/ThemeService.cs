@@ -167,6 +167,11 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
                 SetDouble(app,     "Theme.Window.Width",        window["width"]);
                 SetCornerRadius(app, "Theme.Window.CornerRadius", window["cornerRadius"]);
                 SetFontFamily(app, "Theme.Window.FontFamily",  window["fontFamily"]);
+                // Derived: bottom-only corner radius for footer
+                if (window["cornerRadius"] != null) {
+                    var cr = window["cornerRadius"]!.GetValue<double>();
+                    app.Resources["Theme.Window.CornerRadius.Bottom"] = new CornerRadius(0, 0, cr, cr);
+                }
             }
 
             // ── Search ──
@@ -188,6 +193,16 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
             // ── Results ──
             var results = json["results"];
             if (results != null) {
+                SetBrush(app, "Theme.Results.Background", results["background"]);
+                var selBar = results["selectionBar"];
+                if (selBar != null) {
+                    SetBrush(app, "Theme.Results.SelectionBar.Color", selBar["color"]);
+                    if (selBar["width"] != null) {
+                        var barWidth = selBar["width"]!.GetValue<double>();
+                        app.Resources["Theme.Results.SelectionBar.Thickness"]    = new Thickness(barWidth, 0, 0, 0);
+                        app.Resources["Theme.Results.SelectionBar.ContentPadding"] = new Thickness(Math.Max(0, 10 - barWidth), 0, 10, 0);
+                    }
+                }
                 SetCornerRadius(app, "Theme.Results.CornerRadius", results["cornerRadius"]);
                 SetBrush(app,  "Theme.Results.Title.Color",     results["title"]?["color"]);
                 SetDouble(app, "Theme.Results.Title.Size",      results["title"]?["size"]);
@@ -283,9 +298,10 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
             // ── Footer ──
             var footer = json["footer"];
             if (footer != null) {
-                SetBrush(app,  "Theme.Footer.Border", footer["border"]);
-                SetBrush(app,  "Theme.Footer.Color",  footer["text"]?["color"]);
-                SetDouble(app, "Theme.Footer.Size",   footer["text"]?["size"]);
+                SetBrush(app,  "Theme.Footer.Background", footer["background"]);
+                SetBrush(app,  "Theme.Footer.Border",     footer["border"]);
+                SetBrush(app,  "Theme.Footer.Color",      footer["text"]?["color"]);
+                SetDouble(app, "Theme.Footer.Size",       footer["text"]?["size"]);
             }
 
             // ── ESC Badge ──
@@ -323,10 +339,11 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
         static SolidColorBrush B(string hex) => new(Color.Parse(hex));
 
         // ── Window ──
-        app.Resources["Theme.Window.Background"]    = B("#F21C1C22");
-        app.Resources["Theme.Window.Width"]          = 730.0;
-        app.Resources["Theme.Window.CornerRadius"]   = new CornerRadius(14);
-        app.Resources["Theme.Window.FontFamily"]     = new FontFamily("SF Pro Text, Segoe UI, Inter");
+        app.Resources["Theme.Window.Background"]         = B("#F21C1C22");
+        app.Resources["Theme.Window.Width"]               = 730.0;
+        app.Resources["Theme.Window.CornerRadius"]        = new CornerRadius(14);
+        app.Resources["Theme.Window.CornerRadius.Bottom"] = new CornerRadius(0, 0, 14, 14);
+        app.Resources["Theme.Window.FontFamily"]          = new FontFamily("SF Pro Text, Segoe UI, Inter");
 
         // ── Search ──
         app.Resources["Theme.Search.Color"]       = B("#FFFFFF");
@@ -342,6 +359,10 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
         app.Resources["Theme.Spinner.Color"] = B("#505055");
 
         // ── Results ──
+        app.Resources["Theme.Results.Background"]                = B("#0D0D12");
+        app.Resources["Theme.Results.SelectionBar.Color"]          = B("#2C5AF0");
+        app.Resources["Theme.Results.SelectionBar.Thickness"]      = new Thickness(4, 0, 0, 0);
+        app.Resources["Theme.Results.SelectionBar.ContentPadding"] = new Thickness(6, 0, 10, 0);
         app.Resources["Theme.Results.CornerRadius"]              = new CornerRadius(8);
         app.Resources["Theme.Results.Title.Color"]               = B("#EAEAEE");
         app.Resources["Theme.Results.Title.Size"]                = 14.0;
@@ -417,9 +438,10 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
         app.Resources["Theme.NoResults.Subtitle.Size"]  = 14.0;
 
         // ── Footer ──
-        app.Resources["Theme.Footer.Border"] = B("#1E1E24");
-        app.Resources["Theme.Footer.Color"]  = B("#606068");
-        app.Resources["Theme.Footer.Size"]   = 12.0;
+        app.Resources["Theme.Footer.Background"] = B("#1C1C22");
+        app.Resources["Theme.Footer.Border"]     = B("#2A2A30");
+        app.Resources["Theme.Footer.Color"]      = B("#9A9AA4");
+        app.Resources["Theme.Footer.Size"]       = 13.0;
 
         // ── ESC Badge ──
         app.Resources["Theme.Esc.Background"]   = B("#252529");
@@ -476,6 +498,11 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
             "Black"      => FontWeight.Black,
             _            => FontWeight.Regular,
         };
+    }
+
+    private static void SetThicknessLeft(Application app, string key, JsonNode? node) {
+        if (node == null) return;
+        app.Resources[key] = new Thickness(node.GetValue<double>(), 0, 0, 0);
     }
 
     private static void SetCornerRadius(Application app, string key, JsonNode? node) {

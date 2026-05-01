@@ -81,7 +81,6 @@ public static class CurrencyClassifier {
     /// </summary>
     public static string? GetDisplayName(string code) {
         var type = Classify(code);
-        if (type == CurrencyType.Crypto) return "Crypto";
-        return Names.TryGetValue(code, out var name) ? name : null;
+        return type == CurrencyType.Crypto ? "Crypto" : Names.GetValueOrDefault(code);
     }
 }
