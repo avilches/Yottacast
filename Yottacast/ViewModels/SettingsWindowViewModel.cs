@@ -138,7 +138,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
                 engine.ShowDisabled = value;
     }
     partial void OnFileSearchOnlySpecificFoldersChanged(bool value) { _settings.FileSearchOnlySpecificFolders = value; _settings.Save(); _logger.LogInformation("Settings: FileSearchOnlySpecificFolders = {Value}", value); _settings.NotifySearchSettingsChanged(); }
-    partial void OnStickyWindowChanged(bool value)                  { _settings.StickyWindow                 = value; _settings.Save(); _logger.LogInformation("Settings: StickyWindow = {Value}", value); }
+    partial void OnStickyWindowChanged(bool value)                  { _settings.StickyWindow                 = value; _settings.Save(); _logger.LogInformation("Settings: StickyWindow = {Value}", value); _settings.NotifyStickyWindowChanged(); }
 
     partial void OnKeepValueWhenHideChanged(bool value) {
         _settings.KeepValueWhenHide = value;

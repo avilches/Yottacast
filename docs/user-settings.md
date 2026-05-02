@@ -45,7 +45,7 @@ El fichero de preferencias se crea automaticamente en la primera ejecucion y se 
 | FileSearchOnlySpecificFolders | `false` | Si `true`, solo busca en las carpetas configuradas en `SearchFolders`; si `false`, busca en toda la home |
 | LastLaunchedVersion | `""` | Version del ultimo arranque (para migraciones) |
 | ShowDisabledWebSearchEngines | `true` | Si muestra los motores deshabilitados en la UI de Settings |
-| StickyWindow | `true` | La ventana permanece visible al perder el foco; `false` = se oculta al estilo Alfred |
+| StickyWindow | `true` | La ventana permanece visible al perder el foco y flota sobre todas las demás ventanas del SO (always on top); `false` = se oculta al estilo Alfred |
 | WebSearchEngines | Lista predeterminada de 22 motores | Configuracion por motor de busqueda web |
 | CalculatorCurrencyA | `"EUR"` | Primera divisa del par por defecto en conversiones |
 | CalculatorCurrencyB | `"USD"` | Segunda divisa del par por defecto en conversiones |

@@ -28,6 +28,9 @@ public class UserSettings {
 
     public event Action? SearchSettingsChanged;
     public void NotifySearchSettingsChanged() => SearchSettingsChanged?.Invoke();
+
+    public event Action? StickyWindowChanged;
+    public void NotifyStickyWindowChanged() => StickyWindowChanged?.Invoke();
     public bool EnableAppSearch { get; set; } = true;
     public bool EnableCalculator { get; set; } = true;
     public bool EnableClipboard { get; set; } = true;

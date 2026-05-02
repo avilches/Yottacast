@@ -91,6 +91,9 @@ public partial class App : Application {
             mainWindowViewModel.Initialize();
             var mainWindow = new MainWindow(userSettings, _services.GetRequiredService<ILogger<MainWindow>>()) { DataContext = mainWindowViewModel };
             desktop.MainWindow = mainWindow;
+            mainWindow.Topmost = userSettings.StickyWindow;
+            userSettings.StickyWindowChanged += () =>
+                Dispatcher.UIThread.InvokeAsync(() => mainWindow.Topmost = userSettings.StickyWindow);
 
             // Auto-hide when losing focus in non-sticky mode (Alfred-style).
             // Guard: don't hide if our own Settings window is what took focus.
@@ -156,6 +159,7 @@ public partial class App : Application {
         _settingsVm = _services.GetRequiredService<SettingsWindowViewModel>();
         _settingsWindow = new SettingsWindow {
             DataContext = _settingsVm,
+            Topmost = _services.GetRequiredService<UserSettings>().StickyWindow,
         };
         _settingsWindow.Closed += (_, _) => AppHandler.Instance.HideDockIcon();
         AppHandler.Instance.ShowDockIcon();
