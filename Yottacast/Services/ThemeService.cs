@@ -20,8 +20,22 @@ public record ThemeOption(string Id, string DisplayName);
 public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
     private const string UserThemePrefix = "user:";
 
-    private static string ThemesFolder =>
-        Path.Combine(AppContext.BaseDirectory, "Themes");
+    private string _themesFolder = null!;
+
+    private string ThemesFolder => _themesFolder ??= ResolveThemesFolder();
+
+    private string ResolveThemesFolder() {
+        var baseDir = AppContext.BaseDirectory;
+        var sep = Path.DirectorySeparatorChar;
+        if (baseDir.Contains(sep + "bin" + sep)) {
+            var candidate = Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "Themes"));
+            if (Directory.Exists(candidate) && File.Exists(Path.Combine(candidate, "dark-default.json"))) {
+                logger.LogInformation("Dev mode: watching themes from source tree at {Path}", candidate);
+                return candidate;
+            }
+        }
+        return Path.Combine(baseDir, "Themes");
+    }
 
     private FileSystemWatcher? _activeThemeWatcher;
     private CancellationTokenSource? _debounceCts;
@@ -114,11 +128,10 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
         _activeThemeWatcher = null;
         _activeThemeId = themeId;
 
-        if (!IsUserTheme(themeId)) return;
-
         var filePath = ThemeFilePath(themeId);
         if (filePath == null) return;
-        _activeThemeWatcher = new FileSystemWatcher(AppPaths.PluginsDir, Path.GetFileName(filePath)) {
+        var watchDir = Path.GetDirectoryName(filePath)!;
+        _activeThemeWatcher = new FileSystemWatcher(watchDir, Path.GetFileName(filePath)) {
             NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName,
             EnableRaisingEvents = true
         };
