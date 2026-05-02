@@ -11,6 +11,7 @@ using Yottacast.Core.Search.WebSearch;
 using Yottacast.Core.Services;
 using Yottacast.Core.Platform;
 using Yottacast.Ipc.Services;
+using Microsoft.Extensions.Logging;
 
 // ── PID file guard ───────────────────────────────────────────────────────────
 Directory.CreateDirectory(AppPaths.CacheDir);
@@ -55,8 +56,9 @@ builder.Services.AddSingleton<PlatformProvider, MacOsPlatformProvider>();
 builder.Services.AddSingleton<ClipboardService>();
 builder.Services.AddSingleton<AppIconCache>();
 builder.Services.AddSingleton<FileIconCache>();
+builder.Services.AddSingleton<FileSearch>();
+builder.Services.AddSingleton<BrowserDiscovery>();
 builder.Services.AddSingleton<PluginService>();
-builder.Services.AddSingleton<HistoryService>();
 
 // UserSettings (loaded from disk)
 builder.Services.AddSingleton(sp => {
@@ -64,10 +66,32 @@ builder.Services.AddSingleton(sp => {
     return UserSettings.Load(platform);
 });
 
+// Calculator dependencies
+builder.Services.AddSingleton<HttpClient>();
+builder.Services.AddSingleton<ExchangeRateService>();
+builder.Services.AddSingleton<MathJsEngineProvider>();
+
+// Emoji dependencies
+builder.Services.AddSingleton<EmojiDataLoader>();
+builder.Services.AddSingleton<EmojiUsageStore>(sp => new EmojiUsageStore(
+    AppPaths.EmojiUsageFile,
+    sp.GetRequiredService<ILogger<EmojiUsageStore>>()));
+
+// History
+builder.Services.AddSingleton<HistoryService>(sp => new HistoryService(
+    sp.GetRequiredService<UserSettings>(),
+    sp.GetRequiredService<ILogger<HistoryService>>()));
+
 // Search sources
 builder.Services.AddSingleton<ApplicationSearch>();
 builder.Services.AddSingleton<CalculatorSearch>();
-builder.Services.AddSingleton<EmojiSearch>();
+builder.Services.AddSingleton<EmojiSearch>(sp => new EmojiSearch(
+    sp.GetRequiredService<ClipboardService>(),
+    AppPaths.EmojiCacheFile,
+    sp.GetRequiredService<EmojiDataLoader>(),
+    sp.GetRequiredService<EmojiUsageStore>(),
+    sp.GetRequiredService<ILogger<EmojiSearch>>(),
+    sp.GetRequiredService<UserSettings>()));
 builder.Services.AddSingleton<WebSearchSource>();
 builder.Services.AddSingleton<UserDocumentSearch>();
 builder.Services.AddSingleton<DictionarySource>();
