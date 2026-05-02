@@ -236,7 +236,6 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
                 SetDouble(app, "Theme.Results.Subtitle.Size",   results["subtitle"]?["size"]);
                 SetBrush(app,  "Theme.Results.Category.Color",  results["category"]?["color"]);
                 SetDouble(app, "Theme.Results.Category.Size",   results["category"]?["size"]);
-                SetBrush(app,  "Theme.Results.Icon.Background", results["icon"]?["background"]);
                 SetCornerRadius(app, "Theme.Results.Icon.CornerRadius", results["icon"]?["cornerRadius"]);
                 SetBrush(app,  "Theme.Results.Shortcut.Color",      results["shortcut"]?["color"]);
                 SetBrush(app,  "Theme.Results.Shortcut.Background", results["shortcut"]?["background"]);
@@ -265,7 +264,6 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
                 SetDouble(app,     "Theme.Calc.Subtitle.Size",     calc["subtitle"]?["size"]);
                 SetOpacity(app,    "Theme.Calc.Subtitle.Opacity",  calc["subtitle"]?["opacity"]);
                 SetBrush(app,      "Theme.Calc.Separator.Color",   calc["separator"]?["color"]);
-                SetBrush(app,      "Theme.Calc.Cell.Background",   calc["cell"]?["background"]);
                 SetCornerRadius(app, "Theme.Calc.Cell.CornerRadius", calc["cell"]?["cornerRadius"]);
             }
 
@@ -279,8 +277,6 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
                 SetDouble(app,     "Theme.Conv.Subtitle.Size",     conv["subtitle"]?["size"]);
                 SetOpacity(app,    "Theme.Conv.Subtitle.Opacity",  conv["subtitle"]?["opacity"]);
                 SetBrush(app,      "Theme.Conv.Arrow.Color",       conv["arrow"]?["color"]);
-                SetBrush(app,      "Theme.Conv.Hint.Color",        conv["hint"]?["color"]);
-                SetDouble(app,     "Theme.Conv.Hint.Size",         conv["hint"]?["size"]);
                 SetCornerRadius(app, "Theme.Conv.Cell.CornerRadius", conv["cell"]?["cornerRadius"]);
             }
 
@@ -288,13 +284,10 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
             var emoji = json["emoji"];
             if (emoji != null) {
                 SetInt(app,    "Theme.Emoji.Columns",          emoji["columns"]);
-                SetInt(app,    "Theme.Emoji.ViewportRows",     emoji["viewportRows"]);
                 SetDouble(app, "Theme.Emoji.Cell.Size",        emoji["cell"]?["size"]);
                 SetCornerRadius(app, "Theme.Emoji.Cell.CornerRadius", emoji["cell"]?["cornerRadius"]);
                 SetDouble(app, "Theme.Emoji.Char.Size",        emoji["char"]?["size"]);
                 SetFontFamily(app, "Theme.Emoji.Char.FontFamily", emoji["char"]?["fontFamily"]);
-                SetBrush(app,  "Theme.Emoji.Name.Color",       emoji["name"]?["color"]);
-                SetDouble(app, "Theme.Emoji.Name.Size",        emoji["name"]?["size"]);
                 SetBrush(app,  "Theme.Emoji.Keywords.Color",   emoji["keywords"]?["color"]);
                 SetDouble(app, "Theme.Emoji.Keywords.Size",    emoji["keywords"]?["size"]);
                 SetOpacity(app, "Theme.Emoji.Keywords.Opacity", emoji["keywords"]?["opacity"]);
@@ -400,7 +393,6 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
         app.Resources["Theme.Results.Subtitle.Size"]             = 12.0;
         app.Resources["Theme.Results.Category.Color"]            = B("#606068");
         app.Resources["Theme.Results.Category.Size"]             = 12.0;
-        app.Resources["Theme.Results.Icon.Background"]           = B("#252529");
         app.Resources["Theme.Results.Icon.CornerRadius"]         = new CornerRadius(8);
         app.Resources["Theme.Results.Shortcut.Color"]            = B("#505055");
         app.Resources["Theme.Results.Shortcut.Background"]       = B("#252529");
@@ -421,7 +413,6 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
         app.Resources["Theme.Calc.Subtitle.Size"]     = 13.0;
         app.Resources["Theme.Calc.Subtitle.Opacity"]  = 0.55;
         app.Resources["Theme.Calc.Separator.Color"]   = B("#EAEAEE");
-        app.Resources["Theme.Calc.Cell.Background"]   = B("#252529");
         app.Resources["Theme.Calc.Cell.CornerRadius"]  = new CornerRadius(6);
 
         // ── Converter ──
@@ -432,19 +423,14 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
         app.Resources["Theme.Conv.Subtitle.Size"]     = 13.0;
         app.Resources["Theme.Conv.Subtitle.Opacity"]  = 0.55;
         app.Resources["Theme.Conv.Arrow.Color"]       = B("#EAEAEE");
-        app.Resources["Theme.Conv.Hint.Color"]        = B("#505055");
-        app.Resources["Theme.Conv.Hint.Size"]         = 12.0;
         app.Resources["Theme.Conv.Cell.CornerRadius"]  = new CornerRadius(6);
 
         // ── Emoji ──
         app.Resources["Theme.Emoji.Columns"]          = AppDefaults.EmojiColumns;
-        app.Resources["Theme.Emoji.ViewportRows"]     = AppDefaults.EmojiViewportRows;
         app.Resources["Theme.Emoji.Cell.Size"]        = 48.0;
         app.Resources["Theme.Emoji.Cell.CornerRadius"] = new CornerRadius(8);
         app.Resources["Theme.Emoji.Char.Size"]        = 28.0;
         app.Resources["Theme.Emoji.Char.FontFamily"]  = new FontFamily("Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji");
-        app.Resources["Theme.Emoji.Name.Color"]       = B("#EAEAEE");
-        app.Resources["Theme.Emoji.Name.Size"]        = 14.0;
         app.Resources["Theme.Emoji.Keywords.Color"]   = B("#EAEAEE");
         app.Resources["Theme.Emoji.Keywords.Size"]    = 12.0;
         app.Resources["Theme.Emoji.Keywords.Opacity"] = 0.55;

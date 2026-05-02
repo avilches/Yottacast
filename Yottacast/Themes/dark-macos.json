@@ -36,7 +36,7 @@
     "title":    { "color": "#F2F2F7", "size": 14 },
     "subtitle": { "color": "#8E8E93", "size": 12 },
     "category": { "color": "#70707A", "size": 12 },
-    "icon":     { "background": "#3A3A3C", "cornerRadius": 8 },
+    "icon":     { "cornerRadius": 8 },
     "shortcut": { "color": "#8E8E93", "background": "#3A3A3C", "size": 12, "cornerRadius": 6 },
     "selection": { "background": "#0A84FF", "color": "#FFFFFF" }
   },
@@ -47,7 +47,7 @@
     "result":     { "color": "#F2F2F7", "size": 20, "fontWeight": "Medium" },
     "subtitle":   { "color": "#F2F2F7", "size": 13, "opacity": 0.55 },
     "separator":  { "color": "#F2F2F7" },
-    "cell":       { "background": "#3A3A3C", "cornerRadius": 6 }
+    "cell":       { "cornerRadius": 6 }
   },
 
   "converter": {
@@ -55,16 +55,13 @@
     "value":    { "color": "#F2F2F7", "size": 20 },
     "subtitle": { "color": "#F2F2F7", "size": 13, "opacity": 0.55 },
     "arrow":    { "color": "#F2F2F7" },
-    "hint":     { "color": "#8E8E93", "size": 12 },
     "cell":     { "cornerRadius": 6 }
   },
 
   "emoji": {
     "columns": 10,
-    "viewportRows": 8,
     "cell":     { "size": 48, "cornerRadius": 8 },
     "char":     { "size": 28, "fontFamily": "Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji" },
-    "name":     { "color": "#F2F2F7", "size": 14 },
     "keywords": { "color": "#F2F2F7", "size": 12, "opacity": 0.55 },
     "sectionHeader": { "color": "#F2F2F7", "size": 11, "opacity": 0.5 },
     "favorite": { "color": "#FFD60A", "size": 8, "opacity": 0.7 },

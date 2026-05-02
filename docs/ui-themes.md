@@ -134,7 +134,6 @@ Si el valor de `variant` no es `"light"`, se asume `"dark"`.
 | `results.subtitle.size` | `Theme.Results.Subtitle.Size` |
 | `results.category.color` | `Theme.Results.Category.Color` |
 | `results.category.size` | `Theme.Results.Category.Size` |
-| `results.icon.background` | `Theme.Results.Icon.Background` |
 | `results.icon.cornerRadius` | `Theme.Results.Icon.CornerRadius` |
 | `results.shortcut.color` | `Theme.Results.Shortcut.Color` |
 | `results.shortcut.background` | `Theme.Results.Shortcut.Background` |
@@ -158,7 +157,6 @@ Si el valor de `variant` no es `"light"`, se asume `"dark"`.
 | `calculator.subtitle.size` | `Theme.Calc.Subtitle.Size` |
 | `calculator.subtitle.opacity` | `Theme.Calc.Subtitle.Opacity` |
 | `calculator.separator.color` | `Theme.Calc.Separator.Color` |
-| `calculator.cell.background` | `Theme.Calc.Cell.Background` |
 | `calculator.cell.cornerRadius` | `Theme.Calc.Cell.CornerRadius` |
 
 ### Converter
@@ -172,8 +170,6 @@ Si el valor de `variant` no es `"light"`, se asume `"dark"`.
 | `converter.subtitle.size` | `Theme.Conv.Subtitle.Size` |
 | `converter.subtitle.opacity` | `Theme.Conv.Subtitle.Opacity` |
 | `converter.arrow.color` | `Theme.Conv.Arrow.Color` |
-| `converter.hint.color` | `Theme.Conv.Hint.Color` |
-| `converter.hint.size` | `Theme.Conv.Hint.Size` |
 | `converter.cell.cornerRadius` | `Theme.Conv.Cell.CornerRadius` |
 
 ### Emoji
@@ -181,13 +177,10 @@ Si el valor de `variant` no es `"light"`, se asume `"dark"`.
 | JSON path | Recurso Avalonia |
 |---|---|
 | `emoji.columns` | `Theme.Emoji.Columns` |
-| `emoji.viewportRows` | `Theme.Emoji.ViewportRows` |
 | `emoji.cell.size` | `Theme.Emoji.Cell.Size` |
 | `emoji.cell.cornerRadius` | `Theme.Emoji.Cell.CornerRadius` |
 | `emoji.char.size` | `Theme.Emoji.Char.Size` |
 | `emoji.char.fontFamily` | `Theme.Emoji.Char.FontFamily` |
-| `emoji.name.color` | `Theme.Emoji.Name.Color` |
-| `emoji.name.size` | `Theme.Emoji.Name.Size` |
 | `emoji.keywords.color` | `Theme.Emoji.Keywords.Color` |
 | `emoji.keywords.size` | `Theme.Emoji.Keywords.Size` |
 | `emoji.keywords.opacity` | `Theme.Emoji.Keywords.Opacity` |
