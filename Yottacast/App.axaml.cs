@@ -361,9 +361,15 @@ public partial class App : Application {
                                 if (settingsOpen)
                                     _settingsWindow!.Activate();
                             } else {
-                                // App or settings is focused → hide main window; settings stays open
+                                // App or settings is focused → hide main window
                                 window.Hide();
-                                AppHandler.Instance.OnHide();
+                                if (settingsOpen) {
+                                    // Settings is open: give it focus instead of restoring the previous app.
+                                    // OnHide() is skipped so _previousApp is preserved for the next hide.
+                                    _settingsWindow!.Activate();
+                                } else {
+                                    AppHandler.Instance.OnHide();
+                                }
                             }
                         } else {
                             AppHandler.Instance.ShowWindow(window);
