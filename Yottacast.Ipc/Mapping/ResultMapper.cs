@@ -60,7 +60,9 @@ public static class ResultMapper {
                 msg.Type = DetermineType(item);
                 msg.Subtitle = item.Subtitle;
                 msg.Category = item.Category;
-                msg.IconId = item.Icon;
+                // For app/file types, icon_id is the path (subtitle), used as key for IconService.GetIcon.
+                // item.Icon is an Avalonia UI-side display string (emoji), not usable as an icon path.
+                msg.IconId = msg.Type is "app" or "file" ? item.Subtitle : item.Icon;
                 break;
         }
 
