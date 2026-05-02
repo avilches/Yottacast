@@ -20,7 +20,7 @@ using Yottacast.Services;
 namespace Yottacast.ViewModels;
 
 public enum SettingsSection {
-    General, AppSearch, WebSearch, FileSearch, Calculator, Clipboard, Emoji, Dictionary, History, SystemSettings
+    General, AppSearch, WebSearch, FileSearch, Calculator, Clipboard, Emoji, Dictionary, History
 }
 
 public partial class SettingsWindowViewModel : ViewModelBase {
@@ -35,7 +35,6 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [NotifyPropertyChangedFor(nameof(IsEmojiSelected))]
     [NotifyPropertyChangedFor(nameof(IsDictionarySelected))]
     [NotifyPropertyChangedFor(nameof(IsHistorySelected))]
-    [NotifyPropertyChangedFor(nameof(IsSystemSettingsSelected))]
     private SettingsSection _selectedSection = SettingsSection.General;
 
     partial void OnSelectedSectionChanged(SettingsSection oldValue, SettingsSection newValue) {
@@ -53,7 +52,6 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     public bool IsEmojiSelected      => SelectedSection == SettingsSection.Emoji;
     public bool IsDictionarySelected          => SelectedSection == SettingsSection.Dictionary;
     public bool IsHistorySelected             => SelectedSection == SettingsSection.History;
-    public bool IsSystemSettingsSelected      => SelectedSection == SettingsSection.SystemSettings;
     public bool IsSystemSettingsSectionVisible => AppHandler.Instance.SupportsSystemSettingsSearch;
 
     [RelayCommand] private void SelectGeneral()   => SelectedSection = SettingsSection.General;
@@ -65,7 +63,6 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [RelayCommand] private void SelectEmoji()      => SelectedSection = SettingsSection.Emoji;
     [RelayCommand] private void SelectDictionary()     => SelectedSection = SettingsSection.Dictionary;
     [RelayCommand] private void SelectHistory()        => SelectedSection = SettingsSection.History;
-    [RelayCommand] private void SelectSystemSettings() => SelectedSection = SettingsSection.SystemSettings;
 
     // ── General section ──────────────────────────────────────────────────────
     [ObservableProperty] private string? _selectedBrowser;

@@ -30,7 +30,7 @@ public sealed class SystemSettingsSearch(
     private DateTime _dynamicCacheTime = DateTime.MinValue;
 
     public void Start() {
-        if (!settings.EnableSystemSettings) {
+        if (!settings.EnableSystemSettings || !settings.EnableAppSearch) {
             _readyTcs.TrySetResult();
             return;
         }
@@ -45,7 +45,7 @@ public sealed class SystemSettingsSearch(
     }
 
     public IReadOnlyList<BaseResultItemViewModel> Search(string query, int limit) {
-        if (!settings.EnableSystemSettings) return [];
+        if (!settings.EnableSystemSettings || !settings.EnableAppSearch) return [];
         return _panels.Concat(GetDynamicPanels())
             .Select(p => (panel: p, score: NameMatcher.Score(p.Name, query)))
             .Where(x => x.score > 0)

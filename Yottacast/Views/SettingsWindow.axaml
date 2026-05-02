@@ -507,16 +507,6 @@
                         </StackPanel>
                     </Button>
 
-                    <Button Classes="nav-item"
-                            Classes.nav-selected="{Binding IsSystemSettingsSelected}"
-                            Command="{Binding SelectSystemSettingsCommand}"
-                            IsVisible="{Binding IsSystemSettingsSectionVisible}">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <PathIcon Data="{StaticResource Icon.SystemSettings}" Width="14" Height="14" VerticalAlignment="Center"/>
-                            <TextBlock Text="System Settings" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Button>
-
                 </StackPanel>
             </DockPanel>
         </Border>
@@ -694,6 +684,12 @@
                                     Content="Add common folders"
                                     IsVisible="{Binding HasMissingCommonAppDirectories}"
                                     Click="OnAddCommonAppDirectoriesClicked"/>
+                        </StackPanel>
+
+                        <StackPanel Spacing="4" IsVisible="{Binding IsSystemSettingsSectionVisible}">
+                            <ToggleSwitch IsChecked="{Binding EnableSystemSettings}"
+                                          OnContent="Include system settings panels"
+                                          OffContent="Include system settings panels"/>
                         </StackPanel>
                     </StackPanel>
                 </StackPanel>
@@ -1196,16 +1192,6 @@
                         </StackPanel>
 
                     </StackPanel>
-                </StackPanel>
-
-                <!-- System Settings -->
-                <StackPanel Spacing="16" IsVisible="{Binding IsSystemSettingsSelected}">
-                    <TextBlock Classes="section-heading" Text="System Settings"/>
-                    <ToggleSwitch IsChecked="{Binding EnableSystemSettings}"
-                                  OnContent="Enabled"
-                                  OffContent="Disabled"/>
-                    <TextBlock Classes="description"
-                               Text="Search macOS System Settings panels from the launcher. Type a panel name like 'Wi-Fi', 'Bluetooth', or 'Displays'."/>
                 </StackPanel>
 
             </Panel>
