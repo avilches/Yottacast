@@ -237,6 +237,8 @@ Ver `docs/examples/hackernews.json` para un ejemplo de plugin.
 
 La ventana de Settings se divide en secciones navegables: General, AppSearch, WebSearch, FileSearch, Calculator, Clipboard y Emoji. Cada apertura de la ventana inicia en la seccion General (el ViewModel es transient y se recrea en cada apertura).
 
+La seccion AppSearch incluye el toggle **"Include system settings panels"** (solo visible en macOS). Si esta activo, la busqueda incluye los paneles de System Settings del sistema. Este toggle solo es funcional cuando App Search tambien esta habilitado — si App Search se desactiva, la busqueda de paneles del sistema queda inactiva independientemente del valor de este toggle.
+
 ### Flujo de apertura
 
 Si la ventana ya esta visible, simplemente se activa sin recrearla. La apertura es sincrona — no necesita esperar a `ApplicationSearch` porque los pickers de browser y terminal usan sus propios mecanismos de deteccion en disco.
@@ -253,8 +255,9 @@ Tras la auto-reparacion (`EnsureIntegrity()`), el ViewModel aplica un segundo ni
 
 Las listas `SearchFolders` y `AppDirectories` son observables. Cualquier cambio (anadir, eliminar) se sincroniza inmediatamente a las preferencias y se guarda. La adicion deduplica: no se anade una ruta que ya exista en la lista (la comparacion se hace sobre la ruta expandida, para evitar duplicados entre `$HOME/X` y `/Users/user/X`). Las rutas se normalizan al cargar y al anadir: se elimina la barra final (`/` o `\`) y se deduplicaran con comparacion case-insensitive. El selector de carpetas usa el picker nativo del SO.
 
-La seccion AppSearch tiene un checkbox adicional:
+La seccion AppSearch tiene checkboxes adicionales:
 - **Enable app search**: si se desactiva, oculta el resto de opciones, el escaneo no se realiza y la busqueda no devuelve resultados.
+- **Include system settings panels** (solo macOS): busca paneles de System Settings. Solo activo cuando App Search esta habilitado.
 
 La seccion AppSearch tambien tiene el boton **"Add common folders"**, que solo es visible cuando hay carpetas por defecto de la plataforma que existen en disco pero no estan aun en la lista. Al pulsarlo, se anaden todas esas carpetas de una vez.
 
