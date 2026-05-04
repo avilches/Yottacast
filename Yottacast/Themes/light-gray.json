@@ -79,10 +79,11 @@
     "text": { "color": "#6B7280", "size": 12 }
   },
 
-  "escBadge": {
+  "searchIcons": {
     "background": "#F3F4F6",
     "cornerRadius": 6,
-    "text": { "color": "#9CA3AF", "size": 11 }
+    "color": "#9CA3AF",
+    "size": 12
   },
 
   "updateBanner": {

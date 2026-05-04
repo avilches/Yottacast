@@ -493,7 +493,12 @@ public partial class MainWindow : Window {
         AppHandler.Instance.ShowCursor();
     }
 
-    private void OnSettingsButtonClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) {
+    private void OnSettingsIconClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) {
         (Application.Current as App)?.OpenSettings();
+    }
+
+    private void OnStickyIconClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) {
+        if (DataContext is MainWindowViewModel vm)
+            vm.ToggleStickyWindow();
     }
 }

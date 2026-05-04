@@ -43,10 +43,22 @@ public partial class MainWindowViewModel(
     [ObservableProperty] private string _updateBannerText = "";
     [ObservableProperty] private string? _searchHint;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StickyIcon))]
+    private bool _isStickyWindow = settings.StickyWindow;
+
     public bool IsEmojiMode => SelectedResult is EmojiGridResultViewModel;
     public string MetaSymbol => AppHandler.Instance.MetaSymbol;
     public string ShiftSymbol => AppHandler.Instance.ShiftSymbol;
     public string SettingsShortcutText => $"{MetaSymbol},  settings";
+    public string StickyIcon => IsStickyWindow ? "◉" : "◎";
+
+    public void ToggleStickyWindow() {
+        settings.StickyWindow = !settings.StickyWindow;
+        settings.Save();
+        settings.NotifyStickyWindowChanged();
+        IsStickyWindow = settings.StickyWindow;
+    }
 
     public IReadOnlyList<string> FooterHints => SelectedResult switch {
         EmojiGridResultViewModel =>
@@ -102,6 +114,7 @@ public partial class MainWindowViewModel(
         fileIconCache.IconLoaded += OnFileIconLoaded;
         userDocumentSearch.BadgeIconLoaded += OnBadgeIconLoaded;
         settings.SearchSettingsChanged += OnSearchSettingsChanged;
+        settings.StickyWindowChanged += () => IsStickyWindow = settings.StickyWindow;
         _ = StartTrackingNewAppsAsync();
     }
 

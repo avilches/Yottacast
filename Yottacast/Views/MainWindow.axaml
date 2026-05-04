@@ -169,19 +169,36 @@
                             </TextBox.Resources>
                         </TextBox>
 
-                        <!-- Right side: spinner while searching, ESC badge when idle and empty -->
-                        <Panel Grid.Column="1" VerticalAlignment="Center">
+                        <!-- Right side: action icons or spinner -->
+                        <Panel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,4,0">
 
-                            <!-- ESC badge (visible only when text is empty and not searching) -->
-                            <Border Background="{DynamicResource Theme.Esc.Background}"
-                                    CornerRadius="{DynamicResource Theme.Esc.CornerRadius}"
-                                    Padding="8,4"
-                                    IsVisible="{Binding SearchText, Converter={x:Static StringConverters.IsNullOrEmpty}}">
-                                <TextBlock Text="ESC"
-                                           Foreground="{DynamicResource Theme.Esc.Color}"
-                                           FontSize="{DynamicResource Theme.Esc.Size}"
-                                           FontWeight="Medium"/>
-                            </Border>
+                            <!-- Icons: settings + sticky (hidden while searching) -->
+                            <StackPanel Orientation="Horizontal"
+                                        Spacing="6"
+                                        IsVisible="{Binding !IsSearching}">
+                                <Button Click="OnSettingsIconClick"
+                                        Background="{DynamicResource Theme.SearchIcon.Background}"
+                                        BorderThickness="0"
+                                        Padding="8,4"
+                                        CornerRadius="{DynamicResource Theme.SearchIcon.CornerRadius}"
+                                        Cursor="Hand"
+                                        VerticalAlignment="Center">
+                                    <TextBlock Text="⚙"
+                                               Foreground="{DynamicResource Theme.SearchIcon.Color}"
+                                               FontSize="{DynamicResource Theme.SearchIcon.Size}"/>
+                                </Button>
+                                <Button Click="OnStickyIconClick"
+                                        Background="{DynamicResource Theme.SearchIcon.Background}"
+                                        BorderThickness="0"
+                                        Padding="8,4"
+                                        CornerRadius="{DynamicResource Theme.SearchIcon.CornerRadius}"
+                                        Cursor="Hand"
+                                        VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding StickyIcon}"
+                                               Foreground="{DynamicResource Theme.SearchIcon.Color}"
+                                               FontSize="{DynamicResource Theme.SearchIcon.Size}"/>
+                                </Button>
+                            </StackPanel>
 
                             <!-- Spinner (visible while deferred search is running) -->
                             <Ellipse Classes="spinner"
@@ -390,23 +407,12 @@
                     BorderThickness="0,1,0,0"
                     CornerRadius="{DynamicResource Theme.Window.CornerRadius.Bottom}">
                 <Grid ColumnDefinitions="Auto,*">
-                    <!-- Left: Settings button -->
-                    <Button Grid.Column="0"
-                            Click="OnSettingsButtonClick"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="0"
-                            Cursor="Hand"
-                            VerticalAlignment="Center">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <TextBlock Text="⚙"
-                                       Foreground="{DynamicResource Theme.Footer.Color}"
-                                       FontSize="{DynamicResource Theme.Footer.Size}"/>
-                            <TextBlock Text="{Binding SettingsShortcutText}"
-                                       Foreground="{DynamicResource Theme.Footer.Color}"
-                                       FontSize="{DynamicResource Theme.Footer.Size}"/>
-                        </StackPanel>
-                    </Button>
+                    <!-- Left: Settings shortcut hint -->
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding SettingsShortcutText}"
+                               Foreground="{DynamicResource Theme.Footer.Color}"
+                               FontSize="{DynamicResource Theme.Footer.Size}"
+                               VerticalAlignment="Center"/>
 
                     <!-- Right: dynamic hints -->
                     <ItemsControl Grid.Column="1"

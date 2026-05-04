@@ -320,13 +320,13 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
                 SetDouble(app, "Theme.Footer.Size",       footer["text"]?["size"]);
             }
 
-            // ── ESC Badge ──
-            var esc = json["escBadge"];
-            if (esc != null) {
-                SetBrush(app,  "Theme.Esc.Background",    esc["background"]);
-                SetCornerRadius(app, "Theme.Esc.CornerRadius", esc["cornerRadius"]);
-                SetBrush(app,  "Theme.Esc.Color",         esc["text"]?["color"]);
-                SetDouble(app, "Theme.Esc.Size",          esc["text"]?["size"]);
+            // ── Search Icons ──
+            var icons = json["searchIcons"];
+            if (icons != null) {
+                SetBrush(app,        "Theme.SearchIcon.Background",   icons["background"]);
+                SetCornerRadius(app, "Theme.SearchIcon.CornerRadius", icons["cornerRadius"]);
+                SetBrush(app,        "Theme.SearchIcon.Color",        icons["color"]);
+                SetDouble(app,       "Theme.SearchIcon.Size",         icons["size"]);
             }
 
             // ── Update Banner ──
@@ -456,11 +456,11 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
         app.Resources["Theme.Footer.Color"]      = B("#9A9AA4");
         app.Resources["Theme.Footer.Size"]       = 13.0;
 
-        // ── ESC Badge ──
-        app.Resources["Theme.Esc.Background"]   = B("#252529");
-        app.Resources["Theme.Esc.CornerRadius"]  = new CornerRadius(6);
-        app.Resources["Theme.Esc.Color"]         = B("#444448");
-        app.Resources["Theme.Esc.Size"]          = 12.0;
+        // ── Search Icons ──
+        app.Resources["Theme.SearchIcon.Background"]   = B("#252529");
+        app.Resources["Theme.SearchIcon.CornerRadius"] = new CornerRadius(6);
+        app.Resources["Theme.SearchIcon.Color"]        = B("#505055");
+        app.Resources["Theme.SearchIcon.Size"]         = 13.0;
 
         // ── Update Banner ──
         app.Resources["Theme.Update.Background"] = B("#2C5AF0");
