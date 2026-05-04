@@ -268,13 +268,12 @@ public partial class MainWindow : Window {
         }
 
         // Emoji shortcuts: handled in tunnel so the TextBox cannot consume them first.
-        // Copy (Cmd+C / Ctrl+C): copy to clipboard and hide the launcher (no paste).
+        // Copy (Cmd+C / Ctrl+C): copy to clipboard and show feedback message; window stays open.
         var (copyMods, copyKey) = AppHandler.Instance.CopyShortcut;
-        if (e.Key == copyKey && e.KeyModifiers == copyMods && vm.SelectedResult is { OnCopy: { } copyAction }) {
+        if (e.Key == copyKey && e.KeyModifiers == copyMods && vm.SelectedResult is { OnCopy: { } copyAction } result) {
             copyAction();
-            vm.CleanAndSaveHistory("Copy");
-            Hide();
-            AppHandler.Instance.OnHide();
+            if (result.CopiedMessage is { } msg)
+                vm.ShowCopiedMessage(msg);
             e.Handled = true;
             return;
         }
@@ -386,7 +385,7 @@ public partial class MainWindow : Window {
                 e.Handled = true;
                 break;
 
-            case Key.OemComma when e.KeyModifiers.HasFlag(KeyModifiers.Meta):
+            case Key.OemSemicolon when e.KeyModifiers.HasFlag(KeyModifiers.Meta):
                 (Application.Current as App)?.OpenSettings();
                 e.Handled = true;
                 break;
