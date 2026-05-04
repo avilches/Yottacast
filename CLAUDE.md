@@ -109,17 +109,23 @@ Yottacast.sln
 +-- Yottacast/                 <- GUI app (Avalonia, WinExe). Views, ViewModels, Themes, AppHandler (codigo OS-especifico de UI)
 +-- Yottacast.Core/            <- Shared library (sin UI). Search sources, PlatformProvider, Services, ViewModels base
 +-- Yottacast.Core.Tests/      <- Tests xUnit
++-- Yottacast.Ipc/             <- Daemon headless gRPC. Expone Core via Unix socket para UI Swift futura
++-- Yottacast.Ipc.Tests/       <- Tests xUnit de mappers IPC
 ```
 
 ## Build & Run
 
 ```bash
-# GUI
+# GUI (Avalonia)
 cd Yottacast && dotnet run
 dotnet publish -c Release -r osx-arm64 --self-contained
 
+# Daemon IPC (headless)
+cd Yottacast.Ipc && dotnet run
+
 # Tests
 cd Yottacast.Core.Tests && dotnet test
+cd Yottacast.Ipc.Tests && dotnet test
 ```
 
 ## Reglas
@@ -222,6 +228,11 @@ Si un fichero de doc empieza a ser demasiado grande, sugiere dividirlo en dos.
 - `docs/search-scoring.md` — Algoritmo de puntuacion y ordenacion de resultados entre fuentes.
 - `docs/search-dictionary.md` — Definiciones de diccionario: fuente local (kaikki/SQLite) con fallback a API Wiktionary, modos prefix/showAlways, conversion automatica JSONL→SQLite, settings. Leer tambien `tools/kaikki/README.md` si se toca la generacion de datos.
 - `docs/search-history.md` — Historial de búsquedas: qué se guarda, persistencia, navegación con ↑/Ctrl+↑/Ctrl+↓, settings.
+
+**IPC daemon:**
+
+- `docs/ipc-daemon.md` — Proyecto `Yottacast.Ipc`: para que sirve, servicios gRPC expuestos, secuencia de arranque,
+  como probar con grpcurl.
 
 **Internals:**
 

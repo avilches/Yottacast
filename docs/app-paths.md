@@ -34,6 +34,8 @@ disco obtiene la ruta de una unica clase centralizada. Esto garantiza que:
 | Exchange rates   | Cache           | `exchange-rates.json`         | Cache de tasas de cambio descargadas (JSON)                          |
 | Dict JSONL       | Cache           | `dictionary/{lang}.jsonl`     | Diccionario basico descargable (kaikki, 1 linea por entrada)         |
 | Dict SQLite      | Cache           | `dictionary/{lang}.db`        | Diccionario local compilado; la app lo genera del JSONL si no existe |
+| IPC socket       | Cache           | `core.sock`                   | Unix domain socket del daemon gRPC (creado al arrancar, borrado al salir) |
+| IPC PID file     | Cache           | `core.pid`                    | PID del daemon en ejecucion; evita instancias duplicadas |
 
 ### Invariantes
 
@@ -45,7 +47,7 @@ disco obtiene la ruta de una unica clase centralizada. Esto garantiza que:
 
 > **Verificar en:** `Yottacast.Core/AppPaths.cs` (definiciones), consumidores: `App.axaml.cs`, `AppIconCache.cs`,
 `FileIconCache.cs`, `UserDocumentSearch.cs`, `UserSettings.cs`, `EmojiDataLoader.cs`, `ExchangeRateService.cs`,
-`PluginService.cs`, `EmojiUsageStore.cs`, `HistoryService.cs`, `SystemSettingsSearch.cs`.
+`PluginService.cs`, `EmojiUsageStore.cs`, `HistoryService.cs`, `SystemSettingsSearch.cs`, `Yottacast.Ipc/Program.cs`.
 
 ## Todos los valores por defecto estan centralizados
 
