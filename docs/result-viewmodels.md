@@ -27,6 +27,7 @@ Clase base abstracta. Contiene las propiedades comunes a todos los tipos de resu
 |---|---|---|
 | `Score` | `double` | Puntuacion para ordenacion (mayor = mas relevante). Ver `docs/search-scoring.md` |
 | `Title` | `string` | Texto principal del resultado |
+| `CopiedMessage` | `string?` | Mensaje mostrado en SearchHint tras Cmd+C. `null` = no mostrar mensaje |
 
 ### Callbacks de accion
 
