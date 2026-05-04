@@ -86,6 +86,15 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
                         logger.LogInformation("Calculator: copied conversion result \"{Value}\"", copied);
                         clipboard.CopyText(copied);
                     },
+                    OnCopy = () => {
+                        var copied = vm.SelectedCell switch {
+                            ConversionCell.NormFrom => capturedNorm ?? capturedTo,
+                            _                       => capturedTo,
+                        };
+                        logger.LogInformation("Calculator: copied conversion via Cmd+C \"{Value}\"", copied);
+                        clipboard.CopyText(copied);
+                    },
+                    CopiedMessage = "Result copied!",
                 };
                 return [vm];
             }
@@ -108,6 +117,11 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
                         logger.LogInformation("Calculator: copied result \"{Value}\"", captured);
                         clipboard.CopyText(captured);
                     },
+                    OnCopy = () => {
+                        logger.LogInformation("Calculator: copied result via Cmd+C \"{Value}\"", captured);
+                        clipboard.CopyText(captured);
+                    },
+                    CopiedMessage = "Result copied!",
                 }];
             }
             case ErrorResult r when r.ErrorKind is CalcErrorKind.IncompatibleUnitsConvert or CalcErrorKind.IncompatibleUnitsOp:

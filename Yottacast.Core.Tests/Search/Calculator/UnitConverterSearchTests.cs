@@ -79,6 +79,15 @@ public class UnitConverterSearchTests(MathJsEngineFixture fixture) {
         Assert.Equal("1000 m", copied);
     }
 
+    [Fact]
+    public void ConversionResult_HasOnCopyAndCopiedMessage() {
+        var search = BuildSearch(out _);
+        var results = search.Search("5 km to miles", 5);
+        var item = Assert.Single(results.OfType<ViewModels.ConversionResultItemViewModel>());
+        Assert.NotNull(item.OnCopy);
+        Assert.Equal("Result copied!", item.CopiedMessage);
+    }
+
     // ── Non-conversion queries yield nothing ──────────────────────────────────
 
     public static TheoryData<string> NonConversionCases => new() {
