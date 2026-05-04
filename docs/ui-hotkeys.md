@@ -132,11 +132,11 @@ Invariantes:
 
 ---
 
-## 7. Abrir preferencias (Cmd+;)
+## 7. Abrir preferencias (Cmd+,)
 
-Pulsar `Cmd+;` mientras la ventana principal esta visible abre la ventana de preferencias. Si la SettingsWindow ya esta visible, simplemente se activa (se trae al frente) sin crear una nueva instancia. Si no esta visible, se crea una nueva instancia de `SettingsWindow` con un `SettingsWindowViewModel` transient.
+Pulsar `Cmd+,` mientras la ventana principal esta visible abre la ventana de preferencias. Si la SettingsWindow ya esta visible, simplemente se activa (se trae al frente) sin crear una nueva instancia. Si no esta visible, se crea una nueva instancia de `SettingsWindow` con un `SettingsWindowViewModel` transient.
 
-> **Verificar en:** `MainWindow.axaml.cs` (`OnKeyDown` case `Key.OemSemicolon`), `App.axaml.cs` (`OpenSettings`)
+> **Verificar en:** `MainWindow.axaml.cs` (`OnKeyDown` case `Key.OemComma`), `App.axaml.cs` (`OpenSettings`)
 
 ---
 
@@ -211,7 +211,7 @@ Si el usuario pulsa el mismo hotkey que ya tenia, el hook global detecta que Set
 | Flecha arriba / abajo        | Ventana principal       | Navegar resultados (circular)             |
 | Flecha izquierda / derecha   | Ventana principal       | Delegada al item si tiene handler         |
 | Enter                        | Ventana principal       | Activar resultado seleccionado            |
-| Cmd+; (macOS)                | Ventana principal       | Abrir preferencias                        |
+| Cmd+, (macOS)                | Ventana principal       | Abrir preferencias                        |
 | Cmd+C / Ctrl+C              | Ventana principal       | Copiar valor del resultado seleccionado (sin cerrar) |
 | Cmd+W / Ctrl+F4 / Ctrl+W    | Ventana principal       | Ocultar ventana (no cerrar)               |
 | Cmd+Q (macOS)               | Ventana principal       | Cerrar la aplicacion completamente        |

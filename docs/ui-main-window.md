@@ -126,7 +126,7 @@ El atajo nativo de "cerrar ventana" se intercepta y se redirige a ocultar la ven
 
 | Atajo | Accion |
 |---|---|
-| Cmd+; (macOS) | Abre la ventana de Settings |
+| Cmd+, (macOS) | Abre la ventana de Settings |
 | Cmd+C / Ctrl+C | Copia el valor del resultado seleccionado sin cerrar la ventana |
 | Alt+Space | Se consume sin accion para evitar el beep nativo de macOS |
 
@@ -211,7 +211,7 @@ El footer de la ventana principal es siempre visible, independientemente de si h
 
 ### Lado izquierdo: botón Settings
 
-El botón de Settings ocupa la parte izquierda del footer. Muestra un icono de engranaje y el atajo de teclado `⌘;` (macOS). Al pulsarlo, abre la ventana de preferencias (equivalente a `Cmd+;`).
+El botón de Settings ocupa la parte izquierda del footer. Muestra un icono de engranaje y el atajo de teclado `⌘,` (macOS). Al pulsarlo, abre la ventana de preferencias (equivalente a `Cmd+,`).
 
 ### Lado derecho: hints dinámicos por tipo de resultado
 

@@ -385,7 +385,7 @@ public partial class MainWindow : Window {
                 e.Handled = true;
                 break;
 
-            case Key.OemSemicolon when e.KeyModifiers.HasFlag(KeyModifiers.Meta):
+            case Key.OemComma when e.KeyModifiers.HasFlag(KeyModifiers.Meta):
                 (Application.Current as App)?.OpenSettings();
                 e.Handled = true;
                 break;

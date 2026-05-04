@@ -46,7 +46,7 @@ public partial class MainWindowViewModel(
     public bool IsEmojiMode => SelectedResult is EmojiGridResultViewModel;
     public string MetaSymbol => AppHandler.Instance.MetaSymbol;
     public string ShiftSymbol => AppHandler.Instance.ShiftSymbol;
-    public string SettingsShortcutText => $"{MetaSymbol};  settings";
+    public string SettingsShortcutText => $"{MetaSymbol},  settings";
 
     public IReadOnlyList<string> FooterHints => SelectedResult switch {
         EmojiGridResultViewModel =>
