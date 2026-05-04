@@ -1,0 +1,61 @@
+syntax = "proto3";
+option csharp_namespace = "Yottacast.Ipc.Proto";
+package yottacast;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
+
+service SettingsService {
+  rpc GetSettings(google.protobuf.Empty) returns (SettingsMessage);
+  rpc UpdateSettings(UpdateSettingsRequest) returns (google.protobuf.Empty);
+  rpc WatchSettings(google.protobuf.Empty) returns (stream SettingsMessage);
+}
+
+message SettingsMessage {
+  string browser = 1;
+  string terminal = 2;
+  string theme = 3;
+  string hotkey = 4;
+  repeated string search_folders = 5;
+  repeated string app_directories = 6;
+  bool enable_app_search = 7;
+  bool enable_calculator = 8;
+  bool enable_clipboard = 9;
+  bool enable_emoji = 10;
+  bool enable_file_search = 11;
+  bool enable_web_search = 12;
+  bool show_disabled_web_search_engines = 13;
+  bool file_search_only_specific_folders = 14;
+  repeated WebSearchEngineMessage web_search_engines = 15;
+  google.protobuf.Int32Value window_x = 16;
+  google.protobuf.Int32Value window_y = 17;
+  bool sticky_window = 18;
+  string calculator_currency_a = 19;
+  string calculator_currency_b = 20;
+  int32 calculator_decimal_places = 21;
+  bool calculator_include_metals = 22;
+  bool calculator_include_crypto = 23;
+  int32 exchange_rate_refresh_interval_hours = 24;
+  bool enable_dictionary = 25;
+  string dictionary_prefix = 26;
+  bool dictionary_show_always = 27;
+  repeated string dictionary_languages = 28;
+  bool enable_history = 29;
+  int32 history_max_items = 30;
+  bool keep_value_when_hide = 31;
+  int32 keep_value_when_hide_duration = 32;
+  bool enable_system_settings = 33;
+}
+
+message WebSearchEngineMessage {
+  string id = 1;
+  bool enabled = 2;
+  // 0=PrefixOnly 1=ShowAlways
+  int32 mode = 3;
+  string prefix = 4;
+  string query_url = 5;
+}
+
+message UpdateSettingsRequest {
+  SettingsMessage settings = 1;
+}

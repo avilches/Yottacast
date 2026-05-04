@@ -79,4 +79,12 @@ public static class AppPaths {
     public static readonly string UserPreferencePanesDir = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
         "Library", "PreferencePanes");
+
+    // ── IPC (gRPC daemon) ────────────────────────────────────────────────────
+
+    /// <summary>Unix domain socket for IPC between the gRPC daemon and Swift UI.</summary>
+    public static readonly string IpcSocket = Path.Combine(CacheDir, "core.sock");
+
+    /// <summary>PID file to prevent multiple daemon instances.</summary>
+    public static readonly string IpcPidFile = Path.Combine(CacheDir, "core.pid");
 }

@@ -1,0 +1,27 @@
+syntax = "proto3";
+option csharp_namespace = "Yottacast.Ipc.Proto";
+package yottacast;
+
+import "google/protobuf/empty.proto";
+
+service IconService {
+  rpc GetIcon(IconRequest) returns (IconResponse);
+  rpc WatchIconsLoaded(google.protobuf.Empty) returns (stream IconLoadedEvent);
+}
+
+message IconRequest {
+  string icon_id = 1;
+  // "app" | "file" | "badge"
+  string type = 2;
+}
+
+message IconResponse {
+  bytes png_data = 1;
+  bool available = 2;
+}
+
+message IconLoadedEvent {
+  // Empty icon_id = generic notification (some icon is now available).
+  // Swift should re-request icons for visible results on receiving this.
+  string icon_id = 1;
+}
