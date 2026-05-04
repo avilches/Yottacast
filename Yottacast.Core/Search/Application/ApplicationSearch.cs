@@ -21,6 +21,7 @@ public sealed class ApplicationSearch(
     UserSettings settings,
     PlatformProvider platform,
     AppIconCache iconCache,
+    ClipboardService clipboard,
     ILogger<ApplicationSearch> logger)
     : IInstantSearchSource, IDisposable {
     private readonly ConcurrentDictionary<string, AppInfo> _apps =
@@ -73,15 +74,20 @@ public sealed class ApplicationSearch(
         return Task.CompletedTask;
     }
 
-    public ResultItemViewModel CreateResultItem(AppInfo app, double score = 1.0) => new() {
-        Icon = "📱",
-        IconBytes = iconCache.Get(app.Path),
-        Title = app.Name,
-        Subtitle = app.Path,
-        Category = "Application",
-        Score = score,
-        OnActivate = () => platform.LaunchApp(app.Path),
-    };
+    public ResultItemViewModel CreateResultItem(AppInfo app, double score = 1.0) {
+        var path = app.Path;
+        return new() {
+            Icon = "📱",
+            IconBytes = iconCache.Get(path),
+            Title = app.Name,
+            Subtitle = path,
+            Category = "Application",
+            Score = score,
+            OnActivate = () => platform.LaunchApp(path),
+            OnCopy = () => clipboard.CopyText(path),
+            CopiedMessage = "Path copied!",
+        };
+    }
 
     public IReadOnlyList<BaseResultItemViewModel> Search(string query, int limit) {
         if (!settings.EnableAppSearch) return [];

@@ -9,10 +9,15 @@ public abstract class BaseResultItemViewModel {
     public string Title { get; init; } = "";
     public Action? OnActivate { get; init; }
     /// <summary>
-    /// Copy action (e.g. Cmd+C in emoji mode): copies without hiding the window or pasting.
-    /// Null for non-emoji results, letting the system handle Cmd+C normally.
+    /// Copy action (Cmd+C): copies relevant content to clipboard without hiding the window.
+    /// When null, Cmd+C is not handled by this item.
     /// </summary>
     public Action? OnCopy { get; init; }
+    /// <summary>
+    /// Message shown to the user after a successful copy action (e.g. "Path copied!", "Result copied!").
+    /// Null when OnCopy is null.
+    /// </summary>
+    public string? CopiedMessage { get; init; }
     /// <summary>
     /// Toggle favorite action (e.g. Cmd+Shift+F in emoji mode): marks/unmarks the selected item as favorite.
     /// </summary>
