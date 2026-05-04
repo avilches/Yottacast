@@ -164,7 +164,11 @@ public partial class App : Application {
             DataContext = _settingsVm,
             Topmost = _services.GetRequiredService<UserSettings>().StickyWindow,
         };
-        _settingsWindow.Closed += (_, _) => AppHandler.Instance.HideDockIcon();
+        _settingsWindow.Closed += (_, _) => {
+            AppHandler.Instance.HideDockIcon();
+            var mw = (ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+            if (mw?.IsVisible == true) mw.Activate();
+        };
         AppHandler.Instance.ShowDockIcon();
         _settingsWindow.Show();
     }

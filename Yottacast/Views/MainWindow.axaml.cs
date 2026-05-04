@@ -271,6 +271,7 @@ public partial class MainWindow : Window {
         // Copy (Cmd+C / Ctrl+C): copy to clipboard and show feedback message; window stays open.
         var (copyMods, copyKey) = AppHandler.Instance.CopyShortcut;
         if (e.Key == copyKey && e.KeyModifiers == copyMods && vm.SelectedResult is { OnCopy: { } copyAction } result) {
+            if (Math.Abs(SearchBox.SelectionEnd - SearchBox.SelectionStart) > 0) return;
             copyAction();
             if (result.CopiedMessage is { } msg)
                 vm.ShowCopiedMessage(msg);

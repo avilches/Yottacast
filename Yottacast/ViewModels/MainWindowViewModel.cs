@@ -52,7 +52,7 @@ public partial class MainWindowViewModel(
         EmojiGridResultViewModel =>
             [$"{MetaSymbol}C  copy", "↵  paste", $"{MetaSymbol}{ShiftSymbol}F  fav", "Esc  clear"],
         CalculatorResultItemViewModel or ConversionResultItemViewModel =>
-            ["↵  copy", $"{MetaSymbol}C  copy", "Esc  clear"],
+            ["↵  paste", $"{MetaSymbol}C  copy", "Esc  clear"],
         DictionaryResultViewModel =>
             ["↵  open", $"{MetaSymbol}C  definition", "Esc  clear"],
         ResultItemViewModel { OnCopy: not null } =>
