@@ -8,6 +8,7 @@ namespace Yottacast.Core.Search.Dictionary;
 public class DictionarySource(
     UserSettings settings,
     BrowserDiscovery browserDiscovery,
+    ClipboardService clipboard,
     ILogger<DictionarySource> logger) : IDeferredSearchSource {
 
     private static readonly HttpClient Http = new(new HttpClientHandler()) {
@@ -100,6 +101,7 @@ public class DictionarySource(
             logger.LogDebug("Dictionary [{Lang}] local: \"{Word}\" → {Count} definitions", langCode, searchWord, defs.Count);
             var langName = GetLangName(langCode);
             var capturedUrl = $"https://{langCode}.wiktionary.org/wiki/{Uri.EscapeDataString(searchWord)}";
+            var capturedDef = defs[0].Definition;
             results.Add(new DictionaryResultViewModel {
                 IconBytes = IconBytes,
                 Word = searchWord,
@@ -112,6 +114,8 @@ public class DictionarySource(
                     if (browser is not null)
                         browserDiscovery.OpenUrl(capturedUrl, browser);
                 },
+                OnCopy = () => clipboard.CopyText(capturedDef),
+                CopiedMessage = "Definition copied!",
             });
         }
 
@@ -161,6 +165,7 @@ public class DictionarySource(
                     logger.LogDebug("Dictionary [{Lang}] API: \"{Word}\" → {Count} definitions", langCode, searchWord, defs.Count);
                     var langName = entries.FirstOrDefault()?.Language ?? langCode;
                     var capturedUrl = $"https://{langCode}.wiktionary.org/wiki/{Uri.EscapeDataString(searchWord)}";
+                    var capturedDef = defs[0].Definition;
                     results.Add(new DictionaryResultViewModel {
                         IconBytes = IconBytes,
                         Word = searchWord,
@@ -173,6 +178,8 @@ public class DictionarySource(
                             if (browser is not null)
                                 browserDiscovery.OpenUrl(capturedUrl, browser);
                         },
+                        OnCopy = () => clipboard.CopyText(capturedDef),
+                        CopiedMessage = "Definition copied!",
                     });
                 }
             }
