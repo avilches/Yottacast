@@ -95,14 +95,17 @@ public partial class App : Application {
             userSettings.StickyWindowChanged += () =>
                 Dispatcher.UIThread.InvokeAsync(() => mainWindow.Topmost = userSettings.StickyWindow);
 
-            // Auto-hide when losing focus in non-sticky mode (Alfred-style).
+            // Auto-hide when losing focus (Alfred-style).
+            // Non-sticky: always hide. Sticky: hide only when search box is empty.
             // Guard: don't hide if our own Settings window is what took focus.
             mainWindow.Deactivated += (_, _) => {
-                if (!userSettings.StickyWindow
-                    && mainWindow.IsVisible
-                    && _settingsWindow is not { IsVisible: true }) {
+                if (!mainWindow.IsVisible || _settingsWindow is { IsVisible: true }) return;
+                var isEmpty = string.IsNullOrEmpty(mainWindowViewModel.SearchText);
+                if (!userSettings.StickyWindow || isEmpty) {
                     mainWindow.Hide();
                     AppHandler.Instance.OnHide();
+                } else {
+                    mainWindowViewModel.StartDecayTimer();
                 }
             };
 

@@ -40,15 +40,6 @@ public partial class MainWindow : Window {
             if (DataContext is MainWindowViewModel vm)
                 vm.CancelDecayTimer();
         };
-        Deactivated += (_, _) => {
-            // In sticky mode the window stays visible on deactivation — start the decay timer.
-            // In non-sticky mode, App.axaml.cs calls Hide() which sets IsVisible=false,
-            // and OnPropertyChanged handles it.
-            if (_settings.StickyWindow
-                && DataContext is MainWindowViewModel vm) {
-                vm.StartDecayTimer();
-            }
-        };
         // Intercept LEFT/RIGHT in the tunnel phase so items with OnLeft/OnRight
         // can capture them before the TextBox moves its cursor.
         AddHandler(KeyDownEvent, OnTunnelKeyDown, RoutingStrategies.Tunnel);
