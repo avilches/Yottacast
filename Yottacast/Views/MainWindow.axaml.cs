@@ -493,4 +493,8 @@ public partial class MainWindow : Window {
         _cursorHidden = false;
         AppHandler.Instance.ShowCursor();
     }
+
+    private void OnSettingsButtonClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) {
+        (Application.Current as App)?.OpenSettings();
+    }
 }
