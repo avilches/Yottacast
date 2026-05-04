@@ -132,15 +132,32 @@ Invariantes:
 
 ---
 
-## 7. Abrir preferencias (Cmd+,)
+## 7. Abrir preferencias (Cmd+;)
 
-Pulsar `Cmd+,` mientras la ventana principal esta visible abre la ventana de preferencias. Si la SettingsWindow ya esta visible, simplemente se activa (se trae al frente) sin crear una nueva instancia. Si no esta visible, se crea una nueva instancia de `SettingsWindow` con un `SettingsWindowViewModel` transient.
+Pulsar `Cmd+;` mientras la ventana principal esta visible abre la ventana de preferencias. Si la SettingsWindow ya esta visible, simplemente se activa (se trae al frente) sin crear una nueva instancia. Si no esta visible, se crea una nueva instancia de `SettingsWindow` con un `SettingsWindowViewModel` transient.
 
-> **Verificar en:** `MainWindow.axaml.cs` (`OnKeyDown` case `Key.OemComma`), `App.axaml.cs` (`OpenSettings`)
+> **Verificar en:** `MainWindow.axaml.cs` (`OnKeyDown` case `Key.OemSemicolon`), `App.axaml.cs` (`OpenSettings`)
 
 ---
 
-## 8. Control del SearchBox segun visibilidad
+## 8. Copiar resultado (Cmd+C)
+
+`Cmd+C` (macOS) / `Ctrl+C` (Windows/Linux) copia el valor del resultado seleccionado **sin cerrar la ventana**. Aparece un mensaje breve en el área de `SearchHint` durante 1.5 s.
+
+| Tipo | Qué copia | Mensaje |
+|---|---|---|
+| Apps | Path del bundle | "Path copied!" |
+| Archivos | Path del fichero | "Path copied!" |
+| Calculadora | Resultado numérico | "Result copied!" |
+| Conversor | Celda seleccionada | "Result copied!" |
+| Diccionario | Primera definición | "Definition copied!" |
+| Emoji | El emoji (sin paste) | "Emoji copied!" |
+
+> **Verificar en:** `MainWindow.axaml.cs` (`OnTunnelKeyDown`, handler `CopyShortcut`), `MainWindowViewModel.cs` (`ShowCopiedMessage`).
+
+---
+
+## 10. Control del SearchBox segun visibilidad
 
 Cuando la ventana principal se oculta, el SearchBox se desactiva (`IsEnabled = false`). Cuando se muestra de nuevo, se reactiva y recibe el foco automaticamente. Adicionalmente, al ocultar la ventana se desactiva el flag `IsAltPressed` del ViewModel para evitar estados residuales.
 
@@ -148,7 +165,7 @@ Cuando la ventana principal se oculta, el SearchBox se desactiva (`IsEnabled = f
 
 ---
 
-## 9. Ocultacion automatica del cursor del raton
+## 11. Ocultacion automatica del cursor del raton
 
 Mientras el usuario escribe, el cursor del raton se oculta automaticamente para no distraer. Se restaura cuando el usuario mueve el raton a una posicion diferente de la que tenia al ocultarse. El sistema rastrea la posicion en coordenadas de pantalla para distinguir movimientos reales de movimientos sinteticos causados por cambios de tamano de la ventana (cuando aparecen o desaparecen resultados).
 
@@ -161,7 +178,7 @@ Invariantes:
 
 ---
 
-## 10. Captura de hotkey en preferencias
+## 12. Captura de hotkey en preferencias
 
 El campo hotkey muestra siempre 4 badges de modificadores (⌃/Ctrl, ⌥/Alt, ⇧, ⌘/Meta con simbolos especificos por OS) y el nombre de la tecla. Los badges activos (el modificador forma parte del hotkey guardado) se muestran con opacidad plena; los inactivos, atenuados.
 
@@ -194,8 +211,8 @@ Si el usuario pulsa el mismo hotkey que ya tenia, el hook global detecta que Set
 | Flecha arriba / abajo        | Ventana principal       | Navegar resultados (circular)             |
 | Flecha izquierda / derecha   | Ventana principal       | Delegada al item si tiene handler         |
 | Enter                        | Ventana principal       | Activar resultado seleccionado            |
-| Cmd+, (macOS)                | Ventana principal       | Abrir preferencias                        |
+| Cmd+; (macOS)                | Ventana principal       | Abrir preferencias                        |
+| Cmd+C / Ctrl+C              | Ventana principal       | Copiar valor del resultado seleccionado (sin cerrar) |
 | Cmd+W / Ctrl+F4 / Ctrl+W    | Ventana principal       | Ocultar ventana (no cerrar)               |
 | Cmd+Q (macOS)               | Ventana principal       | Cerrar la aplicacion completamente        |
-| Cmd+C / Ctrl+C              | Modo emoji              | Copiar emoji, ocultar launcher (sin pegar) |
 | Cmd+Shift+F / Ctrl+Shift+F  | Modo emoji              | Marcar/desmarcar emoji como favorito      |

@@ -307,6 +307,14 @@ public class EmojiSearchTests {
     }
 
     [Fact]
+    public async Task OnCopy_HasCopiedMessage() {
+        var json = """[["😀","grinning face",["grinning"],"Smileys & Emotion",1]]""";
+        var search = await BuildSearchWithCache(json);
+        var grid = search.Search(":", 10).OfType<EmojiGridResultViewModel>().First();
+        Assert.Equal("Emoji copied!", grid.CopiedMessage);
+    }
+
+    [Fact]
     public async Task DefaultGrid_CellsHaveCorrectSections() {
         var json = """
         [

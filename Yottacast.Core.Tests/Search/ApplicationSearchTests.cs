@@ -38,7 +38,8 @@ public class ApplicationSearchTests {
         var platform = new FakePlatformProviderWithApps(appPaths);
         var settings = UserSettings.Load(platform);
         var iconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
-        var search = new ApplicationSearch(settings, platform, iconCache, NullLogger<ApplicationSearch>.Instance);
+        var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
+        var search = new ApplicationSearch(settings, platform, iconCache, clipboard, NullLogger<ApplicationSearch>.Instance);
         return (search, settings, platform);
     }
 
@@ -392,6 +393,22 @@ public class ApplicationSearchTests {
 
         Assert.Null(search.Find("Chrome"));
         Assert.NotNull(search.Find("Safari"));
+    }
+
+    // ── OnCopy / CopiedMessage ────────────────────────────────────────────────
+
+    [Fact]
+    public async Task CreateResultItem_HasOnCopyAndCopiedMessage() {
+        var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
+        var platform = new FakePlatformProviderWithApps(["/Applications/Safari.app"]);
+        var settings = UserSettings.Load(platform);
+        var iconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
+        var search = new ApplicationSearch(settings, platform, iconCache, clipboard, NullLogger<ApplicationSearch>.Instance);
+        await StartAndWaitAsync(search);
+        var results = SearchAll(search, "safari");
+        var item = Assert.Single(results);
+        Assert.NotNull(item.OnCopy);
+        Assert.Equal("Path copied!", item.CopiedMessage);
     }
 
     [Fact]

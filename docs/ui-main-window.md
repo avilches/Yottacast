@@ -126,7 +126,8 @@ El atajo nativo de "cerrar ventana" se intercepta y se redirige a ocultar la ven
 
 | Atajo | Accion |
 |---|---|
-| Cmd+, (macOS) | Abre la ventana de Settings |
+| Cmd+; (macOS) | Abre la ventana de Settings |
+| Cmd+C / Ctrl+C | Copia el valor del resultado seleccionado sin cerrar la ventana |
 | Alt+Space | Se consume sin accion para evitar el beep nativo de macOS |
 
 > **Verificar en:** `MainWindow.axaml.cs` -- `OnKeyDown`. `App.axaml.cs` -- `ShutdownRequested`. `MacAppHandler.cs`, `WindowsAppHandler.cs`, `LinuxAppHandler.cs` -- `CloseWindowShortcut`.
@@ -204,7 +205,41 @@ Cuando hay una version nueva disponible, se muestra una franja clicable al pie d
 
 ---
 
-## 11. Score visible como modo debug
+## 11. Footer: Settings y hints dinámicos
+
+El footer de la ventana principal es siempre visible, independientemente de si hay resultados o no.
+
+### Lado izquierdo: botón Settings
+
+El botón de Settings ocupa la parte izquierda del footer. Muestra un icono de engranaje y el atajo de teclado `⌘;` (macOS). Al pulsarlo, abre la ventana de preferencias (equivalente a `Cmd+;`).
+
+### Lado derecho: hints dinámicos por tipo de resultado
+
+Los hints del lado derecho son contextuales: solo se muestran cuando hay resultados y reflejan las acciones disponibles para el tipo de resultado seleccionado. Cuando no hay resultados, el área de hints está vacía.
+
+Cada tipo de resultado tiene sus propios hints:
+
+| Tipo | Hints mostrados |
+|---|---|
+| Apps | `↵ Launch` · `⌘C Path` |
+| Archivos | `↵ Open` · `⌘C Path` |
+| Calculadora | `↵ Copy result` · `⌘C Copy` |
+| Conversor | `↵ Copy result` · `⌘C Copy` · `←→ Switch cell` |
+| Diccionario | `↵ Open Wiktionary` · `⌘C Definition` |
+| Emoji | `↵ Copy & paste` · `⌘C Copy` · `⌘⇧F Favorite` |
+| Búsqueda web | `↵ Search` |
+
+`FooterHints` es una propiedad observable del ViewModel que se actualiza en cada cambio de resultado seleccionado.
+
+### Sin contador de resultados
+
+El footer no muestra el número de resultados. La cantidad de items es visible directamente por la longitud de la lista.
+
+> **Verificar en:** `MainWindow.axaml` (sección footer), `MainWindowViewModel.cs` (`FooterHints`).
+
+---
+
+## 12. Score visible como modo debug
 
 En modo normal, cada item estandar muestra su etiqueta de categoria (ej. "App", "File", "Web"). Si el usuario mantiene pulsada la tecla Alt, la categoria se reemplaza por el score numerico (formato dos decimales). Esto permite depurar el ranking sin herramientas externas.
 
@@ -212,7 +247,7 @@ En modo normal, cada item estandar muestra su etiqueta de categoria (ej. "App", 
 
 ---
 
-## 12. Hint de busqueda
+## 13. Hint de busqueda
 
 Cuando una fuente instant proporciona un hint (ej. la calculadora detecta un error corregible), se muestra como texto rojo debajo del campo de busqueda. Se limpia automaticamente en cada nueva busqueda o cuando el texto se vacia.
 
@@ -220,7 +255,7 @@ Cuando una fuente instant proporciona un hint (ej. la calculadora detecta un err
 
 ---
 
-## 13. Posicionamiento y arrastre
+## 14. Posicionamiento y arrastre
 
 ### Arrastre con el raton
 
@@ -257,7 +292,7 @@ La posicion se actualiza en memoria en cada movimiento via `PositionChanged` (si
 
 ---
 
-## 14. Layout de la ventana
+## 15. Layout de la ventana
 
 | Propiedad | Valor |
 |---|---|
@@ -273,7 +308,7 @@ La posicion se actualiza en memoria en cada movimiento via `PositionChanged` (si
 
 ---
 
-## 15. Preservación del texto al ocultar (decay timer)
+## 16. Preservación del texto al ocultar (decay timer)
 
 El comportamiento del campo de búsqueda al ocultar la ventana depende del setting `KeepValueWhenHide`:
 

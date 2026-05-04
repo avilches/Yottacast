@@ -17,7 +17,15 @@ public class UserDocumentSearchTests {
         var settings = UserSettings.Load(platform);
         var fileSearch = new FileSearch(platform);
         var fileIconCache = new FileIconCache(platform, NullLogger<FileIconCache>.Instance);
-        return new UserDocumentSearch(settings, fileSearch, fileIconCache, platform, NullLogger<UserDocumentSearch>.Instance);
+        return new UserDocumentSearch(settings, fileSearch, fileIconCache, platform, NullLogger<UserDocumentSearch>.Instance, new ClipboardService(NullLogger<ClipboardService>.Instance));
+    }
+
+    private static UserDocumentSearch BuildSearch(ClipboardService clipboard, params FileResult[] files) {
+        var platform = new FakePlatformProvider(files);
+        var settings = UserSettings.Load(platform);
+        var fileSearch = new FileSearch(platform);
+        var fileIconCache = new FileIconCache(platform, NullLogger<FileIconCache>.Instance);
+        return new UserDocumentSearch(settings, fileSearch, fileIconCache, platform, NullLogger<UserDocumentSearch>.Instance, clipboard);
     }
 
     /// <summary>Collects all snapshots and returns the last one (final state).</summary>
@@ -76,6 +84,22 @@ public class UserDocumentSearchTests {
         var results = await SearchAllAsync(BuildSearch(files), query);
         Assert.Equal(expectedCount, results.Count);
         Assert.Equal(expectedFirstTitle, results[0].Title);
+    }
+
+    // ── OnCopy ────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Results_HaveOnCopyAndCopiedMessage() {
+        string? copied = null;
+        var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
+        clipboard.Initialize(t => copied = t);
+        var search = BuildSearch(clipboard, new FileResult("report.pdf", "/docs/report.pdf"));
+        var results = await SearchAllAsync(search, "report");
+        var item = Assert.Single(results);
+        Assert.NotNull(item.OnCopy);
+        Assert.Equal("Path copied!", item.CopiedMessage);
+        item.OnCopy!();
+        Assert.Equal("/docs/report.pdf", copied);
     }
 
     // ── Order independence ────────────────────────────────────────────────────

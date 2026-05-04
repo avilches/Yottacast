@@ -21,6 +21,7 @@ public class UserDocumentSearch(
     FileIconCache fileIconCache,
     PlatformProvider platform,
     ILogger<UserDocumentSearch> logger,
+    ClipboardService clipboard,
     int timeoutMs = AppDefaults.FileSearchTimeoutMs) : IDeferredSearchSource {
 
     // Badge icon cache: keyed by lowercase extension; null means "no default app found"
@@ -131,6 +132,8 @@ public class UserDocumentSearch(
                                 logger.LogInformation("DocSearch: open \"{Path}\"", path);
                                 platform.LaunchApp(path);
                             },
+                            OnCopy = () => clipboard.CopyText(path),
+                            CopiedMessage = "Path copied!",
                         });
 
                         var now = Environment.TickCount64;

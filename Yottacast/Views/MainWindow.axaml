@@ -388,33 +388,45 @@
                     Background="{DynamicResource Theme.Footer.Background}"
                     BorderBrush="{DynamicResource Theme.Footer.Border}"
                     BorderThickness="0,1,0,0"
-                    CornerRadius="{DynamicResource Theme.Window.CornerRadius.Bottom}"
-                    IsVisible="{Binding HasResults}">
-                <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4">
-                        <TextBlock Foreground="{DynamicResource Theme.Footer.Color}"
-                                   FontSize="{DynamicResource Theme.Footer.Size}">
-                            <Run Text="{Binding DisplayResultCount}"/>
-                            <Run Text="results"/>
-                        </TextBlock>
-                    </StackPanel>
-                    <!-- Footer: normal mode -->
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16"
-                                VerticalAlignment="Center"
-                                IsVisible="{Binding !IsEmojiMode}">
-                        <TextBlock Text="↑↓  navigate" Foreground="{DynamicResource Theme.Footer.Color}" FontSize="{DynamicResource Theme.Footer.Size}"/>
-                        <TextBlock Text="↵  open"       Foreground="{DynamicResource Theme.Footer.Color}" FontSize="{DynamicResource Theme.Footer.Size}"/>
-                        <!-- TEST: compare Mac symbols with emoji footer and Settings badges. REMOVE after investigation. -->
-                        <TextBlock Text="⌘ ⇧ ⌥ ⌃ ↑ ↓ ↵  test" Foreground="{DynamicResource Theme.Footer.Color}" FontSize="{DynamicResource Theme.Footer.Size}"/>
-                    </StackPanel>
-                    <!-- Footer: emoji mode -->
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16"
-                                VerticalAlignment="Center"
-                                IsVisible="{Binding IsEmojiMode}">
-                        <TextBlock Text="{Binding EmojiCopyShortcut}" Foreground="{DynamicResource Theme.Footer.Color}" FontSize="{DynamicResource Theme.Footer.Size}"/>
-                        <TextBlock Text="↵  paste"                   Foreground="{DynamicResource Theme.Footer.Color}" FontSize="{DynamicResource Theme.Footer.Size}"/>
-                        <TextBlock Text="{Binding EmojiFavShortcut}"  Foreground="{DynamicResource Theme.Footer.Color}" FontSize="{DynamicResource Theme.Footer.Size}"/>
-                    </StackPanel>
+                    CornerRadius="{DynamicResource Theme.Window.CornerRadius.Bottom}">
+                <Grid ColumnDefinitions="Auto,*">
+                    <!-- Left: Settings button -->
+                    <Button Grid.Column="0"
+                            Click="OnSettingsButtonClick"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="0"
+                            Cursor="Hand"
+                            VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="⚙"
+                                       Foreground="{DynamicResource Theme.Footer.Color}"
+                                       FontSize="{DynamicResource Theme.Footer.Size}"/>
+                            <TextBlock Text="{Binding SettingsShortcutText}"
+                                       Foreground="{DynamicResource Theme.Footer.Color}"
+                                       FontSize="{DynamicResource Theme.Footer.Size}"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Right: dynamic hints -->
+                    <ItemsControl Grid.Column="1"
+                                  ItemsSource="{Binding FooterHints}"
+                                  IsVisible="{Binding HasResults}"
+                                  HorizontalAlignment="Right"
+                                  VerticalAlignment="Center">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="16"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:CompileBindings="False">
+                                <TextBlock Text="{Binding}"
+                                           Foreground="{DynamicResource Theme.Footer.Color}"
+                                           FontSize="{DynamicResource Theme.Footer.Size}"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </Grid>
             </Border>
 

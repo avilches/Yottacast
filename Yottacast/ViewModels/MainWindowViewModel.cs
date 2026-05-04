@@ -46,18 +46,29 @@ public partial class MainWindowViewModel(
     public bool IsEmojiMode => SelectedResult is EmojiGridResultViewModel;
     public string MetaSymbol => AppHandler.Instance.MetaSymbol;
     public string ShiftSymbol => AppHandler.Instance.ShiftSymbol;
-    public string EmojiCopyShortcut  => $"{MetaSymbol}C  copy";
-    public string EmojiFavShortcut   => $"{MetaSymbol}{ShiftSymbol}F  fav";
+    public string SettingsShortcutText => $"{MetaSymbol};  settings";
+
+    public IReadOnlyList<string> FooterHints => SelectedResult switch {
+        EmojiGridResultViewModel =>
+            [$"{MetaSymbol}C  copy", "↵  paste", $"{MetaSymbol}{ShiftSymbol}F  fav", "Esc  clear"],
+        CalculatorResultItemViewModel or ConversionResultItemViewModel =>
+            ["↵  copy", $"{MetaSymbol}C  copy", "Esc  clear"],
+        DictionaryResultViewModel =>
+            ["↵  open", $"{MetaSymbol}C  definition", "Esc  clear"],
+        ResultItemViewModel { OnCopy: not null } =>
+            ["↵  open", $"{MetaSymbol}C  path", "Esc  clear"],
+        ResultItemViewModel =>
+            ["↵  open", "Esc  clear"],
+        _ =>
+            ["Esc  clear"],
+    };
 
     public ObservableCollection<BaseResultItemViewModel> Results { get; } = [];
-
-    public int DisplayResultCount =>
-        Results.OfType<EmojiGridResultViewModel>().FirstOrDefault()?.Cells.Count
-        ?? Results.Count;
 
     private CancellationTokenSource? _cts;
     private CancellationTokenSource? _deferredCts;
     private CancellationTokenSource? _decayCts;
+    private CancellationTokenSource? _copiedMsgCts;
 
     private IReadOnlyList<BaseResultItemViewModel> _instantSnapshot = [];
     private IReadOnlyList<BaseResultItemViewModel> _deferredSnapshot = [];
@@ -118,7 +129,6 @@ public partial class MainWindowViewModel(
             Results.Add(appSearch.CreateResultItem(info));
         HasResults = Results.Count > 0;
         ShowNoResults = false;
-        OnPropertyChanged(nameof(DisplayResultCount));
         SelectedResult = Results.FirstOrDefault();
     }
 
@@ -257,6 +267,7 @@ public partial class MainWindowViewModel(
 
     partial void OnSelectedResultChanged(BaseResultItemViewModel? value) {
         OnPropertyChanged(nameof(IsEmojiMode));
+        OnPropertyChanged(nameof(FooterHints));
     }
 
     /// <summary>
@@ -334,6 +345,20 @@ public partial class MainWindowViewModel(
         _decayCts = null;
     }
 
+    public void ShowCopiedMessage(string msg) {
+        _copiedMsgCts?.Cancel();
+        _copiedMsgCts = new CancellationTokenSource();
+        SearchHint = msg;
+        _ = ClearCopiedMessageAsync(msg, _copiedMsgCts.Token);
+    }
+
+    private async Task ClearCopiedMessageAsync(string msg, CancellationToken ct) {
+        try {
+            await Task.Delay(1500, ct);
+            if (SearchHint == msg) SearchHint = null;
+        } catch (OperationCanceledException) { }
+    }
+
     private void RefreshResults() {
         var merged = _instantSnapshot
             .Concat(_deferredSnapshot)
@@ -345,7 +370,6 @@ public partial class MainWindowViewModel(
         foreach (var item in merged) Results.Add(item);
         HasResults = Results.Count > 0;
         ShowNoResults = false;
-        OnPropertyChanged(nameof(DisplayResultCount));
 
         var calcResult = merged.FirstOrDefault(x =>
             x is ConversionResultItemViewModel ||

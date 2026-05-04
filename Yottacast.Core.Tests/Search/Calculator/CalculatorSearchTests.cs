@@ -119,6 +119,14 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
         Assert.Equal("4", copied);
     }
 
+    [Fact]
+    public void CalculatorResult_HasOnCopyAndCopiedMessage() {
+        var search = BuildSearch(out var clipboard);
+        var result = StandardResult(search, "2+2");
+        Assert.NotNull(result.OnCopy);
+        Assert.Equal("Result copied!", result.CopiedMessage);
+    }
+
     // ── Non-math queries yield nothing ────────────────────────────────────────
 
     public static TheoryData<string> NonMathCases => new() {
