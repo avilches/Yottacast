@@ -13,7 +13,6 @@ public abstract class BaseResultItemViewModel {
     /// When null, Cmd+C is not handled by this item.
     /// </summary>
     public Action? OnCopy { get; init; }
-    public string? CopiedMessage { get; init; }
     /// <summary>
     /// Message shown to the user after a successful copy action (e.g. "Path copied!", "Result copied!").
     /// Null when OnCopy is null.
