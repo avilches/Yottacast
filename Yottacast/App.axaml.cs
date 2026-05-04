@@ -359,10 +359,8 @@ public partial class App : Application {
 
                         if (window.IsVisible) {
                             if (!windowFocused && !settingsFocused) {
-                                // App lost focus → bring back to front, keep settings open
-                                AppHandler.Instance.FocusWindow(window);
-                                if (settingsOpen)
-                                    _settingsWindow!.Activate();
+                                // App lost focus → just hide, no OnHide() since we didn't have focus
+                                window.Hide();
                             } else {
                                 // App or settings is focused → hide main window
                                 window.Hide();
