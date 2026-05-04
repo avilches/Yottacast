@@ -79,12 +79,6 @@
     "text": { "color": "#7A7A72", "size": 13 }
   },
 
-  "searchIcons": {
-    "background": "#252520",
-    "cornerRadius": 6,
-    "color": "#3A3A34",
-    "size": 13
-  },
 
   "updateBanner": {
     "background": "#FF6B35",

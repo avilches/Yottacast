@@ -320,14 +320,6 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
                 SetDouble(app, "Theme.Footer.Size",       footer["text"]?["size"]);
             }
 
-            // ── Search Icons ──
-            var icons = json["searchIcons"];
-            if (icons != null) {
-                SetBrush(app,        "Theme.SearchIcon.Background",   icons["background"]);
-                SetCornerRadius(app, "Theme.SearchIcon.CornerRadius", icons["cornerRadius"]);
-                SetBrush(app,        "Theme.SearchIcon.Color",        icons["color"]);
-                SetDouble(app,       "Theme.SearchIcon.Size",         icons["size"]);
-            }
 
             // ── Update Banner ──
             var update = json["updateBanner"];
@@ -456,11 +448,6 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
         app.Resources["Theme.Footer.Color"]      = B("#9A9AA4");
         app.Resources["Theme.Footer.Size"]       = 13.0;
 
-        // ── Search Icons ──
-        app.Resources["Theme.SearchIcon.Background"]   = B("#252529");
-        app.Resources["Theme.SearchIcon.CornerRadius"] = new CornerRadius(6);
-        app.Resources["Theme.SearchIcon.Color"]        = B("#505055");
-        app.Resources["Theme.SearchIcon.Size"]         = 13.0;
 
         // ── Update Banner ──
         app.Resources["Theme.Update.Background"] = B("#2C5AF0");
