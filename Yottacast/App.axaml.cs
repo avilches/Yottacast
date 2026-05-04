@@ -99,9 +99,9 @@ public partial class App : Application {
             // Auto-hide when losing focus (Alfred-style).
             // Non-sticky: always hide. Sticky: hide only when search box is empty.
             // Guard: don't hide if our own Settings window is what took focus.
-            mainWindow.Activated += (_, _) => _settingsClosing = false;
             mainWindow.Deactivated += (_, _) => {
-                if (!mainWindow.IsVisible || _settingsClosing || _settingsWindow is { IsVisible: true }) return;
+                if (_settingsClosing) { _settingsClosing = false; return; }
+                if (!mainWindow.IsVisible || _settingsWindow is { IsVisible: true }) return;
                 var isEmpty = string.IsNullOrEmpty(mainWindowViewModel.SearchText);
                 if (!userSettings.StickyWindow || isEmpty) {
                     mainWindow.Hide();
