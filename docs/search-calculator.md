@@ -35,8 +35,8 @@ una conversion valida, aparece un resultado sin necesidad de pulsar Enter ni sel
   muestran como hint informativo debajo del campo de busqueda via `LastHint`.
   Los errores de simbolos desconocidos se descartan silenciosamente para no generar ruido con texto plano (
   `safari to km`).
-- La activacion (Enter) **siempre copia al portapapeles**: el resultado aritmetico para calculos, o la celda
-  seleccionada para conversiones.
+- La activacion (Enter) **copia al portapapeles y pega en la app anterior** (`PasteAfterActivate = true`): el resultado
+  aritmetico para calculos, o la celda seleccionada para conversiones. Cmd+C copia sin cerrar la ventana.
 - El icono del resultado distingue el tipo: calculadora para aritmetica, conversor para unidades/divisas.
 
 > **Verificar en:** `CalculatorSearch.Search()` en `Yottacast.Core/Search/Calculator/CalculatorSearch.cs`

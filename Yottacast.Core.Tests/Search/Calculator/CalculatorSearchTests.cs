@@ -125,6 +125,7 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
         var result = StandardResult(search, "2+2");
         Assert.NotNull(result.OnCopy);
         Assert.Equal("Result copied!", result.CopiedMessage);
+        Assert.True(result.PasteAfterActivate);
     }
 
     // ── Non-math queries yield nothing ────────────────────────────────────────

@@ -78,6 +78,7 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
                     RatesAreStale     = exchangeRateService.IsStale,
                     OnLeft  = r.FromWasNormalized ? () => vm.MoveCellLeft() : null,
                     OnRight = r.FromWasNormalized ? () => vm.MoveCellRight() : null,
+                    PasteAfterActivate = true,
                     OnActivate = () => {
                         var copied = vm.SelectedCell switch {
                             ConversionCell.NormFrom => capturedNorm ?? capturedTo,
@@ -113,6 +114,7 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
                     Subtitle = subtitle,
                     Category = "Calculator",
                     Score = 4,
+                    PasteAfterActivate = true,
                     OnActivate = () => {
                         logger.LogInformation("Calculator: copied result \"{Value}\"", captured);
                         clipboard.CopyText(captured);

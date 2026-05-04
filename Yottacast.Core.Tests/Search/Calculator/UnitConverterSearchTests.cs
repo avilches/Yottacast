@@ -86,6 +86,7 @@ public class UnitConverterSearchTests(MathJsEngineFixture fixture) {
         var item = Assert.Single(results.OfType<ViewModels.ConversionResultItemViewModel>());
         Assert.NotNull(item.OnCopy);
         Assert.Equal("Result copied!", item.CopiedMessage);
+        Assert.True(item.PasteAfterActivate);
     }
 
     // ── Non-conversion queries yield nothing ──────────────────────────────────
