@@ -13,6 +13,7 @@ public abstract class BaseResultItemViewModel {
     /// Null for non-emoji results, letting the system handle Cmd+C normally.
     /// </summary>
     public Action? OnCopy { get; init; }
+    public string? CopiedMessage { get; init; }
     /// <summary>
     /// Toggle favorite action (e.g. Cmd+Shift+F in emoji mode): marks/unmarks the selected item as favorite.
     /// </summary>
