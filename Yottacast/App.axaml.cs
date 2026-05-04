@@ -39,6 +39,7 @@ public partial class App : Application {
     private IServiceProvider _services = null!;
     private volatile bool _isToggling = false;
     private volatile bool _hotkeyDown = false;
+    private bool _settingsClosing = false;
 
     public override void Initialize() {
         AvaloniaXamlLoader.Load(this);
@@ -98,8 +99,9 @@ public partial class App : Application {
             // Auto-hide when losing focus (Alfred-style).
             // Non-sticky: always hide. Sticky: hide only when search box is empty.
             // Guard: don't hide if our own Settings window is what took focus.
+            mainWindow.Activated += (_, _) => _settingsClosing = false;
             mainWindow.Deactivated += (_, _) => {
-                if (!mainWindow.IsVisible || _settingsWindow is { IsVisible: true }) return;
+                if (!mainWindow.IsVisible || _settingsClosing || _settingsWindow is { IsVisible: true }) return;
                 var isEmpty = string.IsNullOrEmpty(mainWindowViewModel.SearchText);
                 if (!userSettings.StickyWindow || isEmpty) {
                     mainWindow.Hide();
@@ -165,8 +167,9 @@ public partial class App : Application {
             Topmost = _services.GetRequiredService<UserSettings>().StickyWindow,
         };
         _settingsWindow.Closed += (_, _) => {
-            AppHandler.Instance.HideDockIcon();
             var mw = (ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+            if (mw?.IsVisible == true) _settingsClosing = true;
+            AppHandler.Instance.HideDockIcon();
             if (mw?.IsVisible == true) mw.Activate();
         };
         AppHandler.Instance.ShowDockIcon();
