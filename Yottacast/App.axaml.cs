@@ -25,6 +25,7 @@ using Yottacast.Core.Search.UserDocuments;
 using Yottacast.Core.Search.Dictionary;
 using Yottacast.Core.Search.SystemSettings;
 using Yottacast.Core.Search.LocalPath;
+using Yottacast.Core.Search.Url;
 using Yottacast.Core.Search.WebSearch;
 using Yottacast.Core.Services;
 using Yottacast.Services;
@@ -244,6 +245,8 @@ public partial class App : Application {
         services.AddSingleton<IInstantSearchSource>(sp => sp.GetRequiredService<WebSearchSource>());
         services.AddSingleton<LocalPathSearch>();
         services.AddSingleton<IInstantSearchSource>(sp => sp.GetRequiredService<LocalPathSearch>());
+        services.AddSingleton<UrlSearch>();
+        services.AddSingleton<IInstantSearchSource>(sp => sp.GetRequiredService<UrlSearch>());
         services.AddSingleton<DictionarySource>();
         if (OperatingSystem.IsMacOS()) {
             services.AddSingleton<SystemSettingsSearch>(sp => new SystemSettingsSearch(
