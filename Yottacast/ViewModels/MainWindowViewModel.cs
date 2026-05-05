@@ -150,7 +150,7 @@ public partial class MainWindowViewModel(
 
     private void OnFileIconLoaded() {
         Dispatcher.UIThread.Post(() => {
-            foreach (var item in _deferredSnapshot)
+            foreach (var item in _instantSnapshot.Concat(_deferredSnapshot))
                 if (item is ResultItemViewModel r && r.IconBytes is null)
                     r.IconBytes = fileIconCache.Get(r.Subtitle);
             RefreshResults();
