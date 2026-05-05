@@ -95,7 +95,7 @@ public class UrlSearch(
                 logger.LogDebug("UrlSearch: favicon loaded for {Url} ({N} bytes)", url, bytes.Length);
                 ResultChanged?.Invoke();
             }
-        } catch (Exception ex) {
+        } catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException) {
             _favicons[url] = null;
             logger.LogDebug("UrlSearch: favicon failed for {Url}: {Message}", url, ex.Message);
         }
