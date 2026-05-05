@@ -24,6 +24,7 @@ public class LocalPathSearchTests {
     [InlineData("/", true)]
     [InlineData("~/Desktop/test.pdf", true)]
     [InlineData("~/", true)]
+    [InlineData("~", true)]
     [InlineData("./relative/path", true)]
     [InlineData("../parent/path", true)]
     [InlineData("C:\\Windows\\System32", true)]

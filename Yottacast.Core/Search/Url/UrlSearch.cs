@@ -54,7 +54,10 @@ public class UrlSearch(
             Score       = 3.0,
             BypassLimit = true,
             OnActivate  = () => {
-                if (browser is null) return;
+                if (browser is null) {
+                    logger.LogWarning("UrlSearch: cannot open \"{Url}\" — no browser configured", capturedUrl);
+                    return;
+                }
                 logger.LogInformation("UrlSearch: open \"{Url}\" in {Browser}", capturedUrl, browser.Name);
                 browserDiscovery.OpenUrl(capturedUrl, browser);
             },

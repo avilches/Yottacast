@@ -44,7 +44,7 @@ public class LocalPathSearch(
     /// <summary>Returns true if the query looks like a local filesystem path.</summary>
     public static bool IsLocalPath(string query) {
         if (string.IsNullOrEmpty(query)) return false;
-        if (query[0] == '/' || query.StartsWith("~/") ||
+        if (query[0] == '/' || query == "~" || query.StartsWith("~/") ||
             query.StartsWith("./") || query.StartsWith("../"))
             return true;
         // Windows: C:\ or D:/
