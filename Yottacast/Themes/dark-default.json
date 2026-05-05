@@ -22,7 +22,10 @@
     "placeholder": { "color": "#505055" },
     "caret":       { "color": "#5E8FFF" },
     "selection":   { "color": "#3560EE" },
-    "hint":        { "color": "#FF3B30" }
+    "hint": {
+      "error": { "color": "#FF3B30" },
+      "info":  { "color": "#9A9AA4" }
+    }
   },
 
   "divider": { "color": "#2A2A30" },

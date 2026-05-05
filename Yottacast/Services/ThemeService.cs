@@ -205,7 +205,9 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
                 SetBrush(app,      "Theme.Search.Placeholder", search["placeholder"]?["color"]);
                 SetBrush(app,      "Theme.Search.Caret",       search["caret"]?["color"]);
                 SetBrush(app,      "Theme.Search.Selection",   search["selection"]?["color"]);
-                SetBrush(app,      "Theme.Search.Hint",        search["hint"]?["color"]);
+                var hint = search["hint"];
+                SetBrush(app, "Theme.Search.Hint.Error", hint?["error"]?["color"]);
+                SetBrush(app, "Theme.Search.Hint.Info",  hint?["info"]?["color"]);
             }
 
             // ── Divider / Spinner ──
@@ -366,7 +368,8 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
         app.Resources["Theme.Search.Placeholder"] = B("#505055");
         app.Resources["Theme.Search.Caret"]       = B("#5E8FFF");
         app.Resources["Theme.Search.Selection"]   = B("#3560EE");
-        app.Resources["Theme.Search.Hint"]        = B("#FF3B30");
+        app.Resources["Theme.Search.Hint.Error"] = B("#FF3B30");
+        app.Resources["Theme.Search.Hint.Info"]  = B("#9A9AA4");
 
         // ── Divider / Spinner ──
         app.Resources["Theme.Divider.Color"] = B("#2A2A30");
