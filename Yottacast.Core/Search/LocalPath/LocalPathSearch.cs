@@ -17,7 +17,7 @@ public class LocalPathSearch(
 
     public IReadOnlyList<BaseResultItemViewModel> Search(string query, int _limit) {
         if (!IsLocalPath(query)) return [];
-        var expanded = ExpandPath(query);
+        var expanded = PlatformProvider.ExpandPath(query);
         if (!File.Exists(expanded) && !Directory.Exists(expanded)) return [];
 
         var title = Path.GetFileName(expanded);
@@ -34,7 +34,7 @@ public class LocalPathSearch(
             Score          = 1.0,
             OnActivate     = () => {
                 logger.LogInformation("LocalPath: open \"{Path}\"", capturedPath);
-                platform.LaunchApp(capturedPath);
+                platform.LaunchApp(capturedPath); // same as UserDocumentSearch: LaunchApp opens arbitrary files/dirs with their default app
             },
             OnCopy         = () => clipboard.CopyText(capturedPath),
             CopiedMessage  = "Path copied!",
@@ -54,11 +54,4 @@ public class LocalPathSearch(
                && char.IsLetter(query[0]);
     }
 
-    private static string ExpandPath(string path) {
-        if (path == "~" || path.StartsWith("~/"))
-            return Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                path.Length > 2 ? path[2..] : "");
-        return path;
-    }
 }
