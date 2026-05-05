@@ -42,6 +42,8 @@ public partial class MainWindowViewModel(
     [ObservableProperty] private bool _updateAvailable;
     [ObservableProperty] private string _updateBannerText = "";
     [ObservableProperty] private string? _searchHint;
+    [ObservableProperty] private bool _searchHintIsError;
+    [ObservableProperty] private bool _searchHintIsInfo;
 
     public bool IsEmojiMode => SelectedResult is EmojiGridResultViewModel;
     public string MetaSymbol => AppHandler.Instance.MetaSymbol;
@@ -87,9 +89,9 @@ public partial class MainWindowViewModel(
 
     public void RefreshSearch() {
         if (string.IsNullOrWhiteSpace(SearchText)) return;
-        var (items, hint) = globalSearch.SearchInstant(SearchText, limit: SearchSourceLimit);
+        var (items, hint, hintKind) = globalSearch.SearchInstant(SearchText, limit: SearchSourceLimit);
         _instantSnapshot = items;
-        SearchHint = hint;
+        SetSearchHint(hint, hintKind);
         RefreshResults();
     }
 
@@ -116,9 +118,9 @@ public partial class MainWindowViewModel(
             ShowPendingApps();
         } else {
             // Usuario buscando activamente — refrescar por si la nueva app coincide con la query
-            var (items, hint) = globalSearch.SearchInstant(SearchText, limit: SearchSourceLimit);
+            var (items, hint, hintKind) = globalSearch.SearchInstant(SearchText, limit: SearchSourceLimit);
             _instantSnapshot = items;
-            SearchHint = hint;
+            SetSearchHint(hint, hintKind);
             RefreshResults();
         }
     }
@@ -151,9 +153,9 @@ public partial class MainWindowViewModel(
                 if (_pendingAppInfos.Count > 0) ShowPendingApps();
                 return;
             }
-            var (items, hint) = globalSearch.SearchInstant(SearchText, limit: SearchSourceLimit);
+            var (items, hint, hintKind) = globalSearch.SearchInstant(SearchText, limit: SearchSourceLimit);
             _instantSnapshot = items;
-            SearchHint = hint;
+            SetSearchHint(hint, hintKind);
             RefreshResults();
         });
     }
@@ -203,7 +205,7 @@ public partial class MainWindowViewModel(
             IsSearching = false;
             _instantSnapshot = [];
             _deferredSnapshot = [];
-            SearchHint = null;
+            SetSearchHint(null);
             ShowPendingApps();
             return;
         }
@@ -219,14 +221,14 @@ public partial class MainWindowViewModel(
 
         // Phase 1: instant sources (in-memory cache) — no delay
         if (ct.IsCancellationRequested) return;
-        var (instantItems, hint) = globalSearch.SearchInstant(query, limit: SearchSourceLimit);
+        var (instantItems, hint, hintKind) = globalSearch.SearchInstant(query, limit: SearchSourceLimit);
         _instantSnapshot = instantItems;
-        SearchHint = null;
+        SetSearchHint(null);
         RefreshResults();
 
         // Error hints (e.g. incompatible units) are shown after a delay so they don't flash on every keystroke
         if (hint != null)
-            _ = ShowHintAfterDelayAsync(hint, ct);
+            _ = ShowHintAfterDelayAsync(hint, hintKind, ct);
 
         // Emoji mode: only instant sources, skip deferred search
         if (query.StartsWith(':')) return;
@@ -258,10 +260,16 @@ public partial class MainWindowViewModel(
         if (completed) ShowNoResults = Results.Count == 0;
     }
 
-    private async Task ShowHintAfterDelayAsync(string hint, CancellationToken ct) {
+    private void SetSearchHint(string? text, SearchHintKind kind = SearchHintKind.Info) {
+        SearchHint = text;
+        SearchHintIsError = text != null && kind == SearchHintKind.Error;
+        SearchHintIsInfo  = text != null && kind == SearchHintKind.Info;
+    }
+
+    private async Task ShowHintAfterDelayAsync(string hint, SearchHintKind kind, CancellationToken ct) {
         try {
             await Task.Delay(AppDefaults.ErrorHintDelayMs, ct);
-            SearchHint = hint;
+            SetSearchHint(hint, kind);
         } catch (OperationCanceledException) { }
     }
 
@@ -348,14 +356,14 @@ public partial class MainWindowViewModel(
     public void ShowCopiedMessage(string msg) {
         _copiedMsgCts?.Cancel();
         _copiedMsgCts = new CancellationTokenSource();
-        SearchHint = msg;
+        SetSearchHint(msg, SearchHintKind.Info);
         _ = ClearCopiedMessageAsync(msg, _copiedMsgCts.Token);
     }
 
     private async Task ClearCopiedMessageAsync(string msg, CancellationToken ct) {
         try {
             await Task.Delay(1500, ct);
-            if (SearchHint == msg) SearchHint = null;
+            if (SearchHint == msg) SetSearchHint(null);
         } catch (OperationCanceledException) { }
     }
 
