@@ -9,10 +9,12 @@ namespace Yottacast.Core.Search.Calculator;
 /// Activating the result copies the value to the clipboard.
 /// Validation is fully delegated to math.js — if Evaluate returns null, there is no result.
 /// When the expression fails with an actionable error (unknown unit, incompatible units) an
-/// informational error item is shown via LastHint.
+/// informational error item is shown via LastHint. LastHintKind classifies the hint: Error for
+/// incompatible-unit failures, Info for ambiguity suggestions and all other cases.
 /// </summary>
 public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateService exchangeRateService, ClipboardService clipboard, UserSettings settings, ILogger<CalculatorSearch> logger) : IInstantSearchSource, ISearchHintProvider {
     public string? LastHint { get; private set; }
+    public SearchHintKind LastHintKind { get; private set; }
 
     public void Start() { }
     public Task WhenReady() => Task.CompletedTask;
@@ -20,6 +22,7 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
 
     public IReadOnlyList<BaseResultItemViewModel> Search(string query, int _) {
         LastHint = null;
+        LastHintKind = SearchHintKind.Info;
         if (!settings.EnableCalculator) return [];
         var engine = engineProvider.Current;
         if (engine == null) return [];
@@ -48,6 +51,7 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
                         ? (r.ToUnitLong is not null && r.ToUnitLong != toShort ? r.ToUnitLong : null)
                         : LongForm(r.ToValue, r.ToUnitLong, r.ToUnit);
                 LastHint = BuildHints(r.AmbiguityHints) is { Length: > 0 } h ? h : null;
+                LastHintKind = SearchHintKind.Info;
 
                 string? normFromShort = null, normFromLong = null;
                 if (r.NormFromUnit != null && r.NormFromValue != null) {
@@ -102,6 +106,7 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
             case CalcResult r when r.RawValue != q: {
                 logger.LogDebug("Calculator query=\"{Query}\" → result \"{Result}\"", q, r.RawValue);
                 LastHint = BuildHints(r.AmbiguityHints) is { Length: > 0 } ch ? ch : null;
+                LastHintKind = SearchHintKind.Info;
                 var subtitle = r.NormalizedQuery;
                 var captured = r.RawValue;
                 var titleLong = r.Unit != null
@@ -128,6 +133,7 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
             }
             case ErrorResult r when r.ErrorKind is CalcErrorKind.IncompatibleUnitsConvert or CalcErrorKind.IncompatibleUnitsOp:
                 LastHint = BuildErrorHint(r);
+                LastHintKind = SearchHintKind.Error;
                 logger.LogDebug("Calculator query=\"{Query}\" → error {Kind}: {Hint}", q, r.ErrorKind, LastHint);
                 break;
         }

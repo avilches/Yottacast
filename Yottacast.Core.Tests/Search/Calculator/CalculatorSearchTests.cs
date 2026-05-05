@@ -495,5 +495,35 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
         var item = Assert.IsType<ConversionResultItemViewModel>(SearchResult(BuildSearch(out _), "10 Gt"));
         Assert.Contains("kg", item.ToShort);  // target = "kg" (pair[0]), no "lb"
     }
+
+    // ── SearchHintKind ────────────────────────────────────────────────────────
+
+    [Fact]
+    public void IncompatibleUnitsConvert_HintKind_IsError() {
+        var search = BuildSearch(out _);
+        search.Search("1 kg to meter", 5);
+        Assert.Equal(SearchHintKind.Error, search.LastHintKind);
+    }
+
+    [Fact]
+    public void IncompatibleUnitsOp_HintKind_IsError() {
+        var search = BuildSearch(out _);
+        search.Search("1 km + 2 L", 5);
+        Assert.Equal(SearchHintKind.Error, search.LastHintKind);
+    }
+
+    [Fact]
+    public void AmbiguousUnit_HintKind_IsInfo() {
+        var search = BuildSearch(out _);
+        search.Search("1 gt + 1 gt", 5);
+        Assert.Equal(SearchHintKind.Info, search.LastHintKind);
+    }
+
+    [Fact]
+    public void NoHint_HintKind_DefaultsToInfo() {
+        var search = BuildSearch(out _);
+        search.Search("2+2", 5);
+        Assert.Equal(SearchHintKind.Info, search.LastHintKind);
+    }
 }
 
