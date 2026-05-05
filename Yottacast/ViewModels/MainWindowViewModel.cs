@@ -10,6 +10,7 @@ using CommunityToolkit.Mvvm.Input;
 using Yottacast.Core;
 using Yottacast.Core.Search;
 using Yottacast.Core.Search.Application;
+using Yottacast.Core.Search.Url;
 using Yottacast.Core.Search.UserDocuments;
 using Yottacast.Core.Services;
 using Yottacast.Core.ViewModels;
@@ -24,7 +25,8 @@ public partial class MainWindowViewModel(
     FileIconCache fileIconCache,
     UserDocumentSearch userDocumentSearch,
     UpdateChecker updateChecker,
-    HistoryService historyService)
+    HistoryService historyService,
+    UrlSearch urlSearch)
     : ViewModelBase {
 
     [ObservableProperty] private string _searchText = "";
@@ -104,6 +106,7 @@ public partial class MainWindowViewModel(
         fileIconCache.IconLoaded += OnFileIconLoaded;
         userDocumentSearch.BadgeIconLoaded += OnBadgeIconLoaded;
         settings.SearchSettingsChanged += OnSearchSettingsChanged;
+        urlSearch.ResultChanged += OnUrlResultChanged;
         _ = StartTrackingNewAppsAsync();
     }
 
@@ -162,7 +165,7 @@ public partial class MainWindowViewModel(
 
     private void OnFileIconLoaded() {
         Dispatcher.UIThread.Post(() => {
-            foreach (var item in _deferredSnapshot)
+            foreach (var item in _instantSnapshot.Concat(_deferredSnapshot))
                 if (item is ResultItemViewModel r && r.IconBytes is null)
                     r.IconBytes = fileIconCache.Get(r.Subtitle);
             RefreshResults();
@@ -176,6 +179,10 @@ public partial class MainWindowViewModel(
                     r.BadgeIconBytes = userDocumentSearch.GetBadge(r.Subtitle);
             RefreshResults();
         });
+    }
+
+    private void OnUrlResultChanged() {
+        Dispatcher.UIThread.Post(RefreshSearch);
     }
 
     private async Task CheckForUpdateAsync() {
