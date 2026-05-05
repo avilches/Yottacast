@@ -91,21 +91,33 @@ public class UrlSearchTests {
     }
 
     [Fact]
-    public async Task Search_AfterHead404_ReturnsEmpty() {
+    public async Task Search_AfterHead404_StillReturnsResult() {
+        // 404 means server responded — URL is reachable in a browser
         var search = BuildSearch(HttpStatusCode.NotFound);
         var waitTask = WaitForResultChangedAsync(search);
         _ = search.Search("https://example.com", 10);
         await waitTask;
-        Assert.Empty(search.Search("https://example.com", 10));
+        Assert.Single(search.Search("https://example.com", 10));
     }
 
     [Fact]
-    public async Task Search_AfterHead500_ReturnsEmpty() {
-        var search = BuildSearch(HttpStatusCode.InternalServerError);
+    public async Task Search_AfterHead403_StillReturnsResult() {
+        // 403 is common for sites that block HEAD (e.g. Amazon) — URL is still reachable
+        var search = BuildSearch(HttpStatusCode.Forbidden);
         var waitTask = WaitForResultChangedAsync(search);
         _ = search.Search("https://example.com", 10);
         await waitTask;
-        Assert.Empty(search.Search("https://example.com", 10));
+        Assert.Single(search.Search("https://example.com", 10));
+    }
+
+    [Fact]
+    public async Task Search_AfterHead405_StillReturnsResult() {
+        // 405 Method Not Allowed — server alive, HEAD blocked, still valid
+        var search = BuildSearch(HttpStatusCode.MethodNotAllowed);
+        var waitTask = WaitForResultChangedAsync(search);
+        _ = search.Search("https://example.com", 10);
+        await waitTask;
+        Assert.Single(search.Search("https://example.com", 10));
     }
 
     [Fact]

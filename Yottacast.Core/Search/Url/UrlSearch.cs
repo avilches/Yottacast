@@ -69,17 +69,14 @@ public class UrlSearch(
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
             using var request = new HttpRequestMessage(HttpMethod.Head, url);
             using var response = await httpClient.SendAsync(request, cts.Token).ConfigureAwait(false);
+            // Any HTTP response means the server is alive — mark Valid even for 403/405
+            // (many sites block HEAD but are perfectly reachable in the browser).
+            // Only network-level failures (exceptions) mark the URL as Invalid.
             var status = (int)response.StatusCode;
-            if (status >= 200 && status < 400) {
-                _reachability[url] = UrlReachability.Valid;
-                logger.LogDebug("UrlSearch: HEAD {Url} → {Status}", url, status);
-                ResultChanged?.Invoke();
-                _ = LoadFaviconAsync(url);
-            } else {
-                _reachability[url] = UrlReachability.Invalid;
-                logger.LogDebug("UrlSearch: HEAD {Url} → {Status} (invalid)", url, status);
-                ResultChanged?.Invoke();
-            }
+            _reachability[url] = UrlReachability.Valid;
+            logger.LogDebug("UrlSearch: HEAD {Url} → {Status}", url, status);
+            ResultChanged?.Invoke();
+            _ = LoadFaviconAsync(url);
         } catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException) {
             _reachability[url] = UrlReachability.Invalid;
             logger.LogDebug("UrlSearch: HEAD {Url} failed: {Message}", url, ex.Message);
