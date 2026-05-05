@@ -179,29 +179,53 @@
                     </Grid>
                 </Border>
 
-                <!-- Error hint (shown below the input when calculator detects an actionable error) -->
-                <TextBlock Text="{Binding SearchHint}"
-                           Foreground="{DynamicResource Theme.Search.Hint}"
-                           FontSize="{DynamicResource Theme.Results.Category.Size}"
-                           Margin="20,0,20,8"
-                           Opacity="0"
-                           TextTrimming="CharacterEllipsis"
-                           IsVisible="{Binding SearchHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                    <TextBlock.Styles>
-                        <Style Selector="TextBlock[IsVisible=true]">
-                            <Style.Animations>
-                                <Animation Duration="0:0:0.4" FillMode="Forward">
-                                    <KeyFrame Cue="0%">
-                                        <Setter Property="Opacity" Value="0"/>
-                                    </KeyFrame>
-                                    <KeyFrame Cue="100%">
-                                        <Setter Property="Opacity" Value="1"/>
-                                    </KeyFrame>
-                                </Animation>
-                            </Style.Animations>
-                        </Style>
-                    </TextBlock.Styles>
-                </TextBlock>
+                <!-- Hint area - fixed height to avoid layout shift when hint appears/disappears -->
+                <Grid Margin="20,0,20,8" MinHeight="18">
+                    <!-- Info hint (gray) -->
+                    <TextBlock Text="{Binding SearchHint}"
+                               Foreground="{DynamicResource Theme.Search.Hint.Info}"
+                               FontSize="{DynamicResource Theme.Results.Category.Size}"
+                               Opacity="0"
+                               TextTrimming="CharacterEllipsis"
+                               IsVisible="{Binding SearchHintIsInfo}">
+                        <TextBlock.Styles>
+                            <Style Selector="TextBlock[IsVisible=true]">
+                                <Style.Animations>
+                                    <Animation Duration="0:0:0.4" FillMode="Forward">
+                                        <KeyFrame Cue="0%">
+                                            <Setter Property="Opacity" Value="0"/>
+                                        </KeyFrame>
+                                        <KeyFrame Cue="100%">
+                                            <Setter Property="Opacity" Value="1"/>
+                                        </KeyFrame>
+                                    </Animation>
+                                </Style.Animations>
+                            </Style>
+                        </TextBlock.Styles>
+                    </TextBlock>
+                    <!-- Error hint (red) -->
+                    <TextBlock Text="{Binding SearchHint}"
+                               Foreground="{DynamicResource Theme.Search.Hint.Error}"
+                               FontSize="{DynamicResource Theme.Results.Category.Size}"
+                               Opacity="0"
+                               TextTrimming="CharacterEllipsis"
+                               IsVisible="{Binding SearchHintIsError}">
+                        <TextBlock.Styles>
+                            <Style Selector="TextBlock[IsVisible=true]">
+                                <Style.Animations>
+                                    <Animation Duration="0:0:0.4" FillMode="Forward">
+                                        <KeyFrame Cue="0%">
+                                            <Setter Property="Opacity" Value="0"/>
+                                        </KeyFrame>
+                                        <KeyFrame Cue="100%">
+                                            <Setter Property="Opacity" Value="1"/>
+                                        </KeyFrame>
+                                    </Animation>
+                                </Style.Animations>
+                            </Style>
+                        </TextBlock.Styles>
+                    </TextBlock>
+                </Grid>
             </StackPanel>
 
             <!-- ── Divider ── -->
