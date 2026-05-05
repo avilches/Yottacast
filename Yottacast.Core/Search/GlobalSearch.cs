@@ -25,7 +25,7 @@ public class GlobalSearch(IEnumerable<IInstantSearchSource> instantSources, IEnu
         _instantSources.Select(s => s.Stop())
         .Concat(_deferredSources.Select(s => s.Stop())));
 
-    public (IReadOnlyList<BaseResultItemViewModel> Items, string? Hint) SearchInstant(string query, int limit) {
+    public (IReadOnlyList<BaseResultItemViewModel> Items, string? Hint, SearchHintKind HintKind) SearchInstant(string query, int limit) {
         var allItems = _instantSources
             .SelectMany(s => s.Search(query, limit))
             .OrderByDescending(x => x.Score)
@@ -35,8 +35,10 @@ public class GlobalSearch(IEnumerable<IInstantSearchSource> instantSources, IEnu
         var limited = allItems.Where(x => !x.BypassLimit).Take(limit).ToList();
 
         var items = bypass.Concat(limited).OrderByDescending(x => x.Score).ToList();
-        var hint = _instantSources.OfType<ISearchHintProvider>().Select(s => s.LastHint).FirstOrDefault(h => h != null);
-        return (items, hint);
+        var hintProvider = _instantSources.OfType<ISearchHintProvider>().FirstOrDefault(s => s.LastHint != null);
+        var hint = hintProvider?.LastHint;
+        var hintKind = hintProvider?.LastHintKind ?? SearchHintKind.Info;
+        return (items, hint, hintKind);
     }
 
     public IAsyncEnumerable<IReadOnlyList<BaseResultItemViewModel>> SearchDeferredAsync(
