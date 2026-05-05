@@ -69,7 +69,7 @@ Cada tema es un fichero `.json` en la carpeta `Themes/` del directorio de la apl
 | `name` | Nombre para mostrar en el picker |
 | `variant` | `"light"` o `"dark"` (controla el `ThemeVariant` de Avalonia) |
 | `window` | Fondo, ancho, cornerRadius y fontFamily de la ventana |
-| `search` | Texto, placeholder, caret, seleccion, hint de error |
+| `search` | Texto, placeholder, caret, seleccion, hints (error e info) |
 | `divider` / `spinner` | Color del separador y del spinner de carga |
 | `results` | Fondo del area, barra de seleccion lateral, titulo, subtitulo, categoria, icono, shortcut, seleccion, hover |
 | `calculator` | Expresion, resultado, subtitulo, separador, celda |
@@ -110,7 +110,8 @@ Si el valor de `variant` no es `"light"`, se asume `"dark"`.
 | `search.placeholder.color` | `Theme.Search.Placeholder` |
 | `search.caret.color` | `Theme.Search.Caret` |
 | `search.selection.color` | `Theme.Search.Selection` |
-| `search.hint.color` | `Theme.Search.Hint` |
+| `search.hint.error.color` | `Theme.Search.Hint.Error` |
+| `search.hint.info.color` | `Theme.Search.Hint.Info` |
 
 ### Divider / Spinner
 

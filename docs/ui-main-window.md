@@ -247,11 +247,20 @@ En modo normal, cada item estandar muestra su etiqueta de categoria (ej. "App", 
 
 ---
 
-## 13. Hint de busqueda
+## 13. Hint de búsqueda
 
-Cuando una fuente instant proporciona un hint (ej. la calculadora detecta un error corregible), se muestra como texto rojo debajo del campo de busqueda. Se limpia automaticamente en cada nueva busqueda o cuando el texto se vacia.
+El área de hint siempre reserva espacio fijo debajo del campo de búsqueda (no hay salto de layout al aparecer o desaparecer). El texto aparece con fade-in de 0.4 s.
 
-> **Verificar en:** `MainWindowViewModel.cs` -- `SearchHint`. `MainWindow.axaml` -- TextBlock con binding a `SearchHint`. `GlobalSearch.cs` -- `SearchInstant` (extraccion de hint via `ISearchHintProvider`).
+Hay dos estilos visuales:
+
+| Estilo | Color | Cuándo se usa |
+|---|---|---|
+| Error | Rojo (`Theme.Search.Hint.Error`) | Unidades incompatibles en la calculadora (`IncompatibleUnitsConvert`, `IncompatibleUnitsOp`) |
+| Info | Gris (`Theme.Search.Hint.Info`) | Hints de ambigüedad de unidades ("Maybe you meant…") y mensajes de copia ("Copied …") |
+
+El hint se limpia automáticamente en cada nueva búsqueda o cuando el texto se vacía.
+
+> **Verificar en:** `MainWindowViewModel.cs` — `SetSearchHint`, `SearchHintIsError`, `SearchHintIsInfo`. `MainWindow.axaml` — `Grid` con `MinHeight` y dos TextBlocks. `GlobalSearch.cs` — `SearchInstant` devuelve `SearchHintKind`. `CalculatorSearch.cs` — `LastHintKind`. `ThemeService.cs` — `Theme.Search.Hint.Error`, `Theme.Search.Hint.Info`.
 
 ---
 
