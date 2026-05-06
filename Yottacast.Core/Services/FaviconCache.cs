@@ -1,10 +1,18 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 
 namespace Yottacast.Core.Services;
 
+/// <summary>
+/// Two-level cache for domain favicons: memory (instant) and disk (persists across launches).
+/// Disk layout: {FaviconCacheDir}/{host}.png
+/// </summary>
 public sealed class FaviconCache {
     private readonly HttpClient _httpClient;
     private readonly ILogger<FaviconCache> _logger;
+    private readonly string _cacheDir;
+    private readonly ConcurrentDictionary<string, byte[]?> _memory = new();
+    private readonly ConcurrentDictionary<string, bool> _started = new();
 
     public FaviconCache(HttpClient httpClient, ILogger<FaviconCache> logger)
         : this(httpClient, logger, AppPaths.FaviconCacheDir) { }
@@ -12,9 +20,60 @@ public sealed class FaviconCache {
     internal FaviconCache(HttpClient httpClient, ILogger<FaviconCache> logger, string cacheDir) {
         _httpClient = httpClient;
         _logger = logger;
+        _cacheDir = cacheDir;
     }
 
+    /// <summary>Fires on a thread-pool thread when a favicon finishes loading with non-null bytes.</summary>
     public event Action? FaviconLoaded;
-    public byte[]? GetOrLoad(string host) => throw new NotImplementedException();
-    public Task Stop() => throw new NotImplementedException();
+
+    /// <summary>
+    /// Returns cached bytes if available, triggers async load on first call per host.
+    /// Returns null while loading or if favicon could not be obtained.
+    /// </summary>
+    public byte[]? GetOrLoad(string host) {
+        if (_memory.TryGetValue(host, out var cached)) return cached;
+        if (_started.TryAdd(host, true))
+            _ = Task.Run(() => LoadAsync(host));
+        return null;
+    }
+
+    /// <summary>Clears in-memory cache. Disk cache persists across sessions.</summary>
+    public Task Stop() {
+        _memory.Clear();
+        _started.Clear();
+        return Task.CompletedTask;
+    }
+
+    private async Task LoadAsync(string host) {
+        // Phase 1: disk cache
+        var diskPath = Path.Combine(_cacheDir, $"{host}.png");
+        if (File.Exists(diskPath)) {
+            var diskBytes = File.ReadAllBytes(diskPath);
+            if (diskBytes.Length > 0) {
+                _memory[host] = diskBytes;
+                _logger.LogDebug("FaviconCache: disk hit for {Host} ({N} bytes)", host, diskBytes.Length);
+                FaviconLoaded?.Invoke();
+                return;
+            }
+        }
+
+        // Phase 2: HTTP fetch from Google favicon service
+        try {
+            var url = $"https://www.google.com/s2/favicons?sz=64&domain={host}";
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(AppDefaults.FaviconTimeoutSeconds));
+            var bytes = await _httpClient.GetByteArrayAsync(url, cts.Token).ConfigureAwait(false);
+            if (bytes.Length > 0) {
+                _memory[host] = bytes;
+                Directory.CreateDirectory(_cacheDir);
+                File.WriteAllBytes(diskPath, bytes);
+                _logger.LogDebug("FaviconCache: fetched and cached {Host} ({N} bytes)", host, bytes.Length);
+                FaviconLoaded?.Invoke();
+            } else {
+                _memory[host] = null;
+            }
+        } catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException) {
+            _memory[host] = null;
+            _logger.LogDebug("FaviconCache: fetch failed for {Host}: {Message}", host, ex.Message);
+        }
+    }
 }
