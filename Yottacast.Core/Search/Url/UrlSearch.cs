@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Net;
-using System.Net.Http;
 using System.Net.Sockets;
 using Microsoft.Extensions.Logging;
 using Yottacast.Core.Services;
@@ -9,7 +8,6 @@ using Yottacast.Core.ViewModels;
 namespace Yottacast.Core.Search.Url;
 
 public class UrlSearch(
-    HttpClient httpClient,
     UserSettings settings,
     BrowserDiscovery browserDiscovery,
     AppIconCache appIconCache,
@@ -20,6 +18,7 @@ public class UrlSearch(
 
     private readonly ConcurrentDictionary<string, UrlReachability> _reachability = new();
     private readonly ConcurrentDictionary<string, string> _reachabilityError = new();
+    private Action? _onFaviconLoaded;
 
     /// <summary>Fires (on a thread-pool thread) when reachability or favicon state changes.</summary>
     public event Action? ResultChanged;
@@ -27,10 +26,15 @@ public class UrlSearch(
     public int Limit => AppDefaults.UrlSearchSourceLimit;
 
     public void Start() {
-        faviconCache.FaviconLoaded += () => ResultChanged?.Invoke();
+        _onFaviconLoaded = () => ResultChanged?.Invoke();
+        faviconCache.FaviconLoaded += _onFaviconLoaded;
     }
     public Task WhenReady() => Task.CompletedTask;
     public Task Stop() {
+        if (_onFaviconLoaded is not null) {
+            faviconCache.FaviconLoaded -= _onFaviconLoaded;
+            _onFaviconLoaded = null;
+        }
         _reachability.Clear();
         _reachabilityError.Clear();
         return Task.CompletedTask;

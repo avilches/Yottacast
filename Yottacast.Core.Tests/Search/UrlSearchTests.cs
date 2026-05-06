@@ -43,7 +43,6 @@ public class UrlSearchTests {
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private static UrlSearch BuildSearch(HttpStatusCode headStatusCode = HttpStatusCode.OK) {
-        var handler = new FakeHttpMessageHandler(headStatusCode);
         var platform = new FakePlatformProvider([]);
         var settings = UserSettings.Load(platform);
         settings.EnableWebSearch = true;
@@ -53,7 +52,7 @@ public class UrlSearchTests {
         var faviconHandler = new FakeHttpMessageHandler(HttpStatusCode.OK, [0x89, 0x50]);
         var faviconCache = new FaviconCache(new HttpClient(faviconHandler), NullLogger<FaviconCache>.Instance,
             Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()));
-        return new UrlSearch(new HttpClient(handler), settings, browserDiscovery, appIconCache,
+        return new UrlSearch(settings, browserDiscovery, appIconCache,
             faviconCache, NullLogger<UrlSearch>.Instance);
     }
 
@@ -68,7 +67,6 @@ public class UrlSearchTests {
 
     [Fact]
     public void Search_WebSearchDisabled_ReturnsEmpty() {
-        var handler = new FakeHttpMessageHandler(HttpStatusCode.OK);
         var platform = new FakePlatformProvider([]);
         var settings = UserSettings.Load(platform);
         settings.EnableWebSearch = false;
@@ -77,7 +75,7 @@ public class UrlSearchTests {
         var faviconHandler = new FakeHttpMessageHandler(HttpStatusCode.OK, [0x89, 0x50]);
         var faviconCache = new FaviconCache(new HttpClient(faviconHandler), NullLogger<FaviconCache>.Instance,
             Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()));
-        var search = new UrlSearch(new HttpClient(handler), settings, browserDiscovery, appIconCache,
+        var search = new UrlSearch(settings, browserDiscovery, appIconCache,
             faviconCache, NullLogger<UrlSearch>.Instance);
 
         Assert.Empty(search.Search("https://example.com", 10));
@@ -127,7 +125,7 @@ public class UrlSearchTests {
         var faviconHandler = new FakeHttpMessageHandler(HttpStatusCode.OK, [0x89, 0x50]);
         var faviconCache = new FaviconCache(new HttpClient(faviconHandler), NullLogger<FaviconCache>.Instance,
             Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()));
-        var search = new UrlSearch(new HttpClient(handler), settings, browserDiscovery, appIconCache,
+        var search = new UrlSearch(settings, browserDiscovery, appIconCache,
             faviconCache, NullLogger<UrlSearch>.Instance);
 
         var results = search.Search("https://example.com", 10);
@@ -136,7 +134,6 @@ public class UrlSearchTests {
         Assert.Equal("https://example.com", r.Title);
         Assert.Equal("Web", r.Category);
 
-        Thread.Sleep(50);
         // No DNS/HEAD calls — only favicon goes through faviconCache's own handler
         Assert.Equal(0, handler.CallCount);
     }
@@ -144,7 +141,6 @@ public class UrlSearchTests {
     [Fact]
     public void Search_SameUrlTwice_DoesNotStartTwoBackgroundChecks() {
         var handler = new FakeHttpMessageHandler(HttpStatusCode.OK);
-        var httpClient = new HttpClient(handler);
         var platform = new FakePlatformProvider([]);
         var settings = UserSettings.Load(platform);
         settings.EnableWebSearch = true;
@@ -154,7 +150,7 @@ public class UrlSearchTests {
         var faviconHandler = new FakeHttpMessageHandler(HttpStatusCode.OK, [0x89, 0x50]);
         var faviconCache = new FaviconCache(new HttpClient(faviconHandler), NullLogger<FaviconCache>.Instance,
             Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()));
-        var search = new UrlSearch(httpClient, settings, browserDiscovery, appIconCache,
+        var search = new UrlSearch(settings, browserDiscovery, appIconCache,
             faviconCache, NullLogger<UrlSearch>.Instance);
 
         _ = search.Search("https://example.com", 10);
