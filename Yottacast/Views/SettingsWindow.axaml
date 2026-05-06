@@ -707,6 +707,14 @@
 
                     <StackPanel Spacing="16" IsVisible="{Binding EnableWebSearch}">
 
+                    <StackPanel Spacing="4">
+                        <ToggleSwitch IsChecked="{Binding EnableUrlValidation}"
+                                      OnContent="Validate URLs"
+                                      OffContent="Show without validating"/>
+                        <TextBlock Classes="description"
+                                   Text="When enabled, Yottacast performs a brief DNS lookup and connection to verify that a URL you type actually exists and to load its icon. Disable this to show URL results instantly without any network check."/>
+                    </StackPanel>
+
                     <StackPanel Spacing="0">
                         <TextBlock Classes="label" Text="Default Browser"/>
                         <ComboBox ItemsSource="{Binding Browsers}"

@@ -77,49 +77,39 @@ public class UrlSearchTests {
         var r = Assert.IsType<ResultItemViewModel>(results[0]);
         Assert.Equal("https://example.com", r.Title);
         Assert.Equal("Web", r.Category);
-        Assert.Equal(3.0, r.Score);
+        Assert.Equal(4.0, r.Score);
         Assert.True(r.BypassLimit);
         Assert.NotNull(r.OnActivate);
     }
 
     [Fact]
-    public async Task Search_AfterHead200_StillReturnsResult() {
+    public async Task Search_AfterDnsResolved_StillReturnsResult() {
+        // example.com always resolves via DNS — result stays Valid after DNS check
         var search = BuildSearch(HttpStatusCode.OK);
         var waitTask = WaitForResultChangedAsync(search);
         _ = search.Search("https://example.com", 10);
         await waitTask;
+        Assert.Single(search.Search("https://example.com", 10));
+    }
+
+    [Fact]
+    public void Search_ValidationOff_ReturnsResultImmediatelyWithoutNetworkCheck() {
+        // EnableUrlValidation = false: instant result, no DNS/HEAD/favicon
+        var handler = new FakeHttpMessageHandler(HttpStatusCode.OK);
+        var httpClient = new HttpClient(handler);
+        var platform = new FakePlatformProvider([]);
+        var settings = UserSettings.Load(platform);
+        settings.EnableUrlValidation = false;
+        var appIconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
+        var browserDiscovery = new BrowserDiscovery(settings, platform, NullLogger<BrowserDiscovery>.Instance);
+        var search = new UrlSearch(httpClient, settings, browserDiscovery, appIconCache, NullLogger<UrlSearch>.Instance);
+
         var results = search.Search("https://example.com", 10);
         Assert.Single(results);
-    }
-
-    [Fact]
-    public async Task Search_AfterHead404_StillReturnsResult() {
-        // 404 means server responded — URL is reachable in a browser
-        var search = BuildSearch(HttpStatusCode.NotFound);
-        var waitTask = WaitForResultChangedAsync(search);
-        _ = search.Search("https://example.com", 10);
-        await waitTask;
-        Assert.Single(search.Search("https://example.com", 10));
-    }
-
-    [Fact]
-    public async Task Search_AfterHead403_StillReturnsResult() {
-        // 403 is common for sites that block HEAD (e.g. Amazon) — URL is still reachable
-        var search = BuildSearch(HttpStatusCode.Forbidden);
-        var waitTask = WaitForResultChangedAsync(search);
-        _ = search.Search("https://example.com", 10);
-        await waitTask;
-        Assert.Single(search.Search("https://example.com", 10));
-    }
-
-    [Fact]
-    public async Task Search_AfterHead405_StillReturnsResult() {
-        // 405 Method Not Allowed — server alive, HEAD blocked, still valid
-        var search = BuildSearch(HttpStatusCode.MethodNotAllowed);
-        var waitTask = WaitForResultChangedAsync(search);
-        _ = search.Search("https://example.com", 10);
-        await waitTask;
-        Assert.Single(search.Search("https://example.com", 10));
+        Assert.Equal(4.0, Assert.IsType<ResultItemViewModel>(results[0]).Score);
+        Thread.Sleep(50);
+        // No network calls made when validation is off
+        Assert.Equal(0, handler.CallCount);
     }
 
     [Fact]

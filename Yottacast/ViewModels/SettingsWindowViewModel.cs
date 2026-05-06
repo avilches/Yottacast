@@ -92,6 +92,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [ObservableProperty] private bool _enableEmoji;
     [ObservableProperty] private bool _enableFileSearch;
     [ObservableProperty] private bool _enableWebSearch;
+    [ObservableProperty] private bool _enableUrlValidation;
     [ObservableProperty] private bool _fileSearchOnlySpecificFolders;
     [ObservableProperty] private bool _stickyWindow;
 
@@ -126,6 +127,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     partial void OnEnableEmojiChanged(bool value)                   { _settings.EnableEmoji                  = value; _settings.Save(); _logger.LogInformation("Settings: EnableEmoji = {Value}", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnEnableFileSearchChanged(bool value)              { _settings.EnableFileSearch             = value; _settings.Save(); _logger.LogInformation("Settings: EnableFileSearch = {Value}", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnEnableWebSearchChanged(bool value)               { _settings.EnableWebSearch              = value; _settings.Save(); _logger.LogInformation("Settings: EnableWebSearch = {Value}", value); _settings.NotifySearchSettingsChanged(); }
+    partial void OnEnableUrlValidationChanged(bool value)           { _settings.EnableUrlValidation          = value; _settings.Save(); _logger.LogInformation("Settings: EnableUrlValidation = {Value}", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnShowDisabledWebSearchEnginesChanged(bool value) {
         _settings.ShowDisabledWebSearchEngines = value;
         _settings.Save();
@@ -301,6 +303,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _enableEmoji                     = settings.EnableEmoji;
         _enableFileSearch                = settings.EnableFileSearch;
         _enableWebSearch                 = settings.EnableWebSearch;
+        _enableUrlValidation             = settings.EnableUrlValidation;
         _fileSearchOnlySpecificFolders   = settings.FileSearchOnlySpecificFolders;
         _stickyWindow                    = settings.StickyWindow;
         _keepValueWhenHide = settings.KeepValueWhenHide;

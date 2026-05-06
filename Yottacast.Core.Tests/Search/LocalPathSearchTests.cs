@@ -66,7 +66,7 @@ public class LocalPathSearchTests {
             Assert.Equal(Path.GetFileName(tempFile), r.Title);
             Assert.Equal(tempFile, r.Subtitle);
             Assert.Equal("Files", r.Category);
-            Assert.Equal(1.0, r.Score);
+            Assert.Equal(4.0, r.Score);
         } finally {
             File.Delete(tempFile);
         }

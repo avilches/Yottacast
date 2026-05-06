@@ -37,6 +37,7 @@ public class UserSettings {
     public bool EnableEmoji { get; set; } = true;
     public bool EnableFileSearch { get; set; } = true;
     public bool EnableWebSearch { get; set; } = true;
+    public bool EnableUrlValidation { get; set; } = true;
     public bool ShowDisabledWebSearchEngines { get; set; } = true;
     public bool FileSearchOnlySpecificFolders { get; set; } = false;
     public string LastLaunchedVersion { get; set; } = "";
@@ -150,6 +151,7 @@ public class UserSettings {
         [JsonPropertyName("enableEmoji")] public bool EnableEmoji { get; init; } = true;
         [JsonPropertyName("enableFileSearch")] public bool EnableFileSearch { get; init; } = true;
         [JsonPropertyName("enableWebSearch")] public bool EnableWebSearch { get; init; } = true;
+        [JsonPropertyName("enableUrlValidation")] public bool EnableUrlValidation { get; init; } = true;
         [JsonPropertyName("showDisabledWebSearchEngines")] public bool ShowDisabledWebSearchEngines { get; init; } = true;
         [JsonPropertyName("fileSearchOnlySpecificFolders")] public bool FileSearchOnlySpecificFolders { get; init; } = false;
         [JsonPropertyName("lastLaunchedVersion")] public string LastLaunchedVersion { get; init; } = "";
@@ -198,6 +200,7 @@ public class UserSettings {
                     EnableAppSearch = data.EnableAppSearch,
                     EnableFileSearch = data.EnableFileSearch,
                     EnableWebSearch = data.EnableWebSearch,
+                    EnableUrlValidation = data.EnableUrlValidation,
                     ShowDisabledWebSearchEngines = data.ShowDisabledWebSearchEngines,
                     FileSearchOnlySpecificFolders = data.FileSearchOnlySpecificFolders,
                     SearchFolders = (data.SearchFolders?.Count > 0
@@ -330,6 +333,7 @@ public class UserSettings {
                 EnableEmoji = EnableEmoji,
                 EnableFileSearch = EnableFileSearch,
                 EnableWebSearch = EnableWebSearch,
+                EnableUrlValidation = EnableUrlValidation,
                 ShowDisabledWebSearchEngines = ShowDisabledWebSearchEngines,
                 FileSearchOnlySpecificFolders = FileSearchOnlySpecificFolders,
                 LastLaunchedVersion = LastLaunchedVersion,

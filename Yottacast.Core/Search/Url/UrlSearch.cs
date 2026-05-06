@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
+using System.Net;
 using System.Net.Http;
+using System.Net.Sockets;
 using Microsoft.Extensions.Logging;
 using Yottacast.Core.Services;
 using Yottacast.Core.ViewModels;
@@ -32,6 +34,11 @@ public class UrlSearch(
     public IReadOnlyList<BaseResultItemViewModel> Search(string query, int _limit) {
         if (!TryNormalizeUrl(query, out var url)) return [];
 
+        if (!settings.EnableUrlValidation) {
+            // Validation off: show immediately, no network checks, no favicon
+            return [BuildResult(url, iconBytes: null)];
+        }
+
         var reachability = _reachability.GetOrAdd(url, key => {
             _ = CheckReachabilityAsync(key);
             return UrlReachability.Pending;
@@ -40,18 +47,22 @@ public class UrlSearch(
         if (reachability == UrlReachability.Invalid) return [];
 
         var browser = settings.ActiveBrowser;
-        var subtitle = browser is null ? "Open in browser" : $"Open in {browser.Name}";
-        var capturedUrl = url;
-
         byte[]? iconBytes = _favicons.GetValueOrDefault(url)
                             ?? (browser is null ? null : appIconCache.Get(browser.ExecutablePath));
 
-        return [new ResultItemViewModel {
+        return [BuildResult(url, iconBytes)];
+    }
+
+    private ResultItemViewModel BuildResult(string url, byte[]? iconBytes) {
+        var browser = settings.ActiveBrowser;
+        var subtitle = browser is null ? "Open in browser" : $"Open in {browser.Name}";
+        var capturedUrl = url;
+        return new ResultItemViewModel {
             IconBytes   = iconBytes,
             Title       = url.Length > 80 ? url[..77] + "…" : url,
             Subtitle    = subtitle,
             Category    = "Web",
-            Score       = 3.0,
+            Score       = 4.0,
             BypassLimit = true,
             OnActivate  = () => {
                 if (browser is null) {
@@ -61,26 +72,41 @@ public class UrlSearch(
                 logger.LogInformation("UrlSearch: open \"{Url}\" in {Browser}", capturedUrl, browser.Name);
                 browserDiscovery.OpenUrl(capturedUrl, browser);
             },
-        }];
+        };
     }
 
     private async Task CheckReachabilityAsync(string url) {
+        var host = new Uri(url).Host;
+
+        // Phase 1: DNS — confirm the domain exists
+        try {
+            using var dnsCts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            await Dns.GetHostAddressesAsync(host, dnsCts.Token).ConfigureAwait(false);
+        } catch (Exception ex) when (ex is SocketException or TaskCanceledException or OperationCanceledException) {
+            _reachability[url] = UrlReachability.Invalid;
+            logger.LogDebug("UrlSearch: DNS {Host} failed: {Message}", host, ex.Message);
+            ResultChanged?.Invoke();
+            return;
+        }
+
+        // DNS resolved — domain exists, show result
+        _reachability[url] = UrlReachability.Valid;
+        logger.LogDebug("UrlSearch: DNS {Host} → resolved", host);
+        ResultChanged?.Invoke();
+
+        // Phase 2: favicon + HEAD in parallel
+        _ = LoadFaviconAsync(url);
+        _ = HeadAsync(url);
+    }
+
+    private async Task HeadAsync(string url) {
         try {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
             using var request = new HttpRequestMessage(HttpMethod.Head, url);
             using var response = await httpClient.SendAsync(request, cts.Token).ConfigureAwait(false);
-            // Any HTTP response means the server is alive — mark Valid even for 403/405
-            // (many sites block HEAD but are perfectly reachable in the browser).
-            // Only network-level failures (exceptions) mark the URL as Invalid.
-            var status = (int)response.StatusCode;
-            _reachability[url] = UrlReachability.Valid;
-            logger.LogDebug("UrlSearch: HEAD {Url} → {Status}", url, status);
-            ResultChanged?.Invoke();
-            _ = LoadFaviconAsync(url);
+            logger.LogDebug("UrlSearch: HEAD {Url} → {Status}", url, (int)response.StatusCode);
         } catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException) {
-            _reachability[url] = UrlReachability.Invalid;
-            logger.LogDebug("UrlSearch: HEAD {Url} failed: {Message}", url, ex.Message);
-            ResultChanged?.Invoke();
+            logger.LogDebug("UrlSearch: HEAD {Url} failed (DNS confirmed domain exists): {Message}", url, ex.Message);
         }
     }
 

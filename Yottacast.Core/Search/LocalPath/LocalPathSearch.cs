@@ -31,7 +31,7 @@ public class LocalPathSearch(
             Title          = title,
             Subtitle       = expanded,
             Category       = "Files",
-            Score          = 1.0,
+            Score          = 4.0,
             OnActivate     = () => {
                 logger.LogInformation("LocalPath: open \"{Path}\"", capturedPath);
                 platform.LaunchApp(capturedPath); // same as UserDocumentSearch: LaunchApp opens arbitrary files/dirs with their default app
