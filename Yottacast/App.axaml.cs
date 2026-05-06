@@ -108,9 +108,9 @@ public partial class App : Application {
                 if (!userSettings.StickyWindow || isEmpty) {
                     mainWindow.Hide();
                     AppHandler.Instance.OnHide();
-                } else {
-                    mainWindowViewModel.StartDecayTimer();
                 }
+                // Sticky + non-empty: stay visible. The decay timer starts only when the window
+                // actually hides (IsVisible → false), handled in MainWindow.OnPropertyChanged.
             };
 
             // Wire up clipboard so Core code can copy results without depending on Avalonia
