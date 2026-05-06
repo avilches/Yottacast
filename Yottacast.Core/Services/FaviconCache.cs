@@ -37,7 +37,7 @@ public sealed class FaviconCache {
         return null;
     }
 
-    /// <summary>Clears in-memory cache. Disk cache persists across sessions.</summary>
+    /// <summary>Clears in-memory cache and dedup state. Disk cache persists across sessions.</summary>
     public Task Stop() {
         _memory.Clear();
         _started.Clear();

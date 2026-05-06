@@ -73,13 +73,13 @@ public class FaviconCacheTests : IDisposable {
     [Fact]
     public async Task FaviconLoaded_FiredAfterLoad() {
         var cache = Build();
-        var fired = false;
-        cache.FaviconLoaded += () => fired = true;
+        var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        cache.FaviconLoaded += () => tcs.TrySetResult();
 
         cache.GetOrLoad("example.com");
-        await Task.Delay(500);
+        await tcs.Task.WaitAsync(TimeSpan.FromSeconds(3));
 
-        Assert.True(fired);
+        Assert.True(tcs.Task.IsCompleted);
     }
 
     [Fact]
@@ -88,11 +88,11 @@ public class FaviconCacheTests : IDisposable {
         var cache = new FaviconCache(new HttpClient(handler), NullLogger<FaviconCache>.Instance, _tempDir);
 
         cache.GetOrLoad("example.com");
-        await Task.Delay(500);
+        await Task.Delay(2000);
 
         // Second call must NOT start another HTTP request
         cache.GetOrLoad("example.com");
-        await Task.Delay(200);
+        await Task.Delay(1000);
 
         Assert.Equal(1, handler.CallCount);
     }
