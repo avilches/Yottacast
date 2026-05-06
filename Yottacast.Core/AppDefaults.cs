@@ -122,6 +122,10 @@ public static class AppDefaults {
     /// HTTP timeout for exchange rate API requests.
     public const int ExchangeRateTimeoutSeconds = 10;
 
+    // ── Search — URL ──────────────────────────────────────────────────────────
+    /// HTTP timeout for favicon requests.
+    public const int FaviconTimeoutSeconds = 5;
+
     // ── Search — System Settings ──────────────────────────────────────────────
     /// TTL for dynamic System Settings panels cache (Wi-Fi, VPN, etc).
     public static readonly TimeSpan SystemSettingsDynamicCacheTtl = TimeSpan.FromSeconds(10);

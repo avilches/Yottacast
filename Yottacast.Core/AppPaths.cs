@@ -48,6 +48,9 @@ public static class AppPaths {
     /// <summary>Cached icons for WebSearch plugins.</summary>
     public static readonly string PluginIconCacheDir = Path.Combine(CacheDir, "plugin-icons");
 
+    /// <summary>Favicon disk cache directory.</summary>
+    public static readonly string FaviconCacheDir = Path.Combine(CacheDir, "favicons");
+
     /// <summary>Emoji usage data (favorites + usage counts) JSON file.</summary>
     public static readonly string EmojiUsageFile = Path.Combine(ConfigDir, "emoji-usage.json");
 
