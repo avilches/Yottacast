@@ -6,6 +6,7 @@ using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
@@ -206,8 +207,8 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
                 SetBrush(app,      "Theme.Search.Caret",       search["caret"]?["color"]);
                 SetBrush(app,      "Theme.Search.Selection",   search["selection"]?["color"]);
                 var hint = search["hint"];
-                SetBrush(app, "Theme.Search.Hint.Error", hint?["error"]?["color"]);
-                SetBrush(app, "Theme.Search.Hint.Info",  hint?["info"]?["color"]);
+                SetHintStyle(app, "Error", hint?["error"]);
+                SetHintStyle(app, "Info",  hint?["info"]);
             }
 
             // ── Divider / Spinner ──
@@ -217,7 +218,8 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
             // ── Results ──
             var results = json["results"];
             if (results != null) {
-                SetBrush(app, "Theme.Results.Background", results["background"]);
+                SetBrush(app,   "Theme.Results.Background", results["background"]);
+                SetDouble(app,  "Theme.Results.MaxHeight",  results["maxHeight"]);
                 if (results["padding"] != null) {
                     var p = results["padding"]!.GetValue<double>();
                     app.Resources["Theme.Results.Padding"] = new Thickness(p);
@@ -368,14 +370,15 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
         app.Resources["Theme.Search.Placeholder"] = B("#505055");
         app.Resources["Theme.Search.Caret"]       = B("#5E8FFF");
         app.Resources["Theme.Search.Selection"]   = B("#3560EE");
-        app.Resources["Theme.Search.Hint.Error"] = B("#FF3B30");
-        app.Resources["Theme.Search.Hint.Info"]  = B("#9A9AA4");
+        SetHintStyleDefaults(app, "Error", "#FF3B30");
+        SetHintStyleDefaults(app, "Info",  "#9A9AA4");
 
         // ── Divider / Spinner ──
         app.Resources["Theme.Divider.Color"] = B("#2A2A30");
         app.Resources["Theme.Spinner.Color"] = B("#505055");
 
         // ── Results ──
+        app.Resources["Theme.Results.MaxHeight"]                 = 540.0;
         app.Resources["Theme.Results.Background"]                = B("#0D0D12");
         app.Resources["Theme.Results.Padding"]                   = new Thickness(8);
         app.Resources["Theme.Results.SelectionBar.Color"]          = B("#2C5AF0");
@@ -456,6 +459,44 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
         app.Resources["Theme.Update.Background"] = B("#2C5AF0");
         app.Resources["Theme.Update.Color"]      = B("#FFFFFF");
         app.Resources["Theme.Update.Size"]       = 12.0;
+    }
+
+    private static void SetHintStyle(Application app, string kind, JsonNode? node) {
+        if (node == null) return;
+        var p = $"Theme.Search.Hint.{kind}";
+        SetBrush(app,        $"{p}.Color",        node["color"]);
+        SetDouble(app,       $"{p}.Size",         node["size"]);
+        SetFontFamily(app,   $"{p}.FontFamily",   node["fontFamily"]);
+        SetThickness(app,    $"{p}.Padding",      node["padding"]);
+        SetBrush(app,        $"{p}.Background",   node["background"]);
+        SetCornerRadius(app, $"{p}.CornerRadius", node["cornerRadius"]);
+        SetThickness(app,    $"{p}.Margin",       node["margin"]);
+        if (node["horizontalAlignment"] != null)
+            app.Resources[$"{p}.HorizontalAlignment"] = node["horizontalAlignment"]!.GetValue<string>().ToLowerInvariant() switch {
+                "left"   => HorizontalAlignment.Left,
+                "center" => HorizontalAlignment.Center,
+                "right"  => HorizontalAlignment.Right,
+                _        => HorizontalAlignment.Stretch
+            };
+        if (node["textAlignment"] != null)
+            app.Resources[$"{p}.TextAlignment"] = node["textAlignment"]!.GetValue<string>().ToLowerInvariant() switch {
+                "center" => TextAlignment.Center,
+                "right"  => TextAlignment.Right,
+                _        => TextAlignment.Left
+            };
+    }
+
+    private static void SetHintStyleDefaults(Application app, string kind, string defaultColor) {
+        var p = $"Theme.Search.Hint.{kind}";
+        app.Resources[$"{p}.Color"]               = new SolidColorBrush(Color.Parse(defaultColor));
+        app.Resources[$"{p}.Size"]                = 12.0;
+        app.Resources[$"{p}.FontFamily"]          = new FontFamily("SF Pro Text, Segoe UI, Inter");
+        app.Resources[$"{p}.Padding"]             = new Thickness(0);
+        app.Resources[$"{p}.Background"]          = new SolidColorBrush(Colors.Transparent);
+        app.Resources[$"{p}.CornerRadius"]        = new CornerRadius(0);
+        app.Resources[$"{p}.Margin"]              = new Thickness(20, 0, 20, 8);
+        app.Resources[$"{p}.HorizontalAlignment"] = HorizontalAlignment.Stretch;
+        app.Resources[$"{p}.TextAlignment"]       = TextAlignment.Left;
     }
 
     private static void SetBrush(Application app, string key, JsonNode? node) {

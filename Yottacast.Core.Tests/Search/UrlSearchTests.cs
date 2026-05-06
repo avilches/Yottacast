@@ -29,7 +29,7 @@ public class UrlSearchTests {
     [InlineData("hello world",              "",                           false)]  // tiene espacios
     [InlineData("hello",                    "",                           false)]  // sin punto
     [InlineData("report.pdf",              "",                            false)]  // TLD desconocido
-    [InlineData("example.xyz",             "",                            false)]  // TLD desconocido
+    [InlineData("example.xyz",             "https://example.xyz",         true)]   // TLD IANA válido
     [InlineData("",                         "",                           false)]
     [InlineData("abc",                      "",                           false)]
     [InlineData("/usr/local/bin",           "",                           false)]  // ruta local
@@ -44,12 +44,13 @@ public class UrlSearchTests {
 
     private static UrlSearch BuildSearch(HttpStatusCode headStatusCode = HttpStatusCode.OK) {
         var handler = new FakeHttpMessageHandler(headStatusCode);
-        var httpClient = new HttpClient(handler);
         var platform = new FakePlatformProvider([]);
         var settings = UserSettings.Load(platform);
+        settings.EnableWebSearch = true;
+        settings.EnableUrlValidation = true;
         var appIconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
         var browserDiscovery = new BrowserDiscovery(settings, platform, NullLogger<BrowserDiscovery>.Instance);
-        return new UrlSearch(httpClient, settings, browserDiscovery, appIconCache, NullLogger<UrlSearch>.Instance);
+        return new UrlSearch(new HttpClient(handler), settings, browserDiscovery, appIconCache, NullLogger<UrlSearch>.Instance);
     }
 
     /// <summary>Espera a que ResultChanged se dispare (máx <paramref name="timeoutMs"/> ms).</summary>
@@ -60,6 +61,20 @@ public class UrlSearchTests {
     }
 
     // ── Search behavior ───────────────────────────────────────────────────────
+
+    [Fact]
+    public void Search_WebSearchDisabled_ReturnsEmpty() {
+        var handler = new FakeHttpMessageHandler(HttpStatusCode.OK);
+        var platform = new FakePlatformProvider([]);
+        var settings = UserSettings.Load(platform);
+        settings.EnableWebSearch = false;
+        var appIconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
+        var browserDiscovery = new BrowserDiscovery(settings, platform, NullLogger<BrowserDiscovery>.Instance);
+        var search = new UrlSearch(new HttpClient(handler), settings, browserDiscovery, appIconCache, NullLogger<UrlSearch>.Instance);
+
+        Assert.Empty(search.Search("https://example.com", 10));
+        Assert.Empty(search.Search("github.com/user/repo", 10));
+    }
 
     [Fact]
     public void Search_NonUrl_ReturnsEmpty() {
@@ -78,7 +93,6 @@ public class UrlSearchTests {
         Assert.Equal("https://example.com", r.Title);
         Assert.Equal("Web", r.Category);
         Assert.Equal(4.0, r.Score);
-        Assert.True(r.BypassLimit);
         Assert.NotNull(r.OnActivate);
     }
 
@@ -93,22 +107,18 @@ public class UrlSearchTests {
     }
 
     [Fact]
-    public void Search_ValidationOff_ReturnsResultImmediatelyWithoutNetworkCheck() {
-        // EnableUrlValidation = false: instant result, no DNS/HEAD/favicon
+    public void Search_ValidationOff_ReturnsEmpty() {
+        // EnableUrlValidation = false: URL results are not shown (no point without DNS check)
         var handler = new FakeHttpMessageHandler(HttpStatusCode.OK);
-        var httpClient = new HttpClient(handler);
         var platform = new FakePlatformProvider([]);
         var settings = UserSettings.Load(platform);
         settings.EnableUrlValidation = false;
         var appIconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
         var browserDiscovery = new BrowserDiscovery(settings, platform, NullLogger<BrowserDiscovery>.Instance);
-        var search = new UrlSearch(httpClient, settings, browserDiscovery, appIconCache, NullLogger<UrlSearch>.Instance);
+        var search = new UrlSearch(new HttpClient(handler), settings, browserDiscovery, appIconCache, NullLogger<UrlSearch>.Instance);
 
-        var results = search.Search("https://example.com", 10);
-        Assert.Single(results);
-        Assert.Equal(4.0, Assert.IsType<ResultItemViewModel>(results[0]).Score);
+        Assert.Empty(search.Search("https://example.com", 10));
         Thread.Sleep(50);
-        // No network calls made when validation is off
         Assert.Equal(0, handler.CallCount);
     }
 

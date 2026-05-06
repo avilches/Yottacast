@@ -46,6 +46,8 @@ public sealed class ApplicationSearch(
 
     // ── IInstantSearchSource ──────────────────────────────────────────────────
 
+    public int Limit => AppDefaults.AppSearchLimit;
+
     public void Start() {
         if (_started) return;
         _started = true;

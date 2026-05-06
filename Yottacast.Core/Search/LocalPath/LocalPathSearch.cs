@@ -11,6 +11,8 @@ public class LocalPathSearch(
     ClipboardService clipboard,
     ILogger<LocalPathSearch> logger) : IInstantSearchSource {
 
+    public int Limit => AppDefaults.LocalPathSearchLimit;
+
     public void Start() { }
     public Task WhenReady() => Task.CompletedTask;
     public Task Stop() => Task.CompletedTask;

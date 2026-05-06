@@ -135,96 +135,108 @@
 
             <!-- ── Search row + hint ── -->
             <!-- StackPanel is transparent: window.background colors this header zone -->
-            <StackPanel DockPanel.Dock="Top">
+            <!-- ZIndex="5" allows the hint overlay to float over sibling DockPanel children -->
+            <StackPanel DockPanel.Dock="Top" ZIndex="5">
 
-                <!-- Input box: margin/padding/radius/border all configurable via theme -->
-                <Border Background="{DynamicResource Theme.Search.Background}"
-                        CornerRadius="{DynamicResource Theme.Search.Input.CornerRadius}"
-                        Margin="{DynamicResource Theme.Search.Input.Margin}"
-                        Padding="{DynamicResource Theme.Search.Input.Padding}"
-                        BorderBrush="{DynamicResource Theme.Search.Input.BorderColor}"
-                        BorderThickness="{DynamicResource Theme.Search.Input.BorderThickness}">
-                    <Grid ColumnDefinitions="*,Auto"
-                          MinHeight="46">
+                <!-- Input box + hint overlay (hint floats over the bottom of the input, no layout shift) -->
+                <Grid>
+                    <Border Background="{DynamicResource Theme.Search.Background}"
+                            CornerRadius="{DynamicResource Theme.Search.Input.CornerRadius}"
+                            Margin="{DynamicResource Theme.Search.Input.Margin}"
+                            Padding="{DynamicResource Theme.Search.Input.Padding}"
+                            BorderBrush="{DynamicResource Theme.Search.Input.BorderColor}"
+                            BorderThickness="{DynamicResource Theme.Search.Input.BorderThickness}">
+                        <Grid ColumnDefinitions="*,Auto"
+                              MinHeight="46">
 
-                        <!-- Search input -->
-                        <TextBox Grid.Column="0"
-                                 x:Name="SearchBox"
-                                 Text="{Binding SearchText}"
-                                 Watermark="Search for apps, files, commands…"
-                                 FontFamily="{DynamicResource Theme.Search.FontFamily}"
-                                 FontSize="{DynamicResource Theme.Search.Size}"
-                                 FontWeight="Regular"
-                                 VerticalAlignment="Center"
-                                 VerticalContentAlignment="Center"
-                                 Foreground="{DynamicResource Theme.Search.Color}"
-                                 CaretBrush="{DynamicResource Theme.Search.Caret}"
-                                 SelectionBrush="{DynamicResource Theme.Search.Selection}">
-                            <!-- Override Fluent theme resources so background stays transparent in all states -->
-                            <TextBox.Resources>
-                                <SolidColorBrush x:Key="TextControlBackground" Color="Transparent"/>
-                                <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="Transparent"/>
-                                <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="Transparent"/>
-                                <SolidColorBrush x:Key="TextControlBackgroundDisabled" Color="Transparent"/>
-                            </TextBox.Resources>
-                        </TextBox>
+                            <!-- Search input -->
+                            <TextBox Grid.Column="0"
+                                     x:Name="SearchBox"
+                                     Text="{Binding SearchText}"
+                                     Watermark="Search for apps, files, commands…"
+                                     FontFamily="{DynamicResource Theme.Search.FontFamily}"
+                                     FontSize="{DynamicResource Theme.Search.Size}"
+                                     FontWeight="Regular"
+                                     VerticalAlignment="Center"
+                                     VerticalContentAlignment="Center"
+                                     Foreground="{DynamicResource Theme.Search.Color}"
+                                     CaretBrush="{DynamicResource Theme.Search.Caret}"
+                                     SelectionBrush="{DynamicResource Theme.Search.Selection}">
+                                <!-- Override Fluent theme resources so background stays transparent in all states -->
+                                <TextBox.Resources>
+                                    <SolidColorBrush x:Key="TextControlBackground" Color="Transparent"/>
+                                    <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="Transparent"/>
+                                    <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="Transparent"/>
+                                    <SolidColorBrush x:Key="TextControlBackgroundDisabled" Color="Transparent"/>
+                                </TextBox.Resources>
+                            </TextBox>
 
-                        <!-- Right side: spinner while deferred search is running -->
-                        <Ellipse Grid.Column="1"
-                                 Classes="spinner"
-                                 Width="16" Height="16"
-                                 Margin="0,0,14,0"
-                                 Fill="{DynamicResource Theme.Spinner.Color}"
-                                 IsVisible="{Binding IsSearching}"/>
+                            <!-- Right side: spinner while deferred search is running -->
+                            <Ellipse Grid.Column="1"
+                                     Classes="spinner"
+                                     Width="16" Height="16"
+                                     Margin="0,0,14,0"
+                                     Fill="{DynamicResource Theme.Spinner.Color}"
+                                     IsVisible="{Binding IsSearching}"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Info hint — position and style fully controlled by theme -->
+                    <Grid VerticalAlignment="Bottom"
+                          Margin="{DynamicResource Theme.Search.Hint.Info.Margin}"
+                          IsHitTestVisible="False">
+                        <Border HorizontalAlignment="{DynamicResource Theme.Search.Hint.Info.HorizontalAlignment}"
+                                Background="{DynamicResource Theme.Search.Hint.Info.Background}"
+                                Padding="{DynamicResource Theme.Search.Hint.Info.Padding}"
+                                CornerRadius="{DynamicResource Theme.Search.Hint.Info.CornerRadius}"
+                                Opacity="0"
+                                IsVisible="{Binding SearchHintIsInfo}">
+                            <Border.Styles>
+                                <Style Selector="Border[IsVisible=true]">
+                                    <Style.Animations>
+                                        <Animation Duration="0:0:0.4" FillMode="Forward">
+                                            <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0"/></KeyFrame>
+                                            <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1"/></KeyFrame>
+                                        </Animation>
+                                    </Style.Animations>
+                                </Style>
+                            </Border.Styles>
+                            <TextBlock Text="{Binding SearchHint}"
+                                       Foreground="{DynamicResource Theme.Search.Hint.Info.Color}"
+                                       FontSize="{DynamicResource Theme.Search.Hint.Info.Size}"
+                                       FontFamily="{DynamicResource Theme.Search.Hint.Info.FontFamily}"
+                                       TextAlignment="{DynamicResource Theme.Search.Hint.Info.TextAlignment}"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </Border>
                     </Grid>
-                </Border>
-
-                <!-- Hint area - fixed height to avoid layout shift when hint appears/disappears -->
-                <Grid Margin="20,0,20,8" MinHeight="18">
-                    <!-- Info hint (gray) -->
-                    <TextBlock Text="{Binding SearchHint}"
-                               Foreground="{DynamicResource Theme.Search.Hint.Info}"
-                               FontSize="{DynamicResource Theme.Results.Category.Size}"
-                               Opacity="0"
-                               TextTrimming="CharacterEllipsis"
-                               IsVisible="{Binding SearchHintIsInfo}">
-                        <TextBlock.Styles>
-                            <Style Selector="TextBlock[IsVisible=true]">
-                                <Style.Animations>
-                                    <Animation Duration="0:0:0.4" FillMode="Forward">
-                                        <KeyFrame Cue="0%">
-                                            <Setter Property="Opacity" Value="0"/>
-                                        </KeyFrame>
-                                        <KeyFrame Cue="100%">
-                                            <Setter Property="Opacity" Value="1"/>
-                                        </KeyFrame>
-                                    </Animation>
-                                </Style.Animations>
-                            </Style>
-                        </TextBlock.Styles>
-                    </TextBlock>
-                    <!-- Error hint (red) -->
-                    <TextBlock Text="{Binding SearchHint}"
-                               Foreground="{DynamicResource Theme.Search.Hint.Error}"
-                               FontSize="{DynamicResource Theme.Results.Category.Size}"
-                               Opacity="0"
-                               TextTrimming="CharacterEllipsis"
-                               IsVisible="{Binding SearchHintIsError}">
-                        <TextBlock.Styles>
-                            <Style Selector="TextBlock[IsVisible=true]">
-                                <Style.Animations>
-                                    <Animation Duration="0:0:0.4" FillMode="Forward">
-                                        <KeyFrame Cue="0%">
-                                            <Setter Property="Opacity" Value="0"/>
-                                        </KeyFrame>
-                                        <KeyFrame Cue="100%">
-                                            <Setter Property="Opacity" Value="1"/>
-                                        </KeyFrame>
-                                    </Animation>
-                                </Style.Animations>
-                            </Style>
-                        </TextBlock.Styles>
-                    </TextBlock>
+                    <!-- Error hint — position and style fully controlled by theme -->
+                    <Grid VerticalAlignment="Bottom"
+                          Margin="{DynamicResource Theme.Search.Hint.Error.Margin}"
+                          IsHitTestVisible="False">
+                        <Border HorizontalAlignment="{DynamicResource Theme.Search.Hint.Error.HorizontalAlignment}"
+                                Background="{DynamicResource Theme.Search.Hint.Error.Background}"
+                                Padding="{DynamicResource Theme.Search.Hint.Error.Padding}"
+                                CornerRadius="{DynamicResource Theme.Search.Hint.Error.CornerRadius}"
+                                Opacity="0"
+                                IsVisible="{Binding SearchHintIsError}">
+                            <Border.Styles>
+                                <Style Selector="Border[IsVisible=true]">
+                                    <Style.Animations>
+                                        <Animation Duration="0:0:0.4" FillMode="Forward">
+                                            <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0"/></KeyFrame>
+                                            <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1"/></KeyFrame>
+                                        </Animation>
+                                    </Style.Animations>
+                                </Style>
+                            </Border.Styles>
+                            <TextBlock Text="{Binding SearchHint}"
+                                       Foreground="{DynamicResource Theme.Search.Hint.Error.Color}"
+                                       FontSize="{DynamicResource Theme.Search.Hint.Error.Size}"
+                                       FontFamily="{DynamicResource Theme.Search.Hint.Error.FontFamily}"
+                                       TextAlignment="{DynamicResource Theme.Search.Hint.Error.TextAlignment}"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </Border>
+                    </Grid>
                 </Grid>
             </StackPanel>
 
@@ -257,7 +269,7 @@
                      x:Name="ResultsList"
                      ItemsSource="{Binding Results}"
                      SelectedItem="{Binding SelectedResult}"
-                     MaxHeight="540"
+                     MaxHeight="{DynamicResource Theme.Results.MaxHeight}"
                      Padding="{DynamicResource Theme.Results.Padding}"
                      Background="{DynamicResource Theme.Results.Background}"
                      IsVisible="{Binding HasResults}"

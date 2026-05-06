@@ -23,8 +23,14 @@
     "caret":       { "color": "#5E8FFF" },
     "selection":   { "color": "#3560EE" },
     "hint": {
-      "error": { "color": "#FF3B30" },
-      "info":  { "color": "#9A9AA4" }
+      "error": {
+        "color": "#FF3B30", "size": 12, "fontFamily": "SF Pro Text, Lucida Grande, Segoe UI, Inter",
+        "padding": "0", "background": "Transparent", "cornerRadius": 0, "textAlignment": "center", "horizontalAlignment": "stretch", "margin": "30,0,20,6"
+      },
+      "info": {
+        "color": "#9A9AA4", "size": 12, "fontFamily": "SF Pro Text, Lucida Grande, Segoe UI, Inter",
+        "padding": "0", "background": "Transparent", "cornerRadius": 0, "textAlignment": "center", "horizontalAlignment": "stretch", "margin": "30,0,20,6"
+      }
     }
   },
 
@@ -32,6 +38,7 @@
   "spinner": { "color": "#505055" },
 
   "results": {
+    "maxHeight": 540,
     "background": "#1C1C22",
     "padding": 8,
     "cornerRadius": 8,

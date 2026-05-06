@@ -9,4 +9,6 @@ public interface IInstantSearchSource {
     Task WhenReady();
     Task Stop();
     IReadOnlyList<BaseResultItemViewModel> Search(string query, int limit);
+    /// <summary>Maximum results this source may contribute. -1 means no limit.</summary>
+    int Limit { get; }
 }

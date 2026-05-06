@@ -10,14 +10,15 @@ namespace Yottacast.Core.Tests.Search;
 /// <summary>
 /// Returns a single fixed snapshot synchronously.
 /// </summary>
-file sealed class StubInstantSource(IReadOnlyList<ResultItemViewModel> results) : IInstantSearchSource {
+file sealed class StubInstantSource(IReadOnlyList<ResultItemViewModel> results, int limit = 100) : IInstantSearchSource {
     public bool WasSearched { get; private set; }
+    public int Limit => limit;
 
     public void Start() { }
     public Task WhenReady() => Task.CompletedTask;
     public Task Stop() => Task.CompletedTask;
 
-    public IReadOnlyList<BaseResultItemViewModel> Search(string query, int limit) {
+    public IReadOnlyList<BaseResultItemViewModel> Search(string query, int _) {
         WasSearched = true;
         return results;
     }
@@ -87,11 +88,13 @@ file sealed class BlockingDeferredSource : IDeferredSearchSource {
 file sealed class DelayedReadyInstantSource(TaskCompletionSource tcs, IReadOnlyList<ResultItemViewModel> results)
     : IInstantSearchSource {
 
+    public int Limit => 100;
+
     public void Start() { }
     public Task WhenReady() => tcs.Task;
     public Task Stop() => Task.CompletedTask;
 
-    public IReadOnlyList<BaseResultItemViewModel> Search(string query, int limit) => results;
+    public IReadOnlyList<BaseResultItemViewModel> Search(string query, int _) => results;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -256,7 +259,9 @@ public class GlobalSearchTests {
     }
 
     [Fact]
-    public void Limit_EnforcedOnInstantResults() {
+    public void Limit_MergesAllSourcesWithoutGlobalCap() {
+        // Each source uses its own Limit (AppDefaults.SearchSourceLimit = 10 by default).
+        // There is no global cap: all items from all sources are returned, sorted by score.
         var s1 = new StubInstantSource([
             ResultItem.Make("A", 1.0),
             ResultItem.Make("B", 0.9),
@@ -270,10 +275,12 @@ public class GlobalSearchTests {
 
         var (result, _, _) = global.SearchInstant("q", limit: 3);
 
-        Assert.Equal(3, result.Count);
+        Assert.Equal(5, result.Count);
         Assert.Equal("A", ResultItem.TitleOf(result[0]));
         Assert.Equal("B", ResultItem.TitleOf(result[1]));
         Assert.Equal("C", ResultItem.TitleOf(result[2]));
+        Assert.Equal("D", ResultItem.TitleOf(result[3]));
+        Assert.Equal("E", ResultItem.TitleOf(result[4]));
     }
 
     // ── Empty query / no sources ──────────────────────────────────────────────

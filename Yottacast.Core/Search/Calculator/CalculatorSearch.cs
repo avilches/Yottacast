@@ -15,6 +15,7 @@ namespace Yottacast.Core.Search.Calculator;
 public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateService exchangeRateService, ClipboardService clipboard, UserSettings settings, ILogger<CalculatorSearch> logger) : IInstantSearchSource, ISearchHintProvider {
     public string? LastHint { get; private set; }
     public SearchHintKind LastHintKind { get; private set; }
+    public int Limit => AppDefaults.CalcSearchLimit;
 
     public void Start() { }
     public Task WhenReady() => Task.CompletedTask;

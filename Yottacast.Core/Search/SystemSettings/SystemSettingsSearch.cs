@@ -29,6 +29,8 @@ public sealed class SystemSettingsSearch(
     private IReadOnlyList<SystemSettingsPanel> _dynamicCache = [];
     private DateTime _dynamicCacheTime = DateTime.MinValue;
 
+    public int Limit => AppDefaults.SystemSettingsSearchLimit;
+
     public void Start() {
         if (!settings.EnableSystemSettings || !settings.EnableAppSearch) {
             _readyTcs.TrySetResult();

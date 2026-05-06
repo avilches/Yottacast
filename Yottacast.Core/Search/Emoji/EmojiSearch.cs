@@ -16,6 +16,8 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
     private Task<IReadOnlyList<EmojiEntry>>? _loadTask;
     private volatile IReadOnlyList<EmojiEntry> _entries = [];
 
+    public int Limit => AppDefaults.EmojiSearchLimit;
+
     public void Start() {
         _loadTask = Task.Run(async () => {
             var entries = await dataLoader.LoadAsync(emojiCachePath);

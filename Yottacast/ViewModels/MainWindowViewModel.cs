@@ -91,7 +91,7 @@ public partial class MainWindowViewModel(
 
     public void RefreshSearch() {
         if (string.IsNullOrWhiteSpace(SearchText)) return;
-        var (items, hint, hintKind) = globalSearch.SearchInstant(SearchText, limit: SearchSourceLimit);
+        var (items, hint, hintKind) = globalSearch.SearchInstant(SearchText.Trim(), limit: SearchSourceLimit);
         _instantSnapshot = items;
         SetSearchHint(hint, hintKind);
         RefreshResults();
@@ -121,7 +121,7 @@ public partial class MainWindowViewModel(
             ShowPendingApps();
         } else {
             // Usuario buscando activamente — refrescar por si la nueva app coincide con la query
-            var (items, hint, hintKind) = globalSearch.SearchInstant(SearchText, limit: SearchSourceLimit);
+            var (items, hint, hintKind) = globalSearch.SearchInstant(SearchText.Trim(), limit: SearchSourceLimit);
             _instantSnapshot = items;
             SetSearchHint(hint, hintKind);
             RefreshResults();
@@ -143,7 +143,7 @@ public partial class MainWindowViewModel(
             _cts?.Cancel();
             _cts = new CancellationTokenSource();
             _userNavigated = false;
-            _ = SearchAsync(SearchText, _cts.Token);
+            _ = SearchAsync(SearchText.Trim(), _cts.Token);
         });
     }
 
@@ -156,7 +156,7 @@ public partial class MainWindowViewModel(
                 if (_pendingAppInfos.Count > 0) ShowPendingApps();
                 return;
             }
-            var (items, hint, hintKind) = globalSearch.SearchInstant(SearchText, limit: SearchSourceLimit);
+            var (items, hint, hintKind) = globalSearch.SearchInstant(SearchText.Trim(), limit: SearchSourceLimit);
             _instantSnapshot = items;
             SetSearchHint(hint, hintKind);
             RefreshResults();
@@ -218,7 +218,7 @@ public partial class MainWindowViewModel(
         }
 
         _pendingAppInfos.Clear();
-        _ = SearchAsync(value, _cts.Token);
+        _ = SearchAsync(value.Trim(), _cts.Token);
     }
 
     private async Task SearchAsync(string query, CancellationToken ct) {
@@ -291,7 +291,7 @@ public partial class MainWindowViewModel(
     /// </summary>
     public void CleanAndSaveHistory(string? actionName) {
         if (!string.IsNullOrWhiteSpace(SearchText) && !_textIsFromHistory)
-            historyService.Add(SearchText, actionName);
+            historyService.Add(SearchText.Trim(), actionName);
         SearchText = "";
     }
 
@@ -369,7 +369,7 @@ public partial class MainWindowViewModel(
 
     private async Task ClearCopiedMessageAsync(string msg, CancellationToken ct) {
         try {
-            await Task.Delay(1500, ct);
+            await Task.Delay(AppDefaults.CopiedMessageDurationMs, ct);
             if (SearchHint == msg) SetSearchHint(null);
         } catch (OperationCanceledException) { }
     }

@@ -13,8 +13,25 @@ public static class AppDefaults {
     public const int ErrorHintDelayMs = 1_000;
     /// Minimum query length before any file search is attempted.
     public const int FileSearchMinQueryLength = 2;
-    /// Maximum results returned per search source.
+
+    // ── Search — result limits per source (-1 = no limit) ────────────────────
+    /// Fallback limit passed to GlobalSearch.SearchInstant/SearchDeferredAsync.
+    /// Used by unlimited sources (Limit = -1) as their effective cap, and by deferred sources.
     public const int SearchSourceLimit = 10;
+    /// Application search: max matched apps shown.
+    public const int AppSearchLimit = 10;
+    /// Calculator/converter: always returns 0-1 result — self-limiting by nature.
+    public const int CalcSearchLimit = -1;
+    /// Emoji search: always returns 0-1 grid item — self-limiting by nature.
+    public const int EmojiSearchLimit = -1;
+    /// Local path detection: typically 1 result for an exact path.
+    public const int LocalPathSearchLimit = 5;
+    /// System settings panels.
+    public const int SystemSettingsSearchLimit = 5;
+    /// Web search engines: no cap — all configured ShowAlways engines are shown.
+    public const int WebSearchSourceLimit = -1;
+    /// URL detection: no cap — always shown when matched.
+    public const int UrlSearchSourceLimit = -1;
 
     // ── Search — file search ──────────────────────────────────────────────────
     /// Hard timeout for a single Spotlight / Windows Search query.
@@ -34,6 +51,10 @@ public static class AppDefaults {
     /// Half-life in days for the emoji usage decay score.
     /// After this many days without use, a score is halved.
     public const int EmojiHalfLifeDays = 30;
+
+    // ── UI — hints ───────────────────────────────────────────────────────────
+    /// Duration a "copied" feedback hint stays visible before auto-clearing.
+    public const int CopiedMessageDurationMs = 4_000;
 
     // ── UI — paste simulation ─────────────────────────────────────────────────
     /// Delay before simulating Cmd+V / Ctrl+V after selecting an emoji.

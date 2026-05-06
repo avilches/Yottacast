@@ -108,7 +108,6 @@ public class DictionarySource(
                 Language = multiLang ? langName : null,
                 Definitions = defs,
                 Score = score,
-                BypassLimit = true,
                 OnActivate = () => {
                     var browser = settings.ActiveBrowser;
                     if (browser is not null)
@@ -172,7 +171,6 @@ public class DictionarySource(
                         Language = multiLang ? langName : null,
                         Definitions = defs,
                         Score = score,
-                        BypassLimit = true,
                         OnActivate = () => {
                             var browser = settings.ActiveBrowser;
                             if (browser is not null)

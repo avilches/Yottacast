@@ -12,6 +12,8 @@ public class WebSearchSource(
 
     private readonly Dictionary<string, byte[]?> _icons = LoadIcons();
 
+    public int Limit => AppDefaults.WebSearchSourceLimit;
+
     public void Start() {
         pluginService.PluginsChanged += OnPluginsChanged;
     }
@@ -103,14 +105,14 @@ public class WebSearchSource(
 
         var capturedQuery = searchQuery;
         var capturedQueryUrl = string.IsNullOrEmpty(userConfig.QueryUrl) ? defaultQueryUrl : userConfig.QueryUrl;
+        var browserName = settings.ActiveBrowser?.Name ?? "browser";
         return new ResultItemViewModel {
             IconBytes   = iconBytes,
-            Title       = $"{name}: {capturedQuery}",
-            Subtitle    = "Open in browser",
+            Title       = $"{name}: \"{capturedQuery}\"",
+            Subtitle    = $"Open search in {browserName}",
             Category    = "Web",
-            Score       = score,
-            BypassLimit = true,
-            OnActivate  = () => {
+            Score      = score,
+            OnActivate = () => {
                 var browser = settings.ActiveBrowser;
                 if (browser is null) return;
                 var url = string.Format(capturedQueryUrl, Uri.EscapeDataString(capturedQuery));
