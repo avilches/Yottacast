@@ -24,6 +24,8 @@ public class UrlSearchTests {
     [InlineData("example.io",               "https://example.io",         true)]
     [InlineData("example.dev",              "https://example.dev",        true)]
     [InlineData("myapp.ai",                 "https://myapp.ai",           true)]
+    [InlineData("amazon.us",               "https://amazon.us",          true)]
+    [InlineData("bbc.co.uk",               "https://bbc.co.uk",          true)]
     [InlineData("hello world",              "",                           false)]  // tiene espacios
     [InlineData("hello",                    "",                           false)]  // sin punto
     [InlineData("report.pdf",              "",                            false)]  // TLD desconocido

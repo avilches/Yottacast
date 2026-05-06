@@ -102,7 +102,9 @@ public class UrlSearch(
     }
 
     private static readonly HashSet<string> KnownTlds = new(StringComparer.OrdinalIgnoreCase) {
-        "com", "net", "org", "io", "co", "uk", "de", "es", "fr", "dev", "app", "ai", "edu", "gov"
+        "com", "net", "org", "io", "co", "uk", "de", "es", "fr", "dev", "app", "ai", "edu", "gov",
+        "us", "ca", "au", "it", "jp", "br", "nl", "ch", "pl", "se", "no", "dk", "fi", "pt",
+        "mx", "ar", "ru", "cn", "in", "me", "tv", "info", "biz", "eu",
     };
 
     /// <summary>
