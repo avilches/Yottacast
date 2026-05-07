@@ -206,7 +206,7 @@ public class UrlSearch(
         "party", "pay", "pccw", "pe", "pet", "pf", "pfizer", "pg", "ph", "pharmacy",
         "phd", "philips", "phone", "photo", "photography", "photos", "physio", "pics", "pictet", "pictures",
         "pid", "pin", "ping", "pink", "pioneer", "pizza", "pk", "pl", "place", "play",
-        "playstation", "plumbing", "plus", "pm", "pn", "pnc", "pohl", "poker", "politie", "porn",
+        "playstation", "plumbing", "plus", "pm", "pn", "pnc", "pohl", "poker", "politie",
         "post", "pr", "praxi", "press", "prime", "pro", "prod", "productions", "prof", "progressive",
         "promo", "properties", "property", "protection", "pru", "prudential", "ps", "pt", "pub", "pw",
         "pwc", "py", "qa", "qpon", "quebec", "quest", "racing", "radio", "re", "read",
@@ -262,6 +262,11 @@ public class UrlSearch(
         "zara", "zero", "zip", "zm", "zone", "zuerich", "zw",
     };
 
+    // TLDs de contenido adulto/sexual excluidos del reconocimiento automático de URLs
+    private static readonly HashSet<string> NsfwTlds = new(StringComparer.OrdinalIgnoreCase) {
+        "adult", "gay", "porn", "sex", "sexy", "xxx",
+    };
+
     /// <summary>
     /// Returns true and sets <paramref name="url"/> to the normalized https:// URL
     /// if <paramref name="query"/> looks like a URL.
@@ -296,6 +301,6 @@ public class UrlSearch(
         var dotIdx = host.LastIndexOf('.');
         if (dotIdx <= 0 || dotIdx >= host.Length - 1) return false;
         var tld = host[(dotIdx + 1)..];
-        return KnownTlds.Contains(tld);
+        return KnownTlds.Contains(tld) && !NsfwTlds.Contains(tld);
     }
 }
