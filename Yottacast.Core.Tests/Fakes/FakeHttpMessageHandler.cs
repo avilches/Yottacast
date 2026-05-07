@@ -7,7 +7,7 @@ namespace Yottacast.Core.Tests.Fakes;
 /// HttpMessageHandler configurable para tests. Responde con el status code indicado
 /// sin realizar ninguna petición de red real.
 /// </summary>
-internal class FakeHttpMessageHandler(HttpStatusCode statusCode = HttpStatusCode.OK) : HttpMessageHandler {
+internal class FakeHttpMessageHandler(HttpStatusCode statusCode = HttpStatusCode.OK, byte[]? responseBody = null) : HttpMessageHandler {
     public int CallCount { get; private set; }
     public HttpRequestMessage? LastRequest { get; private set; }
 
@@ -15,6 +15,9 @@ internal class FakeHttpMessageHandler(HttpStatusCode statusCode = HttpStatusCode
         HttpRequestMessage request, CancellationToken cancellationToken) {
         CallCount++;
         LastRequest = request;
-        return Task.FromResult(new HttpResponseMessage(statusCode));
+        var response = new HttpResponseMessage(statusCode);
+        if (responseBody is not null)
+            response.Content = new ByteArrayContent(responseBody);
+        return Task.FromResult(response);
     }
 }

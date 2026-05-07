@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Net;
-using System.Net.Http;
 using System.Net.Sockets;
 using Microsoft.Extensions.Logging;
 using Yottacast.Core.Services;
@@ -9,49 +8,62 @@ using Yottacast.Core.ViewModels;
 namespace Yottacast.Core.Search.Url;
 
 public class UrlSearch(
-    HttpClient httpClient,
     UserSettings settings,
     BrowserDiscovery browserDiscovery,
     AppIconCache appIconCache,
+    FaviconCache faviconCache,
     ILogger<UrlSearch> logger) : IInstantSearchSource {
 
     private enum UrlReachability { Pending, Valid, Invalid }
 
     private readonly ConcurrentDictionary<string, UrlReachability> _reachability = new();
     private readonly ConcurrentDictionary<string, string> _reachabilityError = new();
-    private readonly ConcurrentDictionary<string, byte[]?> _favicons = new();
+    private Action? _onFaviconLoaded;
 
     /// <summary>Fires (on a thread-pool thread) when reachability or favicon state changes.</summary>
     public event Action? ResultChanged;
 
     public int Limit => AppDefaults.UrlSearchSourceLimit;
 
-    public void Start() { }
+    public void Start() {
+        _onFaviconLoaded = () => ResultChanged?.Invoke();
+        faviconCache.FaviconLoaded += _onFaviconLoaded;
+    }
     public Task WhenReady() => Task.CompletedTask;
     public Task Stop() {
+        if (_onFaviconLoaded is not null) {
+            faviconCache.FaviconLoaded -= _onFaviconLoaded;
+            _onFaviconLoaded = null;
+        }
         _reachability.Clear();
         _reachabilityError.Clear();
-        _favicons.Clear();
         return Task.CompletedTask;
     }
 
     public IReadOnlyList<BaseResultItemViewModel> Search(string query, int _limit) {
-        if (!settings.EnableWebSearch || !settings.EnableUrlValidation) return [];
+        if (!settings.EnableWebSearch) return [];
         if (!TryNormalizeUrl(query, out var url)) return [];
+
+        var host = new Uri(url).Host;
+        var browser = settings.ActiveBrowser;
+        var browserFallbackIcon = browser is null ? null : appIconCache.Get(browser.ExecutablePath);
+
+        if (!settings.EnableUrlValidation) {
+            var iconBytes = faviconCache.GetOrLoad(host) ?? browserFallbackIcon;
+            return [BuildResult(url, iconBytes, errorHint: null)];
+        }
 
         var reachability = _reachability.GetOrAdd(url, key => {
             _ = CheckReachabilityAsync(key);
             return UrlReachability.Pending;
         });
 
-        var browser = settings.ActiveBrowser;
-        byte[]? iconBytes = _favicons.GetValueOrDefault(url)
-                            ?? (browser is null ? null : appIconCache.Get(browser.ExecutablePath));
+        var favicon = faviconCache.GetOrLoad(host) ?? browserFallbackIcon;
         var errorHint = reachability == UrlReachability.Invalid
             ? _reachabilityError.GetValueOrDefault(url)
             : null;
 
-        return [BuildResult(url, iconBytes, errorHint)];
+        return [BuildResult(url, favicon, errorHint)];
     }
 
     private ResultItemViewModel BuildResult(string url, byte[]? iconBytes, string? errorHint) {
@@ -98,25 +110,8 @@ public class UrlSearch(
         logger.LogDebug("UrlSearch: DNS {Host} → resolved", host);
         ResultChanged?.Invoke();
 
-        // Phase 2: favicon
-        _ = LoadFaviconAsync(url);
-    }
-
-    private async Task LoadFaviconAsync(string url) {
-        try {
-            var host = new Uri(url).Host;
-            var faviconUrl = $"https://www.google.com/s2/favicons?sz=64&domain={host}";
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            var bytes = await httpClient.GetByteArrayAsync(faviconUrl, cts.Token).ConfigureAwait(false);
-            _favicons[url] = bytes.Length > 0 ? bytes : null;
-            if (bytes.Length > 0) {
-                logger.LogDebug("UrlSearch: favicon loaded for {Url} ({N} bytes)", url, bytes.Length);
-                ResultChanged?.Invoke();
-            }
-        } catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException) {
-            _favicons[url] = null;
-            logger.LogDebug("UrlSearch: favicon failed for {Url}: {Message}", url, ex.Message);
-        }
+        // Phase 2: favicon (delegated to FaviconCache)
+        faviconCache.GetOrLoad(host);
     }
 
     // 1437 TLDs from IANA (https://data.iana.org/TLD/tlds-alpha-by-domain.txt)

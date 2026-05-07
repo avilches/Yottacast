@@ -43,14 +43,17 @@ public class UrlSearchTests {
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private static UrlSearch BuildSearch(HttpStatusCode headStatusCode = HttpStatusCode.OK) {
-        var handler = new FakeHttpMessageHandler(headStatusCode);
         var platform = new FakePlatformProvider([]);
         var settings = UserSettings.Load(platform);
         settings.EnableWebSearch = true;
         settings.EnableUrlValidation = true;
         var appIconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
         var browserDiscovery = new BrowserDiscovery(settings, platform, NullLogger<BrowserDiscovery>.Instance);
-        return new UrlSearch(new HttpClient(handler), settings, browserDiscovery, appIconCache, NullLogger<UrlSearch>.Instance);
+        var faviconHandler = new FakeHttpMessageHandler(HttpStatusCode.OK, [0x89, 0x50]);
+        var faviconCache = new FaviconCache(new HttpClient(faviconHandler), NullLogger<FaviconCache>.Instance,
+            Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()));
+        return new UrlSearch(settings, browserDiscovery, appIconCache,
+            faviconCache, NullLogger<UrlSearch>.Instance);
     }
 
     /// <summary>Espera a que ResultChanged se dispare (máx <paramref name="timeoutMs"/> ms).</summary>
@@ -64,13 +67,16 @@ public class UrlSearchTests {
 
     [Fact]
     public void Search_WebSearchDisabled_ReturnsEmpty() {
-        var handler = new FakeHttpMessageHandler(HttpStatusCode.OK);
         var platform = new FakePlatformProvider([]);
         var settings = UserSettings.Load(platform);
         settings.EnableWebSearch = false;
         var appIconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
         var browserDiscovery = new BrowserDiscovery(settings, platform, NullLogger<BrowserDiscovery>.Instance);
-        var search = new UrlSearch(new HttpClient(handler), settings, browserDiscovery, appIconCache, NullLogger<UrlSearch>.Instance);
+        var faviconHandler = new FakeHttpMessageHandler(HttpStatusCode.OK, [0x89, 0x50]);
+        var faviconCache = new FaviconCache(new HttpClient(faviconHandler), NullLogger<FaviconCache>.Instance,
+            Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()));
+        var search = new UrlSearch(settings, browserDiscovery, appIconCache,
+            faviconCache, NullLogger<UrlSearch>.Instance);
 
         Assert.Empty(search.Search("https://example.com", 10));
         Assert.Empty(search.Search("github.com/user/repo", 10));
@@ -107,38 +113,53 @@ public class UrlSearchTests {
     }
 
     [Fact]
-    public void Search_ValidationOff_ReturnsEmpty() {
-        // EnableUrlValidation = false: URL results are not shown (no point without DNS check)
+    public void Search_ValidationOff_ReturnsPendingResult() {
+        // EnableUrlValidation = false: URL result shown immediately without DNS/HEAD checks
         var handler = new FakeHttpMessageHandler(HttpStatusCode.OK);
         var platform = new FakePlatformProvider([]);
         var settings = UserSettings.Load(platform);
+        settings.EnableWebSearch = true;
         settings.EnableUrlValidation = false;
         var appIconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
         var browserDiscovery = new BrowserDiscovery(settings, platform, NullLogger<BrowserDiscovery>.Instance);
-        var search = new UrlSearch(new HttpClient(handler), settings, browserDiscovery, appIconCache, NullLogger<UrlSearch>.Instance);
+        var faviconHandler = new FakeHttpMessageHandler(HttpStatusCode.OK, [0x89, 0x50]);
+        var faviconCache = new FaviconCache(new HttpClient(faviconHandler), NullLogger<FaviconCache>.Instance,
+            Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()));
+        var search = new UrlSearch(settings, browserDiscovery, appIconCache,
+            faviconCache, NullLogger<UrlSearch>.Instance);
 
-        Assert.Empty(search.Search("https://example.com", 10));
-        Thread.Sleep(50);
+        var results = search.Search("https://example.com", 10);
+        Assert.Single(results);
+        var r = Assert.IsType<ResultItemViewModel>(results[0]);
+        Assert.Equal("https://example.com", r.Title);
+        Assert.Equal("Web", r.Category);
+
+        // No DNS/HEAD calls — only favicon goes through faviconCache's own handler
         Assert.Equal(0, handler.CallCount);
     }
 
     [Fact]
     public void Search_SameUrlTwice_DoesNotStartTwoBackgroundChecks() {
         var handler = new FakeHttpMessageHandler(HttpStatusCode.OK);
-        var httpClient = new HttpClient(handler);
         var platform = new FakePlatformProvider([]);
         var settings = UserSettings.Load(platform);
+        settings.EnableWebSearch = true;
+        settings.EnableUrlValidation = true;
         var appIconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
         var browserDiscovery = new BrowserDiscovery(settings, platform, NullLogger<BrowserDiscovery>.Instance);
-        var search = new UrlSearch(httpClient, settings, browserDiscovery, appIconCache, NullLogger<UrlSearch>.Instance);
+        var faviconHandler = new FakeHttpMessageHandler(HttpStatusCode.OK, [0x89, 0x50]);
+        var faviconCache = new FaviconCache(new HttpClient(faviconHandler), NullLogger<FaviconCache>.Instance,
+            Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()));
+        var search = new UrlSearch(settings, browserDiscovery, appIconCache,
+            faviconCache, NullLogger<UrlSearch>.Instance);
 
         _ = search.Search("https://example.com", 10);
         _ = search.Search("https://example.com", 10);
         _ = search.Search("https://example.com", 10);
 
-        // Solo 1 background check por URL (HEAD + favicon = 2 llamadas máx, no 6)
+        // UrlSearch itself makes no HTTP calls (DNS is not HTTP; favicon is handled by FaviconCache)
         Thread.Sleep(50);
-        Assert.True(handler.CallCount <= 2, $"Expected ≤2 calls, got {handler.CallCount}");
+        Assert.Equal(0, handler.CallCount);
     }
 
     [Fact]

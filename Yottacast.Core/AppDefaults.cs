@@ -122,7 +122,7 @@ public static class AppDefaults {
     /// HTTP timeout for exchange rate API requests.
     public const int ExchangeRateTimeoutSeconds = 10;
 
-    // ── Search — URL ──────────────────────────────────────────────────────────
+    // ── Search — URL ─────────────────────────────────────────────────────────
     /// HTTP timeout for favicon requests.
     public const int FaviconTimeoutSeconds = 5;
 
