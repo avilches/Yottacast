@@ -105,7 +105,10 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
             HasPinnedSection = hasPinned,
             PinnedSectionHeader = hasPinned ? "Favorites & recently used" : "",
             PasteAfterActivate = true,
-            CopiedMessage = "Emoji copied!",
+            CopiedMessageProvider = () => {
+                var cell = grid.Cells[grid.SelectedEmojiIndex];
+                return $"Emoji {cell.Char} copied!";
+            },
             OnActivate = () => {
                 var cell = grid.Cells[grid.SelectedEmojiIndex];
                 logger.LogInformation("Emoji: copied {Char} ({Name})", cell.Char, cell.Name);

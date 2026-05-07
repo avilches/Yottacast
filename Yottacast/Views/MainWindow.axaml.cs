@@ -273,7 +273,8 @@ public partial class MainWindow : Window {
         if (e.Key == copyKey && e.KeyModifiers == copyMods && vm.SelectedResult is { OnCopy: { } copyAction } result) {
             if (Math.Abs(SearchBox.SelectionEnd - SearchBox.SelectionStart) > 0) return;
             copyAction();
-            if (result.CopiedMessage is { } msg)
+            var copiedMsg = result.CopiedMessageProvider?.Invoke() ?? result.CopiedMessage;
+            if (copiedMsg is { } msg)
                 vm.ShowCopiedMessage(msg);
             e.Handled = true;
             return;

@@ -311,7 +311,8 @@ public class EmojiSearchTests {
         var json = """[["😀","grinning face",["grinning"],"Smileys & Emotion",1]]""";
         var search = await BuildSearchWithCache(json);
         var grid = search.Search(":", 10).OfType<EmojiGridResultViewModel>().First();
-        Assert.Equal("Emoji copied!", grid.CopiedMessage);
+        Assert.NotNull(grid.CopiedMessageProvider);
+        Assert.Equal("Emoji 😀 copied!", grid.CopiedMessageProvider!());
     }
 
     [Fact]
