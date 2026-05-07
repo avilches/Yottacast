@@ -19,6 +19,12 @@ public abstract class BaseResultItemViewModel {
     /// </summary>
     public string? CopiedMessage { get; init; }
     /// <summary>
+    /// Dynamic alternative to <see cref="CopiedMessage"/>. When set, it is invoked after the copy action
+    /// and its result takes precedence over <see cref="CopiedMessage"/>. Use when the message depends on
+    /// runtime state (e.g. which emoji was selected).
+    /// </summary>
+    public Func<string?>? CopiedMessageProvider { get; init; }
+    /// <summary>
     /// Toggle favorite action (e.g. Cmd+Shift+F in emoji mode): marks/unmarks the selected item as favorite.
     /// </summary>
     public Action? OnToggleFavorite { get; init; }
