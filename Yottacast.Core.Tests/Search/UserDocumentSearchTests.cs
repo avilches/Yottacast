@@ -98,9 +98,9 @@ public class UserDocumentSearchTests {
         var search = BuildSearch(clipboard, new FileResult("report.pdf", "/docs/report.pdf"));
         var results = await SearchAllAsync(search, "report");
         var item = Assert.Single(results);
-        Assert.NotNull(item.OnCopy);
-        Assert.Equal("Path copied!", item.CopiedMessage);
-        item.OnCopy!();
+        var copy = item.Actions.Single(a => a.Hotkey == ActionHotkey.MetaC);
+        Assert.Equal("Path copied!", copy.HintProvider?.Invoke());
+        copy.Execute();
         Assert.Equal("/docs/report.pdf", copied);
     }
 

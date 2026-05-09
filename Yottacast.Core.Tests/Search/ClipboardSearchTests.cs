@@ -122,9 +122,10 @@ public class ClipboardSearchTests {
             Assert.Equal("Files", r.Category);
             Assert.Equal(4.0, r.Score);
             Assert.Equal($"{Path.GetFileName(tempFile)} · from clipboard", r.Title);
-            Assert.NotNull(r.OnActivate);
-            Assert.NotNull(r.OnCopy);
-            Assert.Equal("Path copied!", r.CopiedMessage);
+            var open = r.Actions.Single(a => a.Hotkey == ActionHotkey.Enter);
+            Assert.NotNull(open.Execute);
+            var copy = r.Actions.Single(a => a.Hotkey == ActionHotkey.MetaC);
+            Assert.Equal("Path copied!", copy.HintProvider?.Invoke());
         } finally {
             File.Delete(tempFile);
         }

@@ -76,7 +76,8 @@ public class SystemSettingsSearchTests {
 
         var results = search.Search("Bluetooth", 10).Cast<ResultItemViewModel>().ToList();
         var bluetooth = results.First(r => r.Title == "Bluetooth");
-        bluetooth.OnActivate?.Invoke();
+        var open = bluetooth.Actions.Single(a => a.Hotkey == ActionHotkey.Enter);
+        open.Execute();
 
         Assert.Single(platform.LaunchedApps);
         Assert.Equal("x-apple.systempreferences:com.apple.preferences.Bluetooth",
@@ -246,7 +247,7 @@ public class SystemSettingsSearchTests {
         };
         foreach (var query in probes) {
             var results = search.Search(query, 1).Cast<ResultItemViewModel>().ToList();
-            foreach (var r in results) r.OnActivate?.Invoke();
+            foreach (var r in results) r.Actions.FirstOrDefault(a => a.Hotkey == ActionHotkey.Enter)?.Execute();
             await Task.Delay(1200);
         }
     }

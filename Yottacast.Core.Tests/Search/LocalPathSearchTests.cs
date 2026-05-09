@@ -105,9 +105,10 @@ public class LocalPathSearchTests {
             var search = BuildSearch();
             var results = search.Search(tempFile, 10);
             var r = Assert.IsType<ResultItemViewModel>(results[0]);
-            Assert.NotNull(r.OnActivate);
-            Assert.NotNull(r.OnCopy);
-            Assert.Equal("Path copied!", r.CopiedMessage);
+            var open = r.Actions.Single(a => a.Hotkey == ActionHotkey.Enter);
+            Assert.NotNull(open.Execute);
+            var copy = r.Actions.Single(a => a.Hotkey == ActionHotkey.MetaC);
+            Assert.Equal("Path copied!", copy.HintProvider?.Invoke());
         } finally {
             File.Delete(tempFile);
         }

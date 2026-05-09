@@ -97,10 +97,19 @@ public sealed class SystemSettingsSearch(
             Subtitle  = subtitle,
             Category  = "System Settings",
             Score     = score,
-            OnActivate = () => {
-                logger.LogInformation("SystemSettings: open panel={Panel}", panel.Name);
-                platform.LaunchApp($"x-apple.systempreferences:{identifier}");
-            },
+            Actions = [
+                new() {
+                    Label        = "Open",
+                    Hotkey       = ActionHotkey.Enter,
+                    ShowInFooter = true,
+                    ClosesMenu   = true,
+                    ClosesWindow = true,
+                    Execute      = () => {
+                        logger.LogInformation("SystemSettings: open panel={Panel}", panel.Name);
+                        platform.LaunchApp($"x-apple.systempreferences:{identifier}");
+                    },
+                },
+            ],
         };
     }
 

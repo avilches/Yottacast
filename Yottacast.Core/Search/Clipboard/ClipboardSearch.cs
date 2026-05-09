@@ -103,12 +103,22 @@ public class ClipboardSearch(
             Subtitle   = $"Open in {browserLabel}",
             Category   = "Web",
             Score      = 4.0,
-            OnActivate = () =>
-            {
-                if (browser is null) return;
-                logger.LogInformation("ClipboardSearch: open URL \"{Url}\"", capturedUrl);
-                browserDiscovery.OpenUrl(capturedUrl, browser);
-            },
+            Actions = [
+                new() {
+                    Label        = "Open",
+                    Hotkey       = ActionHotkey.Enter,
+                    ShowInFooter = true,
+                    ShowInMenu   = true,
+                    ClosesMenu   = true,
+                    ClosesWindow = true,
+                    Execute      = () =>
+                    {
+                        if (browser is null) return;
+                        logger.LogInformation("ClipboardSearch: open URL \"{Url}\"", capturedUrl);
+                        browserDiscovery.OpenUrl(capturedUrl, browser);
+                    },
+                },
+            ],
         };
     }
 
@@ -128,13 +138,30 @@ public class ClipboardSearch(
             Subtitle      = expanded,
             Category      = "Files",
             Score         = 4.0,
-            OnActivate    = () =>
-            {
-                logger.LogInformation("ClipboardSearch: open path \"{Path}\"", capturedPath);
-                platform.LaunchApp(capturedPath);
-            },
-            OnCopy        = () => clipboardService.CopyText(capturedPath),
-            CopiedMessage = "Path copied!",
+            Actions = [
+                new() {
+                    Label        = "Open",
+                    Hotkey       = ActionHotkey.Enter,
+                    ShowInFooter = true,
+                    ShowInMenu   = true,
+                    ClosesMenu   = true,
+                    ClosesWindow = true,
+                    Execute      = () =>
+                    {
+                        logger.LogInformation("ClipboardSearch: open path \"{Path}\"", capturedPath);
+                        platform.LaunchApp(capturedPath);
+                    },
+                },
+                new() {
+                    Label        = "Copy path",
+                    Hotkey       = ActionHotkey.MetaC,
+                    ShowInFooter = true,
+                    ShowInMenu   = true,
+                    ClosesMenu   = true,
+                    HintProvider = () => "Path copied!",
+                    Execute      = () => clipboardService.CopyText(capturedPath),
+                },
+            ],
         };
     }
 }
