@@ -83,24 +83,41 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
                     RatesAreStale     = exchangeRateService.IsStale,
                     OnLeft  = r.FromWasNormalized ? () => vm.MoveCellLeft() : null,
                     OnRight = r.FromWasNormalized ? () => vm.MoveCellRight() : null,
-                    PasteAfterActivate = true,
-                    OnActivate = () => {
-                        var copied = vm.SelectedCell switch {
-                            ConversionCell.NormFrom => capturedNorm ?? capturedTo,
-                            _                       => capturedTo,
-                        };
-                        logger.LogInformation("Calculator: copied conversion result \"{Value}\"", copied);
-                        clipboard.CopyText(copied);
-                    },
-                    OnCopy = () => {
-                        var copied = vm.SelectedCell switch {
-                            ConversionCell.NormFrom => capturedNorm ?? capturedTo,
-                            _                       => capturedTo,
-                        };
-                        logger.LogInformation("Calculator: copied conversion via Cmd+C \"{Value}\"", copied);
-                        clipboard.CopyText(copied);
-                    },
-                    CopiedMessage = "Result copied!",
+                    Actions = [
+                        new() {
+                            Label           = "Copy value",
+                            Hotkey          = ActionHotkey.Enter,
+                            ShowInFooter    = true,
+                            ShowInMenu      = true,
+                            ClosesMenu      = true,
+                            ClosesWindow    = true,
+                            PasteAfterClose = true,
+                            Execute = () => {
+                                var copied = vm.SelectedCell switch {
+                                    ConversionCell.NormFrom => capturedNorm ?? capturedTo,
+                                    _                       => capturedTo,
+                                };
+                                logger.LogInformation("Calculator: copied conversion result \"{Value}\"", copied);
+                                clipboard.CopyText(copied);
+                            },
+                        },
+                        new() {
+                            Label        = "Copy value",
+                            Hotkey       = ActionHotkey.MetaC,
+                            ShowInFooter = true,
+                            ShowInMenu   = true,
+                            ClosesMenu   = true,
+                            HintProvider = () => "Result copied!",
+                            Execute = () => {
+                                var copied = vm.SelectedCell switch {
+                                    ConversionCell.NormFrom => capturedNorm ?? capturedTo,
+                                    _                       => capturedTo,
+                                };
+                                logger.LogInformation("Calculator: copied conversion via Cmd+C \"{Value}\"", copied);
+                                clipboard.CopyText(copied);
+                            },
+                        },
+                    ],
                 };
                 return [vm];
             }
@@ -120,16 +137,33 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
                     Subtitle = subtitle,
                     Category = "Calculator",
                     Score = 7,
-                    PasteAfterActivate = true,
-                    OnActivate = () => {
-                        logger.LogInformation("Calculator: copied result \"{Value}\"", captured);
-                        clipboard.CopyText(captured);
-                    },
-                    OnCopy = () => {
-                        logger.LogInformation("Calculator: copied result via Cmd+C \"{Value}\"", captured);
-                        clipboard.CopyText(captured);
-                    },
-                    CopiedMessage = "Result copied!",
+                    Actions = [
+                        new() {
+                            Label           = "Copy result",
+                            Hotkey          = ActionHotkey.Enter,
+                            ShowInFooter    = true,
+                            ShowInMenu      = true,
+                            ClosesMenu      = true,
+                            ClosesWindow    = true,
+                            PasteAfterClose = true,
+                            Execute = () => {
+                                logger.LogInformation("Calculator: copied result \"{Value}\"", captured);
+                                clipboard.CopyText(captured);
+                            },
+                        },
+                        new() {
+                            Label        = "Copy result",
+                            Hotkey       = ActionHotkey.MetaC,
+                            ShowInFooter = true,
+                            ShowInMenu   = true,
+                            ClosesMenu   = true,
+                            HintProvider = () => "Result copied!",
+                            Execute = () => {
+                                logger.LogInformation("Calculator: copied result via Cmd+C \"{Value}\"", captured);
+                                clipboard.CopyText(captured);
+                            },
+                        },
+                    ],
                 }];
             }
             case ErrorResult r when r.ErrorKind is CalcErrorKind.IncompatibleUnitsConvert or CalcErrorKind.IncompatibleUnitsOp:

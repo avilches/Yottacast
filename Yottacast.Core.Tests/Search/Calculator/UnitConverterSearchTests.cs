@@ -4,18 +4,28 @@ using Xunit;
 using Yottacast.Core.Search.Calculator;
 using Yottacast.Core.Services;
 using Yottacast.Core.Tests.Fakes;
+using Yottacast.Core.ViewModels;
 
 namespace Yottacast.Core.Tests.Search.Calculator;
 
 [Collection("MathJs")]
 public class UnitConverterSearchTests(MathJsEngineFixture fixture) {
 
-    private CalculatorSearch BuildSearch(out ClipboardService clipboard) {
-        clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
+    private (CalculatorSearch Search, Func<string?> GetLastCopied) CreateSearch() {
+        var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
+        string? lastCopied = null;
+        clipboard.Initialize(copy: text => lastCopied = text, read: () => Task.FromResult<string?>(null));
         var settings = UserSettings.Load(new FakePlatformProvider([]));
         var provider = MathJsEngineProvider.ForTesting(fixture.Engine);
         var exchangeRateService = new ExchangeRateService(new HttpClient(), settings, NullLogger<ExchangeRateService>.Instance);
-        return new CalculatorSearch(provider, exchangeRateService, clipboard, settings, NullLogger<CalculatorSearch>.Instance);
+        var search = new CalculatorSearch(provider, exchangeRateService, clipboard, settings, NullLogger<CalculatorSearch>.Instance);
+        return (search, () => lastCopied);
+    }
+
+    private CalculatorSearch BuildSearch(out Func<string?> getLastCopied) {
+        var (search, get) = CreateSearch();
+        getLastCopied = get;
+        return search;
     }
 
     private static IReadOnlyList<ViewModels.ConversionResultItemViewModel> SearchResults(
@@ -67,28 +77,26 @@ public class UnitConverterSearchTests(MathJsEngineFixture fixture) {
 
     [Fact]
     public void OnActivate_CopiesResultToClipboard() {
-        var search = BuildSearch(out var clipboard);
-        string copied = "";
-        clipboard.Initialize(
-            copy: text => copied = text,
-            read: () => Task.FromResult<string?>(null));
+        var (search, getLastCopied) = CreateSearch();
 
         var results = SearchResults(search, "1 km to m");
         var item = Assert.Single(results);
-        Assert.NotNull(item.OnActivate);
-        item.OnActivate();
+        item.Actions.Single(a => a.Hotkey == ActionHotkey.Enter).Execute();
 
-        Assert.Equal("1000 m", copied);
+        Assert.Equal("1000 m", getLastCopied());
     }
 
     [Fact]
-    public void ConversionResult_HasOnCopyAndCopiedMessage() {
-        var search = BuildSearch(out _);
+    public void ConversionResult_HasCopyActions() {
+        var (search, _) = CreateSearch();
         var results = search.Search("5 km to miles", 5);
         var item = Assert.Single(results.OfType<ViewModels.ConversionResultItemViewModel>());
-        Assert.NotNull(item.OnCopy);
-        Assert.Equal("Result copied!", item.CopiedMessage);
-        Assert.True(item.PasteAfterActivate);
+
+        var enterAction = item.Actions.Single(a => a.Hotkey == ActionHotkey.Enter);
+        Assert.True(enterAction.PasteAfterClose);
+
+        Assert.NotNull(item.Actions.FirstOrDefault(a => a.Hotkey == ActionHotkey.MetaC));
+        Assert.Equal("Result copied!", item.Actions.Single(a => a.Hotkey == ActionHotkey.MetaC).HintProvider?.Invoke());
     }
 
     // ── Non-conversion queries yield nothing ──────────────────────────────────
