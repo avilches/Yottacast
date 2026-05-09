@@ -16,9 +16,11 @@ public abstract class BaseResultItemViewModel {
     public IReadOnlyList<ResultAction> Actions { get; init; } = [];
 
     /// <summary>
-    /// When non-null, the item captures LEFT/RIGHT/UP/DOWN arrow keys while selected.
-    /// Used for grids (Emoji) and multi-cell converters.
-    /// Returns true if the key was consumed, false to fall through to the default handler.
+    /// Internal navigation callbacks for results with spatial layouts (emoji grids, unit converters).
+    /// When non-null, the item captures arrow key presses while selected, allowing left/right/up/down
+    /// navigation within the result's own content.
+    /// Returns true if the key was consumed, false to fall through to the default list/cursor handler.
+    /// These are NOT part of <see cref="Actions"/> — they don't appear in the footer or overlay menu.
     /// </summary>
     public Func<bool>? OnLeft  { get; init; }
     public Func<bool>? OnRight { get; init; }
@@ -26,8 +28,10 @@ public abstract class BaseResultItemViewModel {
     public Func<bool>? OnDown { get; init; }
 
     /// <summary>
-    /// When true, the item is never discarded by the SearchSourceLimit cap.
-    /// Used by WebSearch and Dictionary to always appear in results.
+    /// When true, this result is excluded from the <c>SearchSourceLimit</c> cap and always appears
+    /// in the results list regardless of how many other results exist.
+    /// Used by WebSearch and Dictionary to guarantee visibility.
+    /// This is NOT part of <see cref="Actions"/> — it is a result-list structural flag.
     /// </summary>
     public bool BypassLimit { get; init; }
 }
