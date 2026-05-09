@@ -86,9 +86,26 @@ public sealed class ApplicationSearch(
             ItemPath = path,
             Category = "Application",
             Score = score,
-            OnActivate = () => platform.LaunchApp(path),
-            OnCopy = () => clipboard.CopyText(path),
-            CopiedMessage = "Path copied!",
+            Actions = [
+                new() {
+                    Label        = "Open",
+                    Hotkey       = ActionHotkey.Enter,
+                    ShowInFooter = true,
+                    ShowInMenu   = true,
+                    ClosesMenu   = true,
+                    ClosesWindow = true,
+                    Execute      = () => platform.LaunchApp(path),
+                },
+                new() {
+                    Label        = "Copy path",
+                    Hotkey       = ActionHotkey.MetaC,
+                    ShowInFooter = true,
+                    ShowInMenu   = true,
+                    ClosesMenu   = true,
+                    HintProvider = () => "Path copied!",
+                    Execute      = () => clipboard.CopyText(path),
+                },
+            ],
         };
     }
 
