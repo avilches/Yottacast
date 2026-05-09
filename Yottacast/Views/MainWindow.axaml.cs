@@ -495,4 +495,19 @@ public partial class MainWindow : Window {
         AppHandler.Instance.ShowCursor();
     }
 
+    private async Task HandleWindowShownAsync(MainWindowViewModel vm)
+    {
+        string? text = null;
+        try
+        {
+            var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+            text = clipboard != null ? await clipboard.GetTextAsync() : null;
+        }
+        catch (Exception ex)
+        {
+            Log($"[Window] Clipboard read failed on show: {ex.Message}");
+        }
+        vm.OnWindowShown(text);
+    }
+
 }
