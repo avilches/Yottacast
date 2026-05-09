@@ -102,7 +102,7 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
         var item = StandardResult(BuildSearch(out _), "2+2");
         Assert.Equal("🧮", item.Icon);
         Assert.Equal("Calculator", item.Category);
-        Assert.Equal(4, item.Score);
+        Assert.Equal(7, item.Score);
         Assert.Equal("2 + 2", item.Subtitle);
     }
 
@@ -110,7 +110,9 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
     public void OnActivate_CopiesResultToClipboard() {
         var search = BuildSearch(out var clipboard);
         string copied = "";
-        clipboard.Initialize(text => copied = text);
+        clipboard.Initialize(
+            copy: text => copied = text,
+            read: () => Task.FromResult<string?>(null));
 
         var item = StandardResult(search, "2+2");
         Assert.NotNull(item.OnActivate);

@@ -41,14 +41,14 @@ public class UserDocumentSearchTests {
 
     // fileName | filePath | query | expectedCount | expectedScore
     public static TheoryData<string, string, string, int, double> SingleFileCases => new() {
-        { "report.pdf", "/docs/report.pdf", "report",      1, 1.0  },  // exact stem match
-        { "report",     "/docs/report",     "report",      1, 0.85 },  // exact name match (no extension → 0.85)
-        { "report.pdf", "/docs/report.pdf", "rep",         1, 0.75 },  // stem starts with
-        { "report.pdf", "/docs/report.pdf", "epor",        1, 0.5  },  // substring only
-        { "abc.txt",    "/abc.txt",         "a",           0, 0.0  },  // too short → empty
-        { "mis calculos.xls", "/docs/mis calculos.xls", "xls calc mis", 1, 0.75 },  // multi: all prefixes
-        { "mis calculos.xls", "/docs/mis calculos.xls", "lcul mis xls", 1, 0.5  },  // multi: substring token
-        { "mis calculos.xls", "/docs/mis calculos.xls", "mis zzz",      0, 0.0  },  // multi: missing token
+        { "report.pdf", "/docs/report.pdf", "report",      1, 3.5   },  // exact stem match (1.0 × 3.5)
+        { "report",     "/docs/report",     "report",      1, 2.975 },  // exact name match (0.85 × 3.5)
+        { "report.pdf", "/docs/report.pdf", "rep",         1, 2.625 },  // stem starts with (0.75 × 3.5)
+        { "report.pdf", "/docs/report.pdf", "epor",        1, 1.75  },  // substring only (0.5 × 3.5)
+        { "abc.txt",    "/abc.txt",         "a",           0, 0.0   },  // too short → empty
+        { "mis calculos.xls", "/docs/mis calculos.xls", "xls calc mis", 1, 2.625 },  // multi: all prefixes (0.75 × 3.5)
+        { "mis calculos.xls", "/docs/mis calculos.xls", "lcul mis xls", 1, 1.75  },  // multi: substring token (0.5 × 3.5)
+        { "mis calculos.xls", "/docs/mis calculos.xls", "mis zzz",      0, 0.0   },  // multi: missing token
     };
 
     [Theory]
@@ -92,7 +92,9 @@ public class UserDocumentSearchTests {
     public async Task Results_HaveOnCopyAndCopiedMessage() {
         string? copied = null;
         var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
-        clipboard.Initialize(t => copied = t);
+        clipboard.Initialize(
+            copy: t => copied = t,
+            read: () => Task.FromResult<string?>(null));
         var search = BuildSearch(clipboard, new FileResult("report.pdf", "/docs/report.pdf"));
         var results = await SearchAllAsync(search, "report");
         var item = Assert.Single(results);

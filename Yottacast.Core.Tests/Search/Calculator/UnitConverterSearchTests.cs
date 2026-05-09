@@ -62,14 +62,16 @@ public class UnitConverterSearchTests(MathJsEngineFixture fixture) {
         var item = Assert.Single(results);
         Assert.Equal("📐", item.Icon);
         Assert.Equal("Converter", item.Category);
-        Assert.Equal(4, item.Score);
+        Assert.Equal(7, item.Score);
     }
 
     [Fact]
     public void OnActivate_CopiesResultToClipboard() {
         var search = BuildSearch(out var clipboard);
         string copied = "";
-        clipboard.Initialize(text => copied = text);
+        clipboard.Initialize(
+            copy: text => copied = text,
+            read: () => Task.FromResult<string?>(null));
 
         var results = SearchResults(search, "1 km to m");
         var item = Assert.Single(results);

@@ -152,7 +152,7 @@ public class EmojiSearchTests {
         Assert.Equal("😀", item.Icon);
         Assert.Equal("grinning face", item.Title);
         Assert.Equal("Emoji", item.Category);
-        Assert.Equal(3.5, item.Score);
+        Assert.Equal(5.5, item.Score);
         Assert.True(item.PasteAfterActivate);
     }
 
@@ -184,7 +184,9 @@ public class EmojiSearchTests {
         await search.WhenReady();
 
         string copied = "";
-        clipboard.Initialize(text => copied = text);
+        clipboard.Initialize(
+            copy: text => copied = text,
+            read: () => Task.FromResult<string?>(null));
 
         var results = SearchResults(search, ":");
         var item = Assert.Single(results);

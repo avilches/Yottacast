@@ -115,11 +115,17 @@ public partial class App : Application {
 
             // Wire up clipboard so Core code can copy results without depending on Avalonia
             var clipboardService = _services.GetRequiredService<ClipboardService>();
-            clipboardService.Initialize(text =>
-                Dispatcher.UIThread.InvokeAsync(() => {
-                    var clipboard = TopLevel.GetTopLevel(mainWindow)?.Clipboard;
-                    if (clipboard != null) _ = clipboard.SetTextAsync(text);
-                }));
+            clipboardService.Initialize(
+                copy: text =>
+                    Dispatcher.UIThread.InvokeAsync(() => {
+                        var clipboard = TopLevel.GetTopLevel(mainWindow)?.Clipboard;
+                        if (clipboard != null) _ = clipboard.SetTextAsync(text);
+                    }),
+                read: () =>
+                    Dispatcher.UIThread.InvokeAsync(async () => {
+                        var clipboard = TopLevel.GetTopLevel(mainWindow)?.Clipboard;
+                        return clipboard != null ? await clipboard.GetTextAsync() : null;
+                    }));
 
             var globalSearch = _services.GetRequiredService<GlobalSearch>();
             desktop.ShutdownRequested += (_, _) => {
