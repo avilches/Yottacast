@@ -23,6 +23,23 @@ public class EmojiSearchTests {
         return search;
     }
 
+    private static async Task<(EmojiSearch Search, ClipboardService Clipboard, EmojiUsageStore UsageStore)> CreateSearchAsync() {
+        var json = """[["😀","grinning face",["grinning"],"Smileys & Emotion",1]]""";
+        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(dir);
+        var cachePath = Path.Combine(dir, "emoji-cache.json");
+        await File.WriteAllTextAsync(cachePath, json);
+        var settings = UserSettings.Load(new FakePlatformProvider([]));
+        var usageStore = new EmojiUsageStore(Path.Combine(dir, "emoji-usage.json"), NullLogger<EmojiUsageStore>.Instance);
+        var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
+        string copied = "";
+        clipboard.Initialize(copy: text => copied = text, read: () => Task.FromResult<string?>(null));
+        var search = new EmojiSearch(clipboard, cachePath, new EmojiDataLoader(NullLogger<EmojiDataLoader>.Instance), usageStore, NullLogger<EmojiSearch>.Instance, settings);
+        search.Start();
+        await search.WhenReady();
+        return (search, clipboard, usageStore);
+    }
+
     private static IReadOnlyList<Yottacast.Core.ViewModels.ResultItemViewModel> SearchResults(
         EmojiSearch search, string query) {
         return search.Search(query, 10).Cast<Yottacast.Core.ViewModels.ResultItemViewModel>().ToList();
@@ -153,7 +170,7 @@ public class EmojiSearchTests {
         Assert.Equal("grinning face", item.Title);
         Assert.Equal("Emoji", item.Category);
         Assert.Equal(5.5, item.Score);
-        Assert.True(item.PasteAfterActivate);
+        Assert.NotEmpty(item.Actions);
     }
 
     // ── Result shape (Icon/Title/Category set from first cell) ────────────────
@@ -170,30 +187,15 @@ public class EmojiSearchTests {
     }
 
     [Fact]
-    public async Task OnActivate_CopiesCharToClipboard() {
-        var json = """[["😀","grinning face",["grinning"],"Smileys & Emotion",1]]""";
-        var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
-        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        Directory.CreateDirectory(dir);
-        var cachePath = Path.Combine(dir, "emoji-cache.json");
-        await File.WriteAllTextAsync(cachePath, json);
-        var settings = UserSettings.Load(new FakePlatformProvider([]));
-        var usageStore = new EmojiUsageStore(Path.Combine(dir, "emoji-usage.json"), NullLogger<EmojiUsageStore>.Instance);
-        var search = new EmojiSearch(clipboard, cachePath, new EmojiDataLoader(NullLogger<EmojiDataLoader>.Instance), usageStore, NullLogger<EmojiSearch>.Instance, settings);
-        search.Start();
-        await search.WhenReady();
+    public async Task PasteAction_CopiesAndRecordsUsage() {
+        var (search, clipboard, usageStore) = await CreateSearchAsync();
+        var result = (EmojiGridResultViewModel)search.Search(":", 10).Single();
+        var paste = result.Actions.Single(a => a.Label == "Paste");
 
-        string copied = "";
-        clipboard.Initialize(
-            copy: text => copied = text,
-            read: () => Task.FromResult<string?>(null));
+        paste.Execute();
 
-        var results = SearchResults(search, ":");
-        var item = Assert.Single(results);
-        Assert.NotNull(item.OnActivate);
-        item.OnActivate();
-
-        Assert.Equal("😀", copied);
+        Assert.NotEmpty(clipboard.LastCopied ?? "");
+        Assert.True(usageStore.GetUsageCount(result.Cells[0].Char) > 0);
     }
 
     // ── Favorites and most-used ──────────────────────────────────────────────
@@ -298,23 +300,26 @@ public class EmojiSearchTests {
     }
 
     [Fact]
-    public async Task OnCopy_CopiesWithoutPasteAfterActivate() {
-        var json = """[["😀","grinning face",["grinning"],"Smileys & Emotion",1]]""";
-        var search = await BuildSearchWithCache(json);
-        var grid = search.Search(":", 10).OfType<EmojiGridResultViewModel>().First();
+    public async Task CopyAction_HasNoClosesWindow() {
+        var (search, _, _) = await CreateSearchAsync();
+        var result = (EmojiGridResultViewModel)search.Search(":", 10).Single();
+        var copy = result.Actions.Single(a => a.Label == "Copy");
 
-        Assert.NotNull(grid.OnCopy);
-        Assert.True(grid.PasteAfterActivate); // the grid has PasteAfterActivate for Enter
-        // OnCopy copies and records usage; MainWindow hides the window (without paste) after invoking it
+        Assert.False(copy.ClosesWindow);
+        Assert.True(copy.ShowInFooter);
+        Assert.True(copy.ShowInMenu);
     }
 
     [Fact]
-    public async Task OnCopy_HasCopiedMessage() {
-        var json = """[["😀","grinning face",["grinning"],"Smileys & Emotion",1]]""";
-        var search = await BuildSearchWithCache(json);
-        var grid = search.Search(":", 10).OfType<EmojiGridResultViewModel>().First();
-        Assert.NotNull(grid.CopiedMessageProvider);
-        Assert.Equal("Emoji 😀 copied!", grid.CopiedMessageProvider!());
+    public async Task CopyAction_HasDynamicHint() {
+        var (search, _, _) = await CreateSearchAsync();
+        var result = (EmojiGridResultViewModel)search.Search(":", 10).Single();
+        var copy = result.Actions.Single(a => a.Label == "Copy");
+        var char0 = result.Cells[0].Char;
+
+        var hint = copy.HintProvider?.Invoke();
+
+        Assert.Equal($"Emoji {char0} copied!", hint);
     }
 
     [Fact]
@@ -412,25 +417,41 @@ public class EmojiSearchTests {
     }
 
     [Fact]
-    public async Task OnToggleFavorite_UpdatesCellAndStore() {
-        var json = """[["😀","grinning face",["grinning"],"Smileys & Emotion",1]]""";
-        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        Directory.CreateDirectory(dir);
-        var usageStore = new EmojiUsageStore(Path.Combine(dir, "emoji-usage.json"), NullLogger<EmojiUsageStore>.Instance);
+    public async Task PasteAction_HasPasteAfterClose() {
+        var (search, _, _) = await CreateSearchAsync();
+        var result = (EmojiGridResultViewModel)search.Search(":", 10).Single();
+        var paste = result.Actions.Single(a => a.Label == "Paste");
 
-        var search = await BuildSearchWithCache(json, usageStore);
-        var grid = search.Search(":", 10).OfType<EmojiGridResultViewModel>().First();
+        Assert.True(paste.PasteAfterClose);
+        Assert.True(paste.ClosesWindow);
+    }
 
-        Assert.False(grid.Cells[0].IsFavorite);
-        Assert.NotNull(grid.OnToggleFavorite);
-        grid.OnToggleFavorite();
+    [Fact]
+    public async Task FavoriteAction_TogglesFavoriteInStoreAndCells() {
+        var (search, _, usageStore) = await CreateSearchAsync();
+        var result = (EmojiGridResultViewModel)search.Search(":", 10).Single();
+        var fav = result.Actions.Single(a => a.Label == "Favorite");
+        var char0 = result.Cells[0].Char;
 
-        Assert.True(grid.Cells[0].IsFavorite);
-        Assert.True(usageStore.IsFavorite("😀"));
+        Assert.False(result.Cells[0].IsFavorite);
+        fav.Execute();
+        Assert.True(usageStore.IsFavorite(char0));
+        Assert.True(result.Cells[0].IsFavorite);
 
-        grid.OnToggleFavorite();
-        Assert.False(grid.Cells[0].IsFavorite);
-        Assert.False(usageStore.IsFavorite("😀"));
+        fav.Execute();
+        Assert.False(usageStore.IsFavorite(char0));
+        Assert.False(result.Cells[0].IsFavorite);
+    }
+
+    [Fact]
+    public async Task FavoriteAction_HasRequiresRefresh() {
+        var (search, _, _) = await CreateSearchAsync();
+        var result = (EmojiGridResultViewModel)search.Search(":", 10).Single();
+        var fav = result.Actions.Single(a => a.Label == "Favorite");
+
+        Assert.True(fav.RequiresRefresh);
+        Assert.False(fav.ClosesWindow);
+        Assert.False(fav.ClosesMenu);
     }
 
     [Fact]
@@ -448,6 +469,7 @@ public class EmojiSearchTests {
 
         var search = await BuildSearchWithCache(json, usageStore);
         var grid = search.Search(":", 10).OfType<EmojiGridResultViewModel>().First();
+        var fav = grid.Actions.Single(a => a.Label == "Favorite");
 
         // Fire appears in both Favorites and Default sections
         var fireCells = grid.Cells.Where(c => c.Char == "🔥").ToList();
@@ -456,7 +478,7 @@ public class EmojiSearchTests {
 
         // Toggle off favorite: both cells are updated
         grid.SelectedEmojiIndex = 0;
-        grid.OnToggleFavorite!();
+        fav.Execute();
 
         Assert.All(fireCells, c => Assert.False(c.IsFavorite));
         Assert.False(usageStore.IsFavorite("🔥"));

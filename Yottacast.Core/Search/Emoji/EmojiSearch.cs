@@ -104,32 +104,62 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
             Score    = 5.5,
             HasPinnedSection = hasPinned,
             PinnedSectionHeader = hasPinned ? "Favorites & recently used" : "",
-            PasteAfterActivate = true,
-            CopiedMessageProvider = () => {
-                var cell = grid.Cells[grid.SelectedEmojiIndex];
-                return $"Emoji {cell.Char} copied!";
-            },
-            OnActivate = () => {
-                var cell = grid.Cells[grid.SelectedEmojiIndex];
-                logger.LogInformation("Emoji: copied {Char} ({Name})", cell.Char, cell.Name);
-                clipboard.CopyText(cell.Char);
-                usageStore.RecordUsage(cell.Char);
-            },
-            OnCopy = () => {
-                var cell = grid.Cells[grid.SelectedEmojiIndex];
-                logger.LogInformation("Emoji: copied (no paste) {Char} ({Name})", cell.Char, cell.Name);
-                clipboard.CopyText(cell.Char);
-                usageStore.RecordUsage(cell.Char);
-            },
-            OnToggleFavorite = () => {
-                var cell = grid.Cells[grid.SelectedEmojiIndex];
-                usageStore.ToggleFavorite(cell.Char);
-                var isFav = usageStore.IsFavorite(cell.Char);
-                foreach (var c in grid.Cells.Where(c => c.Char == cell.Char))
-                    c.IsFavorite = isFav;
-                logger.LogInformation("Emoji: favorite toggled {Char} ({Name}) -> {IsFav}",
-                    cell.Char, cell.Name, isFav);
-            },
+            Actions = [
+                new() {
+                    Label           = "Paste",
+                    Hotkey          = ActionHotkey.Enter,
+                    ShowInFooter    = true,
+                    ShowInMenu      = true,
+                    ClosesMenu      = true,
+                    ClosesWindow    = true,
+                    PasteAfterClose = true,
+                    HintProvider    = () => {
+                        var cell = grid.Cells[grid.SelectedEmojiIndex];
+                        return $"Emoji {cell.Char} copied!";
+                    },
+                    Execute = () => {
+                        var cell = grid.Cells[grid.SelectedEmojiIndex];
+                        logger.LogInformation("Emoji: copied {Char} ({Name})", cell.Char, cell.Name);
+                        clipboard.CopyText(cell.Char);
+                        usageStore.RecordUsage(cell.Char);
+                    },
+                },
+                new() {
+                    Label        = "Copy",
+                    Hotkey       = ActionHotkey.MetaC,
+                    ShowInFooter = true,
+                    ShowInMenu   = true,
+                    ClosesMenu   = true,
+                    HintProvider = () => {
+                        var cell = grid.Cells[grid.SelectedEmojiIndex];
+                        return $"Emoji {cell.Char} copied!";
+                    },
+                    Execute = () => {
+                        var cell = grid.Cells[grid.SelectedEmojiIndex];
+                        logger.LogInformation("Emoji: copied (no paste) {Char} ({Name})", cell.Char, cell.Name);
+                        clipboard.CopyText(cell.Char);
+                        usageStore.RecordUsage(cell.Char);
+                    },
+                },
+                new() {
+                    Label           = "Favorite",
+                    Hotkey          = ActionHotkey.MetaShiftF,
+                    ShowInFooter    = true,
+                    ShowInMenu      = true,
+                    ClosesMenu      = false,
+                    ClosesWindow    = false,
+                    RequiresRefresh = true,
+                    Execute = () => {
+                        var cell = grid.Cells[grid.SelectedEmojiIndex];
+                        usageStore.ToggleFavorite(cell.Char);
+                        var isFav = usageStore.IsFavorite(cell.Char);
+                        foreach (var c in grid.Cells.Where(c => c.Char == cell.Char))
+                            c.IsFavorite = isFav;
+                        logger.LogInformation("Emoji: favorite toggled {Char} ({Name}) -> {IsFav}",
+                            cell.Char, cell.Name, isFav);
+                    },
+                },
+            ],
             OnLeft  = () => { grid.SelectPrevious(); return true; },
             OnRight = () => { grid.SelectNext(); return true; },
             OnUp    = () => grid.SelectUp(),
