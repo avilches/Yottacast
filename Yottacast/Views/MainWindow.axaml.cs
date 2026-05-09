@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -72,8 +73,11 @@ public partial class MainWindow : Window {
                 _positionDirty = false;
                 _screenPosKnown = false;
                 SearchBox.Focus();
-                if (DataContext is MainWindowViewModel vm)
+                if (DataContext is MainWindowViewModel vm) {
                     vm.CancelDecayTimer();
+                    if (string.IsNullOrEmpty(vm.SearchText))
+                        _ = HandleWindowShownAsync(vm);
+                }
             } else {
                 SavePosition();
                 if (DataContext is MainWindowViewModel vm) {
@@ -85,6 +89,13 @@ public partial class MainWindow : Window {
                 }
             }
         }
+    }
+
+    private async Task HandleWindowShownAsync(MainWindowViewModel vm)
+    {
+        var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+        var text = clipboard != null ? await clipboard.GetTextAsync() : null;
+        vm.OnWindowShown(text);
     }
 
     private void ApplyPositionOnShow() {
