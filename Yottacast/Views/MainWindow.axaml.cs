@@ -93,9 +93,14 @@ public partial class MainWindow : Window {
 
     private async Task HandleWindowShownAsync(MainWindowViewModel vm)
     {
+        // Show empty state immediately (pending apps, etc.) without waiting for clipboard
+        vm.OnWindowShown(null);
+
+        // Then read clipboard and refresh if it contains something useful
         var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
         var text = clipboard != null ? await clipboard.GetTextAsync() : null;
-        vm.OnWindowShown(text);
+        if (!string.IsNullOrEmpty(text))
+            vm.OnWindowShown(text);
     }
 
     private void ApplyPositionOnShow() {
