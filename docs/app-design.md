@@ -191,11 +191,11 @@ borde, permitiendo al usuario salir del grid con las flechas.
 
 ### Portapapeles: bridge Core → UI
 
-`Yottacast.Core` no puede depender de Avalonia, pero necesita copiar al portapapeles. Se resuelve con un callback: al
-arrancar, la capa UI inyecta una función que encapsula la copia al portapapeles con el marshal al UI thread. Core
-simplemente llama `clipboardService.CopyText(text)`.
+`Yottacast.Core` no puede depender de Avalonia, pero necesita leer y copiar el portapapeles. Se resuelve con callbacks: al arrancar, la capa UI inyecta dos funciones — una para escritura y otra para lectura — que encapsulan el acceso a Avalonia con el marshal al UI thread. Core llama `clipboardService.CopyText(text)` para copiar y `clipboardService.ReadTextAsync()` para leer.
 
-> **Verificar en:** `ClipboardService` (en `Yottacast.Core/Services/`), inicialización en `App.axaml.cs`.
+La lectura del portapapeles se usa en `ClipboardSearch` (via `MainWindow.HandleWindowShownAsync`) para detectar URLs o rutas locales al abrir la ventana.
+
+> **Verificar en:** `ClipboardService` (en `Yottacast.Core/Services/`), inicialización en `App.axaml.cs`, `ClipboardSearch.cs`, `MainWindow.axaml.cs` -- `HandleWindowShownAsync`.
 
 ## Settings y persistencia
 

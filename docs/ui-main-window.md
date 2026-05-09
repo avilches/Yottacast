@@ -178,22 +178,39 @@ Mover el raton sobre un resultado lo selecciona (hover-to-select), pero solo si 
 
 ---
 
-## 9. Apps recien instaladas (pending apps)
+## 9. Estado vacio: IEmptyStateSource
 
-Cuando el sistema detecta una app nueva (via `FileSystemWatcher`, despues del scan inicial), la ventana principal reacciona en funcion del estado del buscador:
+Cuando el buscador esta vacio (sin texto), la ventana muestra resultados procedentes de fuentes de estado vacio (`IEmptyStateSource`). Cada fuente es independiente, registrada en DI, y puede actualizar sus resultados reactivamente.
+
+### Fuentes activas
+
+| Fuente | Comportamiento |
+|---|---|
+| `NewlyInstalledAppsSource` | Muestra apps detectadas por `FileSystemWatcher` despues del scan inicial. Se acumulan mientras el buscador esta vacio; se descartan cuando el usuario empieza a escribir. Reacciona a `AppAdded` e `IconLoaded` disparando `ResultsChanged`. |
+| `ClipboardSearch` | Al abrir la ventana, lee el portapapeles. Si contiene una URL valida o ruta local existente, muestra un resultado con `· from clipboard` en el titulo. No reacciona a cambios del portapapeles; solo se actualiza al abrir la ventana. |
+
+### Ciclo de vida
+
+Al abrir la ventana con buscador vacio:
+1. `MainWindow` llama `vm.OnWindowShown(null)` inmediatamente — las fuentes ya activas muestran sus resultados al instante.
+2. `MainWindow` lee el portapapeles en background y llama `vm.OnWindowShown(text)` si hay contenido — `ClipboardSearch` puede añadir un resultado.
+
+Cuando el usuario empieza a escribir, `OnSearchStarted()` se llama en todas las fuentes: `NewlyInstalledAppsSource` descarta sus pendientes, `ClipboardSearch` limpia su cache.
+
+Cuando una fuente dispara `ResultsChanged` (p.ej. nueva app instalada con buscador vacio), el ViewModel refresca el estado vacio sin volver a leer el portapapeles.
+
+### Apps recien instaladas: detalle
 
 | Estado del buscador | Comportamiento |
 |---|---|
-| Vacio | La app se anade a la lista de pendientes y se muestra inmediatamente. |
-| Con texto | Se refresca la busqueda instant; si la app coincide con la query, aparece. No se anade a pendientes. |
-| El usuario empieza a escribir | Las apps pendientes se descartan permanentemente (`_pendingAppInfos.Clear()`). |
-| El usuario borra todo el texto | Se muestran las apps pendientes que quedaban (si no se habia escrito nada antes). |
-| La ventana se oculta y se reabre | Las apps pendientes persisten en memoria. |
-| Se carga un icono | Si hay pendientes y el buscador esta vacio, se reconstruye la lista para reflejar el icono recien disponible. |
+| Vacio | La app aparece inmediatamente. |
+| Con texto | Se refresca la busqueda instant; si la app coincide, aparece. |
+| El usuario empieza a escribir | Las apps pendientes se descartan. |
+| Se carga un icono | Si el buscador esta vacio, se reconstruye la lista para reflejar el icono. |
 
-El tracking de apps nuevas solo se activa despues de que `ApplicationSearch` complete su scan inicial (`WhenReady()`), evitando que las apps del scan inicial se traten como "recien instaladas".
+El tracking solo se activa despues de que `ApplicationSearch` complete su scan inicial (`WhenReady()`), evitando que las apps del scan inicial se traten como recien instaladas.
 
-> **Verificar en:** `MainWindowViewModel.cs` -- `StartTrackingNewAppsAsync`, `OnNewAppInstalled`, `ShowPendingApps`, `OnAppCacheChanged`, `OnSearchTextChanged`.
+> **Verificar en:** `IEmptyStateSource.cs`, `NewlyInstalledAppsSource.cs`, `ClipboardSearch.cs`, `MainWindowViewModel.cs` -- `OnWindowShown`, `RefreshEmptyState`, `OnSearchTextChanged`, `OnAppCacheChanged`. `MainWindow.axaml.cs` -- `HandleWindowShownAsync`.
 
 ---
 

@@ -12,7 +12,7 @@ El usuario escribe un nombre (parcial o completo) y Yottacast muestra las aplica
 
 - El usuario nunca espera a que se carguen las apps: la UI solo acepta input despues de que el cache de apps esta listo (`WhenInstantReady`).
 - Las apps recien instaladas aparecen en la lista sin reiniciar Yottacast, gracias a los watchers de filesystem.
-- Si el usuario no ha escrito nada, las apps recien detectadas se muestran como resultados pendientes. Si esta buscando, se refrescan los resultados instant para incluir la nueva app si coincide con la query.
+- Si el usuario no ha escrito nada, las apps recien detectadas se muestran via `NewlyInstalledAppsSource` (ver `docs/ui-main-window.md`). Si esta buscando, se refrescan los resultados instant para incluir la nueva app si coincide con la query.
 - Solo se monitorizan directorios que existen en disco; los configurados pero inexistentes se ignoran silenciosamente.
 - El arranque es idempotente: llamadas repetidas a `Start()` son no-op. El ciclo `Stop()` + `Start()` es valido para reinicio, aunque actualmente ningun codigo lo ejecuta.
 
