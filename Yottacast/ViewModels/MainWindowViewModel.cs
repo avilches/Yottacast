@@ -27,8 +27,11 @@ public partial class MainWindowViewModel(
     UpdateChecker updateChecker,
     HistoryService historyService,
     UrlSearch urlSearch,
-    LaunchHistory launchHistory)
+    LaunchHistory launchHistory,
+    IEnumerable<IEmptyStateSource> emptySources)
     : ViewModelBase {
+
+    private readonly IReadOnlyList<IEmptyStateSource> _emptySources = emptySources.ToList();
 
     [ObservableProperty] private string _searchText = "";
 
@@ -84,7 +87,6 @@ public partial class MainWindowViewModel(
 
     public bool UserNavigated => _userNavigated;
 
-    private readonly List<AppInfo> _pendingAppInfos = [];
     private bool _appCacheRefreshPending;
 
     public void CancelDeferredSearch() => _deferredCts?.Cancel();
@@ -108,34 +110,13 @@ public partial class MainWindowViewModel(
         userDocumentSearch.BadgeIconLoaded += OnBadgeIconLoaded;
         settings.SearchSettingsChanged += OnSearchSettingsChanged;
         urlSearch.ResultChanged += OnUrlResultChanged;
-        _ = StartTrackingNewAppsAsync();
-    }
-
-    private async Task StartTrackingNewAppsAsync() {
-        await appSearch.WhenReady();
-        appSearch.AppAdded += app => Dispatcher.UIThread.Post(() => OnNewAppInstalled(app));
-    }
-
-    private void OnNewAppInstalled(AppInfo app) {
-        if (string.IsNullOrEmpty(SearchText)) {
-            _pendingAppInfos.Add(app);
-            ShowPendingApps();
-        } else {
-            // Usuario buscando activamente — refrescar por si la nueva app coincide con la query
-            var (items, hint, hintKind) = globalSearch.SearchInstant(SearchText.Trim(), limit: SearchSourceLimit);
-            _instantSnapshot = items;
-            SetSearchHint(hint, hintKind);
-            RefreshResults();
+        foreach (var source in _emptySources)
+        {
+            source.Start();
+            source.ResultsChanged += () => Dispatcher.UIThread.Post(() => {
+                if (string.IsNullOrEmpty(SearchText)) RefreshEmptyState();
+            });
         }
-    }
-
-    private void ShowPendingApps() {
-        Results.Clear();
-        foreach (var info in _pendingAppInfos)
-            Results.Add(appSearch.CreateResultItem(info));
-        HasResults = Results.Count > 0;
-        ShowNoResults = false;
-        SelectedResult = Results.FirstOrDefault();
     }
 
     private void OnSearchSettingsChanged() {
@@ -154,7 +135,7 @@ public partial class MainWindowViewModel(
         Dispatcher.UIThread.Post(() => {
             _appCacheRefreshPending = false;
             if (string.IsNullOrEmpty(SearchText)) {
-                if (_pendingAppInfos.Count > 0) ShowPendingApps();
+                RefreshEmptyState();
                 return;
             }
             var (items, hint, hintKind) = globalSearch.SearchInstant(SearchText.Trim(), limit: SearchSourceLimit);
@@ -214,11 +195,11 @@ public partial class MainWindowViewModel(
             _instantSnapshot = [];
             _deferredSnapshot = [];
             SetSearchHint(null);
-            ShowPendingApps();
+            RefreshEmptyState();
             return;
         }
 
-        _pendingAppInfos.Clear();
+        foreach (var source in _emptySources) source.OnSearchStarted();
         _ = SearchAsync(value.Trim(), _cts.Token);
     }
 
@@ -378,6 +359,27 @@ public partial class MainWindowViewModel(
     public void RecordLaunch(BaseResultItemViewModel item) {
         if (item is ResultItemViewModel r && !string.IsNullOrEmpty(r.ItemPath))
             launchHistory.Record(r.ItemPath);
+    }
+
+    /// <summary>
+    /// Called by MainWindow when the window becomes visible with empty search text.
+    /// clipboardText is the raw clipboard string read by the View layer.
+    /// </summary>
+    public void OnWindowShown(string? clipboardText)
+    {
+        foreach (var source in _emptySources)
+            source.OnWindowShown(clipboardText);
+        RefreshEmptyState();
+    }
+
+    private void RefreshEmptyState()
+    {
+        var results = _emptySources.SelectMany(s => s.GetResults()).ToList();
+        Results.Clear();
+        foreach (var r in results) Results.Add(r);
+        HasResults = Results.Count > 0;
+        ShowNoResults = false;
+        SelectedResult = Results.FirstOrDefault();
     }
 
     private void RefreshResults() {

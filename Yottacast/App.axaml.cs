@@ -20,6 +20,7 @@ using Yottacast.Core.Platform;
 using Yottacast.Core.Search;
 using Yottacast.Core.Search.Application;
 using Yottacast.Core.Search.Calculator;
+using Yottacast.Core.Search.Clipboard;
 using Yottacast.Core.Search.Emoji;
 using Yottacast.Core.Search.UserDocuments;
 using Yottacast.Core.Search.Dictionary;
@@ -228,6 +229,8 @@ public partial class App : Application {
         services.AddSingleton<FaviconCache>();
         services.AddSingleton<FileIconCache>();
         services.AddSingleton<ApplicationSearch>();
+        services.AddSingleton<NewlyInstalledAppsSource>();
+        services.AddSingleton<ClipboardSearch>();
         services.AddSingleton<BrowserDiscovery>();
         services.AddSingleton<TerminalDiscovery>();
         services.AddSingleton<FileSearch>();
@@ -274,6 +277,10 @@ public partial class App : Application {
         services.AddSingleton<IDeferredSearchSource>(sp => sp.GetRequiredService<UserDocumentSearch>());
         services.AddSingleton<IDeferredSearchSource>(sp => sp.GetRequiredService<DictionarySource>());
         // services.AddSingleton<IDeferredSearchSource>(sp => sp.GetRequiredService<RandomSearch>());
+
+        // Register IEmptyStateSource implementations
+        services.AddSingleton<IEmptyStateSource>(sp => sp.GetRequiredService<NewlyInstalledAppsSource>());
+        services.AddSingleton<IEmptyStateSource>(sp => sp.GetRequiredService<ClipboardSearch>());
 
         services.AddSingleton<GlobalSearch>();
         services.AddSingleton<UpdateChecker>();
