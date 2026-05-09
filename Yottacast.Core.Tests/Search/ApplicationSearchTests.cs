@@ -16,6 +16,7 @@ namespace Yottacast.Core.Tests.Search;
 /// </summary>
 internal sealed class FakePlatformProviderWithApps : FakePlatformProvider {
     public IReadOnlyList<string> AppPaths { get; set; }
+    public string? LastLaunchedPath { get; private set; }
 
     public FakePlatformProviderWithApps(IReadOnlyList<string> appPaths) : base([]) {
         AppPaths = appPaths;
@@ -29,6 +30,8 @@ internal sealed class FakePlatformProviderWithApps : FakePlatformProvider {
         }
         await Task.CompletedTask;
     }
+
+    public override void LaunchApp(string path) => LastLaunchedPath = path;
 }
 
 public class ApplicationSearchTests {
@@ -410,7 +413,7 @@ public class ApplicationSearchTests {
 
     [Fact]
     public async Task CreateResultItem_HasOpenAndCopyActions() {
-        var (search, clipboard, _) = await CreateSearchAsync();
+        var (search, clipboard, platform) = await CreateSearchAsync();
 
         string? lastCopied = null;
         clipboard.Initialize(text => lastCopied = text, () => Task.FromResult<string?>(null));
@@ -425,6 +428,9 @@ public class ApplicationSearchTests {
         Assert.True(open.ShowInFooter);
         Assert.True(open.ShowInMenu);
         Assert.True(open.ClosesWindow);
+
+        open.Execute();
+        Assert.Equal("/Applications/Safari.app", platform.LastLaunchedPath);
 
         var copy = item.Actions[1];
         Assert.Equal("Copy path", copy.Label);
