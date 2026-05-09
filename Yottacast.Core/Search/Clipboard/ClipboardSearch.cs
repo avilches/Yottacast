@@ -22,6 +22,7 @@ public class ClipboardSearch(
     ILogger<ClipboardSearch> logger) : IEmptyStateSource
 {
     private BaseResultItemViewModel? _cached;
+    private readonly object _cacheLock = new();
     private Action? _onFaviconLoaded;
 
     public event Action? ResultsChanged;
@@ -41,21 +42,38 @@ public class ClipboardSearch(
             faviconCache.FaviconLoaded -= _onFaviconLoaded;
             _onFaviconLoaded = null;
         }
-        _cached = null;
+        lock (_cacheLock)
+        {
+            _cached = null;
+        }
         return Task.CompletedTask;
     }
 
     public void OnWindowShown(string? clipboardText)
     {
-        _cached = Build(clipboardText);
-        if (_cached is not null)
-            logger.LogDebug("ClipboardSearch: clipboard hit for \"{Text}\"", clipboardText);
+        lock (_cacheLock)
+        {
+            _cached = Build(clipboardText);
+            if (_cached is not null)
+                logger.LogDebug("ClipboardSearch: clipboard hit for \"{Text}\"", clipboardText);
+        }
     }
 
-    public void OnSearchStarted() => _cached = null;
+    public void OnSearchStarted()
+    {
+        lock (_cacheLock)
+        {
+            _cached = null;
+        }
+    }
 
-    public IReadOnlyList<BaseResultItemViewModel> GetResults() =>
-        _cached is null ? [] : [_cached];
+    public IReadOnlyList<BaseResultItemViewModel> GetResults()
+    {
+        lock (_cacheLock)
+        {
+            return _cached is null ? [] : [_cached];
+        }
+    }
 
     private BaseResultItemViewModel? Build(string? text)
     {
