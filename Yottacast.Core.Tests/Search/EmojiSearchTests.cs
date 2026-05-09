@@ -184,7 +184,7 @@ public class EmojiSearchTests {
         await search.WhenReady();
 
         string copied = "";
-        clipboard.Initialize(text => copied = text);
+        clipboard.Initialize(text => copied = text, () => Task.FromResult<string?>(null));
 
         var results = SearchResults(search, ":");
         var item = Assert.Single(results);

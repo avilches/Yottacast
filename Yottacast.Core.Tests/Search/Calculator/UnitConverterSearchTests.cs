@@ -69,7 +69,7 @@ public class UnitConverterSearchTests(MathJsEngineFixture fixture) {
     public void OnActivate_CopiesResultToClipboard() {
         var search = BuildSearch(out var clipboard);
         string copied = "";
-        clipboard.Initialize(text => copied = text);
+        clipboard.Initialize(text => copied = text, () => Task.FromResult<string?>(null));
 
         var results = SearchResults(search, "1 km to m");
         var item = Assert.Single(results);

@@ -110,7 +110,7 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
     public void OnActivate_CopiesResultToClipboard() {
         var search = BuildSearch(out var clipboard);
         string copied = "";
-        clipboard.Initialize(text => copied = text);
+        clipboard.Initialize(text => copied = text, () => Task.FromResult<string?>(null));
 
         var item = StandardResult(search, "2+2");
         Assert.NotNull(item.OnActivate);

@@ -92,7 +92,7 @@ public class UserDocumentSearchTests {
     public async Task Results_HaveOnCopyAndCopiedMessage() {
         string? copied = null;
         var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
-        clipboard.Initialize(t => copied = t);
+        clipboard.Initialize(t => copied = t, () => Task.FromResult<string?>(null));
         var search = BuildSearch(clipboard, new FileResult("report.pdf", "/docs/report.pdf"));
         var results = await SearchAllAsync(search, "report");
         var item = Assert.Single(results);

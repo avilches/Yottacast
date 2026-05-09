@@ -3,13 +3,22 @@ using Microsoft.Extensions.Logging;
 namespace Yottacast.Core.Services;
 
 /// <summary>
-/// Bridge that lets Core code request a clipboard write without depending on Avalonia.
-/// The GUI project calls Initialize() once at startup with an Avalonia-backed implementation.
+/// Bridge that lets Core code read/write the clipboard without depending on Avalonia.
+/// The GUI project calls Initialize() once at startup with Avalonia-backed implementations.
 /// </summary>
-public class ClipboardService(ILogger<ClipboardService> logger) {
+public class ClipboardService(ILogger<ClipboardService> logger)
+{
     private Action<string>? _copy;
+    private Func<Task<string?>>? _read;
 
-    public void Initialize(Action<string> copy) => _copy = copy;
+    public void Initialize(Action<string> copy, Func<Task<string?>> read)
+    {
+        _copy = copy;
+        _read = read;
+    }
 
     public void CopyText(string text) => _copy?.Invoke(text);
+
+    public Task<string?> ReadTextAsync() =>
+        _read?.Invoke() ?? Task.FromResult<string?>(null);
 }
