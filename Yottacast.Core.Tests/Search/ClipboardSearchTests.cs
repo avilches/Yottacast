@@ -102,7 +102,7 @@ public class ClipboardSearchTests {
         var results = search.GetResults();
         Assert.Single(results);
         var r = Assert.IsType<ResultItemViewModel>(results[0]);
-        Assert.Contains("from clipboard", r.Subtitle);
+        Assert.Contains("from clipboard", r.Title);
         Assert.Equal("Web", r.Category);
         Assert.Equal(4.0, r.Score);
     }
@@ -118,10 +118,10 @@ public class ClipboardSearchTests {
             var results = search.GetResults();
             Assert.Single(results);
             var r = Assert.IsType<ResultItemViewModel>(results[0]);
-            Assert.Contains("from clipboard", r.Subtitle);
+            Assert.Contains("from clipboard", r.Title);
             Assert.Equal("Files", r.Category);
             Assert.Equal(4.0, r.Score);
-            Assert.Equal(Path.GetFileName(tempFile), r.Title);
+            Assert.Equal($"{Path.GetFileName(tempFile)} · from clipboard", r.Title);
             Assert.NotNull(r.OnActivate);
             Assert.NotNull(r.OnCopy);
             Assert.Equal("Path copied!", r.CopiedMessage);
