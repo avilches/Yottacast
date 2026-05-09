@@ -11,9 +11,6 @@ public class ClipboardService(ILogger<ClipboardService> logger)
     private Action<string>? _copy;
     private Func<Task<string?>>? _read;
 
-    /// <summary>The last text passed to CopyText, or null if none yet. Useful in tests.</summary>
-    public string? LastCopied { get; private set; }
-
     public void Initialize(Action<string> copy, Func<Task<string?>> read)
     {
         _copy = copy;
@@ -21,7 +18,6 @@ public class ClipboardService(ILogger<ClipboardService> logger)
     }
 
     public void CopyText(string text) {
-        LastCopied = text;
         _copy?.Invoke(text);
     }
 

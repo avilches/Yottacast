@@ -23,7 +23,7 @@ public class EmojiSearchTests {
         return search;
     }
 
-    private static async Task<(EmojiSearch Search, ClipboardService Clipboard, EmojiUsageStore UsageStore)> CreateSearchAsync() {
+    private static async Task<(EmojiSearch Search, ClipboardService Clipboard, EmojiUsageStore UsageStore, Func<string?> GetLastCopied)> CreateSearchAsync() {
         var json = """[["😀","grinning face",["grinning"],"Smileys & Emotion",1]]""";
         var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(dir);
@@ -37,7 +37,7 @@ public class EmojiSearchTests {
         var search = new EmojiSearch(clipboard, cachePath, new EmojiDataLoader(NullLogger<EmojiDataLoader>.Instance), usageStore, NullLogger<EmojiSearch>.Instance, settings);
         search.Start();
         await search.WhenReady();
-        return (search, clipboard, usageStore);
+        return (search, clipboard, usageStore, () => copied);
     }
 
     private static IReadOnlyList<Yottacast.Core.ViewModels.ResultItemViewModel> SearchResults(
@@ -188,14 +188,15 @@ public class EmojiSearchTests {
 
     [Fact]
     public async Task PasteAction_CopiesAndRecordsUsage() {
-        var (search, clipboard, usageStore) = await CreateSearchAsync();
+        var (search, _, usageStore, getLastCopied) = await CreateSearchAsync();
         var result = (EmojiGridResultViewModel)search.Search(":", 10).Single();
         var paste = result.Actions.Single(a => a.Label == "Paste");
+        var char0 = result.Cells[0].Char;
 
         paste.Execute();
 
-        Assert.NotEmpty(clipboard.LastCopied ?? "");
-        Assert.True(usageStore.GetUsageCount(result.Cells[0].Char) > 0);
+        Assert.Equal(char0, getLastCopied());
+        Assert.True(usageStore.GetUsageCount(char0) > 0);
     }
 
     // ── Favorites and most-used ──────────────────────────────────────────────
@@ -301,7 +302,7 @@ public class EmojiSearchTests {
 
     [Fact]
     public async Task CopyAction_HasNoClosesWindow() {
-        var (search, _, _) = await CreateSearchAsync();
+        var (search, _, _, _) = await CreateSearchAsync();
         var result = (EmojiGridResultViewModel)search.Search(":", 10).Single();
         var copy = result.Actions.Single(a => a.Label == "Copy");
 
@@ -312,7 +313,7 @@ public class EmojiSearchTests {
 
     [Fact]
     public async Task CopyAction_HasDynamicHint() {
-        var (search, _, _) = await CreateSearchAsync();
+        var (search, _, _, _) = await CreateSearchAsync();
         var result = (EmojiGridResultViewModel)search.Search(":", 10).Single();
         var copy = result.Actions.Single(a => a.Label == "Copy");
         var char0 = result.Cells[0].Char;
@@ -418,7 +419,7 @@ public class EmojiSearchTests {
 
     [Fact]
     public async Task PasteAction_HasPasteAfterClose() {
-        var (search, _, _) = await CreateSearchAsync();
+        var (search, _, _, _) = await CreateSearchAsync();
         var result = (EmojiGridResultViewModel)search.Search(":", 10).Single();
         var paste = result.Actions.Single(a => a.Label == "Paste");
 
@@ -428,7 +429,7 @@ public class EmojiSearchTests {
 
     [Fact]
     public async Task FavoriteAction_TogglesFavoriteInStoreAndCells() {
-        var (search, _, usageStore) = await CreateSearchAsync();
+        var (search, _, usageStore, _) = await CreateSearchAsync();
         var result = (EmojiGridResultViewModel)search.Search(":", 10).Single();
         var fav = result.Actions.Single(a => a.Label == "Favorite");
         var char0 = result.Cells[0].Char;
@@ -445,7 +446,7 @@ public class EmojiSearchTests {
 
     [Fact]
     public async Task FavoriteAction_HasRequiresRefresh() {
-        var (search, _, _) = await CreateSearchAsync();
+        var (search, _, _, _) = await CreateSearchAsync();
         var result = (EmojiGridResultViewModel)search.Search(":", 10).Single();
         var fav = result.Actions.Single(a => a.Label == "Favorite");
 
