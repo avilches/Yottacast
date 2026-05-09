@@ -92,7 +92,7 @@ public class WebSearchSource(
         if (userConfig.Mode == WebSearchMode.ShowAlways) {
             if (anyPrefixMatch) return null;
             searchQuery = query;
-            score = 3.0;
+            score = 0.4;
         } else {
             var prefix = userConfig.Prefix;
             if (string.IsNullOrEmpty(prefix)) return null;
@@ -100,7 +100,7 @@ public class WebSearchSource(
             if (!query.StartsWith(trigger, StringComparison.OrdinalIgnoreCase)) return null;
             searchQuery = query[trigger.Length..].Trim();
             if (string.IsNullOrEmpty(searchQuery)) return null;
-            score = 3.5;
+            score = 3.8;
         }
 
         var capturedQuery = searchQuery;

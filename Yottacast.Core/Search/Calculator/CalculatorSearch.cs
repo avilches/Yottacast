@@ -72,7 +72,7 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
                 vm = new ConversionResultItemViewModel {
                     Icon              = "📐",
                     Category          = "Converter",
-                    Score             = 4,
+                    Score             = 7,
                     FromShort         = fromShort,
                     FromLong          = fromLong,
                     NormFromShort     = normFromShort,
@@ -119,7 +119,7 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
                     TitleLong = titleLong,
                     Subtitle = subtitle,
                     Category = "Calculator",
-                    Score = 4,
+                    Score = 7,
                     PasteAfterActivate = true,
                     OnActivate = () => {
                         logger.LogInformation("Calculator: copied result \"{Value}\"", captured);

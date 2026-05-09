@@ -69,7 +69,7 @@ public class ApplicationSearchTests {
         Assert.Empty(results);
     }
 
-    // ── Exact / prefix match (Score = 1.0) ───────────────────────────────────
+    // ── Exact / prefix match (Score = 4.0 = NameMatcher 1.0 × 4) ───────────────
 
     [Fact]
     public async Task SearchAsync_ExactName_ReturnsResult_ScoreOne() {
@@ -78,7 +78,7 @@ public class ApplicationSearchTests {
         var results = SearchAll(search, "Safari");
         Assert.Single(results);
         Assert.Equal("Safari", results[0].Title);
-        Assert.Equal(1.0, results[0].Score);
+        Assert.Equal(4.0, results[0].Score);
     }
 
     [Fact]
@@ -87,7 +87,7 @@ public class ApplicationSearchTests {
         await StartAndWaitAsync(search);
         var results = SearchAll(search, "Saf");
         Assert.Single(results);
-        Assert.Equal(1.0, results[0].Score);
+        Assert.Equal(4.0, results[0].Score);
     }
 
     [Fact]
@@ -102,10 +102,10 @@ public class ApplicationSearchTests {
     // ── CamelHump matching ────────────────────────────────────────────────────
 
     [Theory]
-    [InlineData("AM",    "Activity Monitor", 1.0)]   // uppercase initials → each char is a hump
-    [InlineData("am",    "Activity Monitor", 1.0)]   // lowercase → also tried as initials
-    [InlineData("AcMon", "Activity Monitor", 1.0)]   // multi-hump prefix
-    [InlineData("Mon",   "Activity Monitor", 0.8)]   // prefix of non-first token
+    [InlineData("AM",    "Activity Monitor", 4.0)]   // uppercase initials → each char is a hump (NameMatcher 1.0 × 4)
+    [InlineData("am",    "Activity Monitor", 4.0)]   // lowercase → also tried as initials (NameMatcher 1.0 × 4)
+    [InlineData("AcMon", "Activity Monitor", 4.0)]   // multi-hump prefix (NameMatcher 1.0 × 4)
+    [InlineData("Mon",   "Activity Monitor", 3.2)]   // prefix of non-first token (NameMatcher 0.8 × 4)
     public async Task SearchAsync_CamelHump_ReturnsExpectedScore(
         string query, string appName, double expectedScore) {
         var appPath = $"/Applications/{appName}.app";
@@ -128,7 +128,7 @@ public class ApplicationSearchTests {
         Assert.True(results[0].Score > 0);
     }
 
-    // ── Substring match (Score = 0.2) ─────────────────────────────────────────
+    // ── Substring match (Score = 0.8 = NameMatcher 0.2 × 4) ─────────────────────
 
     [Fact]
     public async Task SearchAsync_InternalSubstring_ReturnsLowScore() {
@@ -137,7 +137,7 @@ public class ApplicationSearchTests {
         // "ari" is inside "Safari" but not a prefix of any token
         var results = SearchAll(search, "ari");
         Assert.Single(results);
-        Assert.Equal(0.2, results[0].Score);
+        Assert.Equal(0.8, results[0].Score);
     }
 
     [Fact]

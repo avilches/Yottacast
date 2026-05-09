@@ -63,14 +63,14 @@ public class DictionarySource(
 
         if (settings.DictionaryShowAlways) {
             searchWord = query.Trim();
-            score = 2.5;
+            score = 0.3;
         } else {
             var prefix = settings.DictionaryPrefix;
             if (string.IsNullOrEmpty(prefix)) yield break;
             var trigger = prefix + " ";
             if (!query.StartsWith(trigger, StringComparison.OrdinalIgnoreCase)) yield break;
             searchWord = query[trigger.Length..].Trim();
-            score = 3.5;
+            score = 3.7;
         }
 
         if (string.IsNullOrEmpty(searchWord)) yield break;

@@ -98,7 +98,7 @@ public class UrlSearchTests {
         var r = Assert.IsType<ResultItemViewModel>(results[0]);
         Assert.Equal("https://example.com", r.Title);
         Assert.Equal("Web", r.Category);
-        Assert.Equal(4.0, r.Score);
+        Assert.Equal(10.0, r.Score);
         Assert.NotNull(r.OnActivate);
     }
 

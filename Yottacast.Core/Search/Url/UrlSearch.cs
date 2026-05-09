@@ -76,7 +76,7 @@ public class UrlSearch(
             Title       = url.Length > 80 ? url[..77] + "…" : url,
             Subtitle    = subtitle,
             Category    = "Web",
-            Score      = 4.0,
+            Score      = 10.0,
             OnActivate = () => {
                 if (browser is null) {
                     logger.LogWarning("UrlSearch: cannot open \"{Url}\" — no browser configured", capturedUrl);

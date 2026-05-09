@@ -76,7 +76,7 @@ public sealed class ApplicationSearch(
         return Task.CompletedTask;
     }
 
-    public ResultItemViewModel CreateResultItem(AppInfo app, double score = 1.0) {
+    public ResultItemViewModel CreateResultItem(AppInfo app, double score = 4.0) {
         var path = app.Path;
         return new() {
             Icon = "📱",
@@ -98,7 +98,7 @@ public sealed class ApplicationSearch(
             .Where(x => x.score > 0)
             .OrderByDescending(x => x.score)
             .Take(limit)
-            .Select(x => CreateResultItem(x.app, x.score))
+            .Select(x => CreateResultItem(x.app, x.score * 4))
             .ToList();
         logger.LogDebug("AppSearch query=\"{Query}\" cache={CacheCount} results={ResultCount} ready={Ready}",
             query, _apps.Count, results.Count, _readyTcs.Task.IsCompleted);

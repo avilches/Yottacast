@@ -101,7 +101,7 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
             Icon     = cells.Count > 0 ? cells[0].Char : "",
             Title    = cells.Count > 0 ? cells[0].Name : "",
             Category = "Emoji",
-            Score    = 3.5,
+            Score    = 5.5,
             HasPinnedSection = hasPinned,
             PinnedSectionHeader = hasPinned ? "Favorites & recently used" : "",
             PasteAfterActivate = true,

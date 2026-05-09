@@ -127,7 +127,7 @@ public class UserDocumentSearch(
                             Title = r.Name,
                             Subtitle = r.Path,
                             Category = "Files",
-                            Score = score,
+                            Score = score * 3.5,
                             OnActivate = () => {
                                 logger.LogInformation("DocSearch: open \"{Path}\"", path);
                                 platform.LaunchApp(path);

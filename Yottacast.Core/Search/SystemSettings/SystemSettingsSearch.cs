@@ -53,7 +53,7 @@ public sealed class SystemSettingsSearch(
             .Where(x => x.score > 0)
             .OrderByDescending(x => x.score)
             .Take(limit)
-            .Select(x => BuildResult(x.panel, x.score))
+            .Select(x => BuildResult(x.panel, x.score * 4))
             .ToList();
     }
 
