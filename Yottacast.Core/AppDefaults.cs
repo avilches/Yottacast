@@ -52,6 +52,12 @@ public static class AppDefaults {
     /// After this many days without use, a score is halved.
     public const int EmojiHalfLifeDays = 30;
 
+    // ── Services — launch history ────────────────────────────────────────────────
+    /// Half-life in days for launch history decay. After this many days without use, the bonus is halved.
+    public const double LaunchHistoryHalfLifeDays = 30.0;
+    /// Maximum score bonus a launch history entry can contribute.
+    public const double LaunchHistoryMaxBonus = 1.0;
+
     // ── UI — hints ───────────────────────────────────────────────────────────
     /// Duration a "copied" feedback hint stays visible before auto-clearing.
     public const int CopiedMessageDurationMs = 4_000;

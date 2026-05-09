@@ -280,6 +280,9 @@ public partial class App : Application {
         services.AddSingleton<HistoryService>(sp => new HistoryService(
             sp.GetRequiredService<UserSettings>(),
             sp.GetRequiredService<ILogger<HistoryService>>()));
+        services.AddSingleton<LaunchHistory>(sp => new LaunchHistory(
+            AppPaths.LaunchHistoryFile,
+            sp.GetRequiredService<ILogger<LaunchHistory>>()));
 
         services.AddTransient<MainWindowViewModel>();
         services.AddTransient<SettingsWindowViewModel>();

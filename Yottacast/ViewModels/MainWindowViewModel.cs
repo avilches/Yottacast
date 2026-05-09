@@ -26,7 +26,8 @@ public partial class MainWindowViewModel(
     UserDocumentSearch userDocumentSearch,
     UpdateChecker updateChecker,
     HistoryService historyService,
-    UrlSearch urlSearch)
+    UrlSearch urlSearch,
+    LaunchHistory launchHistory)
     : ViewModelBase {
 
     [ObservableProperty] private string _searchText = "";
@@ -374,10 +375,17 @@ public partial class MainWindowViewModel(
         } catch (OperationCanceledException) { }
     }
 
+    public void RecordLaunch(BaseResultItemViewModel item) {
+        if (item is ResultItemViewModel r && !string.IsNullOrEmpty(r.ItemPath))
+            launchHistory.Record(r.ItemPath);
+    }
+
     private void RefreshResults() {
         var merged = _instantSnapshot
             .Concat(_deferredSnapshot)
-            .OrderByDescending(x => x.Score)
+            .Select(x => (item: x, score: x.Score + launchHistory.BonusFor(x)))
+            .OrderByDescending(x => x.score)
+            .Select(x => x.item)
             .ToList();
 
         var previousSelected = SelectedResult;

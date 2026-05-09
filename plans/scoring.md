@@ -6,57 +6,46 @@ Análisis del código actual (mayo 2026) y propuestas ordenadas por área. Todo 
 
 ## Mapa de scores actuales
 
-Referencia rápida antes de leer las propuestas. Todos los sources fusionan resultados en `GlobalSearch` con un simple `OrderByDescending(x => x.Score)`.
+Referencia rápida. El score final de cada item es `score_base + LaunchHistory.BonusFor(item)` (bonus solo para apps y archivos, máx +1.0).
 
-| Source | Score | Tipo |
+| Source | Score base | Tipo |
 |---|---|---|
-| Calculator / Converter | 4 (fijo) | Instant |
-| LocalPathSearch | 4.0 (fijo) | Instant |
-| UrlSearch | 4.0 (fijo) | Instant |
-| EmojiSearch (grid result) | 3.5 (fijo) | Instant |
-| WebSearch PrefixOnly | 3.5 (fijo) | Instant |
-| Dictionary PrefixOnly | 3.5 (fijo) | Deferred |
-| WebSearch ShowAlways | 3.0 (fijo) | Instant |
-| Dictionary ShowAlways | 2.5 (fijo) | Deferred |
-| UserDocumentSearch | 0.5–1.0 (por nombre) | Deferred |
-| ApplicationSearch | 0.0–1.0 (NameMatcher) | Instant |
-| SystemSettingsSearch | 0.0–1.0 (NameMatcher) | Instant |
-
-**El problema central**: WebSearch ShowAlways (3.0) y Dictionary ShowAlways (2.5) siempre superan a cualquier app o panel de sistema (máx 1.0). Buscar "safari" muestra "Google: safari" antes que la aplicación Safari.
+| LocalPathSearch | 10.0 (fijo) | Instant |
+| UrlSearch | 10.0 (fijo) | Instant |
+| Calculator / Converter | 7 (fijo) | Instant |
+| EmojiSearch (grid result) | 5.5 (fijo) | Instant |
+| ApplicationSearch | NameMatcher × 4 → [0–4.0] (+bonus uso) | Instant |
+| SystemSettingsSearch | NameMatcher × 4 → [0–4.0] | Instant |
+| WebSearch PrefixOnly | 3.8 (fijo) | Instant |
+| Dictionary PrefixOnly | 3.7 (fijo) | Deferred |
+| UserDocumentSearch | FileScore × 3.5 → [1.75–3.5] (+bonus uso) | Deferred |
+| WebSearch ShowAlways | 0.4 (fijo) | Instant |
+| Dictionary ShowAlways | 0.3 (fijo) | Deferred |
 
 ---
 
-## 1. Normalización de escalas entre categorías
+## 1. Normalización de escalas entre categorías — COMPLETADO
 
-**Problema.** Las escalas son heterogéneas e incompatibles. Los sources basados en NameMatcher (ApplicationSearch, SystemSettingsSearch) puntúan entre 0 y 1.0, mientras que WebSearch ShowAlways fija 3.0 y Calculator fija 4.0. El fusionado en `GlobalSearch.SearchInstant` hace `OrderByDescending(x => x.Score)` sobre todo — resultado: una búsqueda web genérica siempre supera a cualquier aplicación instalada.
+~~**Problema.** Las escalas eran heterogéneas e incompatibles. WebSearch ShowAlways (3.0) siempre superaba a cualquier app (máx 1.0).~~
 
-Casos concretos:
-- "safari" → Google ShowAlways (3.0) aparece antes que Safari app (1.0)
-- "network" → Google ShowAlways (3.0) antes que System Settings › Network (1.0)
-- "report" → cualquier doc (0.5–1.0) pierde frente a web search (3.0)
-
-**Solución propuesta.** Redefinir bandas explícitas de score global:
+**Solución implementada.** Cada source escala sus scores a una banda global coherente:
 
 | Banda | Rango | Sources |
 |---|---|---|
-| Intención explícita | 10 | LocalPath, URL (el usuario escribió una ruta/URL exacta) |
-| Sistema / calculadora | 7–9 | Calculator, Converter |
-| Emoji | 5–6 | EmojiSearch grid |
-| App / Settings prefijo exacto | 4–5 | NameMatcher 1.0 (token 0) |
-| Web/Dict prefijo activo | 3.5–4 | WebSearch PrefixOnly, Dictionary PrefixOnly |
-| App / Settings prefijo parcial | 2.5–3.5 | NameMatcher 0.8 (token > 0) |
-| Documento relevante | 2–3 | UserDocumentSearch score 0.75–1.0 |
-| App iniciales/substring | 1–2 | NameMatcher 0.6–0.2 |
-| Documento base | 0.5–1 | UserDocumentSearch score 0.5 |
-| Web/Dict ShowAlways (fallback) | 0.3–0.5 | WebSearch ShowAlways, Dictionary ShowAlways |
+| Intención explícita | 10 | LocalPath, URL |
+| Sistema / calculadora | 7 | Calculator, Converter |
+| Emoji | 5.5 | EmojiSearch grid |
+| App / Settings prefijo exacto | 4.0 | NameMatcher 1.0 × 4 |
+| Web/Dict prefijo activo | 3.7–3.8 | WebSearch PrefixOnly, Dictionary PrefixOnly |
+| App prefijo parcial | 3.2 | NameMatcher 0.8 × 4 |
+| Documento exacto | 3.5 | FileScore 1.0 × 3.5 |
+| App iniciales/abrev/substring | 0.8–2.4 | NameMatcher 0.2–0.6 × 4 |
+| Documento base | 1.75–2.625 | FileScore 0.5–0.75 × 3.5 |
+| Web/Dict ShowAlways (fallback) | 0.3–0.4 | WebSearch ShowAlways, Dictionary ShowAlways |
 
-Esto requiere que cada source escale sus scores a la banda correcta, o que `GlobalSearch` aplique un factor de escala por fuente declarado en la interfaz (p.ej. `double ScoreBias { get; }`).
+Multiplicadores: Apps × 4, Docs × 3.5. Constantes fijas actualizadas en cada source.
 
-**Ficheros a tocar**: `ApplicationSearch.cs`, `SystemSettingsSearch.cs`, `UserDocumentSearch.cs`, `CalculatorSearch.cs`, `EmojiSearch.cs`, `WebSearchSource.cs`, `DictionarySource.cs`, `LocalPathSearch.cs`, `UrlSearch.cs`.
-
-**Impacto.** El resultado número 1 sería casi siempre el correcto.
-
-**Complejidad.** Media. Requiere actualizar los tests que verifican valores exactos de score.
+**Tests actualizados:** `ApplicationSearchTests`, `CalculatorSearchTests`, `UnitConverterSearchTests`, `UserDocumentSearchTests`, `EmojiSearchTests`, `LocalPathSearchTests`, `UrlSearchTests`, `SystemSettingsSearchTests`.
 
 ---
 
@@ -98,43 +87,27 @@ if (match) {
 
 ---
 
-## 4. Boost por frecuencia y recencia de uso (LaunchHistory)
+## 4. Boost por frecuencia y recencia de uso (LaunchHistory) — COMPLETADO
 
-**Problema.** El scoring es puramente textual. No hay ningún mecanismo para recordar qué apps lanza el usuario con frecuencia. "Chrome" y "ChromeDriver" tienen el mismo score para la query "chr"; tras el desempate por cobertura pueden quedar en el mismo puesto, aunque el usuario siempre abra Chrome. Alfred llama a esto "Learning"; Raycast lo llama "frecuency boosting".
+~~**Problema.** El scoring era puramente textual.~~
 
-### Ficheros nuevos
+**Solución implementada.** `LaunchHistory` registra cada lanzamiento y aplica un bonus con decay exponencial. El registro ocurre al activar cualquier item con `ItemPath` no nulo (apps y archivos) en los dos puntos de activación de `MainWindow.axaml.cs`.
 
-- `Yottacast.Core/Services/LaunchHistory.cs` — singleton. Persiste un `Dictionary<string, LaunchRecord>` donde la clave es el `Path` del item lanzado y `LaunchRecord` contiene `Count` y `LastUsed`. Expone `void Record(string path)` y `double Bonus(string path)`.
-
-### Ficheros modificados
-
-- `Yottacast.Core/ViewModels/ResultItemViewModel.cs` — añadir `string Path { get; init; }` (ya existe `Subtitle` con la ruta pero no hay un campo semántico dedicado).
-- `ApplicationSearch.cs` — el `ResultItemViewModel` que construye pasa `Path = x.app.Path`.
-- `UserDocumentSearch.cs` — idem con la ruta del fichero.
-- `MainWindowViewModel.cs` — en `RefreshResults()`, antes de ordenar, sumar `LaunchHistory.Bonus(item.Path)` al score de cada item. El `OnActivate` de cada item se envuelve para llamar `LaunchHistory.Record(item.Path)` antes de la acción original.
-- `App.axaml.cs` — registrar `LaunchHistory` en DI e inyectarla en `MainWindowViewModel`.
-
-### Fórmula de bonus
-
-```csharp
-// LaunchHistory.cs
-public double Bonus(string itemPath) {
-    if (!_data.TryGetValue(itemPath, out var r)) return 0;
-    var ageDays = (DateTimeOffset.UtcNow - r.LastUsed).TotalDays;
-    var decay = Math.Exp(-ageDays / 30.0); // half-life ~21 días
-    return Math.Log(r.Count + 1) * decay * 0.5; // max boost ~0.5 sobre el score base
-}
+**Fórmula:**
 ```
-
-En `RefreshResults()` de `MainWindowViewModel`, antes del `OrderByDescending`:
-
-```csharp
-var boosted = items.Select(x => (item: x, score: x.Score + _launchHistory.Bonus(x.Path)));
+bonus = min(ln(count + 1) × e^(-ageDays / 30), 1.0)
 ```
+Cap de 1.0 (`AppDefaults.LaunchHistoryMaxBonus`) para que ninguna app supere Calculator (7) ni Emoji (5.5).
 
-**Impacto.** El launcher se adapta al comportamiento del usuario con el tiempo.
-
-**Complejidad.** Media. Requiere: campo nuevo en settings o fichero separado, incremento en `LaunchApp`, y pasar el usage store a `ApplicationSearch`. Los tests necesitan el usage store inyectable.
+**Ficheros creados/modificados:**
+- `Yottacast.Core/Services/LaunchHistory.cs` — nuevo. JSON atómico, clock inyectable para tests.
+- `Yottacast.Core.Tests/Services/LaunchHistoryTests.cs` — 10 tests (bonus, decay, persistencia, corrupto).
+- `ResultItemViewModel.cs` — `string? ItemPath { get; init; }`.
+- `ApplicationSearch.cs` + `UserDocumentSearch.cs` — propagan `ItemPath`.
+- `MainWindowViewModel.cs` — `RecordLaunch()` + bonus en `RefreshResults()`.
+- `MainWindow.axaml.cs` — `vm.RecordLaunch(result)` en Key.Return y OnResultsTapped.
+- `App.axaml.cs` — singleton `LaunchHistory` en DI.
+- `AppPaths.LaunchHistoryFile`, `AppDefaults.LaunchHistoryHalfLifeDays/MaxBonus`.
 
 ---
 
@@ -229,14 +202,14 @@ public void AppScore_AlwaysBeatsWebShowAlways_ForExactMatch() {
 
 ## Resumen priorizado
 
-| # | Propuesta | Impacto | Complejidad | Prioridad |
+| # | Propuesta | Impacto | Complejidad | Estado |
 |---|---|---|---|---|
 | 7 | Score visible en producción | — | — | **COMPLETADO** |
-| 1 | Normalización de escalas (WebSearch > Apps es el bug principal) | Alto | Media | 1 |
-| 2 | Factor de cobertura en NameMatcher | Alto | Baja | 2 |
-| 3 | Reducir score de substring (0.2 → 0.1) | Medio | Baja | 3 |
-| 6 | Extraer FileNameMatcher | Bajo (calidad) | Baja | 4 |
-| 4 | Boost por frecuencia/recencia (LaunchHistory) | Alto | Media | 5 |
-| 5 | Score por relevancia de directorio | Medio | Baja | 6 |
+| 1 | Normalización de escalas | Alto | Media | **COMPLETADO** |
+| 4 | Boost por frecuencia/recencia (LaunchHistory) | Alto | Media | **COMPLETADO** |
+| 2 | Factor de cobertura en NameMatcher | Alto | Baja | Pendiente |
+| 3 | Reducir score de substring (0.2 → 0.1) | Medio | Baja | Pendiente |
+| 6 | Extraer FileNameMatcher | Bajo (calidad) | Baja | Pendiente |
+| 5 | Score por relevancia de directorio | Medio | Baja | Pendiente |
 | 9 | Tests de calidad de ranking | Alto (seguridad) | Baja | En paralelo con cada cambio |
 | 8 | Spotlight kMDItemLastUsedDate | Medio | Alta | Diferir |

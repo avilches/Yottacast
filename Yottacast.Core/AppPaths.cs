@@ -54,6 +54,9 @@ public static class AppPaths {
     /// <summary>Emoji usage data (favorites + usage counts) JSON file.</summary>
     public static readonly string EmojiUsageFile = Path.Combine(ConfigDir, "emoji-usage.json");
 
+    /// <summary>Launch history data (item path → count + last used) JSON file.</summary>
+    public static readonly string LaunchHistoryFile = Path.Combine(ConfigDir, "launch-history.json");
+
     /// <summary>Directory for local dictionary files (kaikki JSONL and SQLite DBs).</summary>
     public static readonly string DictionaryDir = Path.Combine(CacheDir, "dictionary");
 

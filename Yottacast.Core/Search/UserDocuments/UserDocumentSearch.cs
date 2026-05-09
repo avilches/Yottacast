@@ -126,6 +126,7 @@ public class UserDocumentSearch(
                             BadgeIconBytes = _badgeByExtension.GetValueOrDefault(ext),
                             Title = r.Name,
                             Subtitle = r.Path,
+                            ItemPath = r.Path,
                             Category = "Files",
                             Score = score * 3.5,
                             OnActivate = () => {

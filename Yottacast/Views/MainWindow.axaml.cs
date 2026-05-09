@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -376,6 +377,7 @@ public partial class MainWindow : Window {
 
             case Key.Return:
                 if (vm.SelectedResult is { OnActivate: { } action } result) {
+                    vm.RecordLaunch(result);
                     action();
                     vm.CleanAndSaveHistory(result.Title);
                     Hide();
@@ -461,6 +463,7 @@ public partial class MainWindow : Window {
         var vm = DataContext as MainWindowViewModel;
         if (vm is null) return;
         if (vm.SelectedResult is { OnActivate: { } action } result) {
+            vm.RecordLaunch(result);
             action();
             vm.CleanAndSaveHistory(result.Title);
             Hide();
@@ -493,21 +496,6 @@ public partial class MainWindow : Window {
         if (!_cursorHidden) return;
         _cursorHidden = false;
         AppHandler.Instance.ShowCursor();
-    }
-
-    private async Task HandleWindowShownAsync(MainWindowViewModel vm)
-    {
-        string? text = null;
-        try
-        {
-            var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
-            text = clipboard != null ? await clipboard.GetTextAsync() : null;
-        }
-        catch (Exception ex)
-        {
-            Log($"[Window] Clipboard read failed on show: {ex.Message}");
-        }
-        vm.OnWindowShown(text);
     }
 
 }
