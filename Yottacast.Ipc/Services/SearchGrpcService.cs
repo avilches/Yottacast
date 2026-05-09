@@ -27,7 +27,9 @@ public class SearchGrpcService(
     private volatile string? _lastCopiedText;
 
     public void Initialize() {
-        clipboardService.Initialize(text => _lastCopiedText = text);
+        clipboardService.Initialize(
+            copy: text => _lastCopiedText = text,
+            read: () => Task.FromResult<string?>(null));
     }
 
     private SearchResponse BuildResponse(
