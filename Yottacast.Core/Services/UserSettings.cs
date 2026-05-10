@@ -56,6 +56,8 @@ public class UserSettings {
     public bool EnableSystemSettings { get; set; } = true;
     public bool DictionaryShowAlways { get; set; } = false;
     public List<string> DictionaryLanguages { get; set; } = new(AppDefaults.DictionaryDefaultLanguages);
+    public bool DateSearchEnabled { get; set; } = true;
+    public List<string> DateSearchLanguages { get; set; } = ["es-es", "en-us"];
     public bool EnableHistory { get; set; } = true;
     public int HistoryMaxItems { get; set; } = AppDefaults.HistoryMaxItems;
     public bool KeepValueWhenHide { get; set; } = true;
@@ -174,6 +176,8 @@ public class UserSettings {
         [JsonPropertyName("dictionaryShowAlways")] public bool DictionaryShowAlways { get; init; } = false;
         [JsonPropertyName("enableSystemSettings")] public bool EnableSystemSettings { get; init; } = true;
         [JsonPropertyName("dictionaryLanguages")] public List<string>? DictionaryLanguages { get; init; }
+        [JsonPropertyName("dateSearchEnabled")] public bool DateSearchEnabled { get; init; } = true;
+        [JsonPropertyName("dateSearchLanguages")] public List<string>? DateSearchLanguages { get; init; }
         [JsonPropertyName("enableHistory")] public bool EnableHistory { get; init; } = true;
         [JsonPropertyName("historyMaxItems")] public int HistoryMaxItems { get; init; } = AppDefaults.HistoryMaxItems;
         [JsonPropertyName("keepValueWhenHide")] public bool KeepValueWhenHide { get; init; } = true;
@@ -235,6 +239,8 @@ public class UserSettings {
                     DictionaryPrefix = string.IsNullOrWhiteSpace(data.DictionaryPrefix) ? AppDefaults.DictionaryDefaultPrefix : data.DictionaryPrefix,
                     DictionaryShowAlways = data.DictionaryShowAlways,
                     DictionaryLanguages = data.DictionaryLanguages is { Count: > 0 } ? data.DictionaryLanguages : new(AppDefaults.DictionaryDefaultLanguages),
+                    DateSearchEnabled = data.DateSearchEnabled,
+                    DateSearchLanguages = data.DateSearchLanguages is { Count: > 0 } ? data.DateSearchLanguages : ["es-es", "en-us"],
                     EnableHistory = data.EnableHistory,
                     HistoryMaxItems = data.HistoryMaxItems is >= 1 and <= AppDefaults.HistoryMaxItems
                         ? data.HistoryMaxItems
@@ -350,6 +356,8 @@ public class UserSettings {
                 DictionaryPrefix = DictionaryPrefix,
                 DictionaryShowAlways = DictionaryShowAlways,
                 DictionaryLanguages = DictionaryLanguages,
+                DateSearchEnabled = DateSearchEnabled,
+                DateSearchLanguages = DateSearchLanguages,
                 EnableHistory = EnableHistory,
                 HistoryMaxItems = HistoryMaxItems,
                 KeepValueWhenHide = KeepValueWhenHide,
