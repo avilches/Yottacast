@@ -11,7 +11,7 @@ namespace Yottacast.Core.Search.Emoji;
 /// Emoji data is loaded from the embedded resource; a compact cache is written to disk for fast startups.
 /// Activating a result copies the emoji character to the clipboard.
 /// </summary>
-public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, EmojiDataLoader dataLoader, EmojiUsageStore usageStore, ILogger<EmojiSearch> logger, UserSettings settings) : IInstantSearchSource {
+public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, EmojiDataLoader dataLoader, EmojiUsageStore usageStore, EmojiLayoutConfig emojiLayoutConfig, ILogger<EmojiSearch> logger, UserSettings settings) : IInstantSearchSource {
 
     private Task<IReadOnlyList<EmojiEntry>>? _loadTask;
     private volatile IReadOnlyList<EmojiEntry> _entries = [];
@@ -102,6 +102,8 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
             Title    = cells.Count > 0 ? cells[0].Name : "",
             Category = "Emoji",
             Score    = 5.5,
+            Columns      = emojiLayoutConfig.Columns,
+            ViewportRows = emojiLayoutConfig.ViewportRows,
             HasPinnedSection = hasPinned,
             PinnedSectionHeader = hasPinned ? "Favorites & recently used" : "",
             Actions = [
