@@ -236,16 +236,33 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
             Subtitle = originalQuery,
             Category = "Calculator",
             Score = 7,
-            PasteAfterActivate = true,
-            OnActivate = () => {
-                logger.LogInformation("Equation: copied result \"{Value}\"", captured);
-                clipboard.CopyText(captured);
-            },
-            OnCopy = () => {
-                logger.LogInformation("Equation: copied result via Cmd+C \"{Value}\"", captured);
-                clipboard.CopyText(captured);
-            },
-            CopiedMessage = "Result copied!",
+            Actions = [
+                new() {
+                    Label           = "Copy result",
+                    Hotkey          = ActionHotkey.Enter,
+                    ShowInFooter    = true,
+                    ShowInMenu      = true,
+                    ClosesMenu      = true,
+                    ClosesWindow    = true,
+                    PasteAfterClose = true,
+                    Execute = () => {
+                        logger.LogInformation("Equation: copied result \"{Value}\"", captured);
+                        clipboard.CopyText(captured);
+                    },
+                },
+                new() {
+                    Label        = "Copy result",
+                    Hotkey       = ActionHotkey.MetaC,
+                    ShowInFooter = true,
+                    ShowInMenu   = true,
+                    ClosesMenu   = true,
+                    HintProvider = () => "Result copied!",
+                    Execute = () => {
+                        logger.LogInformation("Equation: copied result via Cmd+C \"{Value}\"", captured);
+                        clipboard.CopyText(captured);
+                    },
+                },
+            ],
         }];
     }
 }

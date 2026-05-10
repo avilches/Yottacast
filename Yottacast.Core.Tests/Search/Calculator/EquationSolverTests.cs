@@ -103,7 +103,8 @@ public class EquationSolverTests(NerdamerEngineFixture fixture) {
 
         var results = search.Search("2x-5=2", 5);
         var item = Assert.IsType<CalculatorResultItemViewModel>(Assert.Single(results));
-        item.OnActivate?.Invoke();
+        var enterAction = item.Actions.First(a => a.Hotkey == ActionHotkey.Enter);
+        enterAction.Execute();
 
         Assert.Equal("3.5", copied);
     }

@@ -115,19 +115,20 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture, NerdamerEngineFi
             read: () => Task.FromResult<string?>(null));
 
         var item = StandardResult(search, "2+2");
-        Assert.NotNull(item.OnActivate);
-        item.OnActivate();
+        var enterAction = item.Actions.First(a => a.Hotkey == ActionHotkey.Enter);
+        enterAction.Execute();
 
         Assert.Equal("4", copied);
     }
 
     [Fact]
-    public void CalculatorResult_HasOnCopyAndCopiedMessage() {
-        var search = BuildSearch(out var clipboard);
+    public void CalculatorResult_HasCopyActionWithPasteAndHint() {
+        var search = BuildSearch(out _);
         var result = StandardResult(search, "2+2");
-        Assert.NotNull(result.OnCopy);
-        Assert.Equal("Result copied!", result.CopiedMessage);
-        Assert.True(result.PasteAfterActivate);
+        var metaCAction = result.Actions.First(a => a.Hotkey == ActionHotkey.MetaC);
+        Assert.Equal("Result copied!", metaCAction.HintProvider?.Invoke());
+        var enterAction = result.Actions.First(a => a.Hotkey == ActionHotkey.Enter);
+        Assert.True(enterAction.PasteAfterClose);
     }
 
     // ── Non-math queries yield nothing ────────────────────────────────────────

@@ -4,6 +4,7 @@ using Xunit;
 using Yottacast.Core.Search.Calculator;
 using Yottacast.Core.Services;
 using Yottacast.Core.Tests.Fakes;
+using Yottacast.Core.ViewModels;
 
 namespace Yottacast.Core.Tests.Search.Calculator;
 
@@ -75,20 +76,21 @@ public class UnitConverterSearchTests(MathJsEngineFixture fixture, NerdamerEngin
 
         var results = SearchResults(search, "1 km to m");
         var item = Assert.Single(results);
-        Assert.NotNull(item.OnActivate);
-        item.OnActivate();
+        var enterAction = item.Actions.First(a => a.Hotkey == ActionHotkey.Enter);
+        enterAction.Execute();
 
         Assert.Equal("1000 m", copied);
     }
 
     [Fact]
-    public void ConversionResult_HasOnCopyAndCopiedMessage() {
+    public void ConversionResult_HasCopyActionWithPasteAndHint() {
         var search = BuildSearch(out _);
         var results = search.Search("5 km to miles", 5);
         var item = Assert.Single(results.OfType<ViewModels.ConversionResultItemViewModel>());
-        Assert.NotNull(item.OnCopy);
-        Assert.Equal("Result copied!", item.CopiedMessage);
-        Assert.True(item.PasteAfterActivate);
+        var metaCAction = item.Actions.First(a => a.Hotkey == ActionHotkey.MetaC);
+        Assert.Equal("Result copied!", metaCAction.HintProvider?.Invoke());
+        var enterAction = item.Actions.First(a => a.Hotkey == ActionHotkey.Enter);
+        Assert.True(enterAction.PasteAfterClose);
     }
 
     // ── Non-conversion queries yield nothing ──────────────────────────────────
