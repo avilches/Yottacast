@@ -11,7 +11,7 @@ public record VariableSolution(
 public record SolveResult(VariableSolution[] Variables);
 
 /// <summary>
-/// Wraps a Jint engine loaded with nerdamer (core + Algebra addon).
+/// Wraps a Jint engine loaded with nerdamer (core + Algebra + Calculus + Solve addons).
 /// Solves algebraic equations symbolically: "2x-5=2" → x = 3.5.
 /// Initializes in background; TrySolve returns null while not ready.
 /// Thread-safe: a lock guards the engine during evaluation.
@@ -29,6 +29,9 @@ public sealed class NerdamerEngine : IDisposable {
         var engine = new Engine(opts => opts.LimitRecursion(64));
         engine.Execute(LoadResource("Yottacast.Core.Search.Calculator.nerdamer.core.min.js"));
         engine.Execute(LoadResource("Yottacast.Core.Search.Calculator.Algebra.min.js"));
+        // Calculus.min.js is a required dependency of Solve.min.js in nerdamer's addon architecture.
+        engine.Execute(LoadResource("Yottacast.Core.Search.Calculator.Calculus.min.js"));
+        engine.Execute(LoadResource("Yottacast.Core.Search.Calculator.Solve.min.js"));
         engine.Execute(LoadResource("Yottacast.Core.Search.Calculator.nerdamer-helpers.js"));
         lock (_lock) {
             _engine = engine;
@@ -69,7 +72,9 @@ public sealed class NerdamerEngine : IDisposable {
     }
 
     public void Dispose() {
+        try { _initTask.Wait(); } catch { }
         lock (_lock) {
+            _engine?.Dispose();
             _engine = null;
         }
     }

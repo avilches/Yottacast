@@ -467,5 +467,6 @@ Los tests usan `MathJsEngineFixture` (coleccion `"MathJs"`) para compartir una s
 | `CurrencyClassifierTests.cs`          | Clasificacion de divisas en Forex / Metal / Crypto           |
 | `MathJsEngineProviderTests.cs`        | Ciclo de vida del provider: null inicial, swap, Dispose      |
 | `MathJsUnitSnapshotTests.cs`          | Snapshot de regresion y casing de unidades                   |
+| `EquationSolverTests.cs`              | Resolución de ecuaciones (NerdamerEngine.TrySolve + CalculatorSearch integración) |
 
 > **Verificar en:** `Yottacast.Core.Tests/Search/Calculator/` y `Yottacast.Core.Tests/Search/MathJsUnitSnapshotTests.cs`

@@ -25,7 +25,7 @@ public sealed class MathJsEngineFixture : IAsyncLifetime {
 }
 
 [CollectionDefinition("MathJs")]
-public class MathJsCollection : ICollectionFixture<MathJsEngineFixture>;
+public class MathJsCollection : ICollectionFixture<MathJsEngineFixture>, ICollectionFixture<NerdamerEngineFixture>;
 
 /// <summary>
 /// Fixture with standard test rates for currency tests.

@@ -10,23 +10,14 @@ using System.Net.Http;
 namespace Yottacast.Core.Tests.Search.Calculator;
 
 [Collection("MathJs")]
-public class CalculatorSearchTests(MathJsEngineFixture fixture) {
+public class CalculatorSearchTests(MathJsEngineFixture fixture, NerdamerEngineFixture nerdamerFixture) {
 
-    private (CalculatorSearch Search, Func<string?> GetLastCopied) CreateSearch() {
-        var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
-        string? lastCopied = null;
-        clipboard.Initialize(copy: text => lastCopied = text, read: () => Task.FromResult<string?>(null));
+    private CalculatorSearch BuildSearch(out ClipboardService clipboard) {
+        clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
         var settings = UserSettings.Load(new FakePlatformProvider([]));
         var provider = MathJsEngineProvider.ForTesting(fixture.Engine);
         var exchangeRateService = new ExchangeRateService(new HttpClient(), settings, NullLogger<ExchangeRateService>.Instance);
-        var search = new CalculatorSearch(provider, exchangeRateService, clipboard, settings, NullLogger<CalculatorSearch>.Instance);
-        return (search, () => lastCopied);
-    }
-
-    private CalculatorSearch BuildSearch(out Func<string?> getLastCopied) {
-        var (search, get) = CreateSearch();
-        getLastCopied = get;
-        return search;
+        return new CalculatorSearch(provider, exchangeRateService, clipboard, settings, NullLogger<CalculatorSearch>.Instance, nerdamerFixture.Engine);
     }
 
     private static BaseResultItemViewModel SearchResult(CalculatorSearch search, string query) {
@@ -116,32 +107,27 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
     }
 
     [Fact]
-    public void CopyAction_CopiesResultToClipboard() {
-        var (search, getLastCopied) = CreateSearch();
-        var results = search.Search("2+3", 10);
-        var item = results.OfType<CalculatorResultItemViewModel>().Single();
+    public void OnActivate_CopiesResultToClipboard() {
+        var search = BuildSearch(out var clipboard);
+        string copied = "";
+        clipboard.Initialize(
+            copy: text => copied = text,
+            read: () => Task.FromResult<string?>(null));
 
-        var copy = item.Actions.Single(a => a.Hotkey == ActionHotkey.Enter);
-        copy.Execute();
+        var item = StandardResult(search, "2+2");
+        Assert.NotNull(item.OnActivate);
+        item.OnActivate();
 
-        Assert.Equal("5", getLastCopied());
+        Assert.Equal("4", copied);
     }
 
     [Fact]
-    public void CalculatorResult_HasCopyActions() {
-        var (search, _) = CreateSearch();
-        var results = search.Search("2+3", 10);
-        var result = results.OfType<CalculatorResultItemViewModel>().Single();
-
-        // Enter action: copies and pastes
-        var enterAction = result.Actions.Single(a => a.Hotkey == ActionHotkey.Enter);
-        Assert.True(enterAction.PasteAfterClose);
-        Assert.True(enterAction.ClosesWindow);
-
-        // ⌘C action: copies without closing
-        var copyAction = result.Actions.Single(a => a.Hotkey == ActionHotkey.MetaC);
-        Assert.False(copyAction.ClosesWindow);
-        Assert.Equal("Result copied!", copyAction.HintProvider?.Invoke());
+    public void CalculatorResult_HasOnCopyAndCopiedMessage() {
+        var search = BuildSearch(out var clipboard);
+        var result = StandardResult(search, "2+2");
+        Assert.NotNull(result.OnCopy);
+        Assert.Equal("Result copied!", result.CopiedMessage);
+        Assert.True(result.PasteAfterActivate);
     }
 
     // ── Non-math queries yield nothing ────────────────────────────────────────
