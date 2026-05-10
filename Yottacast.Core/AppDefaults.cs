@@ -81,6 +81,20 @@ public static class AppDefaults {
     public static readonly List<string> DictionaryDefaultLanguages = ["en"];
     /// Default languages enabled for date search.
     public static readonly List<string> DateSearchDefaultLanguages = ["es-es", "en-us"];
+    /// All languages available for date search (locale codes recognized by Chronic/NLP parsers).
+    public static readonly (string Code, string Name)[] DateSearchAvailableLanguages = [
+        ("es-es", "Español"),
+        ("en-us", "English"),
+        ("fr-fr", "Français"),
+        ("de-de", "Deutsch"),
+        ("it-it", "Italiano"),
+        ("nl-nl", "Nederlands"),
+        ("pt-br", "Português"),
+        ("zh-cn", "中文"),
+        ("ja-jp", "日本語"),
+        ("ko-kr", "한국어"),
+        ("tr-tr", "Türkçe"),
+    ];
     /// Languages with data available in kaikki.org (subset of DictionaryAvailableLanguages).
     /// These use local SQLite when the DB file is present; others fall back to the Wiktionary API.
     public static readonly HashSet<string> KaikkiLanguages =

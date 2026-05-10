@@ -499,6 +499,15 @@
                     </Button>
 
                     <Button Classes="nav-item"
+                            Classes.nav-selected="{Binding IsDateSearchSelected}"
+                            Command="{Binding SelectDateSearchCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="{StaticResource Icon.General}" Width="14" Height="14" VerticalAlignment="Center"/>
+                            <TextBlock Text="Date Search" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button Classes="nav-item"
                             Classes.nav-selected="{Binding IsHistorySelected}"
                             Command="{Binding SelectHistoryCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="8">
@@ -1144,6 +1153,38 @@
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:DictionaryLanguageItem">
+                                        <CheckBox Content="{Binding Name}"
+                                                  IsChecked="{Binding IsSelected}"
+                                                  Margin="0,2,16,2"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Date Search -->
+                <StackPanel Spacing="16" IsVisible="{Binding IsDateSearchSelected}">
+                    <TextBlock Classes="section-heading" Text="Date Search"/>
+                    <ToggleSwitch IsChecked="{Binding EnableDateSearch}"
+                                  OnContent="Enabled"
+                                  OffContent="Disabled"/>
+                    <TextBlock Classes="description"
+                               Text="Recognize and format dates and times typed in natural language (e.g. 'next monday', 'in 3 hours')."/>
+
+                    <StackPanel Spacing="16" IsVisible="{Binding EnableDateSearch}">
+                        <StackPanel Spacing="4">
+                            <TextBlock Classes="label" Text="Languages"/>
+                            <TextBlock Classes="description"
+                                       Text="Select which languages to recognize dates and times in."/>
+                            <ItemsControl ItemsSource="{Binding DateSearchLanguages}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel Orientation="Horizontal"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:DateSearchLanguageItem">
                                         <CheckBox Content="{Binding Name}"
                                                   IsChecked="{Binding IsSelected}"
                                                   Margin="0,2,16,2"/>

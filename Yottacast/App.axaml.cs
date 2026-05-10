@@ -23,6 +23,7 @@ using Yottacast.Core.Search.Calculator;
 using Yottacast.Core.Search.Clipboard;
 using Yottacast.Core.Search.Emoji;
 using Yottacast.Core.Search.UserDocuments;
+using Yottacast.Core.Search.Date;
 using Yottacast.Core.Search.Dictionary;
 using Yottacast.Core.Search.SystemSettings;
 using Yottacast.Core.Search.LocalPath;
@@ -264,6 +265,8 @@ public partial class App : Application {
         services.AddSingleton<IInstantSearchSource>(sp => sp.GetRequiredService<LocalPathSearch>());
         services.AddSingleton<UrlSearch>();
         services.AddSingleton<IInstantSearchSource>(sp => sp.GetRequiredService<UrlSearch>());
+        services.AddSingleton<DateSearch>();
+        services.AddSingleton<IInstantSearchSource>(sp => sp.GetRequiredService<DateSearch>());
         services.AddSingleton<DictionarySource>();
         if (OperatingSystem.IsMacOS()) {
             services.AddSingleton<SystemSettingsSearch>(sp => new SystemSettingsSearch(
