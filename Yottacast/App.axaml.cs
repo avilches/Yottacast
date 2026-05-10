@@ -239,6 +239,7 @@ public partial class App : Application {
         services.AddSingleton<HttpClient>();
         services.AddSingleton<ExchangeRateService>();
         services.AddSingleton<MathJsEngineProvider>();
+        services.AddSingleton<NerdamerEngine>();
         services.AddSingleton<CalculatorSearch>();
         services.AddSingleton<EmojiDataLoader>();
         services.AddSingleton<EmojiUsageStore>(sp => new EmojiUsageStore(
