@@ -30,7 +30,8 @@ public class DateSearch(UserSettings settings, ClipboardService clipboard, ILogg
                 .SelectMany(l => DateTimeRecognizer.RecognizeDateTime(query, l.Code))
                 .DistinctBy(r => r.Text)
                 .FirstOrDefault(r => r.TypeName is "datetimeV2.date" or "datetimeV2.daterange"
-                                                 or "datetimeV2.datetime" or "datetimeV2.datetimerange");
+                                                 or "datetimeV2.datetime" or "datetimeV2.datetimerange"
+                                  && r.Text.Length >= query.Length * AppDefaults.DateSearchMinCoverage);
 
             if (result is null) return [];
 
@@ -138,8 +139,12 @@ public class DateSearch(UserSettings settings, ClipboardService clipboard, ILogg
             Icon          = "📅",
             Category      = "Date Range",
             Score         = AppDefaults.DateSearchScore,
-            Cells         = [isoStart, isoEnd, rangeCell, durationCell],
-            CellSubtitles = ["Start date", "End date", "", ""],
+            Cells         = isoStart == isoEnd
+                                ? [isoStart, isoEnd, durationCell]
+                                : [isoStart, isoEnd, rangeCell, durationCell],
+            CellSubtitles = isoStart == isoEnd
+                                ? ["Start date", "End date", ""]
+                                : ["Start date", "End date", "", ""],
             OnLeft  = () => vm.MoveCellLeft(),
             OnRight = () => vm.MoveCellRight(),
             Actions = [

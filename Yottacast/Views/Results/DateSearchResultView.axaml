@@ -34,7 +34,7 @@
             </ItemsControl.ItemTemplate>
         </ItemsControl>
 
-        <!-- Row 1: subtitle for the selected cell -->
+        <!-- Row 1: subtitle for the selected cell — always in layout to avoid shifting cells -->
         <TextBlock Grid.Row="1"
                    Text="{Binding SelectedCellSubtitle}"
                    Foreground="{DynamicResource Theme.Conv.Subtitle.Color}"
@@ -43,8 +43,7 @@
                    HorizontalAlignment="Center"
                    TextAlignment="Center"
                    TextWrapping="Wrap"
-                   Margin="0,0,0,6"
-                   IsVisible="{Binding SelectedCellSubtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                   Margin="0,0,0,6"/>
 
     </Grid>
 </UserControl>

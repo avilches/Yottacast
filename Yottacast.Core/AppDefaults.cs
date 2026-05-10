@@ -69,6 +69,9 @@ public static class AppDefaults {
     // ── Search — date ────────────────────────────────────────────────────────
     /// Date search: score for recognized date/daterange results.
     public const double DateSearchScore = 6.0;
+    /// Minimum fraction of the query that the recognized text must cover to be accepted (0–1).
+    /// Prevents false positives where the recognizer matches a short substring (e.g. "2-5" inside "x^2-5x+6=0").
+    public const double DateSearchMinCoverage = 0.6;
     /// Default format string for ISO date cells in date search results.
     public const string DateIsoFormat = "yyyy-MM-dd";
     /// Default format string for the long date cell in date search results.
