@@ -112,7 +112,7 @@ Para cada archivo encontrado, se intenta cargar el icono de la aplicacion por de
 
 | Categoria | Comportamiento | Ejemplos |
 |---|---|---|
-| Instant (`IInstantSearchSource`) | Respuesta sincrona, en memoria. Se consultan sin delay. | Apps, Web, Calculadora, Emoji |
+| Instant (`IInstantSearchSource`) | Respuesta sincrona, en memoria. Se consultan sin delay. | Apps, Web, Calculadora, Fechas, Emoji |
 | Deferred (`IDeferredSearchSource`) | Respuesta asincrona con snapshots progresivos. Se lanzan tras un debounce. | Documentos |
 
 ### Invariantes del ciclo de vida
@@ -259,7 +259,26 @@ Al actualizar macOS, ejecutar `tools/verify-settings-anchors.sh` para verificar 
 
 ---
 
-## 8. RandomSearch (solo testing)
+## 8. Búsqueda de fechas (DateSearch)
+
+Detecta fechas y rangos de fechas en lenguaje natural dentro de la query y presenta un resultado con múltiples formatos copiables. Se activa sin prefijo, igual que la calculadora: si la query no contiene ninguna fecha reconocible, la fuente no genera ningún resultado.
+
+Para fechas simples devuelve 2 celdas: ISO (`yyyy-MM-dd`) y formato largo localizado. Para rangos devuelve 4 celdas: ISO inicio, ISO fin, intervalo ISO 8601 (`inicio/fin`) y el texto original reconocido. El subtítulo muestra la distancia al día actual ("hoy", "mañana", "dentro de N días") o la duración del rango ("N días"). Las teclas ← → navegan entre celdas de forma circular; Enter o Cmd+C copian la celda seleccionada.
+
+El reconocedor admite 11 idiomas configurables (`DateSearchLanguages`). Por defecto están activos español (`es-es`) e inglés (`en-us`). Si ningún idioma detecta una fecha en la query, la fuente devuelve `[]`.
+
+### Invariantes
+
+- Si `DateSearchEnabled = false` → devuelve `[]` siempre.
+- Si `DateSearchLanguages` está vacío → devuelve `[]`.
+- Produce como máximo un resultado por búsqueda.
+- Los errores del reconocedor externo se capturan y loguean sin propagar la excepción.
+
+> **Verificar en:** `Search/Date/DateSearch.cs` (Search, BuildDateViewModel, BuildDateRangeViewModel), `ViewModels/DateSearchResultViewModel.cs` (Cells, SelectedCell, MoveCellLeft, MoveCellRight), `Services/UserSettings.cs` (DateSearchEnabled, DateSearchLanguages), `AppDefaults.cs` (DateSearchScore, DateSearchDefaultLanguages, DateSearchAvailableLanguages), `Yottacast.Core.Tests/Search/Date/DateSearchTests.cs`.
+
+---
+
+## 9. RandomSearch (solo testing)
 
 `RandomSearch` es una fuente deferred de prueba. Esta registrada como singleton en el contenedor DI pero la linea que la conecta como `IDeferredSearchSource` esta comentada en `App.axaml.cs`. Emite hasta 5 resultados con scores aleatorios (0.5 a 1.0) con delays progresivos (200 ms + 50 ms por resultado). Cada snapshot es acumulativo.
 
