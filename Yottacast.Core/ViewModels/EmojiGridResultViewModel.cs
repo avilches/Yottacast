@@ -8,6 +8,8 @@ public class EmojiGridResultViewModel : ResultItemViewModel, INotifyPropertyChan
     public IReadOnlyList<EmojiCellViewModel> Cells { get; init; } = [];
     public bool HasPinnedSection { get; init; }
     public string PinnedSectionHeader { get; init; } = "";
+    public int Columns      { get; init; } = AppDefaults.EmojiColumns;
+    public int ViewportRows { get; init; } = AppDefaults.EmojiViewportRows;
 
     // Absolute cell offset from pinnedCount for the Default viewport start.
     // Always row-aligned (multiple of Columns).
@@ -25,8 +27,8 @@ public class EmojiGridResultViewModel : ResultItemViewModel, INotifyPropertyChan
     public IReadOnlyList<EmojiGridSection> VisibleSections {
         get {
             var pinnedCount = PinnedCount();
-            var pinnedRows = (pinnedCount + AppDefaults.EmojiColumns - 1) / AppDefaults.EmojiColumns;
-            var defaultVisibleRows = Math.Max(0, AppDefaults.EmojiViewportRows - pinnedRows);
+            var pinnedRows = (pinnedCount + Columns - 1) / Columns;
+            var defaultVisibleRows = Math.Max(0, ViewportRows - pinnedRows);
 
             // Always show all pinned cells.
             // For Default, take only as many real cells as fit in defaultVisibleRows rendered rows.
@@ -58,7 +60,7 @@ public class EmojiGridResultViewModel : ResultItemViewModel, INotifyPropertyChan
             while (j < totalDefault && SectionKey(Cells[pinnedCount + j]) == key) j++;
 
             int sectionCells = j - i;
-            int sectionRows  = (sectionCells + AppDefaults.EmojiColumns - 1) / AppDefaults.EmojiColumns;
+            int sectionRows  = (sectionCells + Columns - 1) / Columns;
 
             if (sectionRows <= remainingRows) {
                 // Take the entire section (it will be padded but fits in remaining rows)
@@ -67,7 +69,7 @@ public class EmojiGridResultViewModel : ResultItemViewModel, INotifyPropertyChan
                 i = j;
             } else {
                 // Take only as many cells as fill the remaining rows (last section in slice)
-                count += remainingRows * AppDefaults.EmojiColumns;
+                count += remainingRows * Columns;
                 remainingRows = 0;
             }
         }
@@ -75,7 +77,7 @@ public class EmojiGridResultViewModel : ResultItemViewModel, INotifyPropertyChan
         return count;
     }
 
-    private static IReadOnlyList<EmojiGridSection> GroupIntoSections(List<EmojiCellViewModel> cells) {
+    private IReadOnlyList<EmojiGridSection> GroupIntoSections(List<EmojiCellViewModel> cells) {
         var sections = new List<EmojiGridSection>();
         if (cells.Count == 0) return sections;
 
@@ -87,9 +89,9 @@ public class EmojiGridResultViewModel : ResultItemViewModel, INotifyPropertyChan
             if (key != currentKey) {
                 // Pad current section to a full row before starting the next section,
                 // so each section's UniformGrid always starts at column 0 (no orphan partial rows).
-                int remainder = currentCells.Count % AppDefaults.EmojiColumns;
+                int remainder = currentCells.Count % Columns;
                 if (remainder != 0) {
-                    int pad = AppDefaults.EmojiColumns - remainder;
+                    int pad = Columns - remainder;
                     for (int i = 0; i < pad; i++)
                         currentCells.Add(EmojiCellViewModel.Placeholder);
                 }
@@ -150,13 +152,13 @@ public class EmojiGridResultViewModel : ResultItemViewModel, INotifyPropertyChan
     private int AlignToSectionRow(int pinnedCount, int pos) {
         int sectionStart = SectionStartOf(pinnedCount, pos);
         int offset = pos - sectionStart;
-        return sectionStart + (offset / AppDefaults.EmojiColumns) * AppDefaults.EmojiColumns;
+        return sectionStart + (offset / Columns) * Columns;
     }
 
     private void EnsureVisible() {
         var pinnedCount = PinnedCount();
-        var pinnedRows  = (pinnedCount + AppDefaults.EmojiColumns - 1) / AppDefaults.EmojiColumns;
-        var defaultVisibleRows = Math.Max(1, AppDefaults.EmojiViewportRows - pinnedRows);
+        var pinnedRows  = (pinnedCount + Columns - 1) / Columns;
+        var defaultVisibleRows = Math.Max(1, ViewportRows - pinnedRows);
 
         if (_selectedEmojiIndex < pinnedCount) {
             // Pinned cell selected: always fully visible; reset Default viewport to top.
@@ -180,7 +182,7 @@ public class EmojiGridResultViewModel : ResultItemViewModel, INotifyPropertyChan
             } else {
                 // Scroll DOWN: estimate a start that puts the selected cell near the bottom,
                 // then align it to the section row boundary.
-                var rawStart = defaultIndex - defaultVisibleRows * AppDefaults.EmojiColumns + 1;
+                var rawStart = defaultIndex - defaultVisibleRows * Columns + 1;
                 if (rawStart <= 0) {
                     newStart = 0;
                 } else {
@@ -188,14 +190,14 @@ public class EmojiGridResultViewModel : ResultItemViewModel, INotifyPropertyChan
                     // at or after rawStart.
                     int sectionStart = SectionStartOf(pinnedCount, rawStart);
                     int offset = rawStart - sectionStart;
-                    int alignedOffset = ((offset + AppDefaults.EmojiColumns - 1) / AppDefaults.EmojiColumns) * AppDefaults.EmojiColumns;
+                    int alignedOffset = ((offset + Columns - 1) / Columns) * Columns;
                     newStart = sectionStart + alignedOffset;
 
                     // If that lands in or past the section's partial tail, jump to the next section.
                     int sectionEnd = SectionEndOf(pinnedCount, sectionStart);
-                    bool isPartialTail = (sectionEnd - sectionStart) % AppDefaults.EmojiColumns != 0;
+                    bool isPartialTail = (sectionEnd - sectionStart) % Columns != 0;
                     if (isPartialTail && newStart >= sectionStart +
-                            ((sectionEnd - sectionStart - 1) / AppDefaults.EmojiColumns) * AppDefaults.EmojiColumns
+                            ((sectionEnd - sectionStart - 1) / Columns) * Columns
                         && newStart > sectionStart) {
                         newStart = sectionEnd;
                     }
@@ -208,7 +210,7 @@ public class EmojiGridResultViewModel : ResultItemViewModel, INotifyPropertyChan
                     if (defaultIndex < newStart + vc) break;
                     // Step to the next section-row-aligned position.
                     int stepSectionEnd = SectionEndOf(pinnedCount, newStart);
-                    int nextInSection  = newStart + AppDefaults.EmojiColumns;
+                    int nextInSection  = newStart + Columns;
                     newStart = nextInSection < stepSectionEnd ? nextInSection : stepSectionEnd;
                 }
             }
@@ -220,8 +222,6 @@ public class EmojiGridResultViewModel : ResultItemViewModel, INotifyPropertyChan
 
     public EmojiCellViewModel? SelectedEmoji =>
         Cells.Count > 0 ? Cells[SelectedEmojiIndex] : null;
-
-    public const int Columns = AppDefaults.EmojiColumns;
 
     public void SelectNext()     => SelectedEmojiIndex = (SelectedEmojiIndex + 1)       % Cells.Count;
     public void SelectPrevious() => SelectedEmojiIndex = (SelectedEmojiIndex - 1 + Cells.Count) % Cells.Count;
