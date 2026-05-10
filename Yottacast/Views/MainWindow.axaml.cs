@@ -59,7 +59,7 @@ public partial class MainWindow : Window {
                     Avalonia.Threading.Dispatcher.UIThread.Post(() => LogFontDiagnostics("after-first-emoji"), Avalonia.Threading.DispatcherPriority.Background);
                 }
                 if (args.PropertyName == nameof(MainWindowViewModel.IsOptionsMenuOpen) && vm.IsOptionsMenuOpen)
-                    Avalonia.Threading.Dispatcher.UIThread.Post(PositionOptionsMenu);
+                    Avalonia.Threading.Dispatcher.UIThread.Post(PositionOptionsMenu, Avalonia.Threading.DispatcherPriority.Background);
             };
         };
     }
@@ -499,12 +499,24 @@ public partial class MainWindow : Window {
     }
 
     private void PositionOptionsMenu() {
-        if (DataContext is not MainWindowViewModel vm || vm.SelectedResult == null) return;
+        if (DataContext is not MainWindowViewModel vm || !vm.IsOptionsMenuOpen || vm.SelectedResult == null)
+            return;
         var container = ResultsList.ContainerFromItem(vm.SelectedResult) as ListBoxItem;
         if (container == null) return;
         var pos = container.TranslatePoint(new Point(0, 0), ResultsPanel);
         if (!pos.HasValue) return;
-        var top = Math.Max(0, pos.Value.Y + container.Bounds.Height);
+
+        // Menu top aligned with item top, clamped so the menu stays within the results
+        // panel → no window growth. If menu is taller than the panel, starts at 0 and
+        // the window grows DOWN only (never up+down).
+        var itemTop = pos.Value.Y;
+        var panelH  = ResultsList.Bounds.Height;
+        var menuH   = OptionsMenuOverlay.Bounds.Height;
+
+        var top = itemTop;
+        if (panelH > 0 && menuH > 0 && top + menuH > panelH)
+            top = Math.Max(0, panelH - menuH);
+
         OptionsMenuOverlay.Margin = new Thickness(8, top, 8, 0);
     }
 

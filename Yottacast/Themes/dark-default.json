@@ -92,7 +92,7 @@
 
   "optionsMenu": {
     "background": "#1C1C22",
-    "border": { "color": "#3A3A50", "radius": 12 },
+    "border": { "color": "#3A3A50", "radius": 8 },
     "header": {
       "color": "#606068", "size": 11, "background": "#00000000",
       "padding": "12,6,12,4", "margin": "0,0,0,2"

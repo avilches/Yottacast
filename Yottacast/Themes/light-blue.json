@@ -94,7 +94,7 @@
 
   "optionsMenu": {
     "background": "#EEF4FF",
-    "border": { "color": "#BFDBFE", "radius": 10 },
+    "border": { "color": "#BFDBFE", "radius": 8 },
     "header": {
       "color": "#64748B", "size": 11, "background": "#00000000",
       "padding": "12,6,12,4", "margin": "0,0,0,2"

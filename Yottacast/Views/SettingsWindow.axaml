@@ -1170,7 +1170,12 @@
                                   OnContent="Enabled"
                                   OffContent="Disabled"/>
                     <TextBlock Classes="description"
-                               Text="Recognize and format dates and times typed in natural language (e.g. 'next monday', 'in 3 hours')."/>
+                               Text="Recognize and format dates and times typed in natural language."/>
+                    <StackPanel Spacing="4">
+                        <TextBlock Classes="label" Text="Examples to try"/>
+                        <TextBlock Classes="description" TextWrapping="Wrap"
+                                   Text="next monday · tomorrow · yesterday · in 3 days · last friday · next week · this month · christmas · in 2 weeks · mañana · próxima semana · hace 3 días"/>
+                    </StackPanel>
 
                     <StackPanel Spacing="16" IsVisible="{Binding EnableDateSearch}">
                         <StackPanel Spacing="4">

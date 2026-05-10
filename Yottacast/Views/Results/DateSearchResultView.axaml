@@ -83,16 +83,17 @@
 
         </Grid>
 
-        <!-- Row 1: subtitle (day of week · distance) -->
+        <!-- Row 1: full content of the selected cell -->
         <TextBlock Grid.Row="1"
-                   Text="{Binding Subtitle}"
+                   Text="{Binding SelectedCellValue}"
                    Foreground="{DynamicResource Theme.Conv.Subtitle.Color}"
                    FontSize="{DynamicResource Theme.Conv.Subtitle.Size}"
                    Opacity="{DynamicResource Theme.Conv.Subtitle.Opacity}"
                    HorizontalAlignment="Center"
                    TextAlignment="Center"
+                   TextWrapping="Wrap"
                    Margin="0,0,0,6"
-                   IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                   IsVisible="{Binding SelectedCellValue, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
 
     </Grid>
 </UserControl>

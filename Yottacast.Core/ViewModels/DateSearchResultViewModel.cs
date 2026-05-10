@@ -6,7 +6,6 @@ namespace Yottacast.Core.ViewModels;
 public class DateSearchResultViewModel : BaseResultItemViewModel, INotifyPropertyChanged {
     public string Icon     { get; init; } = "📅";
     public string Category { get; init; } = "";
-    public string Subtitle { get; init; } = "";
 
     // ── Copyable cells (←→ navigation) ──────────────────────────────────────
     public IReadOnlyList<string> Cells { get; init; } = [];
@@ -16,6 +15,9 @@ public class DateSearchResultViewModel : BaseResultItemViewModel, INotifyPropert
     public string? Cell1 => Cells.Count > 1 ? Cells[1] : null;
     public string? Cell2 => Cells.Count > 2 ? Cells[2] : null;
     public string? Cell3 => Cells.Count > 3 ? Cells[3] : null;
+
+    /// <summary>Full content of the currently selected cell — shown in the subtitle row.</summary>
+    public string SelectedCellValue => Cells.Count > _selectedCell ? Cells[_selectedCell] : "";
 
     private int _selectedCell;
     public int SelectedCell {
@@ -28,6 +30,7 @@ public class DateSearchResultViewModel : BaseResultItemViewModel, INotifyPropert
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsCell1Selected)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsCell2Selected)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsCell3Selected)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedCellValue)));
         }
     }
 

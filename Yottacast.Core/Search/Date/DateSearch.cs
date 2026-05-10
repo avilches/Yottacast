@@ -52,31 +52,30 @@ public class DateSearch(UserSettings settings, ClipboardService clipboard, ILogg
         var typeName = recognized.TypeName;
 
         if (typeName is "datetimeV2.date" or "datetimeV2.datetime") {
-            return BuildDateViewModel(recognized.Text, values, clipboard);
+            return BuildDateViewModel(values, clipboard);
         }
 
         if (typeName is "datetimeV2.daterange" or "datetimeV2.datetimerange") {
-            return BuildDateRangeViewModel(recognized.Text, values, clipboard);
+            return BuildDateRangeViewModel(values, clipboard);
         }
 
         return [];
     }
 
     private static IReadOnlyList<BaseResultItemViewModel> BuildDateViewModel(
-        string recognizedText, Dictionary<string, string> values, ClipboardService clipboard)
+        Dictionary<string, string> values, ClipboardService clipboard)
     {
         if (!values.TryGetValue("value", out var valueStr)) return [];
         if (!DateTime.TryParse(valueStr, CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)) return [];
 
-        var isoCell  = date.ToString("yyyy-MM-dd");
-        var longCell = date.ToString("d 'de' MMMM 'de' yyyy (dddd)", CultureInfo.GetCultureInfo("es-ES"));
-
-        var diff     = (date.Date - DateTime.Today).Days;
-        var subtitle = diff switch {
+        var isoCell      = date.ToString("yyyy-MM-dd");
+        var longCell     = date.ToString("d 'de' MMMM 'de' yyyy (dddd)", CultureInfo.GetCultureInfo("es-ES"));
+        var diff         = (date.Date - DateTime.Today).Days;
+        var relativeCell = diff switch {
             0    => "hoy",
             1    => "mañana",
             -1   => "ayer",
-            > 0  => $"dentro de {diff} días",
+            > 0  => $"en {diff} días",
             _    => $"hace {Math.Abs(diff)} días",
         };
 
@@ -85,8 +84,7 @@ public class DateSearch(UserSettings settings, ClipboardService clipboard, ILogg
             Icon     = "📅",
             Category = "Date",
             Score    = AppDefaults.DateSearchScore,
-            Subtitle = subtitle,
-            Cells    = [isoCell, longCell],
+            Cells    = [isoCell, longCell, relativeCell],
             OnLeft   = () => vm.MoveCellLeft(),
             OnRight  = () => vm.MoveCellRight(),
             Actions  = [
@@ -114,26 +112,24 @@ public class DateSearch(UserSettings settings, ClipboardService clipboard, ILogg
     }
 
     private static IReadOnlyList<BaseResultItemViewModel> BuildDateRangeViewModel(
-        string recognizedText, Dictionary<string, string> values, ClipboardService clipboard)
+        Dictionary<string, string> values, ClipboardService clipboard)
     {
         if (!values.TryGetValue("start", out var startStr) || !values.TryGetValue("end", out var endStr)) return [];
         if (!DateTime.TryParse(startStr, CultureInfo.InvariantCulture, DateTimeStyles.None, out var start)) return [];
         if (!DateTime.TryParse(endStr,   CultureInfo.InvariantCulture, DateTimeStyles.None, out var end))   return [];
 
-        var isoStart  = start.ToString("yyyy-MM-dd");
-        var isoEnd    = end.ToString("yyyy-MM-dd");
-        var isoRange  = $"{isoStart}/{isoEnd}";
-        var longCell  = recognizedText;
-        var duration  = (end.Date - start.Date).Days + 1;
-        var subtitle  = $"{duration} días";
+        var isoStart     = start.ToString("yyyy-MM-dd");
+        var isoEnd       = end.ToString("yyyy-MM-dd");
+        var isoRange     = $"{isoStart}/{isoEnd}";
+        var duration     = (end.Date - start.Date).Days + 1;
+        var durationCell = $"{duration} días";
 
         DateSearchResultViewModel vm = null!;
         vm = new DateSearchResultViewModel {
             Icon     = "📅",
             Category = "Date Range",
             Score    = AppDefaults.DateSearchScore,
-            Subtitle = subtitle,
-            Cells    = [isoStart, isoEnd, isoRange, longCell],
+            Cells    = [isoStart, isoEnd, isoRange, durationCell],
             OnLeft   = () => vm.MoveCellLeft(),
             OnRight  = () => vm.MoveCellRight(),
             Actions  = [

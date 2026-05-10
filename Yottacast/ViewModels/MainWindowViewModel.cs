@@ -485,6 +485,12 @@ public partial class MainWindowViewModel(
                     SelectedResult = target;
             });
         }
+
+        // Re-assert the menu option index: Results.Clear() → OnSelectedResultChanged(null) →
+        // OptionsMenuItems notified → ListBox resets SelectionModel → index visually lost.
+        // OptionsMenuSelectedIndex itself didn't change so no PropertyChanged fired → re-emit it.
+        if (IsOptionsMenuOpen)
+            OnPropertyChanged(nameof(OptionsMenuSelectedIndex));
     }
 
 }

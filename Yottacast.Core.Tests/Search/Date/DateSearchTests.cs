@@ -31,7 +31,7 @@ public class DateSearchTests
 
         Assert.Equal("📅",   vm.Icon);
         Assert.Equal("Date", vm.Category);
-        Assert.Equal(2,      vm.Cells.Count);
+        Assert.Equal(3,      vm.Cells.Count);
         Assert.Matches(@"^\d{4}-\d{2}-\d{2}$", vm.Cells[0]);
     }
 
