@@ -1,21 +1,21 @@
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
+using Yottacast.Core.Search.Date;
 using Yottacast.Core.Services;
 using Yottacast.Core.Tests.Fakes;
 using Yottacast.Core.ViewModels;
-using DateSearchSource = Yottacast.Core.Search.DateSearch.DateSearch;
 
-namespace Yottacast.Core.Tests.Search.DateSearch;
+namespace Yottacast.Core.Tests.Search.Date;
 
 public class DateSearchTests
 {
-    private DateSearchSource BuildSearch(out ClipboardService clipboard, Action<UserSettings>? configure = null)
+    private DateSearch BuildSearch(out ClipboardService clipboard, Action<UserSettings>? configure = null)
     {
         clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
         var settings = UserSettings.Load(new FakePlatformProvider([]));
         configure?.Invoke(settings);
-        return new DateSearchSource(settings, clipboard, NullLogger<DateSearchSource>.Instance);
+        return new DateSearch(settings, clipboard, NullLogger<DateSearch>.Instance);
     }
 
     // ── 1. Spanish date ────────────────────────────────────────────────────────

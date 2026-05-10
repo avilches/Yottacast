@@ -1,11 +1,10 @@
-using System.Collections;
 using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Recognizers.Text.DateTime;
 using Yottacast.Core.Services;
 using Yottacast.Core.ViewModels;
 
-namespace Yottacast.Core.Search.DateSearch;
+namespace Yottacast.Core.Search.Date;
 
 /// <summary>
 /// Instant search source that detects dates and date ranges in natural language using
