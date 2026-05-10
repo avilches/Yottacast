@@ -12,7 +12,7 @@ namespace Yottacast.Core.Search.Calculator;
 /// informational error item is shown via LastHint. LastHintKind classifies the hint: Error for
 /// incompatible-unit failures, Info for ambiguity suggestions and all other cases.
 /// </summary>
-public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateService exchangeRateService, ClipboardService clipboard, UserSettings settings, ILogger<CalculatorSearch> logger) : IInstantSearchSource, ISearchHintProvider {
+public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateService exchangeRateService, ClipboardService clipboard, UserSettings settings, ILogger<CalculatorSearch> logger, NerdamerEngine nerdamerEngine) : IInstantSearchSource, ISearchHintProvider {
     public string? LastHint { get; private set; }
     public SearchHintKind LastHintKind { get; private set; }
     public int Limit => AppDefaults.CalcSearchLimit;
@@ -25,9 +25,18 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
         LastHint = null;
         LastHintKind = SearchHintKind.Info;
         if (!settings.EnableCalculator) return [];
+        var q = query.Trim();
+
+        // Equation detection: queries containing '=' are routed to NerdamerEngine.
+        // math.js already rejects assignments, so these queries would return empty anyway.
+        if (q.Contains('=')) {
+            var solveResult = nerdamerEngine.TrySolve(q);
+            if (solveResult != null) return BuildEquationResult(solveResult, q);
+            return [];
+        }
+
         var engine = engineProvider.Current;
         if (engine == null) return [];
-        var q = query.Trim();
 
         // "EUR" → "1 EUR": bare currency code without a value should trigger the default-pair conversion.
         // Non-currency tokens (e.g. "km") are not registered as currencies in the engine so they are unaffected.
@@ -177,5 +186,32 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
         if (token == null) return "Can't convert between these units";
         var parts = token.Split('|');
         return parts.Length == 2 ? $"Can't convert {parts[0]} to {parts[1]}" : "Can't convert between these units";
+    }
+
+    private IReadOnlyList<BaseResultItemViewModel> BuildEquationResult(SolveResult result, string originalQuery) {
+        var first = result.Variables[0];
+        var solutionsText = string.Join(", ", first.Solutions);
+        var title = $"{first.Variable} = {solutionsText}";
+        var captured = solutionsText;
+
+        logger.LogDebug("Equation query=\"{Query}\" → {Title}", originalQuery, title);
+
+        return [new CalculatorResultItemViewModel {
+            Icon = "🧮",
+            Title = title,
+            Subtitle = originalQuery,
+            Category = "Calculator",
+            Score = 7,
+            PasteAfterActivate = true,
+            OnActivate = () => {
+                logger.LogInformation("Equation: copied result \"{Value}\"", captured);
+                clipboard.CopyText(captured);
+            },
+            OnCopy = () => {
+                logger.LogInformation("Equation: copied result via Cmd+C \"{Value}\"", captured);
+                clipboard.CopyText(captured);
+            },
+            CopiedMessage = "Result copied!",
+        }];
     }
 }

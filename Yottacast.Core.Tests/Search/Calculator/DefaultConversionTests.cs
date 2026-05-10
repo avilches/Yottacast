@@ -24,7 +24,8 @@ public class DefaultConversionTests(MathJsEngineFixture fixture) {
         var settings = UserSettings.Load(new FakePlatformProvider([]));
         var provider = MathJsEngineProvider.ForTesting(fixture.Engine);
         var exchangeRateService = new ExchangeRateService(new HttpClient(), settings, NullLogger<ExchangeRateService>.Instance);
-        var search = new CalculatorSearch(provider, exchangeRateService, clipboard, settings, NullLogger<CalculatorSearch>.Instance);
+        var nerdamer = new NerdamerEngine();
+        var search = new CalculatorSearch(provider, exchangeRateService, clipboard, settings, NullLogger<CalculatorSearch>.Instance, nerdamer);
         var results = search.Search(query, 5);
         var item = Assert.Single(results);
         return (Assert.IsType<ConversionResultItemViewModel>(item), search);

@@ -15,7 +15,8 @@ public class UnitConverterSearchTests(MathJsEngineFixture fixture) {
         var settings = UserSettings.Load(new FakePlatformProvider([]));
         var provider = MathJsEngineProvider.ForTesting(fixture.Engine);
         var exchangeRateService = new ExchangeRateService(new HttpClient(), settings, NullLogger<ExchangeRateService>.Instance);
-        return new CalculatorSearch(provider, exchangeRateService, clipboard, settings, NullLogger<CalculatorSearch>.Instance);
+        var nerdamer = new NerdamerEngine();
+        return new CalculatorSearch(provider, exchangeRateService, clipboard, settings, NullLogger<CalculatorSearch>.Instance, nerdamer);
     }
 
     private static IReadOnlyList<ViewModels.ConversionResultItemViewModel> SearchResults(

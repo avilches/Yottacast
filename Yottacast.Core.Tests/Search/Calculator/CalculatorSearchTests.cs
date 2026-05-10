@@ -17,7 +17,8 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture) {
         var settings = UserSettings.Load(new FakePlatformProvider([]));
         var provider = MathJsEngineProvider.ForTesting(fixture.Engine);
         var exchangeRateService = new ExchangeRateService(new HttpClient(), settings, NullLogger<ExchangeRateService>.Instance);
-        return new CalculatorSearch(provider, exchangeRateService, clipboard, settings, NullLogger<CalculatorSearch>.Instance);
+        var nerdamer = new NerdamerEngine(); // not awaited — arithmetic queries never contain '=' so TrySolve is never called
+        return new CalculatorSearch(provider, exchangeRateService, clipboard, settings, NullLogger<CalculatorSearch>.Instance, nerdamer);
     }
 
     private static BaseResultItemViewModel SearchResult(CalculatorSearch search, string query) {

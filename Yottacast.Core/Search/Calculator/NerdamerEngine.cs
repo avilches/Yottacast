@@ -29,6 +29,8 @@ public sealed class NerdamerEngine : IDisposable {
         var engine = new Engine(opts => opts.LimitRecursion(64));
         engine.Execute(LoadResource("Yottacast.Core.Search.Calculator.nerdamer.core.min.js"));
         engine.Execute(LoadResource("Yottacast.Core.Search.Calculator.Algebra.min.js"));
+        engine.Execute(LoadResource("Yottacast.Core.Search.Calculator.Calculus.min.js"));
+        engine.Execute(LoadResource("Yottacast.Core.Search.Calculator.Solve.min.js"));
         engine.Execute(LoadResource("Yottacast.Core.Search.Calculator.nerdamer-helpers.js"));
         lock (_lock) {
             _engine = engine;
