@@ -76,22 +76,12 @@ public class DateSearch(UserSettings settings, ClipboardService clipboard, ILogg
         var longDate = date.ToString(settings.DateLongFormat, CultureInfo.InvariantCulture);
         var diff     = (date.Date - DateTime.Today).Days;
         var relDate  = FormatRelative(diff);
-        var verb     = TemporalVerb(diff);
 
-        // Each cell's subtitle: "{recognizedText} {verb} {cellValue}".
-        // For the relative cell the cell IS the temporal label → show ISO as complement instead.
         // Drop any cell whose value duplicates what the user already typed.
-        var allCells     = new[] { isoDate, longDate, relDate };
-        var allSubtitles = new[] {
-            $"{recognizedText} {verb} {isoDate}",
-            $"{recognizedText} {verb} {longDate}",
-            $"{recognizedText} {verb} {isoDate}",   // relative cell: complement with ISO
-        };
-        var pairs     = allCells.Zip(allSubtitles)
-                                .Where(p => !p.First.Equals(recognizedText, StringComparison.OrdinalIgnoreCase))
-                                .ToArray();
-        var cells     = pairs.Select(p => p.First).ToArray();
-        var subtitles = pairs.Select(p => p.Second).ToArray();
+        var allCells = new[] { isoDate, longDate, relDate };
+        var cells    = allCells.Where(c => !c.Equals(recognizedText, StringComparison.OrdinalIgnoreCase))
+                               .ToArray();
+        var subtitles = new string[cells.Length]; // all empty — no subtitle adds value for single dates
 
         DateSearchResultViewModel vm = null!;
         vm = new DateSearchResultViewModel {
@@ -143,25 +133,13 @@ public class DateSearch(UserSettings settings, ClipboardService clipboard, ILogg
         var rangeCell    = $"From {isoStart} to {isoEnd}";
         var durationCell = $"{duration} days";
 
-        var startDiff   = (start.Date - DateTime.Today).Days;
-        var endDiff     = (end.Date   - DateTime.Today).Days;
-        var startsVerb  = RangeVerb(startDiff, start: true);
-        var endsVerb    = RangeVerb(endDiff,   start: false);
-        var durationLbl = $"Duration: {duration} days";
-        var rangeLbl    = $"From {isoStart} to {isoEnd}";
-
         DateSearchResultViewModel vm = null!;
         vm = new DateSearchResultViewModel {
             Icon          = "📅",
             Category      = "Date Range",
             Score         = AppDefaults.DateSearchScore,
             Cells         = [isoStart, isoEnd, rangeCell, durationCell],
-            CellSubtitles = [
-                $"{recognizedText} {startsVerb} {isoStart}",
-                $"{recognizedText} {endsVerb} {isoEnd}",
-                durationLbl,
-                rangeLbl,
-            ],
+            CellSubtitles = ["Start date", "End date", "", ""],
             OnLeft  = () => vm.MoveCellLeft(),
             OnRight = () => vm.MoveCellRight(),
             Actions = [
@@ -189,18 +167,6 @@ public class DateSearch(UserSettings settings, ClipboardService clipboard, ILogg
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
-
-    private static string TemporalVerb(int diff) => diff switch {
-        0   => "is",
-        < 0 => "was",
-        _   => "will be",
-    };
-
-    private static string RangeVerb(int diff, bool start) {
-        if (diff < 0)  return start ? "started" : "ended";
-        if (diff == 0) return start ? "starts today" : "ends today";
-        return                start ? "starts"       : "ends";
-    }
 
     private static string FormatRelative(int diff) => diff switch {
         0   => "today",

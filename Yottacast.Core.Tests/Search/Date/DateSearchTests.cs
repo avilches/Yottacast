@@ -88,17 +88,16 @@ public class DateSearchTests
         Assert.Empty(results);
     }
 
-    // ── 6. Subtitles are generated per cell ───────────────────────────────────
+    // ── 6. Subtitles count matches cells count ────────────────────────────────
 
     [Fact]
-    public void Search_WithDate_HasSubtitlePerCell()
+    public void Search_WithDate_SubtitleCountMatchesCellCount()
     {
         var search  = BuildSearch(out _);
         var results = search.Search("3 de mayo", 5);
         var vm      = Assert.IsType<DateSearchResultViewModel>(Assert.Single(results));
 
         Assert.Equal(vm.Cells.Count, vm.CellSubtitles.Count);
-        Assert.All(vm.CellSubtitles, s => Assert.NotEmpty(s));
     }
 
     // ── 7. Enter action copies selected cell ──────────────────────────────────
