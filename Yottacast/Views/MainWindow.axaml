@@ -297,6 +297,11 @@
                         <results:DictionaryResultItemView/>
                     </DataTemplate>
 
+                    <!-- Date search template (navigable cells with date/time values) -->
+                    <DataTemplate x:DataType="viewModels:DateSearchResultViewModel">
+                        <results:DateSearchResultView/>
+                    </DataTemplate>
+
                     <!-- Standard template (apps, files, etc.) -->
                     <DataTemplate x:DataType="viewModels:ResultItemViewModel">
                         <Grid ColumnDefinitions="Auto,*,Auto" MinHeight="44">

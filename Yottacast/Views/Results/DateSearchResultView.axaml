@@ -1,0 +1,98 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:viewModels="clr-namespace:Yottacast.Core.ViewModels;assembly=Yottacast.Core"
+             x:Class="Yottacast.Views.Results.DateSearchResultView"
+             x:DataType="viewModels:DateSearchResultViewModel">
+    <Grid ColumnDefinitions="*" RowDefinitions="*,Auto" MinHeight="68"
+          TextElement.FontFamily="{DynamicResource Theme.Conv.FontFamily}">
+
+        <!-- Row 0: cells row -->
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto,*,Auto,*,Auto,*"
+              VerticalAlignment="Center"
+              Margin="0,8">
+
+            <!-- Cell 0 -->
+            <Border Grid.Column="0" CornerRadius="{DynamicResource Theme.Conv.Cell.CornerRadius}" Padding="6,4"
+                    HorizontalAlignment="Stretch"
+                    Classes.conv-cell-selected="{Binding IsCell0Selected}">
+                <TextBlock Text="{Binding Cell0}"
+                           Foreground="{DynamicResource Theme.Calc.Result.Color}"
+                           FontSize="{DynamicResource Theme.Calc.Result.Size}"
+                           FontWeight="{DynamicResource Theme.Calc.Result.FontWeight}"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center"/>
+            </Border>
+
+            <!-- Arrow 0→1 -->
+            <TextBlock Grid.Column="1" Text="·"
+                       Foreground="{DynamicResource Theme.Conv.Arrow.Color}"
+                       VerticalAlignment="Center"
+                       Margin="8,0"/>
+
+            <!-- Cell 1 -->
+            <Border Grid.Column="2" CornerRadius="{DynamicResource Theme.Conv.Cell.CornerRadius}" Padding="6,4"
+                    HorizontalAlignment="Stretch"
+                    Classes.conv-cell-selected="{Binding IsCell1Selected}">
+                <TextBlock Text="{Binding Cell1}"
+                           Foreground="{DynamicResource Theme.Conv.Value.Color}"
+                           FontSize="{DynamicResource Theme.Conv.Value.Size}"
+                           FontWeight="Medium"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center"/>
+            </Border>
+
+            <!-- Arrow 1→2 (only visible when Cell2 exists) -->
+            <TextBlock Grid.Column="3" Text="·"
+                       Foreground="{DynamicResource Theme.Conv.Arrow.Color}"
+                       VerticalAlignment="Center"
+                       Margin="8,0"
+                       IsVisible="{Binding Cell2, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+
+            <!-- Cell 2 (optional) -->
+            <Border Grid.Column="4" CornerRadius="{DynamicResource Theme.Conv.Cell.CornerRadius}" Padding="6,4"
+                    HorizontalAlignment="Stretch"
+                    IsVisible="{Binding Cell2, Converter={x:Static ObjectConverters.IsNotNull}}"
+                    Classes.conv-cell-selected="{Binding IsCell2Selected}">
+                <TextBlock Text="{Binding Cell2}"
+                           Foreground="{DynamicResource Theme.Conv.Value.Color}"
+                           FontSize="{DynamicResource Theme.Conv.Value.Size}"
+                           FontWeight="Medium"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center"/>
+            </Border>
+
+            <!-- Arrow 2→3 (only visible when Cell3 exists) -->
+            <TextBlock Grid.Column="5" Text="·"
+                       Foreground="{DynamicResource Theme.Conv.Arrow.Color}"
+                       VerticalAlignment="Center"
+                       Margin="8,0"
+                       IsVisible="{Binding Cell3, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+
+            <!-- Cell 3 (optional) -->
+            <Border Grid.Column="6" CornerRadius="{DynamicResource Theme.Conv.Cell.CornerRadius}" Padding="6,4"
+                    HorizontalAlignment="Stretch"
+                    IsVisible="{Binding Cell3, Converter={x:Static ObjectConverters.IsNotNull}}"
+                    Classes.conv-cell-selected="{Binding IsCell3Selected}">
+                <TextBlock Text="{Binding Cell3}"
+                           Foreground="{DynamicResource Theme.Conv.Value.Color}"
+                           FontSize="{DynamicResource Theme.Conv.Value.Size}"
+                           FontWeight="Medium"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center"/>
+            </Border>
+
+        </Grid>
+
+        <!-- Row 1: subtitle (day of week · distance) -->
+        <TextBlock Grid.Row="1"
+                   Text="{Binding Subtitle}"
+                   Foreground="{DynamicResource Theme.Conv.Subtitle.Color}"
+                   FontSize="{DynamicResource Theme.Conv.Subtitle.Size}"
+                   Opacity="{DynamicResource Theme.Conv.Subtitle.Opacity}"
+                   HorizontalAlignment="Center"
+                   TextAlignment="Center"
+                   Margin="0,0,0,6"
+                   IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+
+    </Grid>
+</UserControl>
