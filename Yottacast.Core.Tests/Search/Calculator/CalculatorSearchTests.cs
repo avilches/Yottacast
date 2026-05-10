@@ -10,7 +10,7 @@ using System.Net.Http;
 namespace Yottacast.Core.Tests.Search.Calculator;
 
 [Collection("MathJs")]
-public class CalculatorSearchTests(MathJsEngineFixture fixture, NerdamerEngineFixture nerdamerFixture) : IClassFixture<NerdamerEngineFixture> {
+public class CalculatorSearchTests(MathJsEngineFixture fixture, NerdamerEngineFixture nerdamerFixture) {
 
     private CalculatorSearch BuildSearch(out ClipboardService clipboard) {
         clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);

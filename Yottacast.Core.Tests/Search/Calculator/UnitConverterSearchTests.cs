@@ -8,7 +8,7 @@ using Yottacast.Core.Tests.Fakes;
 namespace Yottacast.Core.Tests.Search.Calculator;
 
 [Collection("MathJs")]
-public class UnitConverterSearchTests(MathJsEngineFixture fixture, NerdamerEngineFixture nerdamerFixture) : IClassFixture<NerdamerEngineFixture> {
+public class UnitConverterSearchTests(MathJsEngineFixture fixture, NerdamerEngineFixture nerdamerFixture) {
 
     private CalculatorSearch BuildSearch(out ClipboardService clipboard) {
         clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);

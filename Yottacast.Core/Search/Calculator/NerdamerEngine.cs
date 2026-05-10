@@ -29,6 +29,7 @@ public sealed class NerdamerEngine : IDisposable {
         var engine = new Engine(opts => opts.LimitRecursion(64));
         engine.Execute(LoadResource("Yottacast.Core.Search.Calculator.nerdamer.core.min.js"));
         engine.Execute(LoadResource("Yottacast.Core.Search.Calculator.Algebra.min.js"));
+        // Calculus.min.js is a required dependency of Solve.min.js in nerdamer's addon architecture.
         engine.Execute(LoadResource("Yottacast.Core.Search.Calculator.Calculus.min.js"));
         engine.Execute(LoadResource("Yottacast.Core.Search.Calculator.Solve.min.js"));
         engine.Execute(LoadResource("Yottacast.Core.Search.Calculator.nerdamer-helpers.js"));
@@ -71,7 +72,9 @@ public sealed class NerdamerEngine : IDisposable {
     }
 
     public void Dispose() {
+        try { _initTask.Wait(); } catch { }
         lock (_lock) {
+            _engine?.Dispose();
             _engine = null;
         }
     }

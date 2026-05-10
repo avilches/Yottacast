@@ -8,3 +8,4 @@ Al modificar esta area, actualizar los tests en `Yottacast.Core.Tests/Search/Cal
 - `DefaultConversionTestsFormatting.cs` — formato de resultados de conversion
 - `NormalizeExpressionTests.cs` — normalizacion de expresiones de entrada
 - `UnitConverterSearchTests.cs` — busqueda con conversion de unidades
+- `EquationSolverTests.cs` — resolución de ecuaciones simbólicas (nerdamer)

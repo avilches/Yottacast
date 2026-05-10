@@ -12,7 +12,7 @@ namespace Yottacast.Core.Tests.Search.Calculator;
 // DefaultConversionTestsFormatting.cs — do not manually align "|" and "->".
 // Just run `dotnet test` and the formatter will rewrite this file if needed.
 [Collection("MathJs")]
-public class DefaultConversionTests(MathJsEngineFixture fixture, NerdamerEngineFixture nerdamerFixture) : IClassFixture<NerdamerEngineFixture> {
+public class DefaultConversionTests(MathJsEngineFixture fixture, NerdamerEngineFixture nerdamerFixture) {
 
     private ConversionResultItemViewModel GetConversionItem(string query) {
         var (item, _) = GetConversionItemWithSearch(query);
