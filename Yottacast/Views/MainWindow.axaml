@@ -413,6 +413,7 @@
                 <!-- ── Options overlay (Tab) — right-aligned, positioned below selected item ── -->
                 <Border x:Name="OptionsMenuOverlay"
                         IsVisible="{Binding IsOptionsMenuOpen}"
+                        ZIndex="1"
                         Background="{DynamicResource Theme.Menu.Background}"
                         BorderBrush="{DynamicResource Theme.Menu.Border.Color}"
                         BorderThickness="1"
