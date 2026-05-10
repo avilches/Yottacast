@@ -12,13 +12,14 @@ using Avalonia.Styling;
 using Avalonia.Threading;
 using Microsoft.Extensions.Logging;
 using Yottacast.Core;
+using Yottacast.Core.Search.Emoji;
 using Yottacast.Core.Services;
 
 namespace Yottacast.Services;
 
 public record ThemeOption(string Id, string DisplayName);
 
-public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
+public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig emojiLayoutConfig) : IDisposable {
     private const string UserThemePrefix = "user:";
 
     private string _themesFolder = null!;
@@ -287,9 +288,9 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
             // ── Emoji ──
             var emoji = json["emoji"];
             if (emoji != null) {
-                SetInt(app,    "Theme.Emoji.Columns",          emoji["columns"]);
                 SetDouble(app, "Theme.Emoji.Cell.Size",        emoji["cell"]?["size"]);
                 SetCornerRadius(app, "Theme.Emoji.Cell.CornerRadius", emoji["cell"]?["cornerRadius"]);
+                SetDouble(app, "Theme.Emoji.Cell.Margin",      emoji["cell"]?["margin"]);
                 SetDouble(app, "Theme.Emoji.Char.Size",        emoji["char"]?["size"]);
                 SetFontFamily(app, "Theme.Emoji.Char.FontFamily", emoji["char"]?["fontFamily"]);
                 SetBrush(app,  "Theme.Emoji.Keywords.Color",   emoji["keywords"]?["color"]);
@@ -304,6 +305,15 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
                 SetBrush(app,  "Theme.Emoji.UsageCount.Color",   emoji["usageCount"]?["color"]);
                 SetDouble(app, "Theme.Emoji.UsageCount.Size",    emoji["usageCount"]?["size"]);
                 SetOpacity(app, "Theme.Emoji.UsageCount.Opacity", emoji["usageCount"]?["opacity"]);
+
+                // Calculate columns/rows from theme dimensions
+                var windowWidth       = window?["width"]?.GetValue<double>()               ?? 730.0;
+                var maxHeight         = results?["maxHeight"]?.GetValue<double>()           ?? 540.0;
+                var resultsPadding    = results?["padding"]?.GetValue<double>()             ?? 8.0;
+                var cellSize          = emoji["cell"]?["size"]?.GetValue<double>()          ?? 48.0;
+                var cellMargin        = emoji["cell"]?["margin"]?.GetValue<double>()        ?? 2.0;
+                var sectionHeaderSize = emoji["sectionHeader"]?["size"]?.GetValue<double>() ?? 11.0;
+                CalculateEmojiLayout(app, windowWidth, maxHeight, resultsPadding, cellSize, cellMargin, sectionHeaderSize);
             }
 
             // ── No Results ──
@@ -460,6 +470,9 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
         app.Resources["Theme.Emoji.UsageCount.Color"]   = B("#EAEAEE");
         app.Resources["Theme.Emoji.UsageCount.Size"]    = 9.0;
         app.Resources["Theme.Emoji.UsageCount.Opacity"] = 0.4;
+        app.Resources["Theme.Emoji.Cell.Margin"] = new Thickness(2);
+        CalculateEmojiLayout(app, windowWidth: 730.0, maxHeight: 540.0,
+            resultsPadding: 8.0, cellSize: 48.0, cellMargin: 2.0, sectionHeaderSize: 11.0);
 
         // ── No Results ──
         app.Resources["Theme.NoResults.Title.Color"]    = B("#505055");
@@ -532,6 +545,33 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
         app.Resources[$"{p}.Margin"]              = new Thickness(20, 0, 20, 8);
         app.Resources[$"{p}.HorizontalAlignment"] = HorizontalAlignment.Stretch;
         app.Resources[$"{p}.TextAlignment"]       = TextAlignment.Left;
+    }
+
+    private void CalculateEmojiLayout(
+        Application app,
+        double windowWidth, double maxHeight,
+        double resultsPadding, double cellSize, double cellMargin,
+        double sectionHeaderSize)
+    {
+        var cellH = cellSize + 2 * cellMargin;
+
+        // Horizontal overhead: outer window border margin (28×2=56)
+        //   + ListBox padding (resultsPadding×2) + ListBoxItem padding (10×2=20)
+        //   + EmojiGridResultView StackPanel margin (4×2=8)
+        var horizontalOverhead = 56 + 2 * resultsPadding + 28;
+        var columns = Math.Max(1, (int)Math.Floor((windowWidth - horizontalOverhead) / cellH));
+
+        // Vertical overhead: ListBox padding (resultsPadding×2) + ListBoxItem margin (1×2=2)
+        //   + StackPanel outer margin (8+8=16) + info panel TextBlock (~12+6=18)
+        //   + 3 section headers each (sectionHeaderSize + margin 6+2=8)
+        var sectionHeaderH = (int)(sectionHeaderSize + 8);
+        var verticalOverhead = (int)(2 * resultsPadding) + 2 + 16 + 18 + 3 * sectionHeaderH;
+        var rows = Math.Max(2, (int)Math.Floor((maxHeight - verticalOverhead) / cellH));
+
+        emojiLayoutConfig.Columns      = columns;
+        emojiLayoutConfig.ViewportRows = rows;
+        app.Resources["Theme.Emoji.Columns"]     = columns;
+        app.Resources["Theme.Emoji.Cell.Margin"] = new Thickness(cellMargin);
     }
 
     private static void SetBrush(Application app, string key, JsonNode? node) {
