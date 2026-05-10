@@ -106,6 +106,10 @@ public partial class MainWindowViewModel(
     public void CloseOptionsMenu() {
         IsOptionsMenuOpen = false;
         OptionsMenuSelectedIndex = 0;
+        if (_pendingResultsRefresh) {
+            _pendingResultsRefresh = false;
+            RefreshResults();
+        }
     }
 
     public void NavigateOptionsMenu(int delta) {
@@ -124,7 +128,7 @@ public partial class MainWindowViewModel(
     private IReadOnlyList<BaseResultItemViewModel> _instantSnapshot = [];
     private IReadOnlyList<BaseResultItemViewModel> _deferredSnapshot = [];
     private bool _userNavigated;
-    private bool _suppressMenuClose;
+    private bool _pendingResultsRefresh;
     private int _historyNavIndex = -1;
     private bool _navigatingHistory;
     private bool _textIsFromHistory;
@@ -312,9 +316,7 @@ public partial class MainWindowViewModel(
         OnPropertyChanged(nameof(OptionsMenuActions));
         OnPropertyChanged(nameof(OptionsMenuItems));
         OnPropertyChanged(nameof(HasOptionsMenu));
-        // During a results refresh, SelectedResult briefly goes null while the collection
-        // is cleared and rebuilt — don't close the overlay for transient changes.
-        if (!_suppressMenuClose && !HasOptionsMenu) CloseOptionsMenu();
+        if (!HasOptionsMenu) CloseOptionsMenu();
     }
 
     /// <summary>
@@ -433,6 +435,15 @@ public partial class MainWindowViewModel(
     }
 
     private void RefreshResults() {
+        // While the options menu is open, don't touch Results: clearing and rebuilding the
+        // collection resets Avalonia's SelectionModel and dispatches async nulls through the
+        // SelectedItem binding, which closes the menu regardless of any suppress flags.
+        // Accumulate snapshots and apply them all at once when the menu closes.
+        if (IsOptionsMenuOpen) {
+            _pendingResultsRefresh = true;
+            return;
+        }
+
         var merged = _instantSnapshot
             .Concat(_deferredSnapshot)
             .Select(x => (item: x, score: x.Score + launchHistory.BonusFor(x)))
@@ -441,40 +452,33 @@ public partial class MainWindowViewModel(
             .ToList();
 
         var previousSelected = SelectedResult;
-        _suppressMenuClose = true;
-        BaseResultItemViewModel? chosen = null;
-        try {
-            Results.Clear();
-            foreach (var item in merged) Results.Add(item);
-            HasResults = Results.Count > 0;
-            ShowNoResults = false;
+        Results.Clear();
+        foreach (var item in merged) Results.Add(item);
+        HasResults = Results.Count > 0;
+        ShowNoResults = false;
 
-            var calcResult = merged.FirstOrDefault(x =>
-                x is ConversionResultItemViewModel ||
-                (x is ResultItemViewModel r && r.Category is "Calculator"));
-            if (calcResult != null && !_userNavigated) {
-                chosen = calcResult;
-            } else if (_userNavigated && previousSelected != null) {
-                // Reference match first; semantic fallback when ViewModels are recreated
-                // (e.g. app cache refresh creates new objects for the same logical items).
-                if (merged.Contains(previousSelected)) {
-                    chosen = previousSelected;
-                } else {
-                    var prevSubtitle = (previousSelected as ResultItemViewModel)?.Subtitle;
-                    chosen = merged.FirstOrDefault(x =>
-                        x.Title == previousSelected.Title &&
-                        (prevSubtitle == null || (x as ResultItemViewModel)?.Subtitle == prevSubtitle));
-                }
-                chosen ??= Results.FirstOrDefault();
+        BaseResultItemViewModel? chosen;
+        var calcResult = merged.FirstOrDefault(x =>
+            x is ConversionResultItemViewModel ||
+            (x is ResultItemViewModel r && r.Category is "Calculator"));
+        if (calcResult != null && !_userNavigated) {
+            chosen = calcResult;
+        } else if (_userNavigated && previousSelected != null) {
+            // Reference match first; semantic fallback when ViewModels are recreated
+            // (e.g. app cache refresh creates new objects for the same logical items).
+            if (merged.Contains(previousSelected)) {
+                chosen = previousSelected;
             } else {
-                chosen = Results.FirstOrDefault();
+                var prevSubtitle = (previousSelected as ResultItemViewModel)?.Subtitle;
+                chosen = merged.FirstOrDefault(x =>
+                    x.Title == previousSelected.Title &&
+                    (prevSubtitle == null || (x as ResultItemViewModel)?.Subtitle == prevSubtitle));
             }
-            SelectedResult = chosen;
-        } finally {
-            _suppressMenuClose = false;
-            // Post-refresh: close overlay if the new result has no menu actions
-            if (!HasOptionsMenu) CloseOptionsMenu();
+            chosen ??= Results.FirstOrDefault();
+        } else {
+            chosen = Results.FirstOrDefault();
         }
+        SelectedResult = chosen;
 
         // Guard: Avalonia may dispatch a null back through the SelectedItem binding after
         // Results.Clear(). Re-assert the desired selection after all pending binding updates.
@@ -485,12 +489,6 @@ public partial class MainWindowViewModel(
                     SelectedResult = target;
             });
         }
-
-        // Re-assert the menu option index: Results.Clear() → OnSelectedResultChanged(null) →
-        // OptionsMenuItems notified → ListBox resets SelectionModel → index visually lost.
-        // OptionsMenuSelectedIndex itself didn't change so no PropertyChanged fired → re-emit it.
-        if (IsOptionsMenuOpen)
-            OnPropertyChanged(nameof(OptionsMenuSelectedIndex));
     }
 
 }

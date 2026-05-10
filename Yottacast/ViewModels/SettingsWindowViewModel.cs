@@ -192,9 +192,15 @@ public partial class SettingsWindowViewModel : ViewModelBase {
 
     // ── Date Search config ───────────────────────────────────────────────────
     [ObservableProperty] private bool _enableDateSearch;
-    public ObservableCollection<DateSearchLanguageItem> DateSearchLanguages { get; private set; } = [];
+    [ObservableProperty] private string _dateIsoFormat = AppDefaults.DateIsoFormat;
+    [ObservableProperty] private string _dateLongFormat = AppDefaults.DateLongFormat;
 
-    partial void OnEnableDateSearchChanged(bool value) { _settings.DateSearchEnabled = value; _settings.Save(); _logger.LogInformation("Settings: DateSearchEnabled = {Value}", value); _settings.NotifySearchSettingsChanged(); }
+    public static readonly string[] DateIsoFormatOptions  = ["yyyy-MM-dd", "dd/MM/yyyy", "MM/dd/yyyy", "yyyyMMdd", "dd.MM.yyyy", "d/M/yyyy", "M/d/yyyy", "d MMM yyyy", "MMM d, yyyy"];
+    public static readonly string[] DateLongFormatOptions = ["d MMMM yyyy (dddd)", "MMMM d, yyyy (dddd)", "dddd, d MMMM yyyy", "dddd, MMMM d, yyyy", "d MMMM yyyy", "MMMM d, yyyy"];
+
+    partial void OnEnableDateSearchChanged(bool value)  { _settings.DateSearchEnabled = value;  _settings.Save(); _logger.LogInformation("Settings: DateSearchEnabled = {Value}", value);   _settings.NotifySearchSettingsChanged(); }
+    partial void OnDateIsoFormatChanged(string value)   { _settings.DateIsoFormat     = value;  _settings.Save(); _logger.LogInformation("Settings: DateIsoFormat = \"{Value}\"", value);  _settings.NotifySearchSettingsChanged(); }
+    partial void OnDateLongFormatChanged(string value)  { _settings.DateLongFormat    = value;  _settings.Save(); _logger.LogInformation("Settings: DateLongFormat = \"{Value}\"", value); _settings.NotifySearchSettingsChanged(); }
 
     // ── System Settings config ───────────────────────────────────────────────
     [ObservableProperty] private bool _enableSystemSettings;
@@ -331,7 +337,9 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _calculatorIncludeCrypto              = settings.CalculatorIncludeCrypto;
         _exchangeRateRefreshIntervalHours     = settings.ExchangeRateRefreshIntervalHours;
         _enableDictionary                     = settings.EnableDictionary;
-        _enableDateSearch                     = settings.DateSearchEnabled;
+        _enableDateSearch    = settings.DateSearchEnabled;
+        _dateIsoFormat       = settings.DateIsoFormat;
+        _dateLongFormat      = settings.DateLongFormat;
         _enableSystemSettings                 = settings.EnableSystemSettings;
         _dictionaryPrefix                = settings.DictionaryPrefix;
         _dictionaryShowAlways            = settings.DictionaryShowAlways;
@@ -354,21 +362,6 @@ public partial class SettingsWindowViewModel : ViewModelBase {
                 _settings.DictionaryLanguages = selected;
                 _settings.Save();
                 _logger.LogInformation("Settings: DictionaryLanguages = [{Languages}]", string.Join(", ", selected));
-                _settings.NotifySearchSettingsChanged();
-            };
-
-        var selectedDateLangs = new HashSet<string>(settings.DateSearchLanguages);
-        DateSearchLanguages = new ObservableCollection<DateSearchLanguageItem>(
-            AppDefaults.DateSearchAvailableLanguages.Select(l =>
-                new DateSearchLanguageItem(l.Code, l.Name, selectedDateLangs.Contains(l.Code))));
-        foreach (var item in DateSearchLanguages)
-            item.PropertyChanged += (_, e) => {
-                if (e.PropertyName != nameof(DateSearchLanguageItem.IsSelected)) return;
-                var selected = DateSearchLanguages.Where(l => l.IsSelected).Select(l => l.Code).ToList();
-                if (selected.Count == 0) { item.IsSelected = true; return; }
-                _settings.DateSearchLanguages = selected;
-                _settings.Save();
-                _logger.LogInformation("Settings: DateSearchLanguages = [{Languages}]", string.Join(", ", selected));
                 _settings.NotifySearchSettingsChanged();
             };
 
@@ -710,17 +703,6 @@ public partial class SettingsWindowViewModel : ViewModelBase {
             'd' => n * 86400,
             _ => null
         };
-    }
-}
-
-public partial class DateSearchLanguageItem : ObservableObject {
-    public string Code { get; }
-    public string Name { get; }
-    [ObservableProperty] private bool _isSelected;
-    public DateSearchLanguageItem(string code, string name, bool isSelected) {
-        Code = code;
-        Name = name;
-        _isSelected = isSelected;
     }
 }
 

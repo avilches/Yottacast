@@ -1179,23 +1179,22 @@
 
                     <StackPanel Spacing="16" IsVisible="{Binding EnableDateSearch}">
                         <StackPanel Spacing="4">
-                            <TextBlock Classes="label" Text="Languages"/>
+                            <TextBlock Classes="label" Text="Short date format"/>
                             <TextBlock Classes="description"
-                                       Text="Select which languages to recognize dates and times in."/>
-                            <ItemsControl ItemsSource="{Binding DateSearchLanguages}">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <WrapPanel Orientation="Horizontal"/>
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:DateSearchLanguageItem">
-                                        <CheckBox Content="{Binding Name}"
-                                                  IsChecked="{Binding IsSelected}"
-                                                  Margin="0,2,16,2"/>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                                       Text="Format for ISO date cells (e.g. 2026-05-11)."/>
+                            <ComboBox ItemsSource="{x:Static vm:SettingsWindowViewModel.DateIsoFormatOptions}"
+                                      SelectedItem="{Binding DateIsoFormat}"
+                                      Width="180"
+                                      HorizontalAlignment="Left"/>
+                        </StackPanel>
+                        <StackPanel Spacing="4">
+                            <TextBlock Classes="label" Text="Long date format"/>
+                            <TextBlock Classes="description"
+                                       Text="Format for the long date cell (e.g. 11 May 2026 (Monday))."/>
+                            <ComboBox ItemsSource="{x:Static vm:SettingsWindowViewModel.DateLongFormatOptions}"
+                                      SelectedItem="{Binding DateLongFormat}"
+                                      Width="260"
+                                      HorizontalAlignment="Left"/>
                         </StackPanel>
                     </StackPanel>
                 </StackPanel>

@@ -23,7 +23,7 @@ public class DateSearchTests
     [Fact]
     public void Search_WithSpanishDate_ReturnsResult()
     {
-        var search  = BuildSearch(out _, s => s.DateSearchLanguages = ["es-es"]);
+        var search  = BuildSearch(out _, null);
         var results = search.Search("3 de mayo", 5);
 
         var item = Assert.Single(results);
@@ -40,7 +40,7 @@ public class DateSearchTests
     [Fact]
     public void Search_WithEnglishDate_ReturnsResult()
     {
-        var search  = BuildSearch(out _, s => s.DateSearchLanguages = ["en-us"]);
+        var search  = BuildSearch(out _, null);
         var results = search.Search("next Monday", 5);
 
         var item = Assert.Single(results);
@@ -52,7 +52,7 @@ public class DateSearchTests
     [Fact]
     public void Search_WithDateRange_ReturnsRangeResult()
     {
-        var search  = BuildSearch(out _, s => s.DateSearchLanguages = ["es-es"]);
+        var search  = BuildSearch(out _, null);
         var results = search.Search("del 1 al 5 de junio", 5);
 
         var item = Assert.Single(results);
@@ -60,7 +60,10 @@ public class DateSearchTests
 
         Assert.Equal("Date Range", vm.Category);
         Assert.Equal(4, vm.Cells.Count);
-        Assert.Matches(@"^\d{4}-\d{2}-\d{2}/\d{4}-\d{2}-\d{2}$", vm.Cells[2]);
+        Assert.Matches(@"^\d{4}-\d{2}-\d{2}$", vm.Cells[0]); // isoStart
+        Assert.Matches(@"^\d{4}-\d{2}-\d{2}$", vm.Cells[1]); // isoEnd
+        Assert.StartsWith("From ", vm.Cells[2]);               // "From X to Y"
+        Assert.Equal(4, vm.CellSubtitles.Count);
     }
 
     // ── 4. Disabled ────────────────────────────────────────────────────────────
@@ -85,15 +88,17 @@ public class DateSearchTests
         Assert.Empty(results);
     }
 
-    // ── 6. Empty language list ─────────────────────────────────────────────────
+    // ── 6. Subtitles are generated per cell ───────────────────────────────────
 
     [Fact]
-    public void Search_WithEmptyLanguages_ReturnsEmpty()
+    public void Search_WithDate_HasSubtitlePerCell()
     {
-        var search  = BuildSearch(out _, s => s.DateSearchLanguages = []);
+        var search  = BuildSearch(out _);
         var results = search.Search("3 de mayo", 5);
+        var vm      = Assert.IsType<DateSearchResultViewModel>(Assert.Single(results));
 
-        Assert.Empty(results);
+        Assert.Equal(vm.Cells.Count, vm.CellSubtitles.Count);
+        Assert.All(vm.CellSubtitles, s => Assert.NotEmpty(s));
     }
 
     // ── 7. Enter action copies selected cell ──────────────────────────────────
@@ -101,7 +106,7 @@ public class DateSearchTests
     [Fact]
     public void OnActivate_CopiesSelectedCell()
     {
-        var search = BuildSearch(out var clipboard, s => s.DateSearchLanguages = ["es-es"]);
+        var search = BuildSearch(out var clipboard, null);
 
         string copied = "";
         clipboard.Initialize(
@@ -124,7 +129,7 @@ public class DateSearchTests
     [Fact]
     public void MoveCellRight_CyclesFromLastToFirst()
     {
-        var search  = BuildSearch(out _, s => s.DateSearchLanguages = ["es-es"]);
+        var search  = BuildSearch(out _, null);
         var results = search.Search("3 de mayo", 5);
         var vm      = Assert.IsType<DateSearchResultViewModel>(Assert.Single(results));
 
@@ -144,7 +149,7 @@ public class DateSearchTests
     [Fact]
     public void MoveCellLeft_CyclesFromFirstToLast()
     {
-        var search  = BuildSearch(out _, s => s.DateSearchLanguages = ["es-es"]);
+        var search  = BuildSearch(out _, null);
         var results = search.Search("3 de mayo", 5);
         var vm      = Assert.IsType<DateSearchResultViewModel>(Assert.Single(results));
 

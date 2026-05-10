@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 
 namespace Yottacast.Core.ViewModels;
 
@@ -8,45 +9,52 @@ public class DateSearchResultViewModel : BaseResultItemViewModel, INotifyPropert
     public string Category { get; init; } = "";
 
     // ── Copyable cells (←→ navigation) ──────────────────────────────────────
-    public IReadOnlyList<string> Cells { get; init; } = [];
+    private IReadOnlyList<string> _cells = [];
+    public IReadOnlyList<string> Cells {
+        get => _cells;
+        init {
+            _cells    = value;
+            CellItems = value.Select((v, i) => new DateCellItem(v, isSelected: i == 0))
+                             .ToList();
+        }
+    }
 
-    // ── Named cell accessors (for compiled bindings in AXAML) ────────────────
-    public string? Cell0 => Cells.Count > 0 ? Cells[0] : null;
-    public string? Cell1 => Cells.Count > 1 ? Cells[1] : null;
-    public string? Cell2 => Cells.Count > 2 ? Cells[2] : null;
-    public string? Cell3 => Cells.Count > 3 ? Cells[3] : null;
+    /// <summary>Per-cell items exposed to the view for uniform-grid rendering.</summary>
+    public IReadOnlyList<DateCellItem> CellItems { get; private set; } = [];
 
-    /// <summary>Full content of the currently selected cell — shown in the subtitle row.</summary>
-    public string SelectedCellValue => Cells.Count > _selectedCell ? Cells[_selectedCell] : "";
+    // ── Per-cell subtitles ────────────────────────────────────────────────────
+    /// <summary>
+    /// One subtitle string per cell. The subtitle for the currently selected cell
+    /// is shown below the cells row to give contextual information.
+    /// </summary>
+    public IReadOnlyList<string> CellSubtitles { get; init; } = [];
 
+    /// <summary>Subtitle for the currently selected cell.</summary>
+    public string SelectedCellSubtitle =>
+        CellSubtitles.Count > _selectedCell ? CellSubtitles[_selectedCell] : "";
+
+    // ── Selection ─────────────────────────────────────────────────────────────
     private int _selectedCell;
     public int SelectedCell {
         get => _selectedCell;
         set {
             if (_selectedCell == value) return;
+            foreach (var (item, i) in CellItems.Select((c, i) => (c, i)))
+                item.IsSelected = i == value;
             _selectedCell = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedCell)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsCell0Selected)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsCell1Selected)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsCell2Selected)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsCell3Selected)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedCellValue)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedCellSubtitle)));
         }
     }
 
-    public bool IsCell0Selected => SelectedCell == 0;
-    public bool IsCell1Selected => SelectedCell == 1;
-    public bool IsCell2Selected => SelectedCell == 2;
-    public bool IsCell3Selected => SelectedCell == 3;
-
-    /// <summary>Move selection one cell to the left (circular). Returns false if Cells.Count &lt;= 1.</summary>
+    /// <summary>Move selection one cell to the left (circular). Returns false if Cells.Count ≤ 1.</summary>
     public bool MoveCellLeft() {
         if (Cells.Count <= 1) return false;
         SelectedCell = (_selectedCell - 1 + Cells.Count) % Cells.Count;
         return true;
     }
 
-    /// <summary>Move selection one cell to the right (circular). Returns false if Cells.Count &lt;= 1.</summary>
+    /// <summary>Move selection one cell to the right (circular). Returns false if Cells.Count ≤ 1.</summary>
     public bool MoveCellRight() {
         if (Cells.Count <= 1) return false;
         SelectedCell = (_selectedCell + 1) % Cells.Count;

@@ -69,6 +69,10 @@ public static class AppDefaults {
     // ── Search — date ────────────────────────────────────────────────────────
     /// Date search: score for recognized date/daterange results.
     public const double DateSearchScore = 6.0;
+    /// Default format string for ISO date cells in date search results.
+    public const string DateIsoFormat = "yyyy-MM-dd";
+    /// Default format string for the long date cell in date search results.
+    public const string DateLongFormat = "d MMMM yyyy (dddd)";
 
     // ── Search — dictionary ────────────────────────────────────────────────
     /// HTTP timeout for dictionary API requests.
@@ -79,9 +83,7 @@ public static class AppDefaults {
     public const int DictionaryMaxDefinitionsPerItem = 5;
     /// Default languages enabled for dictionary lookups.
     public static readonly List<string> DictionaryDefaultLanguages = ["en"];
-    /// Default languages enabled for date search.
-    public static readonly List<string> DateSearchDefaultLanguages = ["es-es", "en-us"];
-    /// All languages available for date search (locale codes recognized by Chronic/NLP parsers).
+    /// All languages available for date recognition (locale codes recognized by Microsoft.Recognizers.Text).
     public static readonly (string Code, string Name)[] DateSearchAvailableLanguages = [
         ("es-es", "Español"),
         ("en-us", "English"),
