@@ -17,7 +17,9 @@ public class ClipboardService(ILogger<ClipboardService> logger)
         _read = read;
     }
 
-    public void CopyText(string text) => _copy?.Invoke(text);
+    public void CopyText(string text) {
+        _copy?.Invoke(text);
+    }
 
     public Task<string?> ReadTextAsync() =>
         _read?.Invoke() ?? Task.FromResult<string?>(null);

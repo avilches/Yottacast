@@ -108,13 +108,29 @@ public class DictionarySource(
                 Language = multiLang ? langName : null,
                 Definitions = defs,
                 Score = score,
-                OnActivate = () => {
-                    var browser = settings.ActiveBrowser;
-                    if (browser is not null)
-                        browserDiscovery.OpenUrl(capturedUrl, browser);
-                },
-                OnCopy = () => clipboard.CopyText(capturedDef),
-                CopiedMessage = "Definition copied!",
+                Actions = [
+                    new() {
+                        Label        = "Open in Wiktionary",
+                        Hotkey       = ActionHotkey.Enter,
+                        ShowInFooter = true,
+                        ShowInMenu   = true,
+                        ClosesMenu   = true,
+                        ClosesWindow = true,
+                        Execute = () => {
+                            var browser = settings.ActiveBrowser;
+                            if (browser is not null) browserDiscovery.OpenUrl(capturedUrl, browser);
+                        },
+                    },
+                    new() {
+                        Label        = "Copy definition",
+                        Hotkey       = ActionHotkey.MetaC,
+                        ShowInFooter = true,
+                        ShowInMenu   = true,
+                        ClosesMenu   = true,
+                        HintProvider = () => "Definition copied!",
+                        Execute      = () => clipboard.CopyText(capturedDef),
+                    },
+                ],
             });
         }
 
@@ -171,13 +187,29 @@ public class DictionarySource(
                         Language = multiLang ? langName : null,
                         Definitions = defs,
                         Score = score,
-                        OnActivate = () => {
-                            var browser = settings.ActiveBrowser;
-                            if (browser is not null)
-                                browserDiscovery.OpenUrl(capturedUrl, browser);
-                        },
-                        OnCopy = () => clipboard.CopyText(capturedDef),
-                        CopiedMessage = "Definition copied!",
+                        Actions = [
+                            new() {
+                                Label        = "Open in Wiktionary",
+                                Hotkey       = ActionHotkey.Enter,
+                                ShowInFooter = true,
+                                ShowInMenu   = true,
+                                ClosesMenu   = true,
+                                ClosesWindow = true,
+                                Execute = () => {
+                                    var browser = settings.ActiveBrowser;
+                                    if (browser is not null) browserDiscovery.OpenUrl(capturedUrl, browser);
+                                },
+                            },
+                            new() {
+                                Label        = "Copy definition",
+                                Hotkey       = ActionHotkey.MetaC,
+                                ShowInFooter = true,
+                                ShowInMenu   = true,
+                                ClosesMenu   = true,
+                                HintProvider = () => "Definition copied!",
+                                Execute      = () => clipboard.CopyText(capturedDef),
+                            },
+                        ],
                     });
                 }
             }

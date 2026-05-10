@@ -112,13 +112,22 @@ public class WebSearchSource(
             Subtitle    = $"Open search in {browserName}",
             Category    = "Web",
             Score      = score,
-            OnActivate = () => {
-                var browser = settings.ActiveBrowser;
-                if (browser is null) return;
-                var url = string.Format(capturedQueryUrl, Uri.EscapeDataString(capturedQuery));
-                logger.LogInformation("WebSearch: open engine={Engine} query=\"{Query}\" browser={Browser}", name, capturedQuery, browser.Name);
-                browserDiscovery.OpenUrl(url, browser);
-            },
+            Actions = [
+                new() {
+                    Label        = "Open in browser",
+                    Hotkey       = ActionHotkey.Enter,
+                    ShowInFooter = true,
+                    ClosesMenu   = true,
+                    ClosesWindow = true,
+                    Execute = () => {
+                        var browser = settings.ActiveBrowser;
+                        if (browser is null) return;
+                        var url = string.Format(capturedQueryUrl, Uri.EscapeDataString(capturedQuery));
+                        logger.LogInformation("WebSearch: open engine={Engine} query=\"{Query}\" browser={Browser}", name, capturedQuery, browser.Name);
+                        browserDiscovery.OpenUrl(url, browser);
+                    },
+                },
+            ],
         };
     }
 

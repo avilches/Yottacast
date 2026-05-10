@@ -27,15 +27,29 @@ Clase base abstracta. Contiene las propiedades comunes a todos los tipos de resu
 |---|---|---|
 | `Score` | `double` | Puntuacion para ordenacion (mayor = mas relevante). Ver `docs/search-scoring.md` |
 | `Title` | `string` | Texto principal del resultado |
-| `CopiedMessage` | `string?` | Mensaje mostrado en SearchHint tras Cmd+C. `null` = no mostrar mensaje |
 
-### Callbacks de accion
+### Lista de acciones
 
-| Callback | Tipo | Descripcion |
+| Propiedad | Tipo | Descripcion |
 |---|---|---|
-| `OnActivate` | `Action?` | Se ejecuta al pulsar Enter o click. Si es null, no ocurre ninguna accion |
-| `OnCopy` | `Action?` | Copia sin ocultar la ventana (Cmd+C en modo emoji). Null para no-emoji |
-| `OnToggleFavorite` | `Action?` | Marca/desmarca como favorito (Cmd+Shift+F en modo emoji) |
+| `Actions` | `IReadOnlyList<ResultAction>` | Todas las acciones disponibles. El footer, el overlay (Tab) y los hotkeys se derivan de esta lista |
+
+Cada `ResultAction` tiene:
+
+| Campo | Tipo | Descripcion |
+|---|---|---|
+| `Label` | `string` | Texto mostrado en overlay y footer |
+| `Hotkey` | `ActionHotkey?` | Atajo de teclado. Null = solo accesible via overlay |
+| `ShowInFooter` | `bool` | Muestra hint en la barra inferior (solo si Hotkey != null) |
+| `ShowInMenu` | `bool` | Incluye en el overlay de opciones (Tab) |
+| `ClosesMenu` | `bool` | Cierra el overlay al ejecutar |
+| `ClosesWindow` | `bool` | Oculta Yottacast al ejecutar |
+| `PasteAfterClose` | `bool` | Simula Cmd+V tras cerrar (solo si ClosesWindow = true) |
+| `RequiresRefresh` | `bool` | Llama a RefreshSearch() tras Execute(). Usado por EmojiSearch favorito |
+| `HintProvider` | `Func<string?>?` | Mensaje en SearchHint tras ejecutar. Solo visible si no cierra la ventana |
+| `Execute` | `Action` | Callback de la accion |
+
+`ActionHotkey` usa `ActionModifiers.Meta` como modificador agnostico de plataforma (resuelve a Cmd en macOS y Ctrl en Windows).
 
 ### Navegacion interna
 
@@ -52,10 +66,9 @@ Callbacks opcionales que permiten al resultado capturar las teclas de flecha ant
 
 | Flag | Tipo | Default | Descripcion |
 |---|---|---|---|
-| `PasteAfterActivate` | `bool` | `false` | Si `true`, tras activar: oculta ventana, restaura foco a app anterior, simula Cmd+V / Ctrl+V. Usado por emojis |
 | `BypassLimit` | `bool` | `false` | Si `true`, el item no se descarta por `SearchSourceLimit`. Usado por WebSearch y Dictionary |
 
-> **Verificar en:** `Yottacast.Core/ViewModels/BaseResultItemViewModel.cs`
+> **Verificar en:** `Yottacast.Core/ViewModels/BaseResultItemViewModel.cs`, `Yottacast.Core/ViewModels/ResultAction.cs`, `Yottacast.Core/ViewModels/ActionHotkey.cs`
 
 ---
 
@@ -91,7 +104,7 @@ Resultado de una evaluacion matematica simple (ej. `2+3 = 5`).
 | `Subtitle` | `string` | Contexto (unidad, expresion evaluada) |
 | `Category` | `string` | Siempre `"Calculator"` |
 
-La accion `OnActivate` copia el resultado al portapapeles via `ClipboardService`.
+La accion por defecto copia el resultado al portapapeles via `ClipboardService`.
 
 Auto-seleccion: si existe un resultado de calculadora y el usuario no ha navegado con flechas, se selecciona automaticamente.
 
@@ -233,7 +246,7 @@ Resultado de una busqueda de diccionario. Muestra la palabra, idioma y lista de 
 | `Example` | `string?` | Ejemplo de uso (puede incluir HTML limpiado) |
 | `ExampleTranslation` | `string?` | Traduccion del ejemplo (para idiomas no-ingleses) |
 
-La accion `OnActivate` abre la pagina de Wiktionary en el navegador configurado.
+La accion por defecto abre la pagina de Wiktionary en el navegador configurado.
 
 > **Verificar en:** `Yottacast.Core/ViewModels/DictionaryResultViewModel.cs`, `Yottacast.Core/Search/Dictionary/DictionarySource.cs`
 
@@ -262,7 +275,7 @@ El `ViewLocator` no interviene aqui. La `MainWindow.axaml` define `DataTemplate`
 ### Invariantes
 
 - Todos los ViewModels son inmutables excepto las propiedades observables (`IconBytes`, `BadgeIconBytes`, `SelectedCell`, `SelectedEmojiIndex`, `IsFavorite`, `IsSelected`).
-- Los callbacks (`OnActivate`, `OnCopy`, etc.) se establecen en el constructor por la fuente y no cambian.
+- `Actions` se establece en el constructor por la fuente y no cambia durante la vida del resultado.
 - `Score` se establece una vez al crear el item. No se modifica durante la vida del resultado.
 - La UI nunca crea ViewModels directamente: siempre los recibe de las fuentes via `GlobalSearch`.
 

@@ -14,7 +14,6 @@ public class ResultMapperTests {
             Category = "Applications",
             Icon = "/Applications/Safari.app",
             BypassLimit = false,
-            PasteAfterActivate = false,
         };
 
         var msg = ResultMapper.Map(vm, "0");

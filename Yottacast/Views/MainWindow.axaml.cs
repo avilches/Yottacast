@@ -244,6 +244,46 @@ public partial class MainWindow : Window {
         }
     }
 
+    private void ExecuteAction(MainWindowViewModel vm, ResultAction action) {
+        var result = vm.SelectedResult;
+        action.Execute();
+
+        if (action.ClosesWindow || action.ClosesMenu)
+            vm.CloseOptionsMenu();
+
+        if (action.ClosesWindow) {
+            if (result != null) {
+                vm.RecordLaunch(result);
+                vm.CleanAndSaveHistory(result.Title);
+            }
+            Hide();
+            AppHandler.Instance.OnHide();
+            if (action.PasteAfterClose)
+                _ = AppHandler.Instance.SimulatePasteAsync();
+        } else {
+            var hint = action.HintProvider?.Invoke();
+            if (hint != null) vm.ShowCopiedMessage(hint);
+        }
+    }
+
+    private static void RepositionEmojiCursor(
+        MainWindowViewModel vm,
+        EmojiGridResultViewModel? previousGrid,
+        int previousIndex,
+        string? selectedChar)
+    {
+        if (previousGrid == null) return;
+        if (vm.SelectedResult is not EmojiGridResultViewModel newGrid) return;
+
+        if (selectedChar != null) {
+            var idx = newGrid.Cells.ToList()
+                .FindIndex(c => c.Char == selectedChar && c.Section == EmojiSection.Default);
+            newGrid.SelectedEmojiIndex = idx >= 0 ? idx : Math.Min(previousIndex, newGrid.Cells.Count - 1);
+        } else {
+            newGrid.SelectedEmojiIndex = Math.Min(previousIndex, newGrid.Cells.Count - 1);
+        }
+    }
+
     private void OnTunnelKeyDown(object? sender, KeyEventArgs e) {
         // Tunnel phase fires before any child handles the event, so we reliably
         // catch character keys that the TextBox would otherwise consume.
@@ -255,69 +295,108 @@ public partial class MainWindow : Window {
         var vm = DataContext as MainWindowViewModel;
         if (vm is null) return;
 
+        // ── Overlay navigation (when options menu is open) ──────────────────────
+        if (vm.IsOptionsMenuOpen) {
+            switch (e.Key) {
+                case Key.Up:
+                    vm.NavigateOptionsMenu(-1);
+                    e.Handled = true;
+                    return;
+                case Key.Down:
+                    vm.NavigateOptionsMenu(+1);
+                    e.Handled = true;
+                    return;
+                case Key.Return:
+                    if (vm.SelectedMenuAction is { } menuAction) {
+                        EmojiGridResultViewModel? emojiGrid = null;
+                        int previousIndex = 0;
+                        string? selectedChar = null;
+                        if (menuAction.RequiresRefresh && vm.SelectedResult is EmojiGridResultViewModel eg) {
+                            emojiGrid = eg;
+                            previousIndex = eg.SelectedEmojiIndex;
+                            var prevSection = previousIndex < eg.Cells.Count
+                                ? eg.Cells[previousIndex].Section : EmojiSection.Default;
+                            selectedChar = prevSection == EmojiSection.Default ? eg.SelectedEmoji?.Char : null;
+                        }
+                        ExecuteAction(vm, menuAction);
+                        if (menuAction.RequiresRefresh) {
+                            vm.RefreshSearch();
+                            RepositionEmojiCursor(vm, emojiGrid, previousIndex, selectedChar);
+                        }
+                    }
+                    e.Handled = true;
+                    return;
+                case Key.Escape:
+                case Key.Tab:
+                    vm.CloseOptionsMenu();
+                    e.Handled = true;
+                    return;
+            }
+            if (e.Key is Key.Left or Key.Right) { e.Handled = true; return; }
+            return;
+        }
+
+        // ── Tab opens overlay ───────────────────────────────────────────────────
+        if (e.Key == Key.Tab) {
+            if (vm.HasOptionsMenu) vm.OpenOptionsMenu();
+            e.Handled = true;
+            return;
+        }
+
+        // ── Grid navigation (OnLeft/OnRight/OnUp/OnDown) ────────────────────────
         switch (e.Key) {
             case Key.Left when vm.SelectedResult?.OnLeft is { } onLeft:
-                onLeft(); // move cell but don't consume — TextBox also moves its cursor
+                onLeft();
                 break;
-
             case Key.Right when vm.SelectedResult?.OnRight is { } onRight:
                 onRight();
                 break;
-
             case Key.Up when vm.SelectedResult?.OnUp is { } onUp:
                 e.Handled = onUp();
                 break;
-
             case Key.Down when vm.SelectedResult?.OnDown is { } onDown:
                 e.Handled = onDown();
                 break;
-
-            case Key.Prior: // Page Up
+            case Key.Prior:
                 SelectDelta(vm, -AppDefaults.SearchSourceLimit);
                 e.Handled = true;
                 break;
-
-            case Key.Next: // Page Down
+            case Key.Next:
                 SelectDelta(vm, +AppDefaults.SearchSourceLimit);
                 e.Handled = true;
                 break;
         }
 
-        // Emoji shortcuts: handled in tunnel so the TextBox cannot consume them first.
-        // Copy (Cmd+C / Ctrl+C): copy to clipboard and show feedback message; window stays open.
-        var (copyMods, copyKey) = AppHandler.Instance.CopyShortcut;
-        if (e.Key == copyKey && e.KeyModifiers == copyMods && vm.SelectedResult is { OnCopy: { } copyAction } result) {
-            if (Math.Abs(SearchBox.SelectionEnd - SearchBox.SelectionStart) > 0) return;
-            copyAction();
-            var copiedMsg = result.CopiedMessageProvider?.Invoke() ?? result.CopiedMessage;
-            if (copiedMsg is { } msg)
-                vm.ShowCopiedMessage(msg);
+        // ── Generic action hotkeys (excluding Enter, handled in OnKeyDown) ───────
+        foreach (var action in vm.SelectedResult?.Actions ?? []) {
+            if (action.Hotkey == null || action.Hotkey == ActionHotkey.Enter) continue;
+            if (!AppHandler.Instance.MatchesHotkey(e, action.Hotkey)) continue;
+
+            // Block Meta+key (e.g. ⌘C) when text is selected in SearchBox
+            if (action.Hotkey.Modifiers == ActionModifiers.Meta
+                && Math.Abs(SearchBox.SelectionEnd - SearchBox.SelectionStart) > 0)
+                continue;
+
+            EmojiGridResultViewModel? emojiGrid = null;
+            int previousIndex = 0;
+            string? selectedChar = null;
+            if (action.RequiresRefresh && vm.SelectedResult is EmojiGridResultViewModel eg) {
+                emojiGrid = eg;
+                previousIndex = eg.SelectedEmojiIndex;
+                var prevSection = previousIndex < eg.Cells.Count
+                    ? eg.Cells[previousIndex].Section : EmojiSection.Default;
+                selectedChar = prevSection == EmojiSection.Default ? eg.SelectedEmoji?.Char : null;
+            }
+
+            ExecuteAction(vm, action);
+
+            if (action.RequiresRefresh) {
+                vm.RefreshSearch();
+                RepositionEmojiCursor(vm, emojiGrid, previousIndex, selectedChar);
+            }
+
             e.Handled = true;
             return;
-        }
-
-        // Toggle favorite (Cmd+Shift+F / Ctrl+Shift+F).
-        var (favMods, favKey) = AppHandler.Instance.ToggleFavoriteShortcut;
-        if (e.Key == favKey && e.KeyModifiers == favMods &&
-            vm.SelectedResult is EmojiGridResultViewModel { OnToggleFavorite: { } favAction } emojiGrid) {
-            var previousIndex = emojiGrid.SelectedEmojiIndex;
-            var prevSection = previousIndex < emojiGrid.Cells.Count ? emojiGrid.Cells[previousIndex].Section : EmojiSection.Default;
-            var selectedChar = prevSection == EmojiSection.Default ? emojiGrid.SelectedEmoji?.Char : null;
-            favAction();
-            vm.RefreshSearch();
-            if (vm.SelectedResult is EmojiGridResultViewModel newGrid) {
-                if (selectedChar != null) {
-                    // Cursor was in Default: the Favorites section may have grown/shrunk by 1,
-                    // shifting all Default indices. Find the same emoji in Default to stay put.
-                    var idx = newGrid.Cells.ToList().FindIndex(c => c.Char == selectedChar && c.Section == EmojiSection.Default);
-                    newGrid.SelectedEmojiIndex = idx >= 0 ? idx : Math.Min(previousIndex, newGrid.Cells.Count - 1);
-                } else {
-                    // Cursor was in Favorites or MostUsed: keep same numeric position,
-                    // clamped if the last favorite was removed.
-                    newGrid.SelectedEmojiIndex = Math.Min(previousIndex, newGrid.Cells.Count - 1);
-                }
-            }
-            e.Handled = true;
         }
     }
 
@@ -356,7 +435,9 @@ public partial class MainWindow : Window {
                 break;
 
             case Key.Escape:
-                if (vm.IsSearching) {
+                if (vm.IsOptionsMenuOpen) {
+                    vm.CloseOptionsMenu();
+                } else if (vm.IsSearching) {
                     vm.CancelDeferredSearch();
                     vm.CleanAndSaveHistory(null);
                 } else if (!string.IsNullOrEmpty(vm.SearchText)) {
@@ -391,15 +472,11 @@ public partial class MainWindow : Window {
                 break;
 
             case Key.Return:
-                if (vm.SelectedResult is { OnActivate: { } action } result) {
-                    vm.RecordLaunch(result);
-                    action();
-                    vm.CleanAndSaveHistory(result.Title);
-                    Hide();
-                    if (result.PasteAfterActivate) {
-                        AppHandler.Instance.OnHide();
-                        _ = AppHandler.Instance.SimulatePasteAsync();
-                    }
+                if (!vm.IsOptionsMenuOpen) {
+                    var enterAction = vm.SelectedResult?.Actions
+                        .FirstOrDefault(a => a.Hotkey == ActionHotkey.Enter);
+                    if (enterAction != null)
+                        ExecuteAction(vm, enterAction);
                 }
                 e.Handled = true;
                 break;
@@ -475,18 +552,10 @@ public partial class MainWindow : Window {
     }
 
     private void OnResultsTapped(object? sender, TappedEventArgs e) {
-        var vm = DataContext as MainWindowViewModel;
-        if (vm is null) return;
-        if (vm.SelectedResult is { OnActivate: { } action } result) {
-            vm.RecordLaunch(result);
-            action();
-            vm.CleanAndSaveHistory(result.Title);
-            Hide();
-            if (result.PasteAfterActivate) {
-                AppHandler.Instance.OnHide();
-                _ = AppHandler.Instance.SimulatePasteAsync();
-            }
-        }
+        if (DataContext is not MainWindowViewModel vm) return;
+        var enterAction = vm.SelectedResult?.Actions.FirstOrDefault(a => a.Hotkey == ActionHotkey.Enter);
+        if (enterAction != null)
+            ExecuteAction(vm, enterAction);
     }
 
     private static ListBoxItem? FindListBoxItem(Control? control) {

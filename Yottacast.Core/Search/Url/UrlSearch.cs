@@ -77,14 +77,23 @@ public class UrlSearch(
             Subtitle    = subtitle,
             Category    = "Web",
             Score      = 10.0,
-            OnActivate = () => {
-                if (browser is null) {
-                    logger.LogWarning("UrlSearch: cannot open \"{Url}\" — no browser configured", capturedUrl);
-                    return;
-                }
-                logger.LogInformation("UrlSearch: open \"{Url}\" in {Browser}", capturedUrl, browser.Name);
-                browserDiscovery.OpenUrl(capturedUrl, browser);
-            },
+            Actions = [
+                new() {
+                    Label        = "Open",
+                    Hotkey       = ActionHotkey.Enter,
+                    ShowInFooter = true,
+                    ClosesMenu   = true,
+                    ClosesWindow = true,
+                    Execute      = () => {
+                        if (browser is null) {
+                            logger.LogWarning("UrlSearch: cannot open \"{Url}\" — no browser configured", capturedUrl);
+                            return;
+                        }
+                        logger.LogInformation("UrlSearch: open \"{Url}\" in {Browser}", capturedUrl, browser.Name);
+                        browserDiscovery.OpenUrl(capturedUrl, browser);
+                    },
+                },
+            ],
         };
     }
 

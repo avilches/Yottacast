@@ -45,6 +45,9 @@ public partial class MainWindowViewModel(
 
     [ObservableProperty] private bool _isAltPressed;
 
+    [ObservableProperty] private bool _isOptionsMenuOpen;
+    [ObservableProperty] private int _optionsMenuSelectedIndex;
+
     [ObservableProperty] private bool _updateAvailable;
     [ObservableProperty] private string _updateBannerText = "";
     [ObservableProperty] private string? _searchHint;
@@ -56,20 +59,60 @@ public partial class MainWindowViewModel(
     public string ShiftSymbol => AppHandler.Instance.ShiftSymbol;
     public string SettingsShortcutText => $"{MetaSymbol},  settings";
 
-    public IReadOnlyList<string> FooterHints => SelectedResult switch {
-        EmojiGridResultViewModel =>
-            [$"{MetaSymbol}C  copy", "↵  paste", $"{MetaSymbol}{ShiftSymbol}F  fav", "Esc  clear"],
-        CalculatorResultItemViewModel or ConversionResultItemViewModel =>
-            ["↵  paste", $"{MetaSymbol}C  copy", "Esc  clear"],
-        DictionaryResultViewModel =>
-            ["↵  open", $"{MetaSymbol}C  definition", "Esc  clear"],
-        ResultItemViewModel { OnCopy: not null } =>
-            ["↵  open", $"{MetaSymbol}C  path", "Esc  clear"],
-        ResultItemViewModel =>
-            ["↵  open", "Esc  clear"],
-        _ =>
-            ["Esc  clear"],
-    };
+    public IReadOnlyList<string> FooterHints {
+        get {
+            var actions = SelectedResult?.Actions;
+            if (actions is null or { Count: 0 }) return ["Esc  clear"];
+
+            var hints = new List<string>();
+            foreach (var a in actions.Where(a => a.ShowInFooter && a.Hotkey != null))
+                hints.Add($"{AppHandler.Instance.FormatHotkey(a.Hotkey!)}  {a.Label}");
+
+            if (actions.Any(a => a.ShowInMenu))
+                hints.Add("Tab  Options");
+
+            hints.Add("Esc  clear");
+            return hints;
+        }
+    }
+
+    public IReadOnlyList<ResultAction> OptionsMenuActions {
+        get {
+            var actions = SelectedResult?.Actions;
+            if (actions == null) return [];
+            return actions.Where(a => a.ShowInMenu).ToList();
+        }
+    }
+
+    public IReadOnlyList<OptionsMenuItemVm> OptionsMenuItems =>
+        OptionsMenuActions.Select(a => new OptionsMenuItemVm(
+            Label: a.Label,
+            FormattedHotkey: a.Hotkey != null ? AppHandler.Instance.FormatHotkey(a.Hotkey) : null
+        )).ToList();
+
+    public bool HasOptionsMenu => OptionsMenuActions.Count > 0;
+
+    public ResultAction? SelectedMenuAction =>
+        IsOptionsMenuOpen && OptionsMenuSelectedIndex < OptionsMenuActions.Count
+            ? OptionsMenuActions[OptionsMenuSelectedIndex]
+            : null;
+
+    public void OpenOptionsMenu() {
+        if (!HasOptionsMenu) return;
+        IsOptionsMenuOpen = true;
+        OptionsMenuSelectedIndex = 0;
+    }
+
+    public void CloseOptionsMenu() {
+        IsOptionsMenuOpen = false;
+        OptionsMenuSelectedIndex = 0;
+    }
+
+    public void NavigateOptionsMenu(int delta) {
+        var count = OptionsMenuActions.Count;
+        if (count == 0) return;
+        OptionsMenuSelectedIndex = ((OptionsMenuSelectedIndex + delta) % count + count) % count;
+    }
 
     public ObservableCollection<BaseResultItemViewModel> Results { get; } = [];
 
@@ -265,6 +308,10 @@ public partial class MainWindowViewModel(
     partial void OnSelectedResultChanged(BaseResultItemViewModel? value) {
         OnPropertyChanged(nameof(IsEmojiMode));
         OnPropertyChanged(nameof(FooterHints));
+        OnPropertyChanged(nameof(OptionsMenuActions));
+        OnPropertyChanged(nameof(OptionsMenuItems));
+        OnPropertyChanged(nameof(HasOptionsMenu));
+        CloseOptionsMenu();
     }
 
     /// <summary>
@@ -408,4 +455,7 @@ public partial class MainWindowViewModel(
         }
     }
 
-}                                                                     
+}
+
+/// <summary>Display model for a single item in the options overlay menu.</summary>
+public sealed record OptionsMenuItemVm(string Label, string? FormattedHotkey);                                                                     

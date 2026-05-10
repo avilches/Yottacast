@@ -10,7 +10,7 @@ public static class ResultMapper {
             Title = vm.Title,
             Score = vm.Score,
             BypassLimit = vm.BypassLimit,
-            PasteAfterActivate = vm.PasteAfterActivate,
+            PasteAfterActivate = vm.Actions.FirstOrDefault(a => a.Hotkey == ActionHotkey.Enter)?.PasteAfterClose ?? false,
         };
 
         switch (vm) {

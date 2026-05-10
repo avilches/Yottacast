@@ -5,6 +5,7 @@ using Yottacast.Core.Search;
 using Yottacast.Core.Search.Application;
 using Yottacast.Core.Services;
 using Yottacast.Core.Tests.Fakes;
+using Yottacast.Core.ViewModels;
 
 namespace Yottacast.Core.Tests.Search;
 
@@ -15,6 +16,7 @@ namespace Yottacast.Core.Tests.Search;
 /// </summary>
 internal sealed class FakePlatformProviderWithApps : FakePlatformProvider {
     public IReadOnlyList<string> AppPaths { get; set; }
+    public string? LastLaunchedPath { get; private set; }
 
     public FakePlatformProviderWithApps(IReadOnlyList<string> appPaths) : base([]) {
         AppPaths = appPaths;
@@ -28,6 +30,8 @@ internal sealed class FakePlatformProviderWithApps : FakePlatformProvider {
         }
         await Task.CompletedTask;
     }
+
+    public override void LaunchApp(string path) => LastLaunchedPath = path;
 }
 
 public class ApplicationSearchTests {
@@ -395,20 +399,51 @@ public class ApplicationSearchTests {
         Assert.NotNull(search.Find("Safari"));
     }
 
-    // ── OnCopy / CopiedMessage ────────────────────────────────────────────────
+    // ── Actions ───────────────────────────────────────────────────────────────
 
-    [Fact]
-    public async Task CreateResultItem_HasOnCopyAndCopiedMessage() {
+    private static async Task<(ApplicationSearch search, ClipboardService clipboard, FakePlatformProviderWithApps platform)> CreateSearchAsync() {
         var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
         var platform = new FakePlatformProviderWithApps(["/Applications/Safari.app"]);
         var settings = UserSettings.Load(platform);
         var iconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
         var search = new ApplicationSearch(settings, platform, iconCache, clipboard, NullLogger<ApplicationSearch>.Instance);
         await StartAndWaitAsync(search);
-        var results = SearchAll(search, "safari");
-        var item = Assert.Single(results);
-        Assert.NotNull(item.OnCopy);
-        Assert.Equal("Path copied!", item.CopiedMessage);
+        return (search, clipboard, platform);
+    }
+
+    [Fact]
+    public async Task CreateResultItem_HasOpenAndCopyActions() {
+        var (search, clipboard, platform) = await CreateSearchAsync();
+
+        string? lastCopied = null;
+        clipboard.Initialize(text => lastCopied = text, () => Task.FromResult<string?>(null));
+
+        var item = search.CreateResultItem(new AppInfo("Safari", "/Applications/Safari.app"));
+
+        Assert.Equal(2, item.Actions.Count);
+
+        var open = item.Actions[0];
+        Assert.Equal("Open", open.Label);
+        Assert.Equal(ActionHotkey.Enter, open.Hotkey);
+        Assert.True(open.ShowInFooter);
+        Assert.True(open.ShowInMenu);
+        Assert.True(open.ClosesWindow);
+
+        open.Execute();
+        Assert.Equal("/Applications/Safari.app", platform.LastLaunchedPath);
+
+        var copy = item.Actions[1];
+        Assert.Equal("Copy path", copy.Label);
+        Assert.Equal(ActionHotkey.MetaC, copy.Hotkey);
+        Assert.True(copy.ShowInFooter);
+        Assert.True(copy.ShowInMenu);
+        Assert.False(copy.ClosesWindow);
+
+        copy.Execute();
+        Assert.Equal("/Applications/Safari.app", lastCopied);
+
+        var hint = copy.HintProvider?.Invoke();
+        Assert.Equal("Path copied!", hint);
     }
 
     [Fact]

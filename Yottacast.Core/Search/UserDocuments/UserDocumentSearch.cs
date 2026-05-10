@@ -129,12 +129,29 @@ public class UserDocumentSearch(
                             ItemPath = r.Path,
                             Category = "Files",
                             Score = score * 3.5,
-                            OnActivate = () => {
-                                logger.LogInformation("DocSearch: open \"{Path}\"", path);
-                                platform.LaunchApp(path);
-                            },
-                            OnCopy = () => clipboard.CopyText(path),
-                            CopiedMessage = "Path copied!",
+                            Actions = [
+                                new() {
+                                    Label        = "Open",
+                                    Hotkey       = ActionHotkey.Enter,
+                                    ShowInFooter = true,
+                                    ShowInMenu   = true,
+                                    ClosesMenu   = true,
+                                    ClosesWindow = true,
+                                    Execute      = () => {
+                                        logger.LogInformation("DocSearch: open \"{Path}\"", path);
+                                        platform.LaunchApp(path);
+                                    },
+                                },
+                                new() {
+                                    Label        = "Copy path",
+                                    Hotkey       = ActionHotkey.MetaC,
+                                    ShowInFooter = true,
+                                    ShowInMenu   = true,
+                                    ClosesMenu   = true,
+                                    HintProvider = () => "Path copied!",
+                                    Execute      = () => clipboard.CopyText(path),
+                                },
+                            ],
                         });
 
                         var now = Environment.TickCount64;

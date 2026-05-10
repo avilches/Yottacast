@@ -7,6 +7,7 @@ using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Yottacast.Core.Platform;
+using Yottacast.Core.ViewModels;
 
 namespace Yottacast.Services;
 
@@ -97,6 +98,48 @@ internal abstract class AppHandler {
             return true;
         }
         return false;
+    }
+
+    // ── Action hotkey helpers ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// The platform's Meta key modifier (Cmd on macOS, Ctrl on Windows/Linux).
+    /// Derived from CopyShortcut which already encodes the platform-specific modifier.
+    /// </summary>
+    protected KeyModifiers MetaKeyModifier => CopyShortcut.Modifiers;
+
+    /// <summary>
+    /// Returns true if the KeyEventArgs match the given ActionHotkey,
+    /// resolving Meta to the platform's command modifier (Cmd/Ctrl).
+    /// </summary>
+    public bool MatchesHotkey(KeyEventArgs e, ActionHotkey hotkey) {
+        if (!Enum.TryParse<Key>(hotkey.Key, ignoreCase: true, out var key)) return false;
+        var mods = hotkey.Modifiers switch {
+            ActionModifiers.Meta      => MetaKeyModifier,
+            ActionModifiers.Shift     => KeyModifiers.Shift,
+            ActionModifiers.MetaShift => MetaKeyModifier | KeyModifiers.Shift,
+            _                         => KeyModifiers.None,
+        };
+        return e.Key == key && e.KeyModifiers == mods;
+    }
+
+    /// <summary>
+    /// Returns a display string for the hotkey (e.g. "⌘C", "↵", "⌘⇧F").
+    /// Uses platform-specific MetaSymbol / ShiftSymbol.
+    /// </summary>
+    public string FormatHotkey(ActionHotkey hotkey) {
+        var modStr = hotkey.Modifiers switch {
+            ActionModifiers.Meta      => MetaSymbol,
+            ActionModifiers.Shift     => ShiftSymbol,
+            ActionModifiers.MetaShift => $"{MetaSymbol}{ShiftSymbol}",
+            _                         => ""
+        };
+        var keyStr = hotkey.Key switch {
+            "Return" => "↵",
+            "Tab"    => "⇥",
+            _        => hotkey.Key
+        };
+        return $"{modStr}{keyStr}";
     }
 
     /// <summary>

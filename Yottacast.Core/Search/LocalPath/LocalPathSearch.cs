@@ -34,12 +34,29 @@ public class LocalPathSearch(
             Subtitle       = expanded,
             Category       = "Files",
             Score          = 10.0,
-            OnActivate     = () => {
-                logger.LogInformation("LocalPath: open \"{Path}\"", capturedPath);
-                platform.LaunchApp(capturedPath); // same as UserDocumentSearch: LaunchApp opens arbitrary files/dirs with their default app
-            },
-            OnCopy         = () => clipboard.CopyText(capturedPath),
-            CopiedMessage  = "Path copied!",
+            Actions = [
+                new() {
+                    Label        = "Open",
+                    Hotkey       = ActionHotkey.Enter,
+                    ShowInFooter = true,
+                    ShowInMenu   = true,
+                    ClosesMenu   = true,
+                    ClosesWindow = true,
+                    Execute      = () => {
+                        logger.LogInformation("LocalPath: open \"{Path}\"", capturedPath);
+                        platform.LaunchApp(capturedPath); // same as UserDocumentSearch: LaunchApp opens arbitrary files/dirs with their default app
+                    },
+                },
+                new() {
+                    Label        = "Copy path",
+                    Hotkey       = ActionHotkey.MetaC,
+                    ShowInFooter = true,
+                    ShowInMenu   = true,
+                    ClosesMenu   = true,
+                    HintProvider = () => "Path copied!",
+                    Execute      = () => clipboard.CopyText(capturedPath),
+                },
+            ],
         }];
     }
 

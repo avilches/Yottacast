@@ -57,7 +57,7 @@ public class SearchGrpcService(
         SearchRequest request,
         ServerCallContext context) {
 
-        var (items, hint) = globalSearch.SearchInstant(request.Query, request.Limit);
+        var (items, hint, _) = globalSearch.SearchInstant(request.Query, request.Limit);
         var response = BuildResponse(items, hint, isSearching: false);
         return Task.FromResult(response);
     }
@@ -101,20 +101,19 @@ public class SearchGrpcService(
             emojiGrid.SelectByIndex(request.EmojiIndex);
         }
 
-        switch (request.Action) {
-            case ActionType.Default:
-                vm.OnActivate?.Invoke();
-                break;
-            case ActionType.Copy:
-                vm.OnCopy?.Invoke();
-                break;
-            case ActionType.Favorite:
-                vm.OnToggleFavorite?.Invoke();
-                break;
-        }
+        var action = request.Action switch {
+            ActionType.Default  => vm.Actions.FirstOrDefault(a => a.Hotkey == ActionHotkey.Enter),
+            ActionType.Copy     => vm.Actions.FirstOrDefault(a => a.Hotkey == ActionHotkey.MetaC),
+            ActionType.Favorite => vm.Actions.FirstOrDefault(a => a.Hotkey == ActionHotkey.MetaShiftF),
+            _                   => null
+        };
+        action?.Execute();
+
+        var pasteAfter = request.Action == ActionType.Default
+            && (vm.Actions.FirstOrDefault(a => a.Hotkey == ActionHotkey.Enter)?.PasteAfterClose ?? false);
 
         return Task.FromResult(new ActivateResponse {
-            PasteAfterActivate = vm.PasteAfterActivate,
+            PasteAfterActivate = pasteAfter,
             ClipboardText = _lastCopiedText ?? "",
         });
     }

@@ -99,7 +99,7 @@ public class UrlSearchTests {
         Assert.Equal("https://example.com", r.Title);
         Assert.Equal("Web", r.Category);
         Assert.Equal(10.0, r.Score);
-        Assert.NotNull(r.OnActivate);
+        Assert.NotEmpty(r.Actions);
     }
 
     [Fact]

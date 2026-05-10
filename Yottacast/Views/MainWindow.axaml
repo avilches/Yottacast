@@ -264,129 +264,176 @@
                 </StackPanel>
             </Border>
 
-            <!-- ── Results list ── -->
-            <ListBox DockPanel.Dock="Top"
-                     x:Name="ResultsList"
-                     ItemsSource="{Binding Results}"
-                     SelectedItem="{Binding SelectedResult}"
-                     MaxHeight="{DynamicResource Theme.Results.MaxHeight}"
-                     Padding="{DynamicResource Theme.Results.Padding}"
-                     Background="{DynamicResource Theme.Results.Background}"
-                     IsVisible="{Binding HasResults}"
-                     ScrollViewer.VerticalScrollBarVisibility="Auto"
-                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                     ScrollViewer.AllowAutoHide="True">
-                <ListBox.DataTemplates>
-                    <!-- Template for emoji grid (more specific type first) -->
-                    <DataTemplate x:DataType="viewModels:EmojiGridResultViewModel">
-                        <results:EmojiGridResultView/>
-                    </DataTemplate>
+            <!-- ── Results list + Options overlay ── -->
+            <Panel DockPanel.Dock="Top">
 
-                    <!-- Calculator template (title + subtitle, no icon/category) -->
-                    <DataTemplate x:DataType="viewModels:CalculatorResultItemViewModel">
-                        <results:CalculatorResultItemView/>
-                    </DataTemplate>
+                <ListBox x:Name="ResultsList"
+                         ItemsSource="{Binding Results}"
+                         SelectedItem="{Binding SelectedResult}"
+                         MaxHeight="{DynamicResource Theme.Results.MaxHeight}"
+                         Padding="{DynamicResource Theme.Results.Padding}"
+                         Background="{DynamicResource Theme.Results.Background}"
+                         IsVisible="{Binding HasResults}"
+                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         ScrollViewer.AllowAutoHide="True">
+                    <ListBox.DataTemplates>
+                        <!-- Template for emoji grid (more specific type first) -->
+                        <DataTemplate x:DataType="viewModels:EmojiGridResultViewModel">
+                            <results:EmojiGridResultView/>
+                        </DataTemplate>
 
-                    <!-- Conversion template (two-column from → to layout) -->
-                    <DataTemplate x:DataType="viewModels:ConversionResultItemViewModel">
-                        <results:ConversionResultItemView/>
-                    </DataTemplate>
+                        <!-- Calculator template (title + subtitle, no icon/category) -->
+                        <DataTemplate x:DataType="viewModels:CalculatorResultItemViewModel">
+                            <results:CalculatorResultItemView/>
+                        </DataTemplate>
 
-                    <!-- Dictionary template (word + PoS pill + definition + example) -->
-                    <DataTemplate x:DataType="viewModels:DictionaryResultViewModel">
-                        <results:DictionaryResultItemView/>
-                    </DataTemplate>
+                        <!-- Conversion template (two-column from → to layout) -->
+                        <DataTemplate x:DataType="viewModels:ConversionResultItemViewModel">
+                            <results:ConversionResultItemView/>
+                        </DataTemplate>
 
-                    <!-- Standard template (apps, files, etc.) -->
-                    <DataTemplate x:DataType="viewModels:ResultItemViewModel">
-                        <Grid ColumnDefinitions="Auto,*,Auto" MinHeight="44">
+                        <!-- Dictionary template (word + PoS pill + definition + example) -->
+                        <DataTemplate x:DataType="viewModels:DictionaryResultViewModel">
+                            <results:DictionaryResultItemView/>
+                        </DataTemplate>
 
-                            <!-- Icon box (with optional badge overlay) -->
-                            <Grid Grid.Column="0"
-                                  Width="40" Height="40"
-                                  VerticalAlignment="Center"
-                                  Margin="0,0,12,0">
+                        <!-- Standard template (apps, files, etc.) -->
+                        <DataTemplate x:DataType="viewModels:ResultItemViewModel">
+                            <Grid ColumnDefinitions="Auto,*,Auto" MinHeight="44">
 
-                                <Border Classes="icon-box"
-                                        CornerRadius="{DynamicResource Theme.Results.Icon.CornerRadius}"
-                                        ClipToBounds="True">
-                                    <Image IsVisible="{Binding IconBytes, Converter={x:Static ObjectConverters.IsNotNull}}"
-                                           Source="{Binding IconBytes, Converter={StaticResource PathToAppIcon}}"
-                                           Width="40" Height="40"
-                                           Stretch="UniformToFill"
-                                           RenderOptions.BitmapInterpolationMode="HighQuality"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"/>
-                                </Border>
+                                <!-- Icon box (with optional badge overlay) -->
+                                <Grid Grid.Column="0"
+                                      Width="40" Height="40"
+                                      VerticalAlignment="Center"
+                                      Margin="0,0,12,0">
 
-                                <!-- Default-app badge: bottom-right corner, 7px overflow + 2px ring -->
-                                <Border Width="18" Height="18"
-                                        CornerRadius="5"
-                                        Background="{DynamicResource Theme.Window.Background}"
-                                        HorizontalAlignment="Right"
-                                        VerticalAlignment="Bottom"
-                                        Margin="0,0,-7,-7"
-                                        IsVisible="{Binding BadgeIconBytes, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                    <Border Width="14" Height="14"
-                                            CornerRadius="4"
+                                    <Border Classes="icon-box"
+                                            CornerRadius="{DynamicResource Theme.Results.Icon.CornerRadius}"
                                             ClipToBounds="True">
-                                        <Image Source="{Binding BadgeIconBytes, Converter={StaticResource PathToAppIcon}}"
-                                               Width="14" Height="14"
+                                        <Image IsVisible="{Binding IconBytes, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                               Source="{Binding IconBytes, Converter={StaticResource PathToAppIcon}}"
+                                               Width="40" Height="40"
                                                Stretch="UniformToFill"
-                                               RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                                               RenderOptions.BitmapInterpolationMode="HighQuality"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"/>
                                     </Border>
-                                </Border>
+
+                                    <!-- Default-app badge: bottom-right corner, 7px overflow + 2px ring -->
+                                    <Border Width="18" Height="18"
+                                            CornerRadius="5"
+                                            Background="{DynamicResource Theme.Window.Background}"
+                                            HorizontalAlignment="Right"
+                                            VerticalAlignment="Bottom"
+                                            Margin="0,0,-7,-7"
+                                            IsVisible="{Binding BadgeIconBytes, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                        <Border Width="14" Height="14"
+                                                CornerRadius="4"
+                                                ClipToBounds="True">
+                                            <Image Source="{Binding BadgeIconBytes, Converter={StaticResource PathToAppIcon}}"
+                                                   Width="14" Height="14"
+                                                   Stretch="UniformToFill"
+                                                   RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                                        </Border>
+                                    </Border>
+                                </Grid>
+
+                                <!-- Title + subtitle -->
+                                <StackPanel Grid.Column="1"
+                                            Orientation="Vertical"
+                                            VerticalAlignment="Center"
+                                            Spacing="2">
+                                    <TextBlock Text="{Binding Title}"
+                                               Foreground="{DynamicResource Theme.Results.Title.Color}"
+                                               FontSize="{DynamicResource Theme.Results.Title.Size}"
+                                               FontWeight="Medium"/>
+                                    <TextBlock Text="{Binding Subtitle}"
+                                               Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
+                                               FontSize="{DynamicResource Theme.Results.Subtitle.Size}"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+
+                                <!-- Category (normal) / Score (alt-debug) + shortcut -->
+                                <StackPanel Grid.Column="2"
+                                            Orientation="Horizontal"
+                                            VerticalAlignment="Center"
+                                            Spacing="8"
+                                            Margin="12,0,0,0">
+                                    <!-- Normal mode: category label -->
+                                    <TextBlock x:CompileBindings="False"
+                                               Text="{Binding Category}"
+                                               Foreground="{DynamicResource Theme.Results.Category.Color}"
+                                               FontSize="{DynamicResource Theme.Results.Category.Size}"
+                                               VerticalAlignment="Center"
+                                               IsVisible="{Binding !DataContext.IsAltPressed, ElementName=RootWindow}"/>
+                                    <!-- Alt debug mode: score -->
+                                    <TextBlock x:CompileBindings="False"
+                                               Text="{Binding Score, StringFormat={}{0:F2}}"
+                                               Foreground="{DynamicResource Theme.Results.Category.Color}"
+                                               FontSize="{DynamicResource Theme.Results.Category.Size}"
+                                               VerticalAlignment="Center"
+                                               IsVisible="{Binding DataContext.IsAltPressed, ElementName=RootWindow}"/>
+                                    <Border Background="{DynamicResource Theme.Results.Shortcut.Background}"
+                                            CornerRadius="{DynamicResource Theme.Results.Shortcut.CornerRadius}"
+                                            Padding="7,3"
+                                            IsVisible="{Binding Shortcut, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                        <TextBlock Text="{Binding Shortcut}"
+                                                   Foreground="{DynamicResource Theme.Results.Shortcut.Color}"
+                                                   FontSize="{DynamicResource Theme.Results.Shortcut.Size}"/>
+                                    </Border>
+                                </StackPanel>
+
                             </Grid>
+                        </DataTemplate>
+                    </ListBox.DataTemplates>
+                </ListBox>
 
-                            <!-- Title + subtitle -->
-                            <StackPanel Grid.Column="1"
-                                        Orientation="Vertical"
-                                        VerticalAlignment="Center"
-                                        Spacing="2">
-                                <TextBlock Text="{Binding Title}"
-                                           Foreground="{DynamicResource Theme.Results.Title.Color}"
-                                           FontSize="{DynamicResource Theme.Results.Title.Size}"
-                                           FontWeight="Medium"/>
-                                <TextBlock Text="{Binding Subtitle}"
-                                           Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
-                                           FontSize="{DynamicResource Theme.Results.Subtitle.Size}"
-                                           TextTrimming="CharacterEllipsis"/>
-                            </StackPanel>
+                <!-- ── Options overlay (Tab) ── -->
+                <Border IsVisible="{Binding IsOptionsMenuOpen}"
+                        Background="{DynamicResource Theme.Results.Background}"
+                        BorderBrush="{DynamicResource Theme.Footer.Border}"
+                        BorderThickness="1"
+                        CornerRadius="{DynamicResource Theme.Results.CornerRadius}"
+                        Margin="8"
+                        Padding="0,6,0,6">
 
-                            <!-- Category (normal) / Score (alt-debug) + shortcut -->
-                            <StackPanel Grid.Column="2"
-                                        Orientation="Horizontal"
-                                        VerticalAlignment="Center"
-                                        Spacing="8"
-                                        Margin="12,0,0,0">
-                                <!-- Normal mode: category label -->
-                                <TextBlock x:CompileBindings="False"
-                                           Text="{Binding Category}"
-                                           Foreground="{DynamicResource Theme.Results.Category.Color}"
-                                           FontSize="{DynamicResource Theme.Results.Category.Size}"
-                                           VerticalAlignment="Center"
-                                           IsVisible="{Binding !DataContext.IsAltPressed, ElementName=RootWindow}"/>
-                                <!-- Alt debug mode: score -->
-                                <TextBlock x:CompileBindings="False"
-                                           Text="{Binding Score, StringFormat={}{0:F2}}"
-                                           Foreground="{DynamicResource Theme.Results.Category.Color}"
-                                           FontSize="{DynamicResource Theme.Results.Category.Size}"
-                                           VerticalAlignment="Center"
-                                           IsVisible="{Binding DataContext.IsAltPressed, ElementName=RootWindow}"/>
-                                <Border Background="{DynamicResource Theme.Results.Shortcut.Background}"
-                                        CornerRadius="{DynamicResource Theme.Results.Shortcut.CornerRadius}"
-                                        Padding="7,3"
-                                        IsVisible="{Binding Shortcut, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                                    <TextBlock Text="{Binding Shortcut}"
-                                               Foreground="{DynamicResource Theme.Results.Shortcut.Color}"
-                                               FontSize="{DynamicResource Theme.Results.Shortcut.Size}"/>
-                                </Border>
-                            </StackPanel>
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top"
+                                   Text="Actions"
+                                   Foreground="{DynamicResource Theme.Footer.Color}"
+                                   FontSize="{DynamicResource Theme.Footer.Size}"
+                                   Margin="14,4,14,8"/>
 
-                        </Grid>
-                    </DataTemplate>
-                </ListBox.DataTemplates>
-            </ListBox>
+                        <ListBox ItemsSource="{Binding OptionsMenuItems}"
+                                 SelectedIndex="{Binding OptionsMenuSelectedIndex, Mode=OneWay}"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 IsHitTestVisible="False"
+                                 Padding="6,0">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:OptionsMenuItemVm">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding Label}"
+                                                   Foreground="{DynamicResource Theme.Results.Title.Color}"
+                                                   FontSize="{DynamicResource Theme.Results.Title.Size}"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{Binding FormattedHotkey}"
+                                                   Foreground="{DynamicResource Theme.Results.Category.Color}"
+                                                   FontSize="{DynamicResource Theme.Results.Category.Size}"
+                                                   VerticalAlignment="Center"
+                                                   Margin="16,0,0,0"
+                                                   IsVisible="{Binding FormattedHotkey, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+                </Border>
+
+            </Panel>
 
             <!-- ── Update banner ── -->
             <Button DockPanel.Dock="Bottom"
