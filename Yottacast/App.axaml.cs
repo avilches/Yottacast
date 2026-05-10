@@ -253,7 +253,6 @@ public partial class App : Application {
 
         // Register IInstantSearchSource and IDeferredSearchSource implementations.
         services.AddSingleton<UserDocumentSearch>();
-        services.AddSingleton<RandomSearch>();
         services.AddSingleton<PluginService>();
         services.AddSingleton<WebSearchSource>();
         services.AddSingleton<IInstantSearchSource>(sp => sp.GetRequiredService<ApplicationSearch>());
@@ -276,7 +275,8 @@ public partial class App : Application {
         }
         services.AddSingleton<IDeferredSearchSource>(sp => sp.GetRequiredService<UserDocumentSearch>());
         services.AddSingleton<IDeferredSearchSource>(sp => sp.GetRequiredService<DictionarySource>());
-        // services.AddSingleton<IDeferredSearchSource>(sp => sp.GetRequiredService<RandomSearch>());
+        services.AddSingleton<RandomSearch>();
+        services.AddSingleton<IDeferredSearchSource>(sp => sp.GetRequiredService<RandomSearch>());
 
         // Register IEmptyStateSource implementations
         services.AddSingleton<IEmptyStateSource>(sp => sp.GetRequiredService<NewlyInstalledAppsSource>());

@@ -86,6 +86,22 @@
         <Style Selector="ListBoxItem:selected TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource Theme.Results.Selection.Color}"/>
         </Style>
+        <!-- Options menu ListBoxItems: compact, themed -->
+        <Style Selector="ListBox.menu-list ListBoxItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="{DynamicResource Theme.Menu.Option.Padding}"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="CornerRadius" Value="{DynamicResource Theme.Menu.Option.CornerRadius}"/>
+            <Setter Property="Cursor" Value="Arrow"/>
+        </Style>
+        <Style Selector="ListBox.menu-list ListBoxItem:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource Theme.Menu.OptionSelected.Background}"/>
+        </Style>
+        <Style Selector="ListBox.menu-list ListBoxItem:selected TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource Theme.Menu.OptionSelected.Color}"/>
+        </Style>
+
         <!-- Dictionary pills keep category color when selected -->
         <Style Selector="ListBoxItem:selected TextBlock.dict-pill">
             <Setter Property="Foreground" Value="{DynamicResource Theme.Results.Category.Color}"/>
@@ -265,7 +281,7 @@
             </Border>
 
             <!-- ── Results list + Options overlay ── -->
-            <Panel DockPanel.Dock="Top">
+            <Panel DockPanel.Dock="Top" x:Name="ResultsPanel">
 
                 <ListBox x:Name="ResultsList"
                          ItemsSource="{Binding Results}"
@@ -389,48 +405,63 @@
                     </ListBox.DataTemplates>
                 </ListBox>
 
-                <!-- ── Options overlay (Tab) ── -->
-                <Border IsVisible="{Binding IsOptionsMenuOpen}"
-                        Background="{DynamicResource Theme.Results.Background}"
-                        BorderBrush="{DynamicResource Theme.Footer.Border}"
+                <!-- ── Options overlay (Tab) — right-aligned, positioned below selected item ── -->
+                <Border x:Name="OptionsMenuOverlay"
+                        IsVisible="{Binding IsOptionsMenuOpen}"
+                        Background="{DynamicResource Theme.Menu.Background}"
+                        BorderBrush="{DynamicResource Theme.Menu.Border.Color}"
                         BorderThickness="1"
-                        CornerRadius="{DynamicResource Theme.Results.CornerRadius}"
-                        Margin="8"
-                        Padding="0,6,0,6">
+                        CornerRadius="{DynamicResource Theme.Menu.Border.Radius}"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        MinWidth="220"
+                        Margin="8">
 
-                    <DockPanel>
-                        <TextBlock DockPanel.Dock="Top"
-                                   Text="Actions"
-                                   Foreground="{DynamicResource Theme.Footer.Color}"
-                                   FontSize="{DynamicResource Theme.Footer.Size}"
-                                   Margin="14,4,14,8"/>
+                    <StackPanel>
+                        <!-- Header -->
+                        <Border Background="{DynamicResource Theme.Menu.Header.Background}"
+                                Padding="{DynamicResource Theme.Menu.Header.Padding}"
+                                Margin="{DynamicResource Theme.Menu.Header.Margin}">
+                            <TextBlock Text="Actions"
+                                       Foreground="{DynamicResource Theme.Menu.Header.Color}"
+                                       FontSize="{DynamicResource Theme.Menu.Header.Size}"/>
+                        </Border>
 
-                        <ListBox ItemsSource="{Binding OptionsMenuItems}"
+                        <!-- Options list -->
+                        <ListBox Classes="menu-list"
+                                 ItemsSource="{Binding OptionsMenuItems}"
                                  SelectedIndex="{Binding OptionsMenuSelectedIndex, Mode=OneWay}"
                                  Background="Transparent"
                                  BorderThickness="0"
                                  IsHitTestVisible="False"
-                                 Padding="6,0">
+                                 Padding="4,0,4,4">
+                            <!-- Override global selection-bar style: menu items must not shift on selection -->
+                            <ListBox.Styles>
+                                <Style Selector="ListBoxItem:selected">
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="Padding" Value="{DynamicResource Theme.Menu.Option.Padding}"/>
+                                </Style>
+                            </ListBox.Styles>
                             <ListBox.ItemTemplate>
                                 <DataTemplate x:DataType="vm:OptionsMenuItemVm">
                                     <Grid ColumnDefinitions="*,Auto">
                                         <TextBlock Grid.Column="0"
                                                    Text="{Binding Label}"
-                                                   Foreground="{DynamicResource Theme.Results.Title.Color}"
-                                                   FontSize="{DynamicResource Theme.Results.Title.Size}"
+                                                   Foreground="{DynamicResource Theme.Menu.Option.Color}"
+                                                   FontSize="{DynamicResource Theme.Menu.Option.Size}"
                                                    VerticalAlignment="Center"/>
                                         <TextBlock Grid.Column="1"
                                                    Text="{Binding FormattedHotkey}"
-                                                   Foreground="{DynamicResource Theme.Results.Category.Color}"
-                                                   FontSize="{DynamicResource Theme.Results.Category.Size}"
+                                                   Foreground="{DynamicResource Theme.Menu.Header.Color}"
+                                                   FontSize="{DynamicResource Theme.Menu.Option.Size}"
                                                    VerticalAlignment="Center"
-                                                   Margin="16,0,0,0"
+                                                   Margin="20,0,0,0"
                                                    IsVisible="{Binding FormattedHotkey, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                     </Grid>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
-                    </DockPanel>
+                    </StackPanel>
                 </Border>
 
             </Panel>

@@ -325,6 +325,25 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
             }
 
 
+            // ── Options Menu ──
+            var menu = json["optionsMenu"];
+            if (menu != null) {
+                SetBrush(app,        "Theme.Menu.Background",               menu["background"]);
+                SetBrush(app,        "Theme.Menu.Border.Color",             menu["border"]?["color"]);
+                SetCornerRadius(app, "Theme.Menu.Border.Radius",            menu["border"]?["radius"]);
+                SetBrush(app,        "Theme.Menu.Header.Color",             menu["header"]?["color"]);
+                SetDouble(app,       "Theme.Menu.Header.Size",              menu["header"]?["size"]);
+                SetBrush(app,        "Theme.Menu.Header.Background",        menu["header"]?["background"]);
+                SetThickness(app,    "Theme.Menu.Header.Padding",           menu["header"]?["padding"]);
+                SetThickness(app,    "Theme.Menu.Header.Margin",            menu["header"]?["margin"]);
+                SetBrush(app,        "Theme.Menu.Option.Color",             menu["option"]?["color"]);
+                SetDouble(app,       "Theme.Menu.Option.Size",              menu["option"]?["size"]);
+                SetThickness(app,    "Theme.Menu.Option.Padding",           menu["option"]?["padding"]);
+                SetCornerRadius(app, "Theme.Menu.Option.CornerRadius",      menu["option"]?["cornerRadius"]);
+                SetBrush(app,        "Theme.Menu.OptionSelected.Background", menu["optionSelected"]?["background"]);
+                SetBrush(app,        "Theme.Menu.OptionSelected.Color",      menu["optionSelected"]?["color"]);
+            }
+
             // ── Update Banner ──
             var update = json["updateBanner"];
             if (update != null) {
@@ -454,6 +473,22 @@ public sealed class ThemeService(ILogger<ThemeService> logger) : IDisposable {
         app.Resources["Theme.Footer.Color"]      = B("#9A9AA4");
         app.Resources["Theme.Footer.Size"]       = 13.0;
 
+
+        // ── Options Menu ──
+        app.Resources["Theme.Menu.Background"]                = B("#1C1C22");
+        app.Resources["Theme.Menu.Border.Color"]              = B("#3A3A50");
+        app.Resources["Theme.Menu.Border.Radius"]             = new CornerRadius(10);
+        app.Resources["Theme.Menu.Header.Color"]              = B("#606068");
+        app.Resources["Theme.Menu.Header.Size"]               = 11.0;
+        app.Resources["Theme.Menu.Header.Background"]         = new SolidColorBrush(Colors.Transparent);
+        app.Resources["Theme.Menu.Header.Padding"]            = new Thickness(12, 6, 12, 4);
+        app.Resources["Theme.Menu.Header.Margin"]             = new Thickness(0, 0, 0, 2);
+        app.Resources["Theme.Menu.Option.Color"]              = B("#EAEAEE");
+        app.Resources["Theme.Menu.Option.Size"]               = 13.0;
+        app.Resources["Theme.Menu.Option.Padding"]            = new Thickness(12, 7);
+        app.Resources["Theme.Menu.Option.CornerRadius"]       = new CornerRadius(6);
+        app.Resources["Theme.Menu.OptionSelected.Background"] = B("#2C5AF0");
+        app.Resources["Theme.Menu.OptionSelected.Color"]      = B("#FFFFFF");
 
         // ── Update Banner ──
         app.Resources["Theme.Update.Background"] = B("#2C5AF0");

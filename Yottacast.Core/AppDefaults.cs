@@ -17,7 +17,7 @@ public static class AppDefaults {
     // ── Search — result limits per source (-1 = no limit) ────────────────────
     /// Fallback limit passed to GlobalSearch.SearchInstant/SearchDeferredAsync.
     /// Used by unlimited sources (Limit = -1) as their effective cap, and by deferred sources.
-    public const int SearchSourceLimit = 10;
+    public const int SearchSourceLimit = 500;
     /// Application search: max matched apps shown.
     public const int AppSearchLimit = 10;
     /// Calculator/converter: always returns 0-1 result — self-limiting by nature.

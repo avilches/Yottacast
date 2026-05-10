@@ -91,6 +91,17 @@
   },
 
 
+  "optionsMenu": {
+    "background": "#1C1C1E",
+    "border": { "color": "#3A3A3C", "radius": 10 },
+    "header": {
+      "color": "#8E8E93", "size": 11, "background": "#00000000",
+      "padding": "12,6,12,4", "margin": "0,0,0,2"
+    },
+    "option": { "color": "#F2F2F7", "size": 13, "padding": "12,7", "cornerRadius": 6 },
+    "optionSelected": { "background": "#0A84FF", "color": "#FFFFFF" }
+  },
+
   "updateBanner": {
     "background": "#0A84FF",
     "text": { "color": "#FFFFFF", "size": 12 }

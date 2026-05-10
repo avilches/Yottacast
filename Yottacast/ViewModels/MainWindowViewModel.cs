@@ -62,7 +62,7 @@ public partial class MainWindowViewModel(
     public IReadOnlyList<string> FooterHints {
         get {
             var actions = SelectedResult?.Actions;
-            if (actions is null or { Count: 0 }) return ["Esc  clear"];
+            if (actions is null or { Count: 0 }) return [];
 
             var hints = new List<string>();
             foreach (var a in actions.Where(a => a.ShowInFooter && a.Hotkey != null))
@@ -71,7 +71,6 @@ public partial class MainWindowViewModel(
             if (actions.Any(a => a.ShowInMenu))
                 hints.Add("Tab  Options");
 
-            hints.Add("Esc  clear");
             return hints;
         }
     }
@@ -99,6 +98,7 @@ public partial class MainWindowViewModel(
 
     public void OpenOptionsMenu() {
         if (!HasOptionsMenu) return;
+        OptionsMenuSelectedIndex = -1; // force property-changed so 0 triggers a real update
         IsOptionsMenuOpen = true;
         OptionsMenuSelectedIndex = 0;
     }
@@ -124,6 +124,7 @@ public partial class MainWindowViewModel(
     private IReadOnlyList<BaseResultItemViewModel> _instantSnapshot = [];
     private IReadOnlyList<BaseResultItemViewModel> _deferredSnapshot = [];
     private bool _userNavigated;
+    private bool _suppressMenuClose;
     private int _historyNavIndex = -1;
     private bool _navigatingHistory;
     private bool _textIsFromHistory;
@@ -311,7 +312,9 @@ public partial class MainWindowViewModel(
         OnPropertyChanged(nameof(OptionsMenuActions));
         OnPropertyChanged(nameof(OptionsMenuItems));
         OnPropertyChanged(nameof(HasOptionsMenu));
-        CloseOptionsMenu();
+        // During a results refresh, SelectedResult briefly goes null while the collection
+        // is cleared and rebuilt — don't close the overlay for transient changes.
+        if (!_suppressMenuClose && !HasOptionsMenu) CloseOptionsMenu();
     }
 
     /// <summary>
@@ -438,20 +441,49 @@ public partial class MainWindowViewModel(
             .ToList();
 
         var previousSelected = SelectedResult;
-        Results.Clear();
-        foreach (var item in merged) Results.Add(item);
-        HasResults = Results.Count > 0;
-        ShowNoResults = false;
+        _suppressMenuClose = true;
+        BaseResultItemViewModel? chosen = null;
+        try {
+            Results.Clear();
+            foreach (var item in merged) Results.Add(item);
+            HasResults = Results.Count > 0;
+            ShowNoResults = false;
 
-        var calcResult = merged.FirstOrDefault(x =>
-            x is ConversionResultItemViewModel ||
-            (x is ResultItemViewModel r && r.Category is "Calculator"));
-        if (calcResult != null && !_userNavigated) {
-            SelectedResult = calcResult;
-        } else if (_userNavigated && previousSelected != null && merged.Contains(previousSelected)) {
-            SelectedResult = previousSelected;
-        } else {
-            SelectedResult = Results.FirstOrDefault();
+            var calcResult = merged.FirstOrDefault(x =>
+                x is ConversionResultItemViewModel ||
+                (x is ResultItemViewModel r && r.Category is "Calculator"));
+            if (calcResult != null && !_userNavigated) {
+                chosen = calcResult;
+            } else if (_userNavigated && previousSelected != null) {
+                // Reference match first; semantic fallback when ViewModels are recreated
+                // (e.g. app cache refresh creates new objects for the same logical items).
+                if (merged.Contains(previousSelected)) {
+                    chosen = previousSelected;
+                } else {
+                    var prevSubtitle = (previousSelected as ResultItemViewModel)?.Subtitle;
+                    chosen = merged.FirstOrDefault(x =>
+                        x.Title == previousSelected.Title &&
+                        (prevSubtitle == null || (x as ResultItemViewModel)?.Subtitle == prevSubtitle));
+                }
+                chosen ??= Results.FirstOrDefault();
+            } else {
+                chosen = Results.FirstOrDefault();
+            }
+            SelectedResult = chosen;
+        } finally {
+            _suppressMenuClose = false;
+            // Post-refresh: close overlay if the new result has no menu actions
+            if (!HasOptionsMenu) CloseOptionsMenu();
+        }
+
+        // Guard: Avalonia may dispatch a null back through the SelectedItem binding after
+        // Results.Clear(). Re-assert the desired selection after all pending binding updates.
+        if (chosen != null) {
+            var target = chosen;
+            Dispatcher.UIThread.Post(() => {
+                if (SelectedResult == null && Results.Contains(target))
+                    SelectedResult = target;
+            });
         }
     }
 

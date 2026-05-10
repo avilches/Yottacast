@@ -38,7 +38,7 @@
   "spinner": { "color": "#505055" },
 
   "results": {
-    "maxHeight": 540,
+    "maxHeight": 340,
     "background": "#1C1C22",
     "padding": 8,
     "cornerRadius": 8,
@@ -89,6 +89,17 @@
     "text": { "color": "#9A9AA4", "size": 13 }
   },
 
+
+  "optionsMenu": {
+    "background": "#1C1C22",
+    "border": { "color": "#3A3A50", "radius": 12 },
+    "header": {
+      "color": "#606068", "size": 11, "background": "#00000000",
+      "padding": "12,6,12,4", "margin": "0,0,0,2"
+    },
+    "option": { "color": "#EAEAEE", "size": 13, "padding": "12,6", "cornerRadius": 6 },
+    "optionSelected": { "background": "#2C5AF0", "color": "#FFFFFF" }
+  },
 
   "updateBanner": {
     "background": "#2C5AF0",

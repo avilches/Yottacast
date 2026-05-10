@@ -256,11 +256,3 @@ Los items dinámicos se cachean 10 s (ver `AppDefaults.SystemSettingsDynamicCach
 Al actualizar macOS, ejecutar `tools/verify-settings-anchors.sh` para verificar visualmente que cada anchor navega a la sección correcta. El script abre cada URL con 1 s de delay entre ellas.
 
 > **Verificar en:** `Search/SystemSettings/SystemSettingsSearch.cs` (Start, Search, GetDynamicPanels, Load, TryReadPlist, BuildResult), `Search/SystemSettings/BuiltinPanels.cs`, `Platform/PlatformProvider.cs` (GetCurrentWifiNetworkName, GetActiveVpnNames), `Platform/MacOsPlatformProvider.cs` (GetCurrentWifiNetworkName, GetActiveVpnNames), `AppDefaults.cs` (SystemSettingsDynamicCacheTtl), `Yottacast.Core.Tests/Search/SystemSettingsSearchTests.cs`.
-
----
-
-## 8. RandomSearch (solo testing)
-
-`RandomSearch` es una fuente deferred de prueba. Esta registrada como singleton en el contenedor DI pero la linea que la conecta como `IDeferredSearchSource` esta comentada en `App.axaml.cs`. Emite hasta 5 resultados con scores aleatorios (0.5 a 1.0) con delays progresivos (200 ms + 50 ms por resultado). Cada snapshot es acumulativo.
-
-> **Verificar en:** `RandomSearch.cs`, `App.axaml.cs` (linea comentada de registro DI).

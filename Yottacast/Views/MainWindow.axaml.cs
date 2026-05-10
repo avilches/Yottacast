@@ -58,6 +58,8 @@ public partial class MainWindow : Window {
                     emojiLogged = true;
                     Avalonia.Threading.Dispatcher.UIThread.Post(() => LogFontDiagnostics("after-first-emoji"), Avalonia.Threading.DispatcherPriority.Background);
                 }
+                if (args.PropertyName == nameof(MainWindowViewModel.IsOptionsMenuOpen) && vm.IsOptionsMenuOpen)
+                    Avalonia.Threading.Dispatcher.UIThread.Post(PositionOptionsMenu);
             };
         };
     }
@@ -333,7 +335,7 @@ public partial class MainWindow : Window {
                     return;
             }
             if (e.Key is Key.Left or Key.Right) { e.Handled = true; return; }
-            return;
+            // Non-navigation keys (e.g. ⌘C, ⌘⇧F) fall through to the action hotkey loop below
         }
 
         // ── Tab opens overlay ───────────────────────────────────────────────────
@@ -358,11 +360,11 @@ public partial class MainWindow : Window {
                 e.Handled = onDown();
                 break;
             case Key.Prior:
-                SelectDelta(vm, -AppDefaults.SearchSourceLimit);
+                SelectDelta(vm, -GetVisiblePageSize());
                 e.Handled = true;
                 break;
             case Key.Next:
-                SelectDelta(vm, +AppDefaults.SearchSourceLimit);
+                SelectDelta(vm, +GetVisiblePageSize());
                 e.Handled = true;
                 break;
         }
@@ -494,6 +496,23 @@ public partial class MainWindow : Window {
     protected override void OnClosing(WindowClosingEventArgs e) {
         e.Cancel = true;
         Hide();
+    }
+
+    private void PositionOptionsMenu() {
+        if (DataContext is not MainWindowViewModel vm || vm.SelectedResult == null) return;
+        var container = ResultsList.ContainerFromItem(vm.SelectedResult) as ListBoxItem;
+        if (container == null) return;
+        var pos = container.TranslatePoint(new Point(0, 0), ResultsPanel);
+        if (!pos.HasValue) return;
+        var top = Math.Max(0, pos.Value.Y + container.Bounds.Height);
+        OptionsMenuOverlay.Margin = new Thickness(8, top, 8, 0);
+    }
+
+    private int GetVisiblePageSize() {
+        const double itemMinHeight = 52.0; // matches ListBoxItem MinHeight in Window.Styles
+        var sv = ResultsList.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
+        var viewportHeight = sv?.Viewport.Height ?? ResultsList.Bounds.Height;
+        return viewportHeight > 0 ? Math.Max(1, (int)(viewportHeight / itemMinHeight)) : 5;
     }
 
     private static void SelectNext(MainWindowViewModel vm, int delta) {
