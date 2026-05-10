@@ -57,7 +57,7 @@ public class UserSettings {
     public bool DictionaryShowAlways { get; set; } = false;
     public List<string> DictionaryLanguages { get; set; } = new(AppDefaults.DictionaryDefaultLanguages);
     public bool DateSearchEnabled { get; set; } = true;
-    public List<string> DateSearchLanguages { get; set; } = ["es-es", "en-us"];
+    public List<string> DateSearchLanguages { get; set; } = new(AppDefaults.DateSearchDefaultLanguages);
     public bool EnableHistory { get; set; } = true;
     public int HistoryMaxItems { get; set; } = AppDefaults.HistoryMaxItems;
     public bool KeepValueWhenHide { get; set; } = true;
@@ -240,7 +240,7 @@ public class UserSettings {
                     DictionaryShowAlways = data.DictionaryShowAlways,
                     DictionaryLanguages = data.DictionaryLanguages is { Count: > 0 } ? data.DictionaryLanguages : new(AppDefaults.DictionaryDefaultLanguages),
                     DateSearchEnabled = data.DateSearchEnabled,
-                    DateSearchLanguages = data.DateSearchLanguages is { Count: > 0 } ? data.DateSearchLanguages : ["es-es", "en-us"],
+                    DateSearchLanguages = data.DateSearchLanguages is { Count: > 0 } ? data.DateSearchLanguages : new(AppDefaults.DateSearchDefaultLanguages),
                     EnableHistory = data.EnableHistory,
                     HistoryMaxItems = data.HistoryMaxItems is >= 1 and <= AppDefaults.HistoryMaxItems
                         ? data.HistoryMaxItems
