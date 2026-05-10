@@ -10,15 +10,14 @@ using System.Net.Http;
 namespace Yottacast.Core.Tests.Search.Calculator;
 
 [Collection("MathJs")]
-public class CalculatorSearchTests(MathJsEngineFixture fixture) {
+public class CalculatorSearchTests(MathJsEngineFixture fixture, NerdamerEngineFixture nerdamerFixture) : IClassFixture<NerdamerEngineFixture> {
 
     private CalculatorSearch BuildSearch(out ClipboardService clipboard) {
         clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
         var settings = UserSettings.Load(new FakePlatformProvider([]));
         var provider = MathJsEngineProvider.ForTesting(fixture.Engine);
         var exchangeRateService = new ExchangeRateService(new HttpClient(), settings, NullLogger<ExchangeRateService>.Instance);
-        var nerdamer = new NerdamerEngine(); // not awaited — arithmetic queries never contain '=' so TrySolve is never called
-        return new CalculatorSearch(provider, exchangeRateService, clipboard, settings, NullLogger<CalculatorSearch>.Instance, nerdamer);
+        return new CalculatorSearch(provider, exchangeRateService, clipboard, settings, NullLogger<CalculatorSearch>.Instance, nerdamerFixture.Engine);
     }
 
     private static BaseResultItemViewModel SearchResult(CalculatorSearch search, string query) {

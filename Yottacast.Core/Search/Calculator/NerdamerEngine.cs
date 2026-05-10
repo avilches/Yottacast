@@ -11,7 +11,7 @@ public record VariableSolution(
 public record SolveResult(VariableSolution[] Variables);
 
 /// <summary>
-/// Wraps a Jint engine loaded with nerdamer (core + Algebra addon).
+/// Wraps a Jint engine loaded with nerdamer (core + Algebra + Calculus + Solve addons).
 /// Solves algebraic equations symbolically: "2x-5=2" → x = 3.5.
 /// Initializes in background; TrySolve returns null while not ready.
 /// Thread-safe: a lock guards the engine during evaluation.
