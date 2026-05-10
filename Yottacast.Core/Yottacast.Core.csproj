@@ -72,7 +72,7 @@
     <EmbeddedResource Include="Search/Calculator/unit-config.json" />
     <EmbeddedResource Include="Search/Calculator/nerdamer.core.min.js" Condition="Exists('Search/Calculator/nerdamer.core.min.js')" />
     <EmbeddedResource Include="Search/Calculator/Algebra.min.js" Condition="Exists('Search/Calculator/Algebra.min.js')" />
-    <EmbeddedResource Include="Search/Calculator/nerdamer-helpers.js" Condition="Exists('Search/Calculator/nerdamer-helpers.js')" />
+    <EmbeddedResource Include="Search/Calculator/nerdamer-helpers.js" />
     <EmbeddedResource Include="Search/Emoji/emoji-cache.json" Condition="Exists('Search/Emoji/emoji-cache.json')" />
     <EmbeddedResource Include="Search/Emoji/emoji-data.json" Condition="Exists('Search/Emoji/emoji-data.json')" />
     <EmbeddedResource Include="Search/WebSearch/Icons/*.png" Condition="Exists('Search/WebSearch/Icons')" />
