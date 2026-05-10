@@ -66,6 +66,10 @@ public static class AppDefaults {
     /// Delay before simulating Cmd+V / Ctrl+V after selecting an emoji.
     public const int PasteDelayMs = 150;
 
+    // ── Search — date ────────────────────────────────────────────────────────
+    /// Date search: score for recognized date/daterange results.
+    public const double DateSearchScore = 6.0;
+
     // ── Search — dictionary ────────────────────────────────────────────────
     /// HTTP timeout for dictionary API requests.
     public const int DictionaryTimeoutSeconds = 5;
