@@ -25,7 +25,7 @@ La busqueda se divide en dos fases con distinto coste y latencia.
 
 ### Fase instant (sin retardo)
 
-Cuando el usuario escribe, las fuentes en memoria (apps cacheadas, emojis, calculadora, web search) se consultan de forma sincrona. Los resultados aparecen inmediatamente.
+Cuando el usuario escribe, las fuentes en memoria (apps cacheadas, emojis, calculadora, fechas, web search) se consultan de forma sincrona. Los resultados aparecen inmediatamente.
 
 ### Fase diferida (con debounce de 250 ms)
 
@@ -243,6 +243,7 @@ Cada tipo de resultado tiene sus propios hints:
 | Calculadora | `↵ Copy result` · `⌘C Copy` |
 | Conversor | `↵ Copy result` · `⌘C Copy` · `←→ Switch cell` |
 | Diccionario | `↵ Open Wiktionary` · `⌘C Definition` |
+| Fecha / Rango de fechas | `↵ Copy` · `⌘C Copy` · `←→ Switch cell` |
 | Emoji | `↵ Copy & paste` · `⌘C Copy` · `⌘⇧F Favorite` |
 | Búsqueda web | `↵ Search` |
 

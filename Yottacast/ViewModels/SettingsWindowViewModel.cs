@@ -20,7 +20,7 @@ using Yottacast.Services;
 namespace Yottacast.ViewModels;
 
 public enum SettingsSection {
-    General, AppSearch, WebSearch, FileSearch, Calculator, Clipboard, Emoji, Dictionary, History
+    General, AppSearch, WebSearch, FileSearch, Calculator, Clipboard, Emoji, Dictionary, DateSearch, History
 }
 
 public partial class SettingsWindowViewModel : ViewModelBase {
@@ -34,6 +34,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [NotifyPropertyChangedFor(nameof(IsClipboardSelected))]
     [NotifyPropertyChangedFor(nameof(IsEmojiSelected))]
     [NotifyPropertyChangedFor(nameof(IsDictionarySelected))]
+    [NotifyPropertyChangedFor(nameof(IsDateSearchSelected))]
     [NotifyPropertyChangedFor(nameof(IsHistorySelected))]
     private SettingsSection _selectedSection = SettingsSection.General;
 
@@ -51,6 +52,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     public bool IsClipboardSelected  => SelectedSection == SettingsSection.Clipboard;
     public bool IsEmojiSelected      => SelectedSection == SettingsSection.Emoji;
     public bool IsDictionarySelected          => SelectedSection == SettingsSection.Dictionary;
+    public bool IsDateSearchSelected          => SelectedSection == SettingsSection.DateSearch;
     public bool IsHistorySelected             => SelectedSection == SettingsSection.History;
     public bool IsSystemSettingsSectionVisible => AppHandler.Instance.SupportsSystemSettingsSearch;
 
@@ -62,6 +64,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [RelayCommand] private void SelectClipboard()  => SelectedSection = SettingsSection.Clipboard;
     [RelayCommand] private void SelectEmoji()      => SelectedSection = SettingsSection.Emoji;
     [RelayCommand] private void SelectDictionary()     => SelectedSection = SettingsSection.Dictionary;
+    [RelayCommand] private void SelectDateSearch()     => SelectedSection = SettingsSection.DateSearch;
     [RelayCommand] private void SelectHistory()        => SelectedSection = SettingsSection.History;
 
     // ── General section ──────────────────────────────────────────────────────
@@ -186,6 +189,12 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     partial void OnEnableDictionaryChanged(bool value)    { _settings.EnableDictionary    = value; _settings.Save(); _logger.LogInformation("Settings: EnableDictionary = {Value}", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnDictionaryPrefixChanged(string value)  { _settings.DictionaryPrefix    = value; _settings.Save(); _logger.LogInformation("Settings: DictionaryPrefix = \"{Value}\"", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnDictionaryShowAlwaysChanged(bool value) { _settings.DictionaryShowAlways = value; _settings.Save(); _logger.LogInformation("Settings: DictionaryShowAlways = {Value}", value); _settings.NotifySearchSettingsChanged(); }
+
+    // ── Date Search config ───────────────────────────────────────────────────
+    [ObservableProperty] private bool _enableDateSearch;
+    public ObservableCollection<DateSearchLanguageItem> DateSearchLanguages { get; private set; } = [];
+
+    partial void OnEnableDateSearchChanged(bool value) { _settings.DateSearchEnabled = value; _settings.Save(); _logger.LogInformation("Settings: DateSearchEnabled = {Value}", value); _settings.NotifySearchSettingsChanged(); }
 
     // ── System Settings config ───────────────────────────────────────────────
     [ObservableProperty] private bool _enableSystemSettings;
@@ -322,6 +331,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _calculatorIncludeCrypto              = settings.CalculatorIncludeCrypto;
         _exchangeRateRefreshIntervalHours     = settings.ExchangeRateRefreshIntervalHours;
         _enableDictionary                     = settings.EnableDictionary;
+        _enableDateSearch                     = settings.DateSearchEnabled;
         _enableSystemSettings                 = settings.EnableSystemSettings;
         _dictionaryPrefix                = settings.DictionaryPrefix;
         _dictionaryShowAlways            = settings.DictionaryShowAlways;
@@ -344,6 +354,21 @@ public partial class SettingsWindowViewModel : ViewModelBase {
                 _settings.DictionaryLanguages = selected;
                 _settings.Save();
                 _logger.LogInformation("Settings: DictionaryLanguages = [{Languages}]", string.Join(", ", selected));
+                _settings.NotifySearchSettingsChanged();
+            };
+
+        var selectedDateLangs = new HashSet<string>(settings.DateSearchLanguages);
+        DateSearchLanguages = new ObservableCollection<DateSearchLanguageItem>(
+            AppDefaults.DateSearchAvailableLanguages.Select(l =>
+                new DateSearchLanguageItem(l.Code, l.Name, selectedDateLangs.Contains(l.Code))));
+        foreach (var item in DateSearchLanguages)
+            item.PropertyChanged += (_, e) => {
+                if (e.PropertyName != nameof(DateSearchLanguageItem.IsSelected)) return;
+                var selected = DateSearchLanguages.Where(l => l.IsSelected).Select(l => l.Code).ToList();
+                if (selected.Count == 0) { item.IsSelected = true; return; }
+                _settings.DateSearchLanguages = selected;
+                _settings.Save();
+                _logger.LogInformation("Settings: DateSearchLanguages = [{Languages}]", string.Join(", ", selected));
                 _settings.NotifySearchSettingsChanged();
             };
 
@@ -685,6 +710,17 @@ public partial class SettingsWindowViewModel : ViewModelBase {
             'd' => n * 86400,
             _ => null
         };
+    }
+}
+
+public partial class DateSearchLanguageItem : ObservableObject {
+    public string Code { get; }
+    public string Name { get; }
+    [ObservableProperty] private bool _isSelected;
+    public DateSearchLanguageItem(string code, string name, bool isSelected) {
+        Code = code;
+        Name = name;
+        _isSelected = isSelected;
     }
 }
 

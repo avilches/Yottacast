@@ -66,6 +66,10 @@ public static class AppDefaults {
     /// Delay before simulating Cmd+V / Ctrl+V after selecting an emoji.
     public const int PasteDelayMs = 150;
 
+    // ── Search — date ────────────────────────────────────────────────────────
+    /// Date search: score for recognized date/daterange results.
+    public const double DateSearchScore = 6.0;
+
     // ── Search — dictionary ────────────────────────────────────────────────
     /// HTTP timeout for dictionary API requests.
     public const int DictionaryTimeoutSeconds = 5;
@@ -75,6 +79,22 @@ public static class AppDefaults {
     public const int DictionaryMaxDefinitionsPerItem = 5;
     /// Default languages enabled for dictionary lookups.
     public static readonly List<string> DictionaryDefaultLanguages = ["en"];
+    /// Default languages enabled for date search.
+    public static readonly List<string> DateSearchDefaultLanguages = ["es-es", "en-us"];
+    /// All languages available for date search (locale codes recognized by Chronic/NLP parsers).
+    public static readonly (string Code, string Name)[] DateSearchAvailableLanguages = [
+        ("es-es", "Español"),
+        ("en-us", "English"),
+        ("fr-fr", "Français"),
+        ("de-de", "Deutsch"),
+        ("it-it", "Italiano"),
+        ("nl-nl", "Nederlands"),
+        ("pt-br", "Português"),
+        ("zh-cn", "中文"),
+        ("ja-jp", "日本語"),
+        ("ko-kr", "한국어"),
+        ("tr-tr", "Türkçe"),
+    ];
     /// Languages with data available in kaikki.org (subset of DictionaryAvailableLanguages).
     /// These use local SQLite when the DB file is present; others fall back to the Wiktionary API.
     public static readonly HashSet<string> KaikkiLanguages =
