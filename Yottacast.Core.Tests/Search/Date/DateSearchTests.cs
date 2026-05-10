@@ -96,7 +96,7 @@ public class DateSearchTests
         Assert.Empty(results);
     }
 
-    // ── 7. OnActivate copies selected cell ────────────────────────────────────
+    // ── 7. Enter action copies selected cell ──────────────────────────────────
 
     [Fact]
     public void OnActivate_CopiesSelectedCell()
@@ -111,8 +111,9 @@ public class DateSearchTests
         var results = search.Search("3 de mayo", 5);
         var vm      = Assert.IsType<DateSearchResultViewModel>(Assert.Single(results));
 
-        Assert.NotNull(vm.OnActivate);
-        vm.OnActivate();
+        var enterAction = vm.Actions.FirstOrDefault(a => a.Hotkey == ActionHotkey.Enter);
+        Assert.NotNull(enterAction);
+        enterAction.Execute();
 
         Assert.Equal(vm.Cells[0], copied);
         Assert.Matches(@"^\d{4}-\d{2}-\d{2}$", copied);

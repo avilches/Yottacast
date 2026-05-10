@@ -1,0 +1,60 @@
+<h2>Navegación dentro del overlay</h2>
+<p class="subtitle">Una vez abierto el menú con Tab, ¿cómo interactúa el usuario?</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>↑↓ navegan, Enter ejecuta, Esc cierra</h3>
+      <p>Igual que la lista de resultados: flechas arriba/abajo mueven el foco entre acciones, Enter ejecuta la seleccionada, Esc vuelve a los resultados. El foco empieza en la primera acción.</p>
+      <div class="mockup" style="margin-top:10px">
+        <div class="mockup-header">Teclado</div>
+        <div class="mockup-body" style="font-family:monospace;font-size:12px;color:#ccc">
+          Tab → abre menú, foco en acción 1<br>
+          ↓ → siguiente acción<br>
+          ↑ → acción anterior<br>
+          Enter → ejecuta acción enfocada<br>
+          Esc → cierra menú, vuelve a resultados<br>
+          <span style="color:#777">Hotkey directo (ej. ⌘K) → ejecuta sin abrir menú</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Tab cicla entre acciones, Enter ejecuta</h3>
+      <p>Tab abre el menú Y salta a la siguiente acción. Tab sucesivos ciclan. Enter ejecuta. Esc cierra. Sin flechas dentro del menú (se reservan para navegar resultados en background).</p>
+      <div class="mockup" style="margin-top:10px">
+        <div class="mockup-header">Teclado</div>
+        <div class="mockup-body" style="font-family:monospace;font-size:12px;color:#ccc">
+          Tab → abre menú, foco en acción 1<br>
+          Tab → acción 2<br>
+          Tab → acción 3 → cicla a acción 1<br>
+          Enter → ejecuta acción enfocada<br>
+          Esc → cierra menú, vuelve a resultados<br>
+          <span style="color:#777">↑↓ → siguen moviendo el resultado seleccionado</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Solo hotkeys directos, sin navegación en menú</h3>
+      <p>El menú es puramente informativo (muestra qué hotkeys hay). Las acciones se ejecutan solo con su hotkey. No hay "foco" dentro del overlay. Tab cierra el menú. Esc también cierra.</p>
+      <div class="mockup" style="margin-top:10px">
+        <div class="mockup-header">Teclado</div>
+        <div class="mockup-body" style="font-family:monospace;font-size:12px;color:#ccc">
+          Tab → abre/cierra menú (toggle)<br>
+          ⌘K → ejecuta "Copy" directamente<br>
+          Esc → cierra menú, vuelve a resultados<br>
+          <span style="color:#777">No hay selección de acción dentro del overlay</span><br>
+          <span style="color:#888;font-size:11px">Acciones sin hotkey: solo ejecutables por click</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

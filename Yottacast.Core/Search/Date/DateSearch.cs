@@ -82,17 +82,33 @@ public class DateSearch(UserSettings settings, ClipboardService clipboard, ILogg
 
         DateSearchResultViewModel vm = null!;
         vm = new DateSearchResultViewModel {
-            Icon      = "📅",
-            Category  = "Date",
-            Score     = AppDefaults.DateSearchScore,
-            Subtitle  = subtitle,
-            Cells     = [isoCell, longCell],
-            OnActivate = () => clipboard.CopyText(vm.Cells[vm.SelectedCell]),
-            OnCopy     = () => clipboard.CopyText(vm.Cells[vm.SelectedCell]),
-            OnLeft     = () => vm.MoveCellLeft(),
-            OnRight    = () => vm.MoveCellRight(),
-            CopiedMessage      = "Copiado",
-            PasteAfterActivate = false,
+            Icon     = "📅",
+            Category = "Date",
+            Score    = AppDefaults.DateSearchScore,
+            Subtitle = subtitle,
+            Cells    = [isoCell, longCell],
+            OnLeft   = () => vm.MoveCellLeft(),
+            OnRight  = () => vm.MoveCellRight(),
+            Actions  = [
+                new() {
+                    Label        = "Copy date",
+                    Hotkey       = ActionHotkey.Enter,
+                    ShowInFooter = true,
+                    ShowInMenu   = true,
+                    ClosesMenu   = true,
+                    ClosesWindow = true,
+                    Execute      = () => clipboard.CopyText(vm.Cells[vm.SelectedCell]),
+                },
+                new() {
+                    Label        = "Copy date",
+                    Hotkey       = ActionHotkey.MetaC,
+                    ShowInFooter = true,
+                    ShowInMenu   = true,
+                    ClosesMenu   = true,
+                    HintProvider = () => "Copiado",
+                    Execute      = () => clipboard.CopyText(vm.Cells[vm.SelectedCell]),
+                },
+            ],
         };
         return [vm];
     }
@@ -113,17 +129,33 @@ public class DateSearch(UserSettings settings, ClipboardService clipboard, ILogg
 
         DateSearchResultViewModel vm = null!;
         vm = new DateSearchResultViewModel {
-            Icon      = "📅",
-            Category  = "Date Range",
-            Score     = AppDefaults.DateSearchScore,
-            Subtitle  = subtitle,
-            Cells     = [isoStart, isoEnd, isoRange, longCell],
-            OnActivate = () => clipboard.CopyText(vm.Cells[vm.SelectedCell]),
-            OnCopy     = () => clipboard.CopyText(vm.Cells[vm.SelectedCell]),
-            OnLeft     = () => vm.MoveCellLeft(),
-            OnRight    = () => vm.MoveCellRight(),
-            CopiedMessage      = "Copiado",
-            PasteAfterActivate = false,
+            Icon     = "📅",
+            Category = "Date Range",
+            Score    = AppDefaults.DateSearchScore,
+            Subtitle = subtitle,
+            Cells    = [isoStart, isoEnd, isoRange, longCell],
+            OnLeft   = () => vm.MoveCellLeft(),
+            OnRight  = () => vm.MoveCellRight(),
+            Actions  = [
+                new() {
+                    Label        = "Copy date",
+                    Hotkey       = ActionHotkey.Enter,
+                    ShowInFooter = true,
+                    ShowInMenu   = true,
+                    ClosesMenu   = true,
+                    ClosesWindow = true,
+                    Execute      = () => clipboard.CopyText(vm.Cells[vm.SelectedCell]),
+                },
+                new() {
+                    Label        = "Copy date",
+                    Hotkey       = ActionHotkey.MetaC,
+                    ShowInFooter = true,
+                    ShowInMenu   = true,
+                    ClosesMenu   = true,
+                    HintProvider = () => "Copiado",
+                    Execute      = () => clipboard.CopyText(vm.Cells[vm.SelectedCell]),
+                },
+            ],
         };
         return [vm];
     }
