@@ -23,6 +23,21 @@
       Condition="!Exists('$(MSBuildThisFileDirectory)Search/Calculator/math.min.js')" />
   </Target>
 
+  <!-- Download nerdamer on first build if not already present -->
+  <Target Name="DownloadNerdamerCore" BeforeTargets="BeforeBuild">
+    <MakeDir Directories="$(MSBuildThisFileDirectory)Search/Calculator" />
+    <Exec
+      Command="curl -fsSL https://cdn.jsdelivr.net/npm/nerdamer@1.1.13/nerdamer.core.min.js -o &quot;$(MSBuildThisFileDirectory)Search/Calculator/nerdamer.core.min.js&quot;"
+      Condition="!Exists('$(MSBuildThisFileDirectory)Search/Calculator/nerdamer.core.min.js')" />
+  </Target>
+
+  <Target Name="DownloadNerdamerAlgebra" BeforeTargets="BeforeBuild">
+    <MakeDir Directories="$(MSBuildThisFileDirectory)Search/Calculator" />
+    <Exec
+      Command="curl -fsSL https://cdn.jsdelivr.net/npm/nerdamer@1.1.13/Algebra.min.js -o &quot;$(MSBuildThisFileDirectory)Search/Calculator/Algebra.min.js&quot;"
+      Condition="!Exists('$(MSBuildThisFileDirectory)Search/Calculator/Algebra.min.js')" />
+  </Target>
+
   <!-- Download emoji data on first build if not already present -->
   <!-- To update to a newer version: delete Search/Emoji/emoji-data.json and rebuild -->
   <Target Name="DownloadEmojiData" BeforeTargets="BeforeBuild">
@@ -55,6 +70,9 @@
     <EmbeddedResource Include="Search/Calculator/mathjs-precompute.js" />
     <EmbeddedResource Include="Search/Calculator/mathjs-precomputed.json" Condition="Exists('Search/Calculator/mathjs-precomputed.json')" />
     <EmbeddedResource Include="Search/Calculator/unit-config.json" />
+    <EmbeddedResource Include="Search/Calculator/nerdamer.core.min.js" Condition="Exists('Search/Calculator/nerdamer.core.min.js')" />
+    <EmbeddedResource Include="Search/Calculator/Algebra.min.js" Condition="Exists('Search/Calculator/Algebra.min.js')" />
+    <EmbeddedResource Include="Search/Calculator/nerdamer-helpers.js" Condition="Exists('Search/Calculator/nerdamer-helpers.js')" />
     <EmbeddedResource Include="Search/Emoji/emoji-cache.json" Condition="Exists('Search/Emoji/emoji-cache.json')" />
     <EmbeddedResource Include="Search/Emoji/emoji-data.json" Condition="Exists('Search/Emoji/emoji-data.json')" />
     <EmbeddedResource Include="Search/WebSearch/Icons/*.png" Condition="Exists('Search/WebSearch/Icons')" />
