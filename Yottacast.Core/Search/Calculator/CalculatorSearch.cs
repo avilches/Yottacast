@@ -24,12 +24,13 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
     public IReadOnlyList<BaseResultItemViewModel> Search(string query, int _) {
         LastHint = null;
         LastHintKind = SearchHintKind.Info;
-        if (!settings.EnableCalculator) return [];
+        if (!settings.EnableCalculator && !settings.EnableConverter) return [];
         var q = query.Trim();
 
         // Equation detection: queries containing '=' are routed to NerdamerEngine.
         // math.js already rejects assignments, so these queries would return empty anyway.
         if (q.Contains('=')) {
+            if (!settings.EnableCalculator) return [];
             var solveResult = nerdamerEngine.TrySolve(q);
             if (solveResult != null) return BuildEquationResult(solveResult, q);
             return [];
@@ -48,6 +49,7 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
 
         switch (engine.Evaluate(q)) {
             case ConversionResult r: {
+                if (!settings.EnableConverter) return [];
                 var fromUnit      = engine.DisplayUnit(r.FromUnit);
                 var toUnit        = engine.DisplayUnit(r.ToUnit);
                 var fromShort     = $"{r.FromValue} {fromUnit}".Trim();
@@ -132,6 +134,7 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
                 return [vm];
             }
             case CalcResult r when r.RawValue != q: {
+                if (!settings.EnableCalculator) return [];
                 logger.LogDebug("Calculator query=\"{Query}\" → result \"{Result}\"", q, r.RawValue);
                 LastHint = BuildHints(r.AmbiguityHints) is { Length: > 0 } ch ? ch : null;
                 LastHintKind = SearchHintKind.Info;

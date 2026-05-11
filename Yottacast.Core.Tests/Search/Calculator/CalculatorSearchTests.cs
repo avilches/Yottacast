@@ -530,3 +530,72 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture, NerdamerEngineFi
     }
 }
 
+[Collection("MathJs")]
+public class CalculatorSearchEnableConverterTests(MathJsEngineFixture fixture, NerdamerEngineFixture nerdamerFixture) : IClassFixture<NerdamerEngineFixture> {
+
+    private CalculatorSearch Build(bool enableCalculator, bool enableConverter) {
+        var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
+        clipboard.Initialize(copy: _ => { }, read: () => Task.FromResult<string?>(null));
+        var settings = UserSettings.Load(new FakePlatformProvider([]));
+        settings.EnableCalculator = enableCalculator;
+        settings.EnableConverter  = enableConverter;
+        var provider = MathJsEngineProvider.ForTesting(fixture.Engine);
+        var er = new ExchangeRateService(new HttpClient(), settings, NullLogger<ExchangeRateService>.Instance);
+        return new CalculatorSearch(provider, er, clipboard, settings, NullLogger<CalculatorSearch>.Instance, nerdamerFixture.Engine);
+    }
+
+    [Fact]
+    public void BothDisabled_ReturnsEmpty_ForArithmetic() {
+        var search = Build(enableCalculator: false, enableConverter: false);
+        Assert.Empty(search.Search("2+2", 5));
+    }
+
+    [Fact]
+    public void BothDisabled_ReturnsEmpty_ForConversion() {
+        var search = Build(enableCalculator: false, enableConverter: false);
+        Assert.Empty(search.Search("10 km to miles", 5));
+    }
+
+    [Fact]
+    public void CalculatorDisabled_ConversionStillWorks() {
+        var search = Build(enableCalculator: false, enableConverter: true);
+        var results = search.Search("10 km to miles", 5);
+        Assert.Single(results);
+        Assert.IsType<ConversionResultItemViewModel>(results[0]);
+    }
+
+    [Fact]
+    public void CalculatorDisabled_ArithmeticReturnsEmpty() {
+        var search = Build(enableCalculator: false, enableConverter: true);
+        Assert.Empty(search.Search("2+2", 5));
+    }
+
+    [Fact]
+    public void ConverterDisabled_ArithmeticStillWorks() {
+        var search = Build(enableCalculator: true, enableConverter: false);
+        var results = search.Search("2+2", 5);
+        Assert.Single(results);
+        Assert.IsType<CalculatorResultItemViewModel>(results[0]);
+    }
+
+    [Fact]
+    public void ConverterDisabled_ConversionReturnsEmpty() {
+        var search = Build(enableCalculator: true, enableConverter: false);
+        Assert.Empty(search.Search("10 km to miles", 5));
+    }
+
+    [Fact]
+    public void CalculatorDisabled_EquationReturnsEmpty() {
+        var search = Build(enableCalculator: false, enableConverter: true);
+        Assert.Empty(search.Search("2x-5=2", 5));
+    }
+
+    [Fact]
+    public void CalculatorEnabled_EquationWorks() {
+        var search = Build(enableCalculator: true, enableConverter: false);
+        var results = search.Search("2x-5=2", 5);
+        Assert.Single(results);
+        Assert.IsType<CalculatorResultItemViewModel>(results[0]);
+    }
+}
+
