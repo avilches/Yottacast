@@ -56,9 +56,13 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
                 result.Add((entry, EmojiSection.Favorite));
         }
 
-        // Most-used next, filling up to EmojiMaxPinnedTotal total pinned cells, excluding favorites.
+        // Most-used next, filling up to effectivePinnedTotal cells, excluding favorites.
+        // effectivePinnedTotal rounds EmojiMaxPinnedTotal up to the nearest full grid row so the
+        // pinned section never ends mid-row (e.g. 10 min with 8 cols → 16; with 12 cols → 12).
+        var cols = emojiLayoutConfig.Columns;
+        var effectivePinnedTotal = ((AppDefaults.EmojiMaxPinnedTotal + cols - 1) / cols) * cols;
+        var mostUsedMax = effectivePinnedTotal - usageStore.Favorites.Count;
         // Most-used also appear in their Default position below.
-        var mostUsedMax = AppDefaults.EmojiMaxPinnedTotal - usageStore.Favorites.Count;
         var seenMostUsed = new HashSet<string>();
         foreach (var ch in usageStore.GetMostUsed(mostUsedMax)) {
             if (!favSet.Contains(ch) && charToEntry.TryGetValue(ch, out var entry) && seenMostUsed.Add(ch))
