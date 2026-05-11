@@ -3,6 +3,7 @@
 // Requires: nerdamer.core.min.js + Algebra.min.js + Calculus.min.js + Solve.min.js loaded before this file.
 //
 // Exposes: solveEquation(query) → JSON string | null
+//          getAlgebraResults(expr) → JSON string | null
 //
 // Returns null when:
 //   - No '=' in query
@@ -100,7 +101,7 @@ function solveEquation(query) {
 // getAlgebraResults(expr) → JSON string [{label, result}, ...] | null
 //
 // Tries simplify, expand, factor, diff(per variable), integrate(single var only).
-// Filters: drops cells where result === normalized input.
+// Filters: drops cells where result equals the raw input expression.
 // Deduplicates: keeps first cell per unique result string.
 // Returns null when: no variables found, nerdamer can't parse, or all cells filtered.
 function getAlgebraResults(expr) {
