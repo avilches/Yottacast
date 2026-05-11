@@ -1189,6 +1189,21 @@ public class UserSettingsTests : IDisposable {
         Assert.Equal(60, settings.KeepValueWhenHideDuration);
     }
 
+    [Fact]
+    public void Defaults_EnableConverter_IsTrue() {
+        var settings = Load();
+        Assert.True(settings.EnableConverter);
+    }
+
+    [Fact]
+    public void EnableConverter_RoundTrips_ThroughJson() {
+        var settings = Load();
+        settings.EnableConverter = false;
+        settings.Save();
+        var loaded = Load();
+        Assert.False(loaded.EnableConverter);
+    }
+
     /// <summary>Platform provider with configurable default search folders (no browsers/terminals).</summary>
     private sealed class PlatformWithSearchFolders(List<string> searchFolders) : PlatformProvider {
         public override bool? IsSystemDarkMode() => null;

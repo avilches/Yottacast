@@ -33,6 +33,7 @@ public class UserSettings {
     public void NotifyStickyWindowChanged() => StickyWindowChanged?.Invoke();
     public bool EnableAppSearch { get; set; } = true;
     public bool EnableCalculator { get; set; } = true;
+    public bool EnableConverter { get; set; } = true;
     public bool EnableClipboard { get; set; } = true;
     public bool EnableEmoji { get; set; } = true;
     public bool EnableFileSearch { get; set; } = true;
@@ -150,6 +151,7 @@ public class UserSettings {
         [JsonPropertyName("appDirectories")] public List<string>? AppDirectories { get; init; }
         [JsonPropertyName("enableAppSearch")] public bool EnableAppSearch { get; init; } = true;
         [JsonPropertyName("enableCalculator")] public bool EnableCalculator { get; init; } = true;
+        [JsonPropertyName("enableConverter")] public bool EnableConverter { get; init; } = true;
         [JsonPropertyName("enableClipboard")] public bool EnableClipboard { get; init; } = true;
         [JsonPropertyName("enableEmoji")] public bool EnableEmoji { get; init; } = true;
         [JsonPropertyName("enableFileSearch")] public bool EnableFileSearch { get; init; } = true;
@@ -224,6 +226,7 @@ public class UserSettings {
                         .Distinct(StringComparer.OrdinalIgnoreCase)
                         .ToList(),
                     EnableCalculator = data.EnableCalculator,
+                    EnableConverter = data.EnableConverter,
                     EnableClipboard = data.EnableClipboard,
                     EnableEmoji = data.EnableEmoji,
                     LastLaunchedVersion = data.LastLaunchedVersion,
@@ -338,6 +341,7 @@ public class UserSettings {
                 AppDirectories = AppDirectories,
                 EnableAppSearch = EnableAppSearch,
                 EnableCalculator = EnableCalculator,
+                EnableConverter = EnableConverter,
                 EnableClipboard = EnableClipboard,
                 EnableEmoji = EnableEmoji,
                 EnableFileSearch = EnableFileSearch,
