@@ -20,7 +20,7 @@ using Yottacast.Services;
 namespace Yottacast.ViewModels;
 
 public enum SettingsSection {
-    General, AppSearch, WebSearch, FileSearch, Calculator, Clipboard, Emoji, Dictionary, DateSearch, History
+    General, AppSearch, WebSearch, FileSearch, Calculator, Converter, Clipboard, Emoji, Dictionary, DateSearch, History
 }
 
 public partial class SettingsWindowViewModel : ViewModelBase {
@@ -31,6 +31,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [NotifyPropertyChangedFor(nameof(IsWebSearchSelected))]
     [NotifyPropertyChangedFor(nameof(IsFileSearchSelected))]
     [NotifyPropertyChangedFor(nameof(IsCalculatorSelected))]
+    [NotifyPropertyChangedFor(nameof(IsConverterSelected))]
     [NotifyPropertyChangedFor(nameof(IsClipboardSelected))]
     [NotifyPropertyChangedFor(nameof(IsEmojiSelected))]
     [NotifyPropertyChangedFor(nameof(IsDictionarySelected))]
@@ -49,6 +50,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     public bool IsWebSearchSelected => SelectedSection == SettingsSection.WebSearch;
     public bool IsFileSearchSelected => SelectedSection == SettingsSection.FileSearch;
     public bool IsCalculatorSelected => SelectedSection == SettingsSection.Calculator;
+    public bool IsConverterSelected  => SelectedSection == SettingsSection.Converter;
     public bool IsClipboardSelected  => SelectedSection == SettingsSection.Clipboard;
     public bool IsEmojiSelected      => SelectedSection == SettingsSection.Emoji;
     public bool IsDictionarySelected          => SelectedSection == SettingsSection.Dictionary;
@@ -61,7 +63,17 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [RelayCommand] private void SelectWebSearch() => SelectedSection = SettingsSection.WebSearch;
     [RelayCommand] private void SelectFileSearch() => SelectedSection = SettingsSection.FileSearch;
     [RelayCommand] private void SelectCalculator() => SelectedSection = SettingsSection.Calculator;
+    [RelayCommand] private void SelectConverter()  => SelectedSection = SettingsSection.Converter;
     [RelayCommand] private void SelectClipboard()  => SelectedSection = SettingsSection.Clipboard;
+
+    // ── Example try-it action ────────────────────────────────────────────────────
+    /// <summary>
+    /// Wired by App.OpenSettings() to show the main window and fill the search box.
+    /// </summary>
+    public Action<string>? OpenWithQuery { get; set; }
+
+    [RelayCommand]
+    private void TryExample(string query) => OpenWithQuery?.Invoke(query);
     [RelayCommand] private void SelectEmoji()      => SelectedSection = SettingsSection.Emoji;
     [RelayCommand] private void SelectDictionary()     => SelectedSection = SettingsSection.Dictionary;
     [RelayCommand] private void SelectDateSearch()     => SelectedSection = SettingsSection.DateSearch;
@@ -91,6 +103,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     // ── Feature toggles ──────────────────────────────────────────────────────
     [ObservableProperty] private bool _enableAppSearch;
     [ObservableProperty] private bool _enableCalculator;
+    [ObservableProperty] private bool _enableConverter;
     [ObservableProperty] private bool _enableClipboard;
     [ObservableProperty] private bool _enableEmoji;
     [ObservableProperty] private bool _enableFileSearch;
@@ -126,6 +139,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
 
     partial void OnEnableAppSearchChanged(bool value)               { _settings.EnableAppSearch              = value; _settings.Save(); _logger.LogInformation("Settings: EnableAppSearch = {Value}", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnEnableCalculatorChanged(bool value)              { _settings.EnableCalculator             = value; _settings.Save(); _logger.LogInformation("Settings: EnableCalculator = {Value}", value); _settings.NotifySearchSettingsChanged(); }
+    partial void OnEnableConverterChanged(bool value)               { _settings.EnableConverter              = value; _settings.Save(); _logger.LogInformation("Settings: EnableConverter = {Value}", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnEnableClipboardChanged(bool value)               { _settings.EnableClipboard              = value; _settings.Save(); _logger.LogInformation("Settings: EnableClipboard = {Value}", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnEnableEmojiChanged(bool value)                   { _settings.EnableEmoji                  = value; _settings.Save(); _logger.LogInformation("Settings: EnableEmoji = {Value}", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnEnableFileSearchChanged(bool value)              { _settings.EnableFileSearch             = value; _settings.Save(); _logger.LogInformation("Settings: EnableFileSearch = {Value}", value); _settings.NotifySearchSettingsChanged(); }
@@ -314,6 +328,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
 
         _enableAppSearch                 = settings.EnableAppSearch;
         _enableCalculator                = settings.EnableCalculator;
+        _enableConverter                 = settings.EnableConverter;
         _enableClipboard                 = settings.EnableClipboard;
         _enableEmoji                     = settings.EnableEmoji;
         _enableFileSearch                = settings.EnableFileSearch;
