@@ -76,7 +76,23 @@ public sealed class NerdamerEngine : IDisposable {
     /// Returns null if the engine is not ready, no variables found, or all results are trivial.
     /// Thread-safe.
     /// </summary>
-    public AlgebraResult? TryAlgebra(string expr) => null;
+    public AlgebraResult? TryAlgebra(string expr) {
+        if (_engine == null) return null;
+        lock (_lock) {
+            if (_engine == null) return null;
+            try {
+                var json = _engine.Evaluate($"getAlgebraResults({JsonSerializer.Serialize(expr)})");
+                if (json.IsNull() || json.IsUndefined()) return null;
+                var jsonStr = json.AsString();
+                if (string.IsNullOrEmpty(jsonStr)) return null;
+                var cells = JsonSerializer.Deserialize<AlgebraCell[]>(jsonStr);
+                if (cells == null || cells.Length == 0) return null;
+                return new AlgebraResult(cells);
+            } catch {
+                return null;
+            }
+        }
+    }
 
     private static string LoadResource(string name) {
         using var stream = typeof(NerdamerEngine).Assembly.GetManifestResourceStream(name)

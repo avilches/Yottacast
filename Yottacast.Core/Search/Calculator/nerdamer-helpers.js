@@ -96,3 +96,63 @@ function solveEquation(query) {
         return null;
     }
 }
+
+// getAlgebraResults(expr) → JSON string [{label, result}, ...] | null
+//
+// Tries simplify, expand, factor, diff(per variable), integrate(single var only).
+// Filters: drops cells where result === normalized input.
+// Deduplicates: keeps first cell per unique result string.
+// Returns null when: no variables found, nerdamer can't parse, or all cells filtered.
+function getAlgebraResults(expr) {
+    try {
+        var vars;
+        try {
+            vars = nerdamer(expr).variables();
+        } catch (e) {
+            return null;
+        }
+        if (!vars || vars.length === 0) return null;
+
+        // Guard: reject multi-letter variable names (e.g. "hello", "world") — likely plain text, not math.
+        for (var vi = 0; vi < vars.length; vi++) {
+            if (vars[vi].length > 1) return null;
+        }
+
+        var results = [];
+        var seenResults = {};
+
+        function tryOp(label, fn) {
+            try {
+                var r = fn();
+                if (!r) return;
+                var text = r.text ? r.text() : String(r);
+                if (text === expr) return;          // no-op: result equals raw input
+                if (seenResults[text]) return;      // deduplicate
+                seenResults[text] = true;
+                results.push({ label: label, result: text });
+            } catch (e) { /* skip failed operations */ }
+        }
+
+        tryOp('simplify', function() { return nerdamer(expr); });
+        tryOp('expand',   function() { return nerdamer.expand(expr); });
+        tryOp('factor',   function() { return nerdamer.factor(expr); });
+
+        // Derivatives — one per variable, alphabetical order
+        var sortedVars = vars.slice().sort();
+        for (var i = 0; i < sortedVars.length; i++) {
+            (function(v) {
+                tryOp('d/d' + v, function() { return nerdamer.diff(expr, v); });
+            })(sortedVars[i]);
+        }
+
+        // Integral — only for single-variable expressions
+        if (vars.length === 1) {
+            tryOp('∫d' + vars[0], function() { return nerdamer.integrate(expr, vars[0]); });
+        }
+
+        if (results.length === 0) return null;
+        return JSON.stringify(results);
+    } catch (e) {
+        return null;
+    }
+}

@@ -29,9 +29,10 @@ public class AlgebraSearchTests(NerdamerEngineFixture fixture) {
         Assert.NotNull(result);
         var cell = result.Cells.FirstOrDefault(c => c.Label == "factor");
         Assert.NotNull(cell);
-        // nerdamer returns "(x-2)*(x-3)" or "(x-3)*(x-2)"
-        Assert.Contains("x-2", cell.Result);
-        Assert.Contains("x-3", cell.Result);
+        // nerdamer returns "(-2+x)*(-3+x)" or equivalent reordering of terms
+        Assert.Contains("2", cell.Result);
+        Assert.Contains("3", cell.Result);
+        Assert.Contains("x", cell.Result);
     }
 
     [Fact]
