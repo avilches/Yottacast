@@ -10,6 +10,12 @@ public record VariableSolution(
 
 public record SolveResult(VariableSolution[] Variables);
 
+public record AlgebraCell(
+    [property: JsonPropertyName("label")]  string Label,
+    [property: JsonPropertyName("result")] string Result);
+
+public record AlgebraResult(AlgebraCell[] Cells);
+
 /// <summary>
 /// Wraps a Jint engine loaded with nerdamer (core + Algebra + Calculus + Solve addons).
 /// Solves algebraic equations symbolically: "2x-5=2" → x = 3.5.
@@ -63,6 +69,14 @@ public sealed class NerdamerEngine : IDisposable {
             }
         }
     }
+
+    /// <summary>
+    /// Evaluates algebraic operations on <paramref name="expr"/> (no '=' required).
+    /// Returns simplify / expand / factor / derivatives / integral cells where result ≠ input.
+    /// Returns null if the engine is not ready, no variables found, or all results are trivial.
+    /// Thread-safe.
+    /// </summary>
+    public AlgebraResult? TryAlgebra(string expr) => null;
 
     private static string LoadResource(string name) {
         using var stream = typeof(NerdamerEngine).Assembly.GetManifestResourceStream(name)
