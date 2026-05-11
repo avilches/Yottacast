@@ -43,7 +43,7 @@ public class SystemSettingsSearchTests {
         Assert.Equal("Wi-Fi", results[0].Title);
         Assert.Equal("System Settings", results[0].Subtitle);
         Assert.Equal("System Settings", results[0].Category);
-        Assert.Equal(4.0, results[0].Score);
+        Assert.Equal(4.4, results[0].Score); // exact match: NameMatcher 1.1 × 4
     }
 
     [Fact]

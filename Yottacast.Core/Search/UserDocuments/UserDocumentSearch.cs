@@ -106,12 +106,14 @@ public class UserDocumentSearch(
                                 if (queryTokens.All(t => nameSegments.Any(s => s.StartsWith(t))))
                                     score = 0.75;
                             } else {
-                                if (filename == queryLower && !string.IsNullOrEmpty(extension))
+                                if (nameLower == queryLower && !string.IsNullOrEmpty(extension))
+                                    score = 1.1; // nombre completo con extensión (ej. "PC.png" → "PC.png")
+                                else if (filename == queryLower && !string.IsNullOrEmpty(extension))
                                     score = 1;   // stem exacto con extensión propia (ej. "report.pdf" → "report")
                                 else if (extension == $".{queryLower}")
                                     score = 0.9; // coincidencia de extensión (ej. "photo.png" → "png")
                                 else if (nameLower == queryLower)
-                                    score = 0.85; // nombre completo exacto sin extensión (ej. carpeta "png")
+                                    score = 0.85; // nombre exacto sin extensión: fichero sin ext (carpeta) (ej. "Documents/" → "Documents", "Makefile" → "Makefile")
                                 else if (nameLower.StartsWith(queryLower, StringComparison.Ordinal) || filename.StartsWith(queryLower, StringComparison.Ordinal))
                                     score = 0.75;
                                 else if (nameLower.EndsWith(queryLower, StringComparison.Ordinal))

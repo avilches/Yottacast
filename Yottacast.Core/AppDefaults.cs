@@ -14,6 +14,11 @@ public static class AppDefaults {
     /// Minimum query length before any file search is attempted.
     public const int FileSearchMinQueryLength = 2;
 
+    // ── Search — application scoring ─────────────────────────────────────────
+    /// Minimum score for any app that has a match. Ensures apps appear above all file matches
+    /// except exact full-name-with-extension (3.85). Must be > AppMaxFileScore (3.50) and < AppFileExactScore (3.85).
+    public const double AppMinScore = 3.6;
+
     // ── Search — result limits per source (-1 = no limit) ────────────────────
     /// Fallback limit passed to GlobalSearch.SearchInstant/SearchDeferredAsync.
     /// Used by unlimited sources (Limit = -1) as their effective cap, and by deferred sources.

@@ -116,7 +116,7 @@ public sealed class ApplicationSearch(
             .Where(x => x.score > 0)
             .OrderByDescending(x => x.score)
             .Take(limit)
-            .Select(x => CreateResultItem(x.app, x.score * 4))
+            .Select(x => CreateResultItem(x.app, Math.Max(x.score * 4, AppDefaults.AppMinScore)))
             .ToList();
         logger.LogDebug("AppSearch query=\"{Query}\" cache={CacheCount} results={ResultCount} ready={Ready}",
             query, _apps.Count, results.Count, _readyTcs.Task.IsCompleted);

@@ -26,10 +26,11 @@ El motor de coincidencia de texto (`NameMatcher`) es compartido por la busqueda 
 
 | Score raw | Estrategia | Comportamiento | Ejemplo |
 |-----------|-----------|----------------|---------|
+| 1.1 | Coincidencia exacta | El nombre completo coincide exactamente con la query (case-insensitive). Es la señal mas fuerte posible | "pycharm" -> "PyCharm", "safari" -> "Safari" |
 | 1.0 | CamelHump desde el inicio | Cada fragmento de la query es prefijo de un token consecutivo del nombre, comenzando desde el primer token | "Saf" -> "Safari", "ActMon" -> "Activity Monitor" |
 | 0.8 | CamelHump desde token interior | Igual que el anterior, pero comenzando en un token posterior al primero | "Mon" -> "Activity Monitor" (matchea desde "Monitor") |
 | 0.6 | Iniciales | Las iniciales de los tokens del nombre comienzan por la query | "AM" -> "Activity Monitor", "MON" -> "Microsoft OneNote" |
-| 0.4 | Abreviatura multi-palabra | Los caracteres de la query se distribuyen como prefijos de tokens consecutivos, consumiendo uno o mas caracteres por token. Solo se activa cuando el nombre tiene mas de un token. Puede comenzar desde cualquier token | "smifa" -> "smiling face" ("smi" + "fa") |
+| 0.4 | Abreviatura multi-palabra | Los caracteres de la query se distribuyen como prefijos de tokens consecutivos, consumiendo uno o mas caracteres por token. Solo se activa cuando el nombre tiene mas de un token. Puede comenzar desde cualquier token | "smifa" -> "smiling face" ("smi" + "fa"), "pyc" -> "PyCharm" |
 | 0.2 | Substring interno | El nombre contiene la query como subcadena. Solo para queries de 3+ caracteres | "ari" -> "Safari" |
 | 0.0 | Sin coincidencia | Ninguna estrategia encontro match | |
 
@@ -50,15 +51,17 @@ Las aplicaciones instaladas se mantienen en cache en memoria. El score de cada r
 
 | Score global | Score NameMatcher | Estrategia |
 |---|---|---|
+| 4.4 | 1.1 | Coincidencia exacta del nombre (case-insensitive) |
 | 4.0 | 1.0 | CamelHump token 0 (prefijo exacto desde el inicio) |
-| 3.2 | 0.8 | CamelHump desde token interior |
-| 2.4 | 0.6 | Iniciales |
-| 1.6 | 0.4 | Abreviatura multi-palabra |
-| 0.8 | 0.2 | Substring interno |
+| 3.6* | 0.8 | CamelHump desde token interior *(floor aplicado si < 3.6)* |
+| 3.6* | 0.6 | Iniciales *(floor aplicado si < 3.6)* |
+| 3.6 | 0.4 | Abreviatura multi-palabra *(flooreado desde 1.6)* |
+| 3.6 | 0.2 | Substring interno *(flooreado desde 0.8)* |
 
 **Invariantes:**
 - Solo se devuelven apps con score > 0.
-- El score maximo de una app (sin bonus de uso) es 4.0 (prefijo exacto desde token 0).
+- El score maximo de una app (sin bonus de uso) es 4.4 (coincidencia exacta del nombre).
+- Cualquier app que matchea tiene un score minimo de `AppDefaults.AppMinScore` (3.6), lo que garantiza que las apps aparecen por encima de todos los resultados de ficheros excepto el match exacto de nombre completo con extension (3.85).
 
 > **Verificar en:** `Search/Application/ApplicationSearch.cs` (metodo `Search`, multiplicador ×4 en la proyeccion)
 
@@ -143,9 +146,10 @@ Los scores internos (calculados sobre el nombre del fichero) se multiplican por 
 
 | Score global | Score interno | Condicion |
 |---|---|---|
-| 3.5 | 1.0 | El nombre del archivo (sin extension) coincide exactamente con la query y tiene extension propia |
+| 3.85 | 1.1 | El nombre completo (con extension) coincide exactamente con la query (ej. query "PC.png" -> "PC.png") |
+| 3.5 | 1.0 | El stem (sin extension) coincide exactamente con la query y el archivo tiene extension propia (ej. query "PC" -> "PC.png") |
 | 3.15 | 0.9 | La extension del archivo coincide con la query (ej. query "png" -> archivos .png) |
-| 2.975 | 0.85 | El nombre completo coincide exactamente con la query (ej. carpetas sin extension) |
+| 2.975 | 0.85 | El nombre completo coincide exactamente con la query en un archivo sin extension (ej. carpetas) |
 | 2.625 | 0.75 | El nombre comienza por la query / en multi-token, todos los tokens son prefijo de algun segmento del nombre |
 | 1.75 | 0.5 | El nombre termina con la query / score por defecto para matches basicos |
 
@@ -209,19 +213,20 @@ La siguiente tabla resume los scores base por fuente, de mayor a menor prioridad
 | 10.0 | LocalPath / URL | Intencion explicita del usuario |
 | 7.0 | Calculadora / Conversor | Score fijo. Siempre domina salvo ruta/URL |
 | 5.5 | Emoji (grilla) | Score fijo de la grilla como item global |
-| 0–4.0 (+bonus) | Aplicaciones | NameMatcher × 4; max 5.0 con LaunchHistory |
+| 3.6–4.4 (+bonus) | Aplicaciones | NameMatcher × 4 con floor 3.6; exact name = 4.4; max 5.4 con LaunchHistory |
+| 3.85 | Archivos (exact full name+ext) | El unico match de fichero que supera al floor de apps |
 | 3.8 | Busqueda web (PrefixOnly) | Cuando el usuario uso un prefijo explicito |
 | 3.7 | Diccionario (PrefixOnly) | Cuando el usuario uso el prefijo (ej. "define") |
-| 0–3.5 (+bonus) | Archivos | FileScore × 3.5; max 4.5 con LaunchHistory |
-| 0–4.0 (+bonus) | System Settings (macOS) | NameMatcher × 4 (igual que apps) |
+| 0–3.5 (+bonus) | Archivos (resto de matches) | FileScore × 3.5; max 4.5 con LaunchHistory |
+| 0–4.4 (+bonus) | System Settings (macOS) | NameMatcher × 4 (igual que apps, sin floor) |
 | 0.4 | Busqueda web (ShowAlways) | Fallback siempre presente |
 | 0.3 | Diccionario (ShowAlways) | Fallback de menor prioridad |
 
 **Invariantes:**
 - Una URL o ruta explicita siempre aparece primero.
 - Un resultado de calculadora siempre aparece por encima de cualquier app o archivo, incluso muy usados.
-- Una app con prefijo exacto (4.0) siempre supera a la busqueda web ShowAlways (0.4).
-- Un documento con match exacto (3.5) supera a apps con match por token interior (3.2), pero no a apps con prefijo exacto (4.0).
+- Cualquier app que matchea (score > 0) aparece por encima de cualquier archivo, excepto cuando el fichero es match exacto nombre+extension (3.85 > floor de apps 3.6).
+- Typing el nombre exacto de una app ("pycharm") da el score mas alto de esa app (4.4), por encima de sus iniciales ("PC" → 4.0).
 
 > **Verificar en:** `CalculatorSearch.cs` (score 7), `EmojiSearch.cs` (score 5.5), `LocalPathSearch.cs` y `UrlSearch.cs` (score 10.0), `WebSearchSource.cs` (scores 0.4 y 3.8), `DictionarySource.cs` (scores 0.3 y 3.7), `ApplicationSearch.cs` (multiplicador ×4), `SystemSettingsSearch.cs` (multiplicador ×4), `UserDocumentSearch.cs` (multiplicador ×3.5), `LaunchHistory.cs` (bonus)
 

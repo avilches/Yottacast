@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -450,6 +451,17 @@ public partial class MainWindowViewModel(
             .OrderByDescending(x => x.score)
             .Select(x => x.item)
             .ToList();
+
+        // Deduplicate: remove file results whose stem matches an app already in the list
+        var appNames = merged
+            .OfType<ResultItemViewModel>()
+            .Where(x => x.Category == "Application")
+            .Select(x => x.Title)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (appNames.Count > 0)
+            merged.RemoveAll(x =>
+                x is ResultItemViewModel { Category: "Files" } file &&
+                appNames.Contains(Path.GetFileNameWithoutExtension(file.Title)));
 
         var previousSelected = SelectedResult;
         Results.Clear();

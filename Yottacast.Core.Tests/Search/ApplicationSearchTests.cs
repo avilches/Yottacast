@@ -6,6 +6,7 @@ using Yottacast.Core.Search.Application;
 using Yottacast.Core.Services;
 using Yottacast.Core.Tests.Fakes;
 using Yottacast.Core.ViewModels;
+using Yottacast.Core;
 
 namespace Yottacast.Core.Tests.Search;
 
@@ -73,7 +74,7 @@ public class ApplicationSearchTests {
         Assert.Empty(results);
     }
 
-    // ── Exact / prefix match (Score = 4.0 = NameMatcher 1.0 × 4) ───────────────
+    // ── Exact / prefix match ──────────────────────────────────────────────────
 
     [Fact]
     public async Task SearchAsync_ExactName_ReturnsResult_ScoreOne() {
@@ -82,7 +83,7 @@ public class ApplicationSearchTests {
         var results = SearchAll(search, "Safari");
         Assert.Single(results);
         Assert.Equal("Safari", results[0].Title);
-        Assert.Equal(4.0, results[0].Score);
+        Assert.Equal(4.4, results[0].Score); // exact match: NameMatcher 1.1 × 4
     }
 
     [Fact]
@@ -109,7 +110,7 @@ public class ApplicationSearchTests {
     [InlineData("AM",    "Activity Monitor", 4.0)]   // uppercase initials → each char is a hump (NameMatcher 1.0 × 4)
     [InlineData("am",    "Activity Monitor", 4.0)]   // lowercase → also tried as initials (NameMatcher 1.0 × 4)
     [InlineData("AcMon", "Activity Monitor", 4.0)]   // multi-hump prefix (NameMatcher 1.0 × 4)
-    [InlineData("Mon",   "Activity Monitor", 3.2)]   // prefix of non-first token (NameMatcher 0.8 × 4)
+    [InlineData("Mon",   "Activity Monitor", 3.6)]   // prefix of non-first token (NameMatcher 0.8 × 4 = 3.2, floored to AppMinScore 3.6)
     public async Task SearchAsync_CamelHump_ReturnsExpectedScore(
         string query, string appName, double expectedScore) {
         var appPath = $"/Applications/{appName}.app";
@@ -132,16 +133,16 @@ public class ApplicationSearchTests {
         Assert.True(results[0].Score > 0);
     }
 
-    // ── Substring match (Score = 0.8 = NameMatcher 0.2 × 4) ─────────────────────
+    // ── Substring match (floored to AppMinScore) ──────────────────────────────
 
     [Fact]
     public async Task SearchAsync_InternalSubstring_ReturnsLowScore() {
         var search = BuildSearch("/Applications/Safari.app");
         await StartAndWaitAsync(search);
-        // "ari" is inside "Safari" but not a prefix of any token
+        // "ari" is inside "Safari" but not a prefix of any token → NameMatcher 0.2 × 4 = 0.8, floored to AppMinScore 3.6
         var results = SearchAll(search, "ari");
         Assert.Single(results);
-        Assert.Equal(0.8, results[0].Score);
+        Assert.Equal(AppDefaults.AppMinScore, results[0].Score);
     }
 
     [Fact]

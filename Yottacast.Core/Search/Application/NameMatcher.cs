@@ -13,6 +13,9 @@ public static class NameMatcher {
     }
 
     private static double ScoreWith(IReadOnlyList<string> tokens, string name, string query) {
+        // Exact match: typing the full name is the strongest possible signal
+        if (name.Equals(query, StringComparison.OrdinalIgnoreCase)) return 1.1;
+
         var queryHumps = SplitTokens(query);
 
         // CamelHump: each query hump must be prefix of successive tokens
