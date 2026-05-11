@@ -290,7 +290,6 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
             if (emoji != null) {
                 SetDouble(app, "Theme.Emoji.Cell.Size",        emoji["cell"]?["size"]);
                 SetCornerRadius(app, "Theme.Emoji.Cell.CornerRadius", emoji["cell"]?["cornerRadius"]);
-                SetDouble(app, "Theme.Emoji.Cell.Margin",      emoji["cell"]?["margin"]);
                 SetDouble(app, "Theme.Emoji.Char.Size",        emoji["char"]?["size"]);
                 SetFontFamily(app, "Theme.Emoji.Char.FontFamily", emoji["char"]?["fontFamily"]);
                 SetBrush(app,  "Theme.Emoji.Keywords.Color",   emoji["keywords"]?["color"]);
