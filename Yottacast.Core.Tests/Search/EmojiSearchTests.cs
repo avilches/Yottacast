@@ -17,7 +17,7 @@ public class EmojiSearchTests {
         await File.WriteAllTextAsync(cachePath, compactJson);
         var settings = UserSettings.Load(new FakePlatformProvider([]));
         usageStore ??= new EmojiUsageStore(Path.Combine(dir, "emoji-usage.json"), NullLogger<EmojiUsageStore>.Instance);
-        var search = new EmojiSearch(new ClipboardService(NullLogger<ClipboardService>.Instance), cachePath, new EmojiDataLoader(NullLogger<EmojiDataLoader>.Instance), usageStore, NullLogger<EmojiSearch>.Instance, settings);
+        var search = new EmojiSearch(new ClipboardService(NullLogger<ClipboardService>.Instance), cachePath, new EmojiDataLoader(NullLogger<EmojiDataLoader>.Instance), usageStore, new EmojiLayoutConfig(), NullLogger<EmojiSearch>.Instance, settings);
         search.Start();
         await search.WhenReady();
         return search;
@@ -34,7 +34,7 @@ public class EmojiSearchTests {
         var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
         string copied = "";
         clipboard.Initialize(copy: text => copied = text, read: () => Task.FromResult<string?>(null));
-        var search = new EmojiSearch(clipboard, cachePath, new EmojiDataLoader(NullLogger<EmojiDataLoader>.Instance), usageStore, NullLogger<EmojiSearch>.Instance, settings);
+        var search = new EmojiSearch(clipboard, cachePath, new EmojiDataLoader(NullLogger<EmojiDataLoader>.Instance), usageStore, new EmojiLayoutConfig(), NullLogger<EmojiSearch>.Instance, settings);
         search.Start();
         await search.WhenReady();
         return (search, clipboard, usageStore, () => copied);
@@ -781,7 +781,7 @@ public class RealEmojiDataFixture : IAsyncLifetime, IDisposable {
         var usageStore = new EmojiUsageStore(Path.Combine(_tempDir, "emoji-usage.json"), NullLogger<EmojiUsageStore>.Instance);
         Search = new EmojiSearch(
             new ClipboardService(NullLogger<ClipboardService>.Instance), cachePath, loader,
-            usageStore, NullLogger<EmojiSearch>.Instance, settings);
+            usageStore, new EmojiLayoutConfig(), NullLogger<EmojiSearch>.Instance, settings);
         Search.Start();
         await Search.WhenReady();
     }

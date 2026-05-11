@@ -241,6 +241,7 @@ public partial class App : Application {
         services.AddSingleton<MathJsEngineProvider>();
         services.AddSingleton<NerdamerEngine>();
         services.AddSingleton<CalculatorSearch>();
+        services.AddSingleton<EmojiLayoutConfig>();
         services.AddSingleton<EmojiDataLoader>();
         services.AddSingleton<EmojiUsageStore>(sp => new EmojiUsageStore(
             AppPaths.EmojiUsageFile,
@@ -250,6 +251,7 @@ public partial class App : Application {
             AppPaths.EmojiCacheFile,
             sp.GetRequiredService<EmojiDataLoader>(),
             sp.GetRequiredService<EmojiUsageStore>(),
+            sp.GetRequiredService<EmojiLayoutConfig>(),
             sp.GetRequiredService<ILogger<EmojiSearch>>(),
             sp.GetRequiredService<UserSettings>()));
 

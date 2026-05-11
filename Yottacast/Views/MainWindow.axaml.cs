@@ -501,19 +501,34 @@ public partial class MainWindow : Window {
     private void PositionOptionsMenu() {
         if (DataContext is not MainWindowViewModel vm || !vm.IsOptionsMenuOpen || vm.SelectedResult == null)
             return;
-        var container = ResultsList.ContainerFromItem(vm.SelectedResult) as ListBoxItem;
-        if (container == null) return;
-        var pos = container.TranslatePoint(new Point(0, 0), ResultsPanel);
-        if (!pos.HasValue) return;
 
-        // Menu top aligned with item top, clamped so the menu stays within the results
-        // panel → no window growth. If menu is taller than the panel, starts at 0 and
-        // the window grows DOWN only (never up+down).
-        var itemTop = pos.Value.Y;
-        var panelH  = ResultsList.Bounds.Height;
-        var menuH   = OptionsMenuOverlay.Bounds.Height;
+        double? rawTop = null;
 
-        var top = itemTop;
+        // For the emoji grid, the whole grid is a single ListBoxItem.
+        // Traverse the visual tree to find the selected-cell Border so the menu
+        // appears next to the actual emoji rather than at the top of the grid.
+        if (vm.SelectedResult is EmojiGridResultViewModel) {
+            var selectedCell = ResultsList
+                .GetVisualDescendants()
+                .OfType<Border>()
+                .FirstOrDefault(b => b.Classes.Contains("emoji-selected"));
+            if (selectedCell != null) {
+                var pos = selectedCell.TranslatePoint(new Point(0, 0), ResultsPanel);
+                if (pos.HasValue) rawTop = pos.Value.Y;
+            }
+        }
+
+        if (!rawTop.HasValue) {
+            var container = ResultsList.ContainerFromItem(vm.SelectedResult) as ListBoxItem;
+            if (container == null) return;
+            var pos = container.TranslatePoint(new Point(0, 0), ResultsPanel);
+            if (!pos.HasValue) return;
+            rawTop = pos.Value.Y;
+        }
+
+        var top    = rawTop.Value;
+        var panelH = ResultsList.Bounds.Height;
+        var menuH  = OptionsMenuOverlay.Bounds.Height;
         if (panelH > 0 && menuH > 0 && top + menuH > panelH)
             top = Math.Max(0, panelH - menuH);
 

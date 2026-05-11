@@ -69,8 +69,7 @@
   },
 
   "emoji": {
-    "columns": 10,
-    "cell":     { "size": 48, "cornerRadius": 8 },
+    "cell":     { "size": 48, "cornerRadius": 8, "margin": 2 },
     "char":     { "size": 48, "fontFamily": "Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji" },
     "keywords": { "color": "#EAEAEE", "size": 12, "opacity": 0.55 },
     "sectionHeader": { "color": "#EAEAEE", "size": 11, "opacity": 0.5 },
