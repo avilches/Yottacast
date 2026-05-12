@@ -41,6 +41,7 @@ una conversion valida, aparece un resultado sin necesidad de pulsar Enter ni sel
 - La activacion (Enter) **copia al portapapeles y pega en la app anterior** (`PasteAfterActivate = true`): el resultado
   aritmetico para calculos, o la celda seleccionada para conversiones. Cmd+C copia sin cerrar la ventana.
 - El icono del resultado distingue el tipo: calculadora para aritmetica, conversor para unidades/divisas.
+- La calculadora solo responde si al menos uno de `EnableCalculator` o `EnableConverter` está activo. `EnableCalculator` controla aritmética y ecuaciones; `EnableConverter` controla conversiones de unidades y divisas. Ambos toggles aparecen en Settings → Calculator y Settings → Converter respectivamente.
 
 > **Verificar en:** `CalculatorSearch.Search()` en `Yottacast.Core/Search/Calculator/CalculatorSearch.cs`
 
