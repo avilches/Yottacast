@@ -22,6 +22,9 @@ una conversion valida, aparece un resultado sin necesidad de pulsar Enter ni sel
 | Conversion de divisas | `100 USD`, `50 EUR to GBP`   | Conversion con tasas actualizadas        |
 | Entrada de tiempo     | `38000 s`                    | Descomposicion: `10 h 33 min 20 s`       |
 | Entrada de datos      | `1500 MB`                    | Mejor unidad: `1.5 GB`                   |
+| Simplificación algebraica | `2*x+3*x`             | Celdas navegables: `simplify: 5*x`, `d/dx: 5`, `∫dx: 5*x^2/2` |
+| Factorización             | `x^2-5*x+6`           | Celdas navegables: `factor: (x-2)*(x-3)`, `d/dx: 2*x-5`       |
+| Derivada/integral         | `sin(x)`              | Celdas navegables: `d/dx: cos(x)`, `∫dx: -cos(x)`              |
 
 ### 1.2 Invariantes de la experiencia de usuario
 
@@ -142,6 +145,30 @@ Existen tres mecanismos que pueden cambiar la unidad mostrada en el lado "From":
    la auto-simplificacion SI. `FromWasNormalized` siempre es `false` para estas unidades.
 
 > **Verificar en:** `EvaluateSimple()` y `EvaluateComplex()` en `MathJsEngine.cs`; `TryNormalize()` en `MathJsEngine.cs`
+
+---
+
+## 3b. Álgebra simbólica
+
+Cuando la query no contiene `=` y math.js no puede evaluarla (contiene variables como `x`, `y`, `t`), la query se redirige al motor nerdamer para álgebra simbólica.
+
+El resultado es un ítem navegable con hasta N celdas, una por operación útil. Las celdas se navegan con ←/→; Enter copia el resultado de la celda seleccionada y lo pega en la app anterior.
+
+| Operación  | Cuándo aparece                          | Ejemplo entrada  | Ejemplo celda           |
+|------------|-----------------------------------------|------------------|-------------------------|
+| simplify   | Resultado ≠ input normalizado           | `2*x+3*x`        | `5*x`                   |
+| expand     | Resultado ≠ input normalizado           | `(x+1)^2`        | `x^2+2*x+1`             |
+| factor     | Resultado ≠ input normalizado           | `x^2-5*x+6`      | `(x-2)*(x-3)`           |
+| d/dx       | Siempre (una celda por variable, a–z)   | `x^2`            | `2*x`                   |
+| ∫dx        | Solo si la expresión tiene 1 variable   | `x^2`            | `x^3/3`                 |
+
+Las celdas donde el resultado es igual al input se descartan (no-ops). Las celdas con resultado duplicado se deduplicarán, conservando la primera (prioridad: simplify > expand > factor > d/dx > ∫dx).
+
+Si tras el filtrado no queda ninguna celda útil, no se muestra ningún resultado.
+
+El texto plano sin estructura matemática (`safari to km`) no produce resultado: nerdamer no detecta variables y devuelve `null`.
+
+> **Verificar en:** `getAlgebraResults()` en `nerdamer-helpers.js`; `NerdamerEngine.TryAlgebra()` en `NerdamerEngine.cs`; routing `UnknownSymbol` y `BuildAlgebraResult()` en `CalculatorSearch.cs`
 
 ---
 
