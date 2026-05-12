@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Net.Http;
 using Xunit;
@@ -9,8 +10,8 @@ using Yottacast.Core.ViewModels;
 
 namespace Yottacast.Core.Tests.Search.Calculator;
 
-[Collection("Nerdamer")]
-public class AlgebraSearchTests(NerdamerEngineFixture fixture) {
+[Collection("MathJs")]
+public class AlgebraSearchTests(NerdamerEngineFixture fixture, MathJsEngineFixture mathJsFixture) {
 
     // ── NerdamerEngine.TryAlgebra direct tests ────────────────────────────────
 
@@ -86,5 +87,70 @@ public class AlgebraSearchTests(NerdamerEngineFixture fixture) {
         if (result == null) return;
         var values = result.Cells.Select(c => c.Result).ToList();
         Assert.Equal(values.Distinct().Count(), values.Count);
+    }
+
+    // ── CalculatorSearch integration tests ───────────────────────────────────
+
+    private CalculatorSearch MakeCalcSearch() {
+        var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
+        clipboard.Initialize(copy: _ => { }, read: () => Task.FromResult<string?>(null));
+        var settings = UserSettings.Load(new FakePlatformProvider([]));
+        var provider = MathJsEngineProvider.ForTesting(mathJsFixture.Engine);
+        var exchangeRateService = new ExchangeRateService(new HttpClient(), settings,
+            NullLogger<ExchangeRateService>.Instance);
+        return new CalculatorSearch(provider, exchangeRateService, clipboard, settings,
+            NullLogger<CalculatorSearch>.Instance, fixture.Engine);
+    }
+
+    [Fact]
+    public void CalculatorSearch_AlgebraExpression_ReturnsAlgebraResultViewModel() {
+        var search = MakeCalcSearch();
+        var results = search.Search("2*x+3*x", 5);
+        var item = Assert.Single(results);
+        Assert.IsType<AlgebraResultItemViewModel>(item);
+    }
+
+    [Fact]
+    public void CalculatorSearch_AlgebraExpression_HasExpectedCells() {
+        var search = MakeCalcSearch();
+        var results = search.Search("2*x+3*x", 5);
+        var vm = Assert.IsType<AlgebraResultItemViewModel>(Assert.Single(results));
+        Assert.Contains(vm.CellItems, c => c.Label == "simplify");
+    }
+
+    [Fact]
+    public void CalculatorSearch_AlgebraActivate_CopiesSelectedCellResult() {
+        string? copied = null;
+        var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
+        clipboard.Initialize(copy: text => copied = text, read: () => Task.FromResult<string?>(null));
+        var settings = UserSettings.Load(new FakePlatformProvider([]));
+        var provider = MathJsEngineProvider.ForTesting(mathJsFixture.Engine);
+        var exchangeRateService = new ExchangeRateService(new HttpClient(), settings,
+            NullLogger<ExchangeRateService>.Instance);
+        var search = new CalculatorSearch(provider, exchangeRateService, clipboard, settings,
+            NullLogger<CalculatorSearch>.Instance, fixture.Engine);
+
+        var results = search.Search("2*x+3*x", 5);
+        var vm = Assert.IsType<AlgebraResultItemViewModel>(Assert.Single(results));
+        var enterAction = vm.Actions.First(a => a.Hotkey == ActionHotkey.Enter);
+        enterAction.Execute();
+
+        Assert.NotNull(copied);
+        Assert.Equal(vm.CellItems[0].Result, copied);
+    }
+
+    [Fact]
+    public void CalculatorSearch_PlainText_ReturnsEmpty() {
+        var search = MakeCalcSearch();
+        Assert.Empty(search.Search("safari to km", 5));
+    }
+
+    [Fact]
+    public void CalculatorSearch_NumericExpression_NotRoutedToAlgebra() {
+        // "2+3" is handled by math.js (returns CalcResult), never reaches TryAlgebra
+        var search = MakeCalcSearch();
+        var results = search.Search("2+3", 5);
+        var item = Assert.Single(results);
+        Assert.IsType<CalculatorResultItemViewModel>(item);
     }
 }

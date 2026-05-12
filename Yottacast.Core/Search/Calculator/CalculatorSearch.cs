@@ -182,6 +182,11 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
                 LastHintKind = SearchHintKind.Error;
                 logger.LogDebug("Calculator query=\"{Query}\" → error {Kind}: {Hint}", q, r.ErrorKind, LastHint);
                 break;
+            case ErrorResult r when r.ErrorKind == CalcErrorKind.UnknownSymbol: {
+                var algebraResult = nerdamerEngine.TryAlgebra(q);
+                if (algebraResult != null) return BuildAlgebraResult(algebraResult, q);
+                break;
+            }
         }
 
         return [];
@@ -222,6 +227,51 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
         if (token == null) return "Can't convert between these units";
         var parts = token.Split('|');
         return parts.Length == 2 ? $"Can't convert {parts[0]} to {parts[1]}" : "Can't convert between these units";
+    }
+
+    private IReadOnlyList<BaseResultItemViewModel> BuildAlgebraResult(AlgebraResult result, string originalQuery) {
+        logger.LogDebug("Algebra query=\"{Query}\" → {Count} cells: {Labels}",
+            originalQuery, result.Cells.Length,
+            string.Join(", ", result.Cells.Select(c => c.Label)));
+
+        AlgebraResultItemViewModel vm = null!;
+        vm = new AlgebraResultItemViewModel {
+            Title   = result.Cells[0].Result,
+            Cells   = result.Cells,
+            Score   = 7,
+            OnLeft  = result.Cells.Length > 1 ? () => vm.MoveCellLeft()  : null,
+            OnRight = result.Cells.Length > 1 ? () => vm.MoveCellRight() : null,
+            Actions = [
+                new() {
+                    Label           = "Copy result",
+                    Hotkey          = ActionHotkey.Enter,
+                    ShowInFooter    = true,
+                    ShowInMenu      = true,
+                    ClosesMenu      = true,
+                    ClosesWindow    = true,
+                    PasteAfterClose = true,
+                    Execute = () => {
+                        var copied = vm.CellItems[vm.SelectedCell].Result;
+                        logger.LogInformation("Algebra: copied \"{Value}\"", copied);
+                        clipboard.CopyText(copied);
+                    },
+                },
+                new() {
+                    Label        = "Copy result",
+                    Hotkey       = ActionHotkey.MetaC,
+                    ShowInFooter = true,
+                    ShowInMenu   = true,
+                    ClosesMenu   = true,
+                    HintProvider = () => "Result copied!",
+                    Execute = () => {
+                        var copied = vm.CellItems[vm.SelectedCell].Result;
+                        logger.LogInformation("Algebra: copied via Cmd+C \"{Value}\"", copied);
+                        clipboard.CopyText(copied);
+                    },
+                },
+            ],
+        };
+        return [vm];
     }
 
     private IReadOnlyList<BaseResultItemViewModel> BuildEquationResult(SolveResult result, string originalQuery) {
