@@ -41,3 +41,6 @@ user-data/
 # kaikki dictionary build artifacts (large files, generated)
 tools/kaikki/cache/
 tools/kaikki/output/
+
+# Superpowers brainstorming artifacts
+.superpowers/

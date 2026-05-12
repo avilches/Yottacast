@@ -34,4 +34,30 @@ public abstract class BaseResultItemViewModel {
     /// This is NOT part of <see cref="Actions"/> — it is a result-list structural flag.
     /// </summary>
     public bool BypassLimit { get; init; }
+
+    // ============================================================================
+    // Highlighting (set by each search source when creating the ViewModel)
+    // ============================================================================
+
+    /// <summary>Character ranges in Title that matched the query. Null means no highlighting.</summary>
+    public IReadOnlyList<(int Start, int Length)>? TitleRanges { get; init; }
+
+    /// <summary>Character ranges in Subtitle that matched the query. Null means no highlighting.</summary>
+    public IReadOnlyList<(int Start, int Length)>? SubtitleRanges { get; init; }
+
+    // ============================================================================
+    // Score debug (ScoreReason set by source; others calculated in RefreshResults)
+    // ============================================================================
+
+    /// <summary>Human-readable explanation of why this item got its score. e.g. "CamelHump inicio (×4)"</summary>
+    public string? ScoreReason { get; init; }
+
+    /// <summary>Frequency/recency bonus from launch history. Set by MainWindowViewModel.RefreshResults().</summary>
+    public double FrequencyBonus { get; set; }
+
+    /// <summary>Formatted score for Alt-debug display. e.g. "2.40 +0.24" or "2.40". Set by RefreshResults().</summary>
+    public string ScoreDisplayText { get; set; } = "";
+
+    /// <summary>Tooltip text for score badge in debug mode. Multi-line explanation. Set by RefreshResults().</summary>
+    public string? ScoreTooltipText { get; set; }
 }
