@@ -300,6 +300,11 @@
                             <results:EmojiGridResultView/>
                         </DataTemplate>
 
+                        <!-- Algebra template (navigable cells for simplify/expand/factor/diff/integrate) -->
+                        <DataTemplate x:DataType="viewModels:AlgebraResultItemViewModel">
+                            <results:AlgebraResultItemView/>
+                        </DataTemplate>
+
                         <!-- Calculator template (title + subtitle, no icon/category) -->
                         <DataTemplate x:DataType="viewModels:CalculatorResultItemViewModel">
                             <results:CalculatorResultItemView/>

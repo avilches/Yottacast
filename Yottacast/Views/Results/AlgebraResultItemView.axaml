@@ -1,0 +1,47 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:viewModels="clr-namespace:Yottacast.Core.ViewModels;assembly=Yottacast.Core"
+             x:Class="Yottacast.Views.Results.AlgebraResultItemView"
+             x:DataType="viewModels:AlgebraResultItemViewModel">
+    <Grid ColumnDefinitions="*" RowDefinitions="*,Auto" MinHeight="68"
+          TextElement.FontFamily="{DynamicResource Theme.Conv.FontFamily}">
+
+        <!-- Row 0: cells row — fills full width uniformly -->
+        <ItemsControl Grid.Row="0"
+                      ItemsSource="{Binding CellItems}"
+                      VerticalAlignment="Center"
+                      Margin="0,8">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <UniformGrid Rows="1"/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="viewModels:AlgebraCellItem">
+                    <Border CornerRadius="{DynamicResource Theme.Conv.Cell.CornerRadius}"
+                            Padding="6,4"
+                            HorizontalAlignment="Stretch"
+                            Classes.conv-cell-selected="{Binding IsSelected}">
+                        <TextBlock Text="{Binding Result}"
+                                   Foreground="{DynamicResource Theme.Conv.Value.Color}"
+                                   FontSize="{DynamicResource Theme.Conv.Value.Size}"
+                                   FontWeight="Medium"
+                                   HorizontalAlignment="Center"
+                                   TextAlignment="Center"
+                                   TextWrapping="Wrap"/>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- Row 1: label of the selected cell (e.g. "factor", "d/dx") -->
+        <TextBlock Grid.Row="1"
+                   Text="{Binding SelectedCellLabel}"
+                   Foreground="{DynamicResource Theme.Conv.Subtitle.Color}"
+                   FontSize="{DynamicResource Theme.Conv.Subtitle.Size}"
+                   Opacity="{DynamicResource Theme.Conv.Subtitle.Opacity}"
+                   HorizontalAlignment="Center"
+                   TextAlignment="Center"
+                   Margin="0,0,0,6"/>
+    </Grid>
+</UserControl>
