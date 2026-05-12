@@ -142,6 +142,28 @@ Si el valor de `variant` no es `"light"`, se asume `"dark"`.
 | `results.shortcut.cornerRadius` | `Theme.Results.Shortcut.CornerRadius` |
 | `results.selection.background` | `Theme.Results.Selection.Background` |
 | `results.selection.color` | `Theme.Results.Selection.Color` |
+| `results.matchHighlight.style` | `Theme.Results.MatchHighlight.Style` |
+| `results.matchHighlight.color` | `Theme.Results.MatchHighlight.Color` |
+| `results.matchHighlight.backgroundOpacity` | `Theme.Results.MatchHighlight.BackgroundOpacity` |
+
+#### Detalle: Match Highlight
+
+El token `matchHighlight` controla como se resaltan los caracteres de titulo y subtitulo que coinciden con la query del usuario. Los autores de temas pueden elegir entre tres estilos visuales:
+
+| Estilo | Descripcion |
+|---|---|
+| `foreground` | Los caracteres coincidentes adoptan un color distinto y peso medio. El texto no-coincidente mantiene su estilo. Utiles para queries con pocos caracteres donde el cambio de color es sutil |
+| `background` | Los caracteres coincidentes reciben un relleno semi-transparente de fondo usando el color del tema y la opacidad especificada. El color del texto permanece igual. Proporciona un contraste visual mas fuerte |
+| `underline` | Los caracteres coincidentes se muestran en negrita con un subrayado en el color accent del tema. Util para temas donde el cambio de color podria resultar en contraste insuficiente |
+
+El campo `color` se interpreta segun el `style`:
+- En `foreground`: es el color del texto de los caracteres coincidentes
+- En `background`: es el color del relleno de fondo (aplicado con la opacidad especificada)
+- En `underline`: se ignora (siempre usa el accent color del tema)
+
+El campo `backgroundOpacity` (0.0–1.0) solo se usa en estilo `background` y controla la transparencia del relleno. Valores tipicos: 0.15 para un highlight sutil, 0.4 para un highlight fuerte.
+
+**Nota:** El highlight es parte del contrato de tema, permitiendo que autores de temas personalizados creen estilos visuales coherentes con su diseno.
 
 ### Calculator
 

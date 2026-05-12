@@ -60,10 +60,14 @@ public class DictionarySource(
 
         string searchWord;
         double score;
+        string scoreReason;
+        IReadOnlyList<(int Start, int Length)>? titleRanges;
 
         if (settings.DictionaryShowAlways) {
             searchWord = query.Trim();
             score = 0.3;
+            scoreReason = "Diccionario siempre";
+            titleRanges = null;
         } else {
             var prefix = settings.DictionaryPrefix;
             if (string.IsNullOrEmpty(prefix)) yield break;
@@ -71,6 +75,8 @@ public class DictionarySource(
             if (!query.StartsWith(trigger, StringComparison.OrdinalIgnoreCase)) yield break;
             searchWord = query[trigger.Length..].Trim();
             score = 3.7;
+            scoreReason = "Diccionario prefijo";
+            titleRanges = [(0, searchWord.Length)];
         }
 
         if (string.IsNullOrEmpty(searchWord)) yield break;
@@ -103,11 +109,13 @@ public class DictionarySource(
             var capturedUrl = $"https://{langCode}.wiktionary.org/wiki/{Uri.EscapeDataString(searchWord)}";
             var capturedDef = defs[0].Definition;
             results.Add(new DictionaryResultViewModel {
-                IconBytes = IconBytes,
-                Word = searchWord,
-                Language = multiLang ? langName : null,
+                IconBytes   = IconBytes,
+                Word        = searchWord,
+                Language    = multiLang ? langName : null,
                 Definitions = defs,
-                Score = score,
+                Score       = score,
+                ScoreReason = scoreReason,
+                TitleRanges = titleRanges,
                 Actions = [
                     new() {
                         Label        = "Open in Wiktionary",
@@ -182,11 +190,13 @@ public class DictionarySource(
                     var capturedUrl = $"https://{langCode}.wiktionary.org/wiki/{Uri.EscapeDataString(searchWord)}";
                     var capturedDef = defs[0].Definition;
                     results.Add(new DictionaryResultViewModel {
-                        IconBytes = IconBytes,
-                        Word = searchWord,
-                        Language = multiLang ? langName : null,
+                        IconBytes   = IconBytes,
+                        Word        = searchWord,
+                        Language    = multiLang ? langName : null,
                         Definitions = defs,
-                        Score = score,
+                        Score       = score,
+                        ScoreReason = scoreReason,
+                        TitleRanges = titleRanges,
                         Actions = [
                             new() {
                                 Label        = "Open in Wiktionary",

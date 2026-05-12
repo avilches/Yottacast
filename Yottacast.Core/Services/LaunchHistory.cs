@@ -34,16 +34,23 @@ public class LaunchHistory(string filePath, ILogger<LaunchHistory> logger, Func<
     /// Returns the score bonus for the given result item.
     /// Returns 0 if the item is not a <see cref="ResultItemViewModel"/> with a non-empty <see cref="ResultItemViewModel.ItemPath"/>.
     /// </summary>
-    public double BonusFor(BaseResultItemViewModel item) {
-        if (item is not ResultItemViewModel r || string.IsNullOrEmpty(r.ItemPath)) return 0;
-        return Bonus(r.ItemPath);
+    public double BonusFor(BaseResultItemViewModel item) => BonusInfoFor(item).Bonus;
+
+    /// <summary>
+    /// Returns the frequency bonus plus raw usage data for score tooltip display.
+    /// Count and AgeDays are 0 if the item has no history.
+    /// </summary>
+    public (double Bonus, int Count, double AgeDays) BonusInfoFor(BaseResultItemViewModel item) {
+        if (item is not ResultItemViewModel r || string.IsNullOrEmpty(r.ItemPath)) return (0, 0, 0);
+        return BonusInfo(r.ItemPath);
     }
 
-    private double Bonus(string itemPath) {
-        if (!_data.TryGetValue(itemPath, out var rec)) return 0;
+    private (double Bonus, int Count, double AgeDays) BonusInfo(string itemPath) {
+        if (!_data.TryGetValue(itemPath, out var rec)) return (0, 0, 0);
         var ageDays = Math.Max(0, (Now - rec.LastUsedAt).TotalDays);
         var decay = Math.Exp(-ageDays / AppDefaults.LaunchHistoryHalfLifeDays);
-        return Math.Min(Math.Log(rec.Count + 1) * decay, AppDefaults.LaunchHistoryMaxBonus);
+        var bonus = Math.Min(Math.Log(rec.Count + 1) * decay, AppDefaults.LaunchHistoryMaxBonus);
+        return (bonus, rec.Count, ageDays);
     }
 
     public async Task LoadAsync() {

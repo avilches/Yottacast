@@ -28,6 +28,21 @@ Clase base abstracta. Contiene las propiedades comunes a todos los tipos de resu
 | `Score` | `double` | Puntuacion para ordenacion (mayor = mas relevante). Ver `docs/search-scoring.md` |
 | `Title` | `string` | Texto principal del resultado |
 
+### Highlighting y debug de scoring
+
+Los resultados pueden mostrar caracteres resaltados cuando coinciden con la query, y pueden displayar informacion de scoring cuando el usuario presiona Alt.
+
+| Propiedad | Tipo | Descripcion |
+|---|---|---|
+| `TitleRanges` | `IReadOnlyList<(int Start, int Length)>?` | Rangos de caracteres en `Title` que coinciden con la query; `null` cuando no es necesario resaltar |
+| `SubtitleRanges` | `IReadOnlyList<(int Start, int Length)>?` | Idem para `Subtitle` |
+| `ScoreReason` | `string?` | Explicacion legible del score asignado por la fuente (ej. "CamelHump inicio (×4)"). Establecido por cada fuente de busqueda en tiempo de creacion |
+| `FrequencyBonus` | `double` | Bonus de frecuencia/recencia aportado por `LaunchHistory`. Establecido por `MainWindowViewModel.RefreshResults()` |
+| `ScoreDisplayText` | `string` | Texto formateado para mostrar (ej. "2.40 +0.24"). Establecido por `RefreshResults()` |
+| `ScoreTooltipText` | `string?` | Texto multi-linea del tooltip del score. Establecido por `RefreshResults()` |
+
+**Contrato:** Las fuentes de busqueda establecen `TitleRanges`, `SubtitleRanges` y `ScoreReason` al crear el item. Estos valores no cambian durante la vida del resultado. `FrequencyBonus`, `ScoreDisplayText` y `ScoreTooltipText` son establecidos por `RefreshResults()` despues de que todos los resultados se han recolectado, permitiendo combinar el score base de cada fuente con el bonus de uso.
+
 ### Lista de acciones
 
 | Propiedad | Tipo | Descripcion |
@@ -68,7 +83,7 @@ Callbacks opcionales que permiten al resultado capturar las teclas de flecha ant
 |---|---|---|---|
 | `BypassLimit` | `bool` | `false` | Si `true`, el item no se descarta por `SearchSourceLimit`. Usado por WebSearch y Dictionary |
 
-> **Verificar en:** `Yottacast.Core/ViewModels/BaseResultItemViewModel.cs`, `Yottacast.Core/ViewModels/ResultAction.cs`, `Yottacast.Core/ViewModels/ActionHotkey.cs`
+> **Verificar en:** `Yottacast.Core/ViewModels/BaseResultItemViewModel.cs`, `Yottacast.Core/ViewModels/ResultAction.cs`, `Yottacast.Core/ViewModels/ActionHotkey.cs`, `Yottacast.Core/ViewModels/MainWindowViewModel.cs` (`RefreshResults`)
 
 ---
 

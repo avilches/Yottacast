@@ -82,6 +82,7 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
                     Icon              = "📐",
                     Category          = "Converter",
                     Score             = 7,
+                    ScoreReason       = "Conversión detectada",
                     FromShort         = fromShort,
                     FromLong          = fromLong,
                     NormFromShort     = normFromShort,
@@ -146,6 +147,7 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
                     Subtitle = subtitle,
                     Category = "Calculator",
                     Score = 7,
+                    ScoreReason = "Expresión detectada",
                     Actions = [
                         new() {
                             Label           = "Copy result",
@@ -236,6 +238,7 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
             Subtitle = originalQuery,
             Category = "Calculator",
             Score = 7,
+            ScoreReason = "Expresión detectada",
             Actions = [
                 new() {
                     Label           = "Copy result",

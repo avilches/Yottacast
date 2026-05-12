@@ -4,6 +4,7 @@
         xmlns:conv="using:Yottacast.Converters"
         xmlns:viewModels="clr-namespace:Yottacast.Core.ViewModels;assembly=Yottacast.Core"
         xmlns:results="using:Yottacast.Views.Results"
+        xmlns:controls="using:Yottacast.Controls"
         x:Class="Yottacast.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         x:Name="RootWindow"
@@ -365,14 +366,18 @@
                                             Orientation="Vertical"
                                             VerticalAlignment="Center"
                                             Spacing="2">
-                                    <TextBlock Text="{Binding Title}"
-                                               Foreground="{DynamicResource Theme.Results.Title.Color}"
-                                               FontSize="{DynamicResource Theme.Results.Title.Size}"
-                                               FontWeight="Medium"/>
-                                    <TextBlock Text="{Binding Subtitle}"
-                                               Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
-                                               FontSize="{DynamicResource Theme.Results.Subtitle.Size}"
-                                               TextTrimming="CharacterEllipsis"/>
+                                    <controls:HighlightTextBlock x:CompileBindings="False"
+                                                                 Text="{Binding Title}"
+                                                                 Ranges="{Binding TitleRanges}"
+                                                                 Foreground="{DynamicResource Theme.Results.Title.Color}"
+                                                                 FontSize="{DynamicResource Theme.Results.Title.Size}"
+                                                                 FontWeight="Medium"/>
+                                    <controls:HighlightTextBlock x:CompileBindings="False"
+                                                                 Text="{Binding Subtitle}"
+                                                                 Ranges="{Binding SubtitleRanges}"
+                                                                 Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
+                                                                 FontSize="{DynamicResource Theme.Results.Subtitle.Size}"
+                                                                 TextTrimming="CharacterEllipsis"/>
                                 </StackPanel>
 
                                 <!-- Category (normal) / Score (alt-debug) + shortcut -->
@@ -388,13 +393,20 @@
                                                FontSize="{DynamicResource Theme.Results.Category.Size}"
                                                VerticalAlignment="Center"
                                                IsVisible="{Binding !DataContext.IsAltPressed, ElementName=RootWindow}"/>
-                                    <!-- Alt debug mode: score -->
+                                    <!-- Alt debug mode: score + tooltip -->
                                     <TextBlock x:CompileBindings="False"
-                                               Text="{Binding Score, StringFormat={}{0:F2}}"
+                                               Text="{Binding ScoreDisplayText}"
                                                Foreground="{DynamicResource Theme.Results.Category.Color}"
                                                FontSize="{DynamicResource Theme.Results.Category.Size}"
                                                VerticalAlignment="Center"
-                                               IsVisible="{Binding DataContext.IsAltPressed, ElementName=RootWindow}"/>
+                                               IsVisible="{Binding DataContext.IsAltPressed, ElementName=RootWindow}">
+                                        <ToolTip.Tip>
+                                            <TextBlock x:CompileBindings="False"
+                                                       Text="{Binding ScoreTooltipText}"
+                                                       MaxWidth="320"
+                                                       TextWrapping="Wrap"/>
+                                        </ToolTip.Tip>
+                                    </TextBlock>
                                     <Border Background="{DynamicResource Theme.Results.Shortcut.Background}"
                                             CornerRadius="{DynamicResource Theme.Results.Shortcut.CornerRadius}"
                                             Padding="7,3"

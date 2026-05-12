@@ -76,7 +76,8 @@ public class UrlSearch(
             Title       = url.Length > 80 ? url[..77] + "…" : url,
             Subtitle    = subtitle,
             Category    = "Web",
-            Score      = 10.0,
+            Score       = 10.0,
+            ScoreReason = "URL directa",
             Actions = [
                 new() {
                     Label        = "Open",

@@ -89,10 +89,12 @@ public class WebSearchSource(
         string searchQuery;
         double score;
 
+        string scoreReason;
         if (userConfig.Mode == WebSearchMode.ShowAlways) {
             if (anyPrefixMatch) return null;
             searchQuery = query;
             score = 0.4;
+            scoreReason = "Búsqueda web siempre";
         } else {
             var prefix = userConfig.Prefix;
             if (string.IsNullOrEmpty(prefix)) return null;
@@ -101,6 +103,7 @@ public class WebSearchSource(
             searchQuery = query[trigger.Length..].Trim();
             if (string.IsNullOrEmpty(searchQuery)) return null;
             score = 3.8;
+            scoreReason = "Búsqueda web prefijo";
         }
 
         var capturedQuery = searchQuery;
@@ -111,7 +114,8 @@ public class WebSearchSource(
             Title       = $"{name}: \"{capturedQuery}\"",
             Subtitle    = $"Open search in {browserName}",
             Category    = "Web",
-            Score      = score,
+            Score       = score,
+            ScoreReason = scoreReason,
             Actions = [
                 new() {
                     Label        = "Open in browser",

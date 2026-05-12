@@ -34,6 +34,7 @@ public class LocalPathSearch(
             Subtitle       = expanded,
             Category       = "Files",
             Score          = 10.0,
+            ScoreReason    = "Ruta local directa",
             Actions = [
                 new() {
                     Label        = "Open",

@@ -447,7 +447,22 @@ public partial class MainWindowViewModel(
 
         var merged = _instantSnapshot
             .Concat(_deferredSnapshot)
-            .Select(x => (item: x, score: x.Score + launchHistory.BonusFor(x)))
+            .Select(x => {
+                var (bonus, count, ageDays) = launchHistory.BonusInfoFor(x);
+                x.FrequencyBonus = bonus;
+
+                x.ScoreDisplayText = bonus > 0.001
+                    ? $"{x.Score:F2} +{bonus:F2}"
+                    : $"{x.Score:F2}";
+
+                var reason    = string.IsNullOrEmpty(x.ScoreReason) ? "—" : x.ScoreReason;
+                var bonusLine = bonus > 0.001
+                    ? $"+{bonus:F2}: {count} lanzamiento{(count != 1 ? "s" : "")}, hace {(int)ageDays} día{((int)ageDays != 1 ? "s" : "")}"
+                    : "Sin historial de uso";
+                x.ScoreTooltipText = $"Score {x.Score:F2}: {reason}\n{bonusLine}";
+
+                return (item: x, score: x.Score + bonus);
+            })
             .OrderByDescending(x => x.score)
             .Select(x => x.item)
             .ToList();

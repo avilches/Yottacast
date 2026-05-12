@@ -76,7 +76,9 @@ public sealed class ApplicationSearch(
         return Task.CompletedTask;
     }
 
-    public ResultItemViewModel CreateResultItem(AppInfo app, double score = 4.0) {
+    public ResultItemViewModel CreateResultItem(AppInfo app, double score = 4.0,
+        string? scoreReason = null,
+        IReadOnlyList<(int Start, int Length)>? titleRanges = null) {
         var path = app.Path;
         return new() {
             Icon = "📱",
@@ -86,6 +88,8 @@ public sealed class ApplicationSearch(
             ItemPath = path,
             Category = "Application",
             Score = score,
+            ScoreReason = scoreReason,
+            TitleRanges = titleRanges,
             Actions = [
                 new() {
                     Label        = "Open",
@@ -112,11 +116,15 @@ public sealed class ApplicationSearch(
     public IReadOnlyList<BaseResultItemViewModel> Search(string query, int limit) {
         if (!settings.EnableAppSearch) return [];
         var results = _apps.Values
-            .Select(a => (app: a, score: NameMatcher.Score(a.Name, query)))
-            .Where(x => x.score > 0)
-            .OrderByDescending(x => x.score)
+            .Select(a => (app: a, match: NameMatcher.Match(a.Name, query)))
+            .Where(x => x.match.Score > 0)
+            .OrderByDescending(x => x.match.Score)
             .Take(limit)
-            .Select(x => CreateResultItem(x.app, Math.Max(x.score * 4, AppDefaults.AppMinScore)))
+            .Select(x => CreateResultItem(
+                x.app,
+                Math.Max(x.match.Score * 4, AppDefaults.AppMinScore),
+                x.match.Reason != null ? $"{x.match.Reason} (×4)" : null,
+                x.match.Ranges))
             .ToList();
         logger.LogDebug("AppSearch query=\"{Query}\" cache={CacheCount} results={ResultCount} ready={Ready}",
             query, _apps.Count, results.Count, _readyTcs.Task.IsCompleted);

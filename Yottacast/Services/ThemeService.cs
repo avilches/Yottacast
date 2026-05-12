@@ -253,6 +253,13 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
                     SetBrush(app, "Theme.Results.Selection.Color",      sel["color"]);
                 }
 
+                var mh = results["matchHighlight"];
+                if (mh != null) {
+                    SetString(app, "Theme.Results.MatchHighlight.Style",            mh["style"]);
+                    SetBrush(app,  "Theme.Results.MatchHighlight.Color",            mh["color"]);
+                    SetDouble(app, "Theme.Results.MatchHighlight.BackgroundOpacity", mh["backgroundOpacity"]);
+                }
+
             }
 
             // ── Calculator ──
@@ -426,6 +433,9 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
         app.Resources["Theme.Results.Shortcut.CornerRadius"]     = new CornerRadius(5);
         app.Resources["Theme.Results.Selection.Background"] = B("#2C5AF0");
         app.Resources["Theme.Results.Selection.Color"]     = B("#FFFFFF");
+        app.Resources["Theme.Results.MatchHighlight.Style"]            = "foreground";
+        app.Resources["Theme.Results.MatchHighlight.Color"]            = B("#5E8FFF");
+        app.Resources["Theme.Results.MatchHighlight.BackgroundOpacity"] = 0.22;
 
         // ── Calculator ──
         app.Resources["Theme.Calc.FontFamily"]        = new FontFamily("SF Pro Text, Segoe UI, Inter");
@@ -582,6 +592,11 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
     private static void SetDouble(Application app, string key, JsonNode? node) {
         if (node == null) return;
         app.Resources[key] = node.GetValue<double>();
+    }
+
+    private static void SetString(Application app, string key, JsonNode? node) {
+        if (node == null) return;
+        app.Resources[key] = node.GetValue<string>();
     }
 
     private static void SetInt(Application app, string key, JsonNode? node) {

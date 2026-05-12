@@ -49,11 +49,15 @@ public sealed class SystemSettingsSearch(
     public IReadOnlyList<BaseResultItemViewModel> Search(string query, int limit) {
         if (!settings.EnableSystemSettings || !settings.EnableAppSearch) return [];
         return _panels.Concat(GetDynamicPanels())
-            .Select(p => (panel: p, score: NameMatcher.Score(p.Name, query)))
-            .Where(x => x.score > 0)
-            .OrderByDescending(x => x.score)
+            .Select(p => (panel: p, match: NameMatcher.Match(p.Name, query)))
+            .Where(x => x.match.Score > 0)
+            .OrderByDescending(x => x.match.Score)
             .Take(limit)
-            .Select(x => BuildResult(x.panel, x.score * 4))
+            .Select(x => BuildResult(
+                x.panel,
+                x.match.Score * 4,
+                x.match.Reason != null ? $"{x.match.Reason} (×4)" : null,
+                x.match.Ranges))
             .ToList();
     }
 
@@ -83,7 +87,9 @@ public sealed class SystemSettingsSearch(
         return _dynamicCache;
     }
 
-    private ResultItemViewModel BuildResult(SystemSettingsPanel panel, double score) {
+    private ResultItemViewModel BuildResult(SystemSettingsPanel panel, double score,
+        string? scoreReason = null,
+        IReadOnlyList<(int Start, int Length)>? titleRanges = null) {
         var identifier = panel.UrlIdentifier;
         var subtitle = panel.ParentName is { } parent
             ? $"System Settings › {parent}"
@@ -91,12 +97,14 @@ public sealed class SystemSettingsSearch(
                 ? "System Settings"
                 : "System Settings · Preference Pane";
         return new ResultItemViewModel {
-            Icon      = "⚙️",
-            IconBytes = iconCache.Get(AppPaths.SystemSettingsAppPath),
-            Title     = panel.Name,
-            Subtitle  = subtitle,
-            Category  = "System Settings",
-            Score     = score,
+            Icon        = "⚙️",
+            IconBytes   = iconCache.Get(AppPaths.SystemSettingsAppPath),
+            Title       = panel.Name,
+            Subtitle    = subtitle,
+            Category    = "System Settings",
+            Score       = score,
+            ScoreReason = scoreReason,
+            TitleRanges = titleRanges,
             Actions = [
                 new() {
                     Label        = "Open",

@@ -232,7 +232,36 @@ La siguiente tabla resume los scores base por fuente, de mayor a menor prioridad
 
 ---
 
-## 12. Flujo de busqueda en dos fases
+## 12. Debug: Modo Alt (información de scoring)
+
+Cuando el usuario presiona Alt, la lista de resultados cambia de apariencia para mostrar informacion de scoring. Esta caracteristica es una herramienta de diagnostico para entender por qué ciertos resultados aparecen en cierto orden.
+
+### Badge de score
+
+Cuando Alt esta presionado, la columna de "Category" en cada resultado se reemplaza por el score numerico formateado como `"base +bonus"` (ej. `"2.40 +0.24"`), donde:
+- `base` es el score asignado por la fuente de busqueda
+- `bonus` es el bonus de frecuencia/recencia aportado por `LaunchHistory` (0 si el item no tiene historial)
+
+### Tooltip de scoring
+
+Posicionarse sobre el badge del score muestra un tooltip multi-linea con dos bloques:
+
+1. **Razon de scoring** (la primera linea): explicacion legible del score base, establecida por la fuente de busqueda (ej. `"CamelHump inicio (×4)"` para una app que coincide por prefijo CamelCase)
+2. **Breakdown de bonus** (si existe): cuantas veces se ha activado el item y hace cuanto tiempo (ej. `"3 lanzamientos, hace 5 dias"`), seguido por el valor numerico del bonus
+
+**Contrato:** Cada fuente de busqueda debe establecer `ScoreReason` al crear el item, describiendo en lenguaje natural por qué le asigno ese score. Si una fuente no requiere explicacion (ej. calculadora con score fijo), puede establecerlo a `null`.
+
+### Invariantes
+
+- El badge solo aparece cuando Alt esta presionado. Sin Alt, se muestra la categoria normal.
+- Los tooltips solo se muestran si el mouse esta sobre el resultado. No requieren interaccion adicional.
+- El score se calcula en `MainWindowViewModel.RefreshResults()` combinando el score base de la fuente con el bonus de `LaunchHistory`.
+
+> **Verificar en:** `MainWindowViewModel.RefreshResults()` (construccion de `ScoreDisplayText` y `ScoreTooltipText`), `Yottacast/Views/MainWindow.axaml.cs` (captura de Alt), `BaseResultItemViewModel.cs` (propiedades `ScoreDisplayText`, `ScoreTooltipText`, `ScoreReason`), cada fuente de busqueda (propiedad `ScoreReason` al crear items)
+
+---
+
+## 14. Flujo de busqueda en dos fases
 
 La busqueda se ejecuta en dos fases para dar respuesta inmediata al usuario:
 

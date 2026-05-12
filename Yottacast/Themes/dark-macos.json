@@ -49,7 +49,12 @@
     "category": { "color": "#70707A", "size": 12 },
     "icon":     { "cornerRadius": 8 },
     "shortcut": { "color": "#8E8E93", "background": "#3A3A3C", "size": 12, "cornerRadius": 6 },
-    "selection": { "background": "#0A84FF", "color": "#FFFFFF" }
+    "selection": { "background": "#0A84FF", "color": "#FFFFFF" },
+    "matchHighlight": {
+      "style": "foreground",
+      "color": "#0A84FF",
+      "backgroundOpacity": 0.22
+    }
   },
 
   "calculator": {

@@ -89,6 +89,7 @@ public class DateSearch(UserSettings settings, ClipboardService clipboard, ILogg
             Icon          = "📅",
             Category      = "Date",
             Score         = AppDefaults.DateSearchScore,
+            ScoreReason   = "Fecha detectada",
             Cells         = cells,
             CellSubtitles = subtitles,
             OnLeft        = () => vm.MoveCellLeft(),
@@ -139,6 +140,7 @@ public class DateSearch(UserSettings settings, ClipboardService clipboard, ILogg
             Icon          = "📅",
             Category      = "Date Range",
             Score         = AppDefaults.DateSearchScore,
+            ScoreReason   = "Fecha detectada",
             Cells         = isoStart == isoEnd
                                 ? [isoStart, isoEnd, durationCell]
                                 : [isoStart, isoEnd, rangeCell, durationCell],

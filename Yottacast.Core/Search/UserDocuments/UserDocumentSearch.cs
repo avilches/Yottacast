@@ -99,27 +99,56 @@ public class UserDocumentSearch(
                         var filename = Path.GetFileNameWithoutExtension(nameLower);
                         var extension = Path.GetExtension(nameLower);
                         var score = 0.5;
+                        IReadOnlyList<(int Start, int Length)>? titleRanges = null;
+                        string? scoreReason = null;
                         if (!hasWildcard) {
                             if (isMultiToken) {
                                 if (!queryTokens.All(t => nameLower.Contains(t))) return;
                                 var nameSegments = nameLower.Split([' ', '-', '_', '.'], StringSplitOptions.RemoveEmptyEntries);
-                                if (queryTokens.All(t => nameSegments.Any(s => s.StartsWith(t))))
+                                if (queryTokens.All(t => nameSegments.Any(s => s.StartsWith(t)))) {
                                     score = 0.75;
+                                    titleRanges = queryTokens
+                                        .Select(t => (nameLower.IndexOf(t, StringComparison.Ordinal), t.Length))
+                                        .Where(x => x.Item1 >= 0)
+                                        .ToList();
+                                    scoreReason = "Multi-token (×3.5)";
+                                }
                             } else {
-                                if (nameLower == queryLower && !string.IsNullOrEmpty(extension))
+                                if (nameLower == queryLower && !string.IsNullOrEmpty(extension)) {
                                     score = 1.1; // nombre completo con extensión (ej. "PC.png" → "PC.png")
-                                else if (filename == queryLower && !string.IsNullOrEmpty(extension))
+                                    titleRanges = [(0, r.Name.Length)];
+                                    scoreReason = "Nombre completo (×3.5)";
+                                } else if (filename == queryLower && !string.IsNullOrEmpty(extension)) {
                                     score = 1;   // stem exacto con extensión propia (ej. "report.pdf" → "report")
-                                else if (extension == $".{queryLower}")
+                                    titleRanges = [(0, filename.Length)];
+                                    scoreReason = "Nombre sin ext (×3.5)";
+                                } else if (extension == $".{queryLower}") {
                                     score = 0.9; // coincidencia de extensión (ej. "photo.png" → "png")
-                                else if (nameLower == queryLower)
+                                    titleRanges = [(filename.Length, extension.Length)];
+                                    scoreReason = "Extensión exacta (×3.5)";
+                                } else if (nameLower == queryLower) {
                                     score = 0.85; // nombre exacto sin extensión: fichero sin ext (carpeta) (ej. "Documents/" → "Documents", "Makefile" → "Makefile")
-                                else if (nameLower.StartsWith(queryLower, StringComparison.Ordinal) || filename.StartsWith(queryLower, StringComparison.Ordinal))
+                                    titleRanges = [(0, r.Name.Length)];
+                                    scoreReason = "Nombre completo (×3.5)";
+                                } else if (nameLower.StartsWith(queryLower, StringComparison.Ordinal)) {
                                     score = 0.75;
-                                else if (nameLower.EndsWith(queryLower, StringComparison.Ordinal))
+                                    titleRanges = [(0, queryLower.Length)];
+                                    scoreReason = "Prefijo nombre (×3.5)";
+                                } else if (filename.StartsWith(queryLower, StringComparison.Ordinal)) {
+                                    score = 0.75;
+                                    titleRanges = [(0, queryLower.Length)];
+                                    scoreReason = "Prefijo fichero (×3.5)";
+                                } else if (nameLower.EndsWith(queryLower, StringComparison.Ordinal)) {
                                     score = 0.5;
+                                    titleRanges = [(nameLower.Length - queryLower.Length, queryLower.Length)];
+                                    scoreReason = "Sufijo (×3.5)";
+                                }
                             }
                         }
+                        IReadOnlyList<(int Start, int Length)>? subtitleRanges = null;
+                        var pathIdx = r.Path.IndexOf(query, StringComparison.OrdinalIgnoreCase);
+                        if (pathIdx >= 0)
+                            subtitleRanges = [(pathIdx, query.Length)];
                         PreloadBadgeIconAsync(r.Path);
                         var path = r.Path;
                         var ext = Path.GetExtension(r.Name).ToLowerInvariant();
@@ -131,6 +160,9 @@ public class UserDocumentSearch(
                             ItemPath = r.Path,
                             Category = "Files",
                             Score = score * 3.5,
+                            ScoreReason = scoreReason,
+                            TitleRanges = titleRanges,
+                            SubtitleRanges = subtitleRanges,
                             Actions = [
                                 new() {
                                     Label        = "Open",
