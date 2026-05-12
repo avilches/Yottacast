@@ -172,6 +172,12 @@ public partial class App : Application {
             return;
         }
         _settingsVm = _services.GetRequiredService<SettingsWindowViewModel>();
+        _settingsVm.OpenWithQuery = query =>
+            Dispatcher.UIThread.InvokeAsync(() => {
+                _services.GetRequiredService<MainWindowViewModel>().SearchText = query;
+                var mw = (ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+                if (mw != null) AppHandler.Instance.ShowWindow(mw);
+            });
         _settingsWindow = new SettingsWindow {
             DataContext = _settingsVm,
             Topmost = _services.GetRequiredService<UserSettings>().StickyWindow,
