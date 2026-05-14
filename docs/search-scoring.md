@@ -238,9 +238,7 @@ Cuando el usuario presiona Alt, la lista de resultados cambia de apariencia para
 
 ### Badge de score
 
-Cuando Alt esta presionado, la columna de "Category" en cada resultado se reemplaza por el score numerico formateado como `"base +bonus"` (ej. `"2.40 +0.24"`), donde:
-- `base` es el score asignado por la fuente de busqueda
-- `bonus` es el bonus de frecuencia/recencia aportado por `LaunchHistory` (0 si el item no tiene historial)
+Cuando Alt esta presionado, la columna de "Category" en cada resultado se reemplaza por el score total formateado como un numero (ej. `"2.64"`), siendo `total = base + bonus`. El desglose detallado (score base, razon y bonus) se muestra en el tooltip al pasar el raton.
 
 ### Tooltip de scoring
 

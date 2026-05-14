@@ -451,9 +451,7 @@ public partial class MainWindowViewModel(
                 var (bonus, count, ageDays) = launchHistory.BonusInfoFor(x);
                 x.FrequencyBonus = bonus;
 
-                x.ScoreDisplayText = bonus > 0.001
-                    ? $"{x.Score:F2} +{bonus:F2}"
-                    : $"{x.Score:F2}";
+                x.ScoreDisplayText = $"{x.Score + bonus:F2}";
 
                 var reason    = string.IsNullOrEmpty(x.ScoreReason) ? "—" : x.ScoreReason;
                 var bonusLine = bonus > 0.001
