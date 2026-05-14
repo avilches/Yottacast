@@ -135,15 +135,21 @@
             </Border>
         </Grid>
 
-        <!-- Stale rates indicator -->
-        <TextBlock Grid.Row="1"
-                   Text="&#x26A0; Exchange rates may be outdated"
-                   Foreground="{DynamicResource Theme.Conv.Subtitle.Color}"
-                   FontSize="{DynamicResource Theme.Conv.Subtitle.Size}"
-                   Opacity="0.6"
-                   HorizontalAlignment="Center"
-                   Margin="0,0,0,4"
-                   IsVisible="{Binding RatesAreStale}"/>
+        <!-- Rate date + stale indicator -->
+        <StackPanel Grid.Row="1" Orientation="Vertical" Spacing="1" Margin="0,0,0,4" HorizontalAlignment="Center">
+            <TextBlock Text="{Binding RatesDateText}"
+                       Foreground="{DynamicResource Theme.Conv.Subtitle.Color}"
+                       FontSize="{DynamicResource Theme.Conv.Subtitle.Size}"
+                       Opacity="0.5"
+                       HorizontalAlignment="Center"
+                       IsVisible="{Binding RatesDateText, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+            <TextBlock Text="&#x26A0; Exchange rates may be outdated"
+                       Foreground="{DynamicResource Theme.Conv.Subtitle.Color}"
+                       FontSize="{DynamicResource Theme.Conv.Subtitle.Size}"
+                       Opacity="0.6"
+                       HorizontalAlignment="Center"
+                       IsVisible="{Binding RatesAreStale}"/>
+        </StackPanel>
 
     </Grid>
 </UserControl>

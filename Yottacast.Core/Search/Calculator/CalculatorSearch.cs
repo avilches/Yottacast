@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Yottacast.Core.Services;
 using Yottacast.Core.ViewModels;
@@ -93,6 +94,7 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
                     ToLong            = toLong,
                     FromWasNormalized = r.FromWasNormalized,
                     RatesAreStale     = exchangeRateService.IsStale,
+                    RatesDateText     = exchangeRateService.RatesDate?.ToString("MMM d, yyyy", CultureInfo.InvariantCulture),
                     OnLeft  = r.FromWasNormalized ? () => vm.MoveCellLeft() : null,
                     OnRight = r.FromWasNormalized ? () => vm.MoveCellRight() : null,
                     Actions = [

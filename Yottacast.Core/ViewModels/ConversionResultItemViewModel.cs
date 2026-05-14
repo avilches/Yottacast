@@ -32,6 +32,9 @@ public class ConversionResultItemViewModel : BaseResultItemViewModel, INotifyPro
     /// <summary>True when exchange rates are stale (never downloaded or too old).</summary>
     public bool RatesAreStale { get; init; }
 
+    /// <summary>Formatted date string for the rate data (e.g. "May 13, 2026"). Null if unknown.</summary>
+    public string? RatesDateText { get; init; }
+
     // ── Cell selection ───────────────────────────────────────────────────────
     private ConversionCell _selectedCell = ConversionCell.To;
     public ConversionCell SelectedCell {

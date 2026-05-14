@@ -25,6 +25,7 @@ public sealed class ExchangeRateService : IAsyncDisposable {
 
     private IReadOnlyDictionary<string, double> _allRates = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
     private DateTimeOffset? _lastUpdated;
+    private DateOnly? _ratesDate;
     private Timer? _timer;
     private readonly Lock _lock = new();
 
@@ -34,6 +35,11 @@ public sealed class ExchangeRateService : IAsyncDisposable {
     /// <summary>When rates were last successfully downloaded. Null if never.</summary>
     public DateTimeOffset? LastUpdated {
         get { lock (_lock) { return _lastUpdated; } }
+    }
+
+    /// <summary>The date reported by the API for the current rate set. Null if unknown.</summary>
+    public DateOnly? RatesDate {
+        get { lock (_lock) { return _ratesDate; } }
     }
 
     /// <summary>True if rates have never been downloaded or are older than 2× the refresh interval.</summary>
@@ -106,16 +112,17 @@ public sealed class ExchangeRateService : IAsyncDisposable {
     private async Task DownloadAndUpdateAsync() {
         if (!await _downloadLock.WaitAsync(0)) return; // already a download in progress
         try {
-            var rates = await FetchRatesAsync();
-            if (rates == null || rates.Count == 0) return;
+            var result = await FetchRatesAsync();
+            if (result == null || result.Value.Rates.Count == 0) return;
 
             DateTimeOffset now = DateTimeOffset.UtcNow;
             lock (_lock) {
-                _allRates = rates;
+                _allRates = result.Value.Rates;
                 _lastUpdated = now;
+                _ratesDate = result.Value.Date;
             }
 
-            await SaveCacheToDiskAsync(rates, now);
+            await SaveCacheToDiskAsync(result.Value.Rates, now, result.Value.Date);
             FireRatesUpdated();
         } catch (Exception ex) {
             _logger.LogWarning(ex, "Exchange rate download failed — using cached rates");
@@ -124,7 +131,7 @@ public sealed class ExchangeRateService : IAsyncDisposable {
         }
     }
 
-    private async Task<IReadOnlyDictionary<string, double>?> FetchRatesAsync() {
+    private async Task<(IReadOnlyDictionary<string, double> Rates, DateOnly? Date)?> FetchRatesAsync() {
         string? json = null;
         foreach (var url in new[] { PrimaryUrl, FallbackUrl }) {
             try {
@@ -144,6 +151,12 @@ public sealed class ExchangeRateService : IAsyncDisposable {
             using var doc = JsonDocument.Parse(json);
             if (!doc.RootElement.TryGetProperty("usd", out var usdObj)) return null;
 
+            DateOnly? date = null;
+            if (doc.RootElement.TryGetProperty("date", out var dateProp)
+                && DateOnly.TryParse(dateProp.GetString(), out var parsed)) {
+                date = parsed;
+            }
+
             var rates = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase) {
                 ["USD"] = 1.0
             };
@@ -152,7 +165,7 @@ public sealed class ExchangeRateService : IAsyncDisposable {
                     rates[prop.Name.ToUpperInvariant()] = rate;
                 }
             }
-            return rates;
+            return (rates, date);
         } catch (Exception ex) {
             _logger.LogWarning(ex, "Failed to parse exchange rate response");
             return null;
@@ -173,6 +186,7 @@ public sealed class ExchangeRateService : IAsyncDisposable {
             lock (_lock) {
                 _allRates = rates;
                 _lastUpdated = cache.LastUpdated;
+                _ratesDate = cache.RatesDate;
             }
             _logger.LogInformation("Loaded exchange rates from disk cache ({Count} currencies, updated {Updated:u})",
                 rates.Count, cache.LastUpdated);
@@ -181,10 +195,10 @@ public sealed class ExchangeRateService : IAsyncDisposable {
         }
     }
 
-    private async Task SaveCacheToDiskAsync(IReadOnlyDictionary<string, double> rates, DateTimeOffset updated) {
+    private async Task SaveCacheToDiskAsync(IReadOnlyDictionary<string, double> rates, DateTimeOffset updated, DateOnly? ratesDate) {
         try {
             Directory.CreateDirectory(Path.GetDirectoryName(AppPaths.ExchangeRatesCache)!);
-            var cache = new RateCache { LastUpdated = updated, Rates = rates.ToDictionary(k => k.Key, k => k.Value) };
+            var cache = new RateCache { LastUpdated = updated, RatesDate = ratesDate, Rates = rates.ToDictionary(k => k.Key, k => k.Value) };
             var json = JsonSerializer.Serialize(cache, CacheJsonOptions);
             await File.WriteAllTextAsync(AppPaths.ExchangeRatesCache, json);
             _logger.LogDebug("Saved exchange rates to disk ({Count} currencies)", rates.Count);
@@ -208,6 +222,7 @@ public sealed class ExchangeRateService : IAsyncDisposable {
 
     private sealed class RateCache {
         [JsonPropertyName("lastUpdated")] public DateTimeOffset LastUpdated { get; set; }
+        [JsonPropertyName("ratesDate")] public DateOnly? RatesDate { get; set; }
         [JsonPropertyName("rates")] public Dictionary<string, double>? Rates { get; set; }
     }
 }
