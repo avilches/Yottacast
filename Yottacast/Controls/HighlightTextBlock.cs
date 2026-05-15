@@ -4,6 +4,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Media;
+using Avalonia.Threading;
 
 namespace Yottacast.Controls;
 
@@ -21,6 +22,27 @@ public class HighlightTextBlock : TextBlock {
     public IReadOnlyList<(int Start, int Length)>? Ranges {
         get => GetValue(RangesProperty);
         set => SetValue(RangesProperty, value);
+    }
+
+    private bool _pendingThemeRebuild;
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e) {
+        base.OnAttachedToVisualTree(e);
+        ResourcesChanged += OnThemeResourcesChanged;
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e) {
+        base.OnDetachedFromVisualTree(e);
+        ResourcesChanged -= OnThemeResourcesChanged;
+    }
+
+    private void OnThemeResourcesChanged(object? sender, ResourcesChangedEventArgs e) {
+        if (_pendingThemeRebuild || string.IsNullOrEmpty(Text) || Ranges == null || Ranges.Count == 0) return;
+        _pendingThemeRebuild = true;
+        Dispatcher.UIThread.Post(() => {
+            _pendingThemeRebuild = false;
+            RebuildInlines();
+        }, DispatcherPriority.Background);
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change) {
@@ -65,7 +87,6 @@ public class HighlightTextBlock : TextBlock {
                     case "background":
                         if (hlBrush is SolidColorBrush scb)
                             run.Background = new SolidColorBrush(scb.Color, bgOp);
-                        run.Foreground = hlBrush;
                         break;
                     case "underline":
                         run.FontWeight = FontWeight.Bold;
