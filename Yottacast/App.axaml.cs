@@ -182,6 +182,7 @@ public partial class App : Application {
                 var mw = (ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
                 if (mw is { IsVisible: false })
                     AppHandler.Instance.ShowWindow(mw);
+                _settingsWindow?.Close();
             });
         _settingsWindow = new SettingsWindow {
             DataContext = _settingsVm,
