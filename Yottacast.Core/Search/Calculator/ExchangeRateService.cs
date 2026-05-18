@@ -109,6 +109,26 @@ public sealed class ExchangeRateService : IAsyncDisposable {
                           StringComparer.OrdinalIgnoreCase);
     }
 
+    private static readonly IReadOnlyList<string> _forexFallback = [
+        "AUD","BRL","CAD","CHF","CNY","DKK","EUR","GBP","HKD",
+        "HUF","IDR","ILS","INR","JPY","KRW","MXN","MYR","NOK",
+        "NZD","PHP","PLN","RON","SEK","SGD","THB","TRY","USD","ZAR"
+    ];
+
+    /// <summary>
+    /// Returns all forex (non-metal, non-crypto) currency codes from downloaded rates,
+    /// sorted alphabetically. Falls back to a hardcoded list if rates aren't loaded yet.
+    /// </summary>
+    public IReadOnlyList<string> GetForexCurrencyCodes() {
+        IReadOnlyDictionary<string, double> snapshot;
+        lock (_lock) { snapshot = _allRates; }
+        var forex = snapshot.Keys
+            .Where(k => CurrencyClassifier.Classify(k) == CurrencyType.Forex)
+            .OrderBy(k => k)
+            .ToList();
+        return forex.Count > 0 ? forex : _forexFallback;
+    }
+
     private async Task DownloadAndUpdateAsync() {
         if (!await _downloadLock.WaitAsync(0)) return; // already a download in progress
         try {

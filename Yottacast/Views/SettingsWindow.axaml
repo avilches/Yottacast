@@ -1154,10 +1154,14 @@
                     <StackPanel Spacing="6">
                         <TextBlock Classes="label" Text="Default Currency Pair"/>
                         <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                            <TextBox Text="{Binding CalculatorCurrencyA}" Classes="flyout-input" Width="64" MaxLength="3"/>
+                            <ComboBox ItemsSource="{Binding AvailableForexCurrencies}"
+                                      SelectedItem="{Binding CalculatorCurrencyA}"
+                                      Width="80"/>
                             <TextBlock Text="/" Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
                                        VerticalAlignment="Center" FontSize="16"/>
-                            <TextBox Text="{Binding CalculatorCurrencyB}" Classes="flyout-input" Width="64" MaxLength="3"/>
+                            <ComboBox ItemsSource="{Binding AvailableForexCurrencies}"
+                                      SelectedItem="{Binding CalculatorCurrencyB}"
+                                      Width="80"/>
                         </StackPanel>
                         <TextBlock Classes="description"
                                    Text="When you type an amount in any currency, it converts to the left currency. The left currency converts to the right."/>

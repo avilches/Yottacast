@@ -293,6 +293,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     private readonly ILogger<SettingsWindowViewModel> _logger;
     private bool _appDirectoriesDirty;
     private readonly HistoryService _historyService;
+    public IReadOnlyList<string> AvailableForexCurrencies { get; private set; } = [];
 
     public SettingsWindowViewModel(
         UserSettings settings,
@@ -312,6 +313,14 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _terminalDiscovery    = terminalDiscovery;
         _exchangeRateService  = exchangeRateService;
         _logger               = logger;
+
+        var forex = exchangeRateService.GetForexCurrencyCodes();
+        // Ensure currently saved values are always in the list (handles custom/old codes)
+        var extra = new[] { settings.CalculatorCurrencyA, settings.CalculatorCurrencyB }
+            .Where(c => !string.IsNullOrEmpty(c) && !forex.Contains(c, StringComparer.OrdinalIgnoreCase))
+            .Select(c => c.ToUpperInvariant());
+        AvailableForexCurrencies = forex.Concat(extra).OrderBy(c => c).ToList();
+
         _logger.LogInformation("Settings: opened");
 
         _themes = themeService.AvailableThemes();
