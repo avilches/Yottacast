@@ -417,6 +417,35 @@
             <Setter Property="Background" Value="{DynamicResource Theme.Results.Selection.Background}"/>
         </Style>
 
+        <!-- Example row: expression column (monospace) -->
+        <Style Selector="TextBlock.expr-mono">
+            <Setter Property="FontFamily" Value="Courier New, Cascadia Code, Consolas, monospace"/>
+            <Setter Property="Foreground"  Value="{DynamicResource Theme.Results.Title.Color}"/>
+            <Setter Property="FontSize"    Value="{DynamicResource Theme.Results.Title.Size}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <!-- Example row: description column -->
+        <Style Selector="TextBlock.expr-desc">
+            <Setter Property="Foreground"    Value="{DynamicResource Theme.Results.Subtitle.Color}"/>
+            <Setter Property="FontSize"      Value="10"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="TextWrapping"  Value="Wrap"/>
+        </Style>
+        <!-- Example row: Try… label -->
+        <Style Selector="TextBlock.try-label">
+            <Setter Property="Foreground"    Value="{DynamicResource Theme.Results.Subtitle.Color}"/>
+            <Setter Property="FontSize"      Value="10"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Opacity"       Value="0.6"/>
+        </Style>
+        <!-- Subsection heading within a settings section -->
+        <Style Selector="TextBlock.subsection-heading">
+            <Setter Property="Foreground"  Value="{DynamicResource Theme.Results.Title.Color}"/>
+            <Setter Property="FontSize"    Value="{DynamicResource Theme.Results.Title.Size}"/>
+            <Setter Property="FontWeight"  Value="SemiBold"/>
+            <Setter Property="Margin"      Value="0,8,0,0"/>
+        </Style>
+
     </Window.Styles>
 
     <Grid ColumnDefinitions="180,1,*">
@@ -483,15 +512,6 @@
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <PathIcon Data="{StaticResource Icon.Calculator}" Width="14" Height="14" VerticalAlignment="Center"/>
                             <TextBlock Text="Calculator" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Button>
-
-                    <Button Classes="nav-item"
-                            Classes.nav-selected="{Binding IsConverterSelected}"
-                            Command="{Binding SelectConverterCommand}">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <PathIcon Data="{StaticResource Icon.Converter}" Width="14" Height="14" VerticalAlignment="Center"/>
-                            <TextBlock Text="Converter" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
 
@@ -1044,131 +1064,124 @@
                                   OnContent="Enabled"
                                   OffContent="Disabled"/>
                     <TextBlock Classes="description"
-                               Text="Evaluate arithmetic expressions and solve equations directly in the search bar."/>
+                               Text="Evaluate math, convert units and currencies directly in the search bar."/>
 
                     <StackPanel Spacing="16" IsVisible="{Binding EnableCalculator}">
 
                     <!-- Decimal places -->
                     <StackPanel Spacing="6">
                         <TextBlock Classes="label" Text="Result Decimal Places"/>
-                        <Border Classes="numeric-field"
-                                Width="130"
-                                HorizontalAlignment="Left"
-                                ClipToBounds="True">
+                        <Border Classes="numeric-field" Width="130" HorizontalAlignment="Left" ClipToBounds="True">
                             <NumericUpDown x:Name="DecimalPlacesInput"
                                            Value="{Binding CalculatorDecimalPlaces}"
-                                           Minimum="0"
-                                           Maximum="6"
-                                           Increment="1"
-                                           FormatString="0"/>
+                                           Minimum="0" Maximum="6" Increment="1" FormatString="0"/>
                         </Border>
                     </StackPanel>
 
-                    <!-- Examples -->
-                    <StackPanel Spacing="4">
+                    <!-- ── Math and Algebra ── -->
+                    <TextBlock Classes="subsection-heading" Text="Math &amp; Algebra"/>
+                    <StackPanel Spacing="0">
                         <TextBlock Classes="label" Text="Examples — click to try"/>
-                        <Button Classes="example-row"
-                                Command="{Binding TryExampleCommand}"
-                                CommandParameter="2 + 3 * 4">
-                            <Grid ColumnDefinitions="16,*,Auto">
-                                <TextBlock Grid.Column="0" Text="▶"
-                                           Foreground="{DynamicResource Theme.Results.Category.Color}"
-                                           FontSize="10" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="1" Text="2 + 3 * 4"
-                                           FontFamily="Courier New, Cascadia Code, monospace"
-                                           Foreground="{DynamicResource Theme.Results.Title.Color}"
-                                           VerticalAlignment="Center" Margin="8,0,0,0"/>
-                                <TextBlock Grid.Column="2" Text="→ 14"
-                                           Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
-                                           FontSize="12" VerticalAlignment="Center"/>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="2 + 3 * 4">
+                            <Grid ColumnDefinitions="130,*,Auto">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="2 + 3 * 4"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Operator precedence" Margin="8,0"/>
+                                <TextBlock Grid.Column="2" Classes="try-label" Text="Try…"/>
                             </Grid>
                         </Button>
-                        <Button Classes="example-row"
-                                Command="{Binding TryExampleCommand}"
-                                CommandParameter="sqrt(144)">
-                            <Grid ColumnDefinitions="16,*,Auto">
-                                <TextBlock Grid.Column="0" Text="▶"
-                                           Foreground="{DynamicResource Theme.Results.Category.Color}"
-                                           FontSize="10" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="1" Text="sqrt(144)"
-                                           FontFamily="Courier New, Cascadia Code, monospace"
-                                           Foreground="{DynamicResource Theme.Results.Title.Color}"
-                                           VerticalAlignment="Center" Margin="8,0,0,0"/>
-                                <TextBlock Grid.Column="2" Text="→ 12"
-                                           Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
-                                           FontSize="12" VerticalAlignment="Center"/>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="sqrt(pi)">
+                            <Grid ColumnDefinitions="130,*,Auto">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="sqrt(pi)"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Square root of π" Margin="8,0"/>
+                                <TextBlock Grid.Column="2" Classes="try-label" Text="Try…"/>
                             </Grid>
                         </Button>
-                        <Button Classes="example-row"
-                                Command="{Binding TryExampleCommand}"
-                                CommandParameter="2x - 5 = 2">
-                            <Grid ColumnDefinitions="16,*,Auto">
-                                <TextBlock Grid.Column="0" Text="▶"
-                                           Foreground="{DynamicResource Theme.Results.Category.Color}"
-                                           FontSize="10" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="1" Text="2x - 5 = 2"
-                                           FontFamily="Courier New, Cascadia Code, monospace"
-                                           Foreground="{DynamicResource Theme.Results.Title.Color}"
-                                           VerticalAlignment="Center" Margin="8,0,0,0"/>
-                                <TextBlock Grid.Column="2" Text="→ x = 3.5"
-                                           Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
-                                           FontSize="12" VerticalAlignment="Center"/>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="sin(45 deg)">
+                            <Grid ColumnDefinitions="130,*,Auto">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="sin(45 deg)"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Trigonometry in degrees" Margin="8,0"/>
+                                <TextBlock Grid.Column="2" Classes="try-label" Text="Try…"/>
                             </Grid>
                         </Button>
-                        <Button Classes="example-row"
-                                Command="{Binding TryExampleCommand}"
-                                CommandParameter="x^2 - 5x + 6 = 0">
-                            <Grid ColumnDefinitions="16,*,Auto">
-                                <TextBlock Grid.Column="0" Text="▶"
-                                           Foreground="{DynamicResource Theme.Results.Category.Color}"
-                                           FontSize="10" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="1" Text="x^2 - 5x + 6 = 0"
-                                           FontFamily="Courier New, Cascadia Code, monospace"
-                                           Foreground="{DynamicResource Theme.Results.Title.Color}"
-                                           VerticalAlignment="Center" Margin="8,0,0,0"/>
-                                <TextBlock Grid.Column="2" Text="→ x = 2, 3"
-                                           Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
-                                           FontSize="12" VerticalAlignment="Center"/>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="log(1000, 10)">
+                            <Grid ColumnDefinitions="130,*,Auto">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="log(1000, 10)"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Logarithm base 10" Margin="8,0"/>
+                                <TextBlock Grid.Column="2" Classes="try-label" Text="Try…"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="2x - 5 = 2">
+                            <Grid ColumnDefinitions="130,*,Auto">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="2x - 5 = 2"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Solve equation for x" Margin="8,0"/>
+                                <TextBlock Grid.Column="2" Classes="try-label" Text="Try…"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="x^2 - 5x + 6">
+                            <Grid ColumnDefinitions="130,*,Auto">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="x^2 - 5x + 6"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Factor / derive symbolic expression" Margin="8,0"/>
+                                <TextBlock Grid.Column="2" Classes="try-label" Text="Try…"/>
                             </Grid>
                         </Button>
                     </StackPanel>
 
-                    </StackPanel> <!-- /EnableCalculator -->
-                </StackPanel>
+                    <!-- ── Unit Converter ── -->
+                    <TextBlock Classes="subsection-heading" Text="Unit Converter"/>
+                    <StackPanel Spacing="0">
+                        <TextBlock Classes="label" Text="Examples — click to try"/>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="26 c">
+                            <Grid ColumnDefinitions="130,*,Auto">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="26 c"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Auto-convert to Fahrenheit" Margin="8,0"/>
+                                <TextBlock Grid.Column="2" Classes="try-label" Text="Try…"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="100 km/h">
+                            <Grid ColumnDefinitions="130,*,Auto">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="100 km/h"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Auto-convert to mph" Margin="8,0"/>
+                                <TextBlock Grid.Column="2" Classes="try-label" Text="Try…"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="5 kg to lbs">
+                            <Grid ColumnDefinitions="130,*,Auto">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="5 kg to lbs"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Explicit unit conversion" Margin="8,0"/>
+                                <TextBlock Grid.Column="2" Classes="try-label" Text="Try…"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="38000 s">
+                            <Grid ColumnDefinitions="130,*,Auto">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="38000 s"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Decomposes into hours, minutes, secs" Margin="8,0"/>
+                                <TextBlock Grid.Column="2" Classes="try-label" Text="Try…"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="1500 MB">
+                            <Grid ColumnDefinitions="130,*,Auto">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="1500 MB"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Best-fit unit — shows 1.5 GB" Margin="8,0"/>
+                                <TextBlock Grid.Column="2" Classes="try-label" Text="Try…"/>
+                            </Grid>
+                        </Button>
+                    </StackPanel>
 
-                <!-- Converter -->
-                <StackPanel Spacing="16" IsVisible="{Binding IsConverterSelected}">
-                    <TextBlock Classes="section-heading" Text="Converter"/>
-                    <ToggleSwitch IsChecked="{Binding EnableConverter}"
-                                  OnContent="Enabled"
-                                  OffContent="Disabled"/>
-                    <TextBlock Classes="description"
-                               Text="Convert units and currencies directly in the search bar."/>
+                    <!-- ── Currency Exchange ── -->
+                    <TextBlock Classes="subsection-heading" Text="Currency Exchange"/>
 
-                    <StackPanel Spacing="16" IsVisible="{Binding EnableConverter}">
-
-                    <!-- Currency pair -->
                     <StackPanel Spacing="6">
                         <TextBlock Classes="label" Text="Default Currency Pair"/>
                         <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                            <TextBox Text="{Binding CalculatorCurrencyA}"
-                                     Classes="flyout-input"
-                                     Width="64"
-                                     MaxLength="3"/>
-                            <TextBlock Text="/"
-                                       Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
-                                       VerticalAlignment="Center"
-                                       FontSize="16"/>
-                            <TextBox Text="{Binding CalculatorCurrencyB}"
-                                     Classes="flyout-input"
-                                     Width="64"
-                                     MaxLength="3"/>
+                            <TextBox Text="{Binding CalculatorCurrencyA}" Classes="flyout-input" Width="64" MaxLength="3"/>
+                            <TextBlock Text="/" Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
+                                       VerticalAlignment="Center" FontSize="16"/>
+                            <TextBox Text="{Binding CalculatorCurrencyB}" Classes="flyout-input" Width="64" MaxLength="3"/>
                         </StackPanel>
                         <TextBlock Classes="description"
                                    Text="When you type an amount in any currency, it converts to the left currency. The left currency converts to the right."/>
                     </StackPanel>
 
-                    <!-- Exchange rates -->
                     <StackPanel Spacing="6">
                         <TextBlock Classes="label" Text="Exchange Rates"/>
                         <CheckBox Content="Include metals (gold, silver, platinum, palladium)"
@@ -1177,18 +1190,38 @@
                                   IsChecked="{Binding CalculatorIncludeCrypto}"/>
                     </StackPanel>
 
+                    <StackPanel Spacing="0">
+                        <TextBlock Classes="label" Text="Examples — click to try"/>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="100 USD">
+                            <Grid ColumnDefinitions="130,*,Auto">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="100 USD"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="{Binding CurrencyExampleDesc}" Margin="8,0"/>
+                                <TextBlock Grid.Column="2" Classes="try-label" Text="Try…"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="50 EUR to GBP">
+                            <Grid ColumnDefinitions="130,*,Auto">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="50 EUR to GBP"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Explicit currency pair" Margin="8,0"/>
+                                <TextBlock Grid.Column="2" Classes="try-label" Text="Try…"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="1 BTC"
+                                IsVisible="{Binding CalculatorIncludeCrypto}">
+                            <Grid ColumnDefinitions="130,*,Auto">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="1 BTC"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="{Binding CryptoCurrencyExampleDesc}" Margin="8,0"/>
+                                <TextBlock Grid.Column="2" Classes="try-label" Text="Try…"/>
+                            </Grid>
+                        </Button>
+                    </StackPanel>
+
                     <StackPanel Spacing="6">
                         <TextBlock Classes="label" Text="Refresh Interval"/>
-                        <Border Classes="numeric-field"
-                                Width="130"
-                                HorizontalAlignment="Left"
-                                ClipToBounds="True">
+                        <Border Classes="numeric-field" Width="130" HorizontalAlignment="Left" ClipToBounds="True">
                             <NumericUpDown x:Name="ExchangeRateRefreshInput"
                                            Value="{Binding ExchangeRateRefreshIntervalHours}"
-                                           Minimum="1"
-                                           Maximum="168"
-                                           Increment="1"
-                                           FormatString="0"/>
+                                           Minimum="1" Maximum="168" Increment="1" FormatString="0"/>
                         </Border>
                         <TextBlock Classes="description" Text="How often to check for updated exchange rates (hours)."/>
                     </StackPanel>
@@ -1198,92 +1231,7 @@
                         <TextBlock Classes="description" Text="{Binding ExchangeRatesLastUpdatedText}"/>
                     </StackPanel>
 
-                    <!-- Examples -->
-                    <StackPanel Spacing="4">
-                        <TextBlock Classes="label" Text="Examples — click to try"/>
-                        <Button Classes="example-row"
-                                Command="{Binding TryExampleCommand}"
-                                CommandParameter="10 km to miles">
-                            <Grid ColumnDefinitions="16,*,Auto">
-                                <TextBlock Grid.Column="0" Text="▶"
-                                           Foreground="{DynamicResource Theme.Results.Category.Color}"
-                                           FontSize="10" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="1" Text="10 km to miles"
-                                           FontFamily="Courier New, Cascadia Code, monospace"
-                                           Foreground="{DynamicResource Theme.Results.Title.Color}"
-                                           VerticalAlignment="Center" Margin="8,0,0,0"/>
-                                <TextBlock Grid.Column="2" Text="→ 6.21 mi"
-                                           Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
-                                           FontSize="12" VerticalAlignment="Center"/>
-                            </Grid>
-                        </Button>
-                        <Button Classes="example-row"
-                                Command="{Binding TryExampleCommand}"
-                                CommandParameter="100 F to C">
-                            <Grid ColumnDefinitions="16,*,Auto">
-                                <TextBlock Grid.Column="0" Text="▶"
-                                           Foreground="{DynamicResource Theme.Results.Category.Color}"
-                                           FontSize="10" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="1" Text="100 F to C"
-                                           FontFamily="Courier New, Cascadia Code, monospace"
-                                           Foreground="{DynamicResource Theme.Results.Title.Color}"
-                                           VerticalAlignment="Center" Margin="8,0,0,0"/>
-                                <TextBlock Grid.Column="2" Text="→ 37.78 °C"
-                                           Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
-                                           FontSize="12" VerticalAlignment="Center"/>
-                            </Grid>
-                        </Button>
-                        <Button Classes="example-row"
-                                Command="{Binding TryExampleCommand}"
-                                CommandParameter="60 km/h to mph">
-                            <Grid ColumnDefinitions="16,*,Auto">
-                                <TextBlock Grid.Column="0" Text="▶"
-                                           Foreground="{DynamicResource Theme.Results.Category.Color}"
-                                           FontSize="10" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="1" Text="60 km/h to mph"
-                                           FontFamily="Courier New, Cascadia Code, monospace"
-                                           Foreground="{DynamicResource Theme.Results.Title.Color}"
-                                           VerticalAlignment="Center" Margin="8,0,0,0"/>
-                                <TextBlock Grid.Column="2" Text="→ 37.28 mph"
-                                           Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
-                                           FontSize="12" VerticalAlignment="Center"/>
-                            </Grid>
-                        </Button>
-                        <Button Classes="example-row"
-                                Command="{Binding TryExampleCommand}"
-                                CommandParameter="100 USD">
-                            <Grid ColumnDefinitions="16,*,Auto">
-                                <TextBlock Grid.Column="0" Text="▶"
-                                           Foreground="{DynamicResource Theme.Results.Category.Color}"
-                                           FontSize="10" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="1" Text="100 USD"
-                                           FontFamily="Courier New, Cascadia Code, monospace"
-                                           Foreground="{DynamicResource Theme.Results.Title.Color}"
-                                           VerticalAlignment="Center" Margin="8,0,0,0"/>
-                                <TextBlock Grid.Column="2" Text="→ EUR (live)"
-                                           Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
-                                           FontSize="12" VerticalAlignment="Center"/>
-                            </Grid>
-                        </Button>
-                        <Button Classes="example-row"
-                                Command="{Binding TryExampleCommand}"
-                                CommandParameter="500 EUR to GBP">
-                            <Grid ColumnDefinitions="16,*,Auto">
-                                <TextBlock Grid.Column="0" Text="▶"
-                                           Foreground="{DynamicResource Theme.Results.Category.Color}"
-                                           FontSize="10" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="1" Text="500 EUR to GBP"
-                                           FontFamily="Courier New, Cascadia Code, monospace"
-                                           Foreground="{DynamicResource Theme.Results.Title.Color}"
-                                           VerticalAlignment="Center" Margin="8,0,0,0"/>
-                                <TextBlock Grid.Column="2" Text="→ GBP (live)"
-                                           Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
-                                           FontSize="12" VerticalAlignment="Center"/>
-                            </Grid>
-                        </Button>
-                    </StackPanel>
-
-                    </StackPanel> <!-- /EnableConverter -->
+                    </StackPanel> <!-- /EnableCalculator -->
                 </StackPanel>
 
                 <!-- Clipboard -->
