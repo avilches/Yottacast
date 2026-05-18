@@ -176,7 +176,9 @@ public partial class App : Application {
             Dispatcher.UIThread.InvokeAsync(() => {
                 _services.GetRequiredService<MainWindowViewModel>().SearchText = query;
                 var mw = (ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
-                if (mw != null) AppHandler.Instance.ShowWindow(mw);
+                if (mw is { IsVisible: false })
+                    AppHandler.Instance.ShowWindow(mw);
+                _settingsWindow?.Close();
             });
         _settingsWindow = new SettingsWindow {
             DataContext = _settingsVm,
