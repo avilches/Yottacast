@@ -67,9 +67,11 @@ public sealed class MathJsEngine : IDisposable {
         var engine = new Engine(opts => opts.LimitRecursion(64));
         engine.Execute(LoadResource("Yottacast.Core.Search.Calculator.math.min.js"));
         // Inject format constants before mathjs-helpers.js so smartFormat can use them.
-        engine.SetValue("_FMT_LARGE_DECIMALS", _formatConfig.LargeNumberDecimals);
+        engine.SetValue("_FMT_LARGE_DECIMALS",  _formatConfig.LargeNumberDecimals);
         engine.SetValue("_FMT_SMALL_SIG_FIGS",  _formatConfig.SmallNumberSigFigs);
         engine.SetValue("_FMT_BASE_PRECISION",   _formatConfig.BasePrecision);
+        engine.SetValue("_FMT_FIAT_DECIMALS",    AppDefaults.FiatCurrencyDecimalPlaces);
+        engine.SetValue("_FMT_CRYPTO_DECIMALS",  AppDefaults.CryptoCurrencyDecimalPlaces);
         engine.Execute(LoadResource("Yottacast.Core.Search.Calculator.mathjs-helpers.js"));
         // Override default currency pair declared in mathjs-helpers.js with the user's config.
         engine.Evaluate($"_defaultCurrencyPair = ['{_formatConfig.CurrencyA.ToUpperInvariant()}', '{_formatConfig.CurrencyB.ToUpperInvariant()}'];");
@@ -99,7 +101,8 @@ public sealed class MathJsEngine : IDisposable {
             var upper = code.ToUpperInvariant();
             if (!IsValidUnitName(upper)) continue;
             var rateStr = rate.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            engine.Evaluate($"registerCurrency('{upper}', {rateStr})");
+            var isCrypto = CurrencyClassifier.Classify(upper) == CurrencyType.Crypto;
+            engine.Evaluate($"registerCurrency('{upper}', {rateStr}, {(isCrypto ? "true" : "false")})");
         }
 
         lock (_lock) {

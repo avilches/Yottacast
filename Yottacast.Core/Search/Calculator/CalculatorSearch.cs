@@ -78,6 +78,8 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
                 var capturedOrig = fromShort;
                 var capturedNorm = normFromShort;
                 var capturedTo   = toShort;
+                var isCurrencyConversion = engine.IsKnownCurrency(r.FromUnit)
+                    || (!string.IsNullOrEmpty(r.ToUnit) && engine.IsKnownCurrency(r.ToUnit));
                 ConversionResultItemViewModel vm = null!;
                 vm = new ConversionResultItemViewModel {
                     Icon              = "📐",
@@ -91,8 +93,10 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
                     ToShort           = toShort,
                     ToLong            = toLong,
                     FromWasNormalized = r.FromWasNormalized,
-                    RatesAreStale     = exchangeRateService.IsStale,
-                    RatesDateText     = exchangeRateService.RatesDate?.ToString("MMM d, yyyy", CultureInfo.InvariantCulture),
+                    RatesAreStale     = isCurrencyConversion && exchangeRateService.IsStale,
+                    RatesDateText     = isCurrencyConversion
+                        ? exchangeRateService.RatesDate?.ToString("MMM d, yyyy", CultureInfo.InvariantCulture)
+                        : null,
                     OnLeft  = r.FromWasNormalized ? () => vm.MoveCellLeft() : null,
                     OnRight = r.FromWasNormalized ? () => vm.MoveCellRight() : null,
                     Actions = [

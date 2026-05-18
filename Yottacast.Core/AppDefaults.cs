@@ -155,6 +155,10 @@ public static class AppDefaults {
     // ── Search — exchange rates ───────────────────────────────────────────────
     /// Default interval in hours between exchange rate refreshes.
     public const int ExchangeRateRefreshIntervalHours = 4;
+    /// Decimal places always used for FIAT currency results (e.g. 91.23 EUR).
+    public const int FiatCurrencyDecimalPlaces = 2;
+    /// Decimal places always used for cryptocurrency results (e.g. 0.00010000 BTC).
+    public const int CryptoCurrencyDecimalPlaces = 8;
     /// HTTP timeout for exchange rate API requests.
     public const int ExchangeRateTimeoutSeconds = 10;
 

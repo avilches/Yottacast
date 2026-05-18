@@ -1,5 +1,6 @@
 math.createUnit('USD');
 var _currencySet = new Set(['USD']);
+var _cryptoCurrencySet = new Set();
 
 // Velocidad: mph y kmh como unidades simples
 math.createUnit('kmh', { definition: math.unit(1000/3600, 'm/s') });
@@ -15,9 +16,10 @@ math.createUnit('Mbps', { definition: '1000 kbps' });
 math.createUnit('Gbps', { definition: '1000 Mbps' });
 math.createUnit('Tbps', { definition: '1000 Gbps' });
 
-function registerCurrency(name, rateVsUSD) {
+function registerCurrency(name, rateVsUSD, isCrypto) {
     // rateVsUSD: units of 'name' per 1 USD (e.g. EUR=0.92 means 1 USD = 0.92 EUR)
     _currencySet.add(name);
+    if (isCrypto) _cryptoCurrencySet.add(name);
     math.createUnit(name, { definition: (1 / rateVsUSD) + ' USD' }, { override: true });
 }
 
@@ -546,20 +548,34 @@ function smartFormat(r) {
     var m = /^(-?\d+\.\d+)(\s|$)/.exec(s);
     if (!m) return s;
     var n = parseFloat(m[1]);
+    var suffix = s.slice(m[1].length).trim();
     var numStr;
     if (Math.abs(n) < 1) {
-        // Limit to _FMT_SMALL_SIG_FIGS significant figures
-        var magnitude = Math.floor(Math.log10(Math.abs(n)));
-        var decimalPlaces = _FMT_SMALL_SIG_FIGS - 1 - magnitude;
-        var factor = Math.pow(10, decimalPlaces);
-        var rounded = Math.round(n * factor) / factor;
-        numStr = rounded.toFixed(decimalPlaces).replace(/0+$/, '').replace(/\.$/, '');
+        if (_cryptoCurrencySet.has(suffix)) {
+            // Crypto < 1: always _FMT_CRYPTO_DECIMALS decimal places (e.g. 0.00000001 BTC)
+            numStr = n.toFixed(_FMT_CRYPTO_DECIMALS);
+        } else {
+            // FIAT and non-currency small values: significant figures (e.g. 0.000042 USD)
+            var magnitude = Math.floor(Math.log10(Math.abs(n)));
+            var decimalPlaces = _FMT_SMALL_SIG_FIGS - 1 - magnitude;
+            var factor = Math.pow(10, decimalPlaces);
+            var rounded = Math.round(n * factor) / factor;
+            numStr = rounded.toFixed(decimalPlaces).replace(/0+$/, '').replace(/\.$/, '');
+        }
     } else {
-        var factor = Math.pow(10, _FMT_LARGE_DECIMALS);
+        var effDecimals = _cryptoCurrencySet.has(suffix) ? _FMT_CRYPTO_DECIMALS
+                        : _currencySet.has(suffix) ? _FMT_FIAT_DECIMALS
+                        : _FMT_LARGE_DECIMALS;
+        var factor = Math.pow(10, effDecimals);
         var rounded = Math.round(n * factor) / factor;
-        numStr = (rounded === Math.floor(rounded))
-            ? rounded.toString()
-            : rounded.toFixed(_FMT_LARGE_DECIMALS).replace(/0+$/, '');
+        if (_currencySet.has(suffix)) {
+            // Currencies always show fixed decimal places (no trailing-zero stripping)
+            numStr = rounded.toFixed(effDecimals);
+        } else {
+            numStr = (rounded === Math.floor(rounded))
+                ? rounded.toString()
+                : rounded.toFixed(effDecimals).replace(/0+$/, '');
+        }
     }
     return numStr + s.slice(m[1].length);
 }

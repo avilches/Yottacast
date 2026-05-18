@@ -180,13 +180,13 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture, NerdamerEngineFi
     // Rates in MathJsEngineFixture (units per 1 USD): EUR=0.92, JPY=150.5, MXN=17.1, GBP=0.79
 
     public static TheoryData<string, string> CurrencyConversionCases => new() {
-        { "10 USD to EUR",          "9.2 EUR"   },   // basic USD→EUR
+        { "10 USD to EUR",          "9.20 EUR"   },  // basic USD→EUR — FIAT always 2dp
         { "USD to EUR",             "0.92 EUR"  },   // bare currency code — from should be "1 USD"
-        { "100 uSd to EUR",         "92 EUR"    },   // case-insensitive input
-        { "10 USD to MXN",          "171 MXN"   },   // USD→MXN  (10 × 17.1)
-        { "100 USD to JPY",         "15050 JPY" },   // USD→JPY  (100 × 150.5)
-        { "10 USD to GBP",          "7.9 GBP"   },   // USD→GBP  (10 × 0.79)
-        { "10 USD",                 "9.2 EUR"   },   // auto-appends "to EUR" (default currency)
+        { "100 uSd to EUR",         "92 EUR"    },   // case-insensitive input (integer → no decimals)
+        { "10 USD to MXN",          "171 MXN"   },   // USD→MXN  (10 × 17.1, integer)
+        { "100 USD to JPY",         "15050 JPY" },   // USD→JPY  (100 × 150.5, integer)
+        { "10 USD to GBP",          "7.90 GBP"  },   // USD→GBP  (10 × 0.79) — FIAT always 2dp
+        { "10 USD",                 "9.20 EUR"  },   // auto-appends "to EUR" — FIAT always 2dp
         { "10 GBP + 20 EUR to MXN", "588"       },   // cross-currency compound expression
     };
 
