@@ -1070,84 +1070,6 @@
                         </Border>
                     </StackPanel>
 
-                    <!-- ── Math and Algebra ── -->
-                    <TextBlock Classes="subsection-heading" Text="Math &amp; Algebra"/>
-                    <StackPanel Spacing="0">
-                        <TextBlock Classes="label" Text="Examples — click to try"/>
-                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="2 + 3 * 4">
-                            <Grid ColumnDefinitions="130,*">
-                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="2 + 3 * 4"/>
-                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Operator precedence" Margin="8,0"/>
-                            </Grid>
-                        </Button>
-                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="sqrt(pi)">
-                            <Grid ColumnDefinitions="130,*">
-                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="sqrt(pi)"/>
-                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Square root of π" Margin="8,0"/>
-                            </Grid>
-                        </Button>
-                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="sin(45 deg)">
-                            <Grid ColumnDefinitions="130,*">
-                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="sin(45 deg)"/>
-                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Trigonometry in degrees" Margin="8,0"/>
-                            </Grid>
-                        </Button>
-                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="log(1000, 10)">
-                            <Grid ColumnDefinitions="130,*">
-                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="log(1000, 10)"/>
-                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Logarithm base 10" Margin="8,0"/>
-                            </Grid>
-                        </Button>
-                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="2x - 5 = 2">
-                            <Grid ColumnDefinitions="130,*">
-                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="2x - 5 = 2"/>
-                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Solve equation for x" Margin="8,0"/>
-                            </Grid>
-                        </Button>
-                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="x^2 - 5x + 6">
-                            <Grid ColumnDefinitions="130,*">
-                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="x^2 - 5x + 6"/>
-                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Factor / derive symbolic expression" Margin="8,0"/>
-                            </Grid>
-                        </Button>
-                    </StackPanel>
-
-                    <!-- ── Unit Converter ── -->
-                    <TextBlock Classes="subsection-heading" Text="Unit Converter"/>
-                    <StackPanel Spacing="0">
-                        <TextBlock Classes="label" Text="Examples — click to try"/>
-                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="26 c">
-                            <Grid ColumnDefinitions="130,*">
-                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="26 c"/>
-                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Auto-convert to Fahrenheit" Margin="8,0"/>
-                            </Grid>
-                        </Button>
-                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="100 km/h">
-                            <Grid ColumnDefinitions="130,*">
-                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="100 km/h"/>
-                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Auto-convert to mi/h" Margin="8,0"/>
-                            </Grid>
-                        </Button>
-                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="5 kg to lbs">
-                            <Grid ColumnDefinitions="130,*">
-                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="5 kg to lbs"/>
-                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Explicit unit conversion" Margin="8,0"/>
-                            </Grid>
-                        </Button>
-                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="38000 s">
-                            <Grid ColumnDefinitions="130,*">
-                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="38000 s"/>
-                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Decomposes into hours, minutes, secs" Margin="8,0"/>
-                            </Grid>
-                        </Button>
-                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="1500 MB">
-                            <Grid ColumnDefinitions="130,*">
-                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="1500 MB"/>
-                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Best-fit unit — shows 1.5 GB" Margin="8,0"/>
-                            </Grid>
-                        </Button>
-                    </StackPanel>
-
                     <!-- ── Currency Exchange ── -->
                     <TextBlock Classes="subsection-heading" Text="Currency Exchange"/>
 
@@ -1175,29 +1097,6 @@
                                   IsChecked="{Binding CalculatorIncludeCrypto}"/>
                     </StackPanel>
 
-                    <StackPanel Spacing="0">
-                        <TextBlock Classes="label" Text="Examples — click to try"/>
-                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="100 USD">
-                            <Grid ColumnDefinitions="130,*">
-                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="100 USD"/>
-                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="{Binding CurrencyExampleDesc}" Margin="8,0"/>
-                            </Grid>
-                        </Button>
-                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="50 EUR to GBP">
-                            <Grid ColumnDefinitions="130,*">
-                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="50 EUR to GBP"/>
-                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Explicit currency pair" Margin="8,0"/>
-                            </Grid>
-                        </Button>
-                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="1 BTC"
-                                IsVisible="{Binding CalculatorIncludeCrypto}">
-                            <Grid ColumnDefinitions="130,*">
-                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="1 BTC"/>
-                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="{Binding CryptoCurrencyExampleDesc}" Margin="8,0"/>
-                            </Grid>
-                        </Button>
-                    </StackPanel>
-
                     <StackPanel Spacing="6">
                         <TextBlock Classes="label" Text="Refresh Interval"/>
                         <Border Classes="numeric-field" Width="130" HorizontalAlignment="Left" ClipToBounds="True">
@@ -1211,6 +1110,174 @@
                     <StackPanel Spacing="4">
                         <TextBlock Classes="label" Text="Last Rate Update"/>
                         <TextBlock Classes="description" Text="{Binding ExchangeRatesLastUpdatedText}"/>
+                    </StackPanel>
+
+                    <!-- ── Examples ── -->
+                    <TextBlock Classes="subsection-heading" Text="Examples — click to try"/>
+
+                    <TextBlock Classes="label" Text="Math &amp; Algebra"/>
+                    <StackPanel Spacing="0">
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="2 + 3 * 4">
+                            <Grid ColumnDefinitions="130,*">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="2 + 3 * 4"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Operator precedence → 14" Margin="8,0"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="sqrt(pi)">
+                            <Grid ColumnDefinitions="130,*">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="sqrt(pi)"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Square root of π" Margin="8,0"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="sin(45 deg)">
+                            <Grid ColumnDefinitions="130,*">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="sin(45 deg)"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Trigonometry in degrees → 0.71" Margin="8,0"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="log(1000, 10)">
+                            <Grid ColumnDefinitions="130,*">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="log(1000, 10)"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Logarithm base 10 → 3" Margin="8,0"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="hypot(3, 4)">
+                            <Grid ColumnDefinitions="130,*">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="hypot(3, 4)"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Hypotenuse of 3-4-5 triangle → 5" Margin="8,0"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="factorial(10)">
+                            <Grid ColumnDefinitions="130,*">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="factorial(10)"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="10! = 3,628,800" Margin="8,0"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="gcd(48, 18)">
+                            <Grid ColumnDefinitions="130,*">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="gcd(48, 18)"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Greatest common divisor → 6" Margin="8,0"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="erf(1)">
+                            <Grid ColumnDefinitions="130,*">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="erf(1)"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Error function (statistics) → 0.84" Margin="8,0"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="2x - 5 = 2">
+                            <Grid ColumnDefinitions="130,*">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="2x - 5 = 2"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Solve equation for x → 3.5" Margin="8,0"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="x^2 - 5x + 6">
+                            <Grid ColumnDefinitions="130,*">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="x^2 - 5x + 6"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Factor / derive / integrate" Margin="8,0"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="sin(x)">
+                            <Grid ColumnDefinitions="130,*">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="sin(x)"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="d/dx: cos(x), ∫dx: -cos(x)" Margin="8,0"/>
+                            </Grid>
+                        </Button>
+                    </StackPanel>
+
+                    <TextBlock Classes="label" Text="Unit Converter"/>
+                    <StackPanel Spacing="0">
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="26 c">
+                            <Grid ColumnDefinitions="130,*">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="26 c"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Celsius → Fahrenheit (auto)" Margin="8,0"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="70 F">
+                            <Grid ColumnDefinitions="130,*">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="70 F"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Fahrenheit → Celsius → 21.11 °C" Margin="8,0"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="100 km/h">
+                            <Grid ColumnDefinitions="130,*">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="100 km/h"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Speed → mi/h (auto)" Margin="8,0"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="100 mph to km/h">
+                            <Grid ColumnDefinitions="130,*">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="100 mph to km/h"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="US speed to metric → 160.93 km/h" Margin="8,0"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="5 kg to lbs">
+                            <Grid ColumnDefinitions="130,*">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="5 kg to lbs"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Mass conversion → 11.02 lbs" Margin="8,0"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="6 ft to m">
+                            <Grid ColumnDefinitions="130,*">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="6 ft to m"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Height conversion → 1.83 m" Margin="8,0"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="1 atm to Pa">
+                            <Grid ColumnDefinitions="130,*">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="1 atm to Pa"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Pressure → 101325 Pa" Margin="8,0"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="5 acre to m2">
+                            <Grid ColumnDefinitions="130,*">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="5 acre to m2"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Area → 20234 m²" Margin="8,0"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="38000 s">
+                            <Grid ColumnDefinitions="130,*">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="38000 s"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Decomposes into hours, minutes, secs" Margin="8,0"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="1500 MB">
+                            <Grid ColumnDefinitions="130,*">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="1500 MB"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Best-fit unit → 1.5 GB" Margin="8,0"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="1 AU to km">
+                            <Grid ColumnDefinitions="130,*">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="1 AU to km"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Astronomical → Earth-Sun distance" Margin="8,0"/>
+                            </Grid>
+                        </Button>
+                    </StackPanel>
+
+                    <TextBlock Classes="label" Text="Currency Exchange"/>
+                    <StackPanel Spacing="0">
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}"
+                                CommandParameter="{Binding CurrencyAExampleQuery}">
+                            <Grid ColumnDefinitions="130,*">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="{Binding CurrencyAExampleQuery}"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="{Binding CurrencyExampleDesc}" Margin="8,0"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}"
+                                CommandParameter="{Binding CurrencyBExampleQuery}">
+                            <Grid ColumnDefinitions="130,*">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="{Binding CurrencyBExampleQuery}"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Explicit currency pair" Margin="8,0"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="1 BTC"
+                                IsVisible="{Binding CalculatorIncludeCrypto}">
+                            <Grid ColumnDefinitions="130,*">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="1 BTC"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="{Binding CryptoCurrencyExampleDesc}" Margin="8,0"/>
+                            </Grid>
+                        </Button>
                     </StackPanel>
 
                     </StackPanel> <!-- /EnableCalculator -->

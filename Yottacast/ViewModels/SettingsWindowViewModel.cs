@@ -219,12 +219,18 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CurrencyExampleDesc))]
     [NotifyPropertyChangedFor(nameof(CryptoCurrencyExampleDesc))]
+    [NotifyPropertyChangedFor(nameof(CurrencyAExampleQuery))]
+    [NotifyPropertyChangedFor(nameof(CurrencyBExampleQuery))]
     private string _calculatorCurrencyA = "EUR";
 
     public string CurrencyExampleDesc       => $"Convert to {CalculatorCurrencyA}";
     public string CryptoCurrencyExampleDesc => $"Bitcoin in {CalculatorCurrencyA}";
+    public string CurrencyAExampleQuery     => $"100 {CalculatorCurrencyB}";
+    public string CurrencyBExampleQuery     => $"50 {CalculatorCurrencyA} to {CalculatorCurrencyB}";
 
-    [ObservableProperty] private string _calculatorCurrencyB = "USD";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CurrencyBExampleQuery))]
+    private string _calculatorCurrencyB = "USD";
     [ObservableProperty] private int _calculatorDecimalPlaces = 2;
     [ObservableProperty] private bool _calculatorIncludeMetals;
     [ObservableProperty] private bool _calculatorIncludeCrypto;

@@ -169,7 +169,7 @@ Si tras el filtrado no queda ninguna celda útil, no se muestra ningún resultad
 
 El texto plano sin estructura matemática (`safari to km`) no produce resultado: nerdamer no detecta variables y devuelve `null`.
 
-> **Verificar en:** `getAlgebraResults()` en `nerdamer-helpers.js`; `NerdamerEngine.TryAlgebra()` en `NerdamerEngine.cs`; routing `UnknownSymbol` y `BuildAlgebraResult()` en `CalculatorSearch.cs`
+> **Verificar en:** `getAlgebraResults()` en `nerdamer-helpers.js`; `NerdamerEngine.TryAlgebra()` en `NerdamerEngine.cs`; routing `UnknownSymbol` y `BuildAlgebraResult()` en `CalculatorSearch.cs`; decimal rounding via `_ALGEBRA_DECIMALS` in `nerdamer-helpers.js`
 
 ---
 
@@ -349,6 +349,8 @@ Los resultados numericos se formatean con precision adaptativa:
 | Valor absoluto < 1  | 3 cifras significativas    | `0.001450377377 psi` -> `0.00145 psi` |
 
 El numero de decimales para valores >= 1 se puede cambiar en Settings → Calculator (rango 0-6). La precision base es de 10 cifras significativas (parametro `BasePrecision` de `FormatConfig`). El cambio se aplica en caliente sin reiniciar la app.
+
+Los resultados algebraicos (nerdamer) también respetan los decimales configurados mediante `roundLongDecimals()` en `nerdamer-helpers.js`.
 
 > **Verificar en:** `smartFormat()` en `mathjs-helpers.js`; `FormatConfig` en `MathJsEngine.cs`
 
