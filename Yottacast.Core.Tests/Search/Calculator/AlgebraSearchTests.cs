@@ -82,6 +82,29 @@ public class AlgebraSearchTests(NerdamerEngineFixture fixture, MathJsEngineFixtu
     }
 
     [Fact]
+    public void TryAlgebra_IntegralWithRepeatingDecimal_RoundsToConfiguredPlaces() {
+        // ∫(x^2 - 5x + 6)dx — nerdamer returns 0.3333333333333333*x^3 for the x^3/3 term
+        var result = fixture.Engine.TryAlgebra("x^2 - 5*x + 6", decimalPlaces: 2);
+        Assert.NotNull(result);
+        var integralCell = result.Cells.FirstOrDefault(c => c.Label.StartsWith("∫"));
+        Assert.NotNull(integralCell);
+        Assert.DoesNotContain("0.3333333333", integralCell!.Result);
+        Assert.Contains("0.33", integralCell.Result);
+    }
+
+    [Fact]
+    public void TryAlgebra_WithZeroDecimalPlaces_KeepsExactIntegers() {
+        var result = fixture.Engine.TryAlgebra("x^2 + 2*x", decimalPlaces: 0);
+        Assert.NotNull(result);
+        var dCell = result.Cells.FirstOrDefault(c => c.Label == "d/dx");
+        Assert.NotNull(dCell);
+        // nerdamer may reorder terms (e.g. "2+2*x") — verify it contains only integers, no decimals
+        Assert.DoesNotContain(".", dCell!.Result);
+        Assert.Contains("2", dCell.Result);
+        Assert.Contains("x", dCell.Result);
+    }
+
+    [Fact]
     public void TryAlgebra_DuplicateResults_Deduplicated() {
         var result = fixture.Engine.TryAlgebra("x^2-5*x+6");
         if (result == null) return;

@@ -52,11 +52,12 @@ public sealed class NerdamerEngine : IDisposable {
     /// all solutions are trivial, or nerdamer throws.
     /// Thread-safe.
     /// </summary>
-    public SolveResult? TrySolve(string query) {
+    public SolveResult? TrySolve(string query, int decimalPlaces = 2) {
         if (_engine == null) return null;
         lock (_lock) {
             if (_engine == null) return null;
             try {
+                _engine.Execute($"_ALGEBRA_DECIMALS = {decimalPlaces};");
                 var json = _engine.Evaluate($"solveEquation({JsonSerializer.Serialize(query)})");
                 if (json.IsNull() || json.IsUndefined()) return null;
                 var jsonStr = json.AsString();
@@ -76,11 +77,12 @@ public sealed class NerdamerEngine : IDisposable {
     /// Returns null if the engine is not ready, no variables found, or all results are trivial.
     /// Thread-safe.
     /// </summary>
-    public AlgebraResult? TryAlgebra(string expr) {
+    public AlgebraResult? TryAlgebra(string expr, int decimalPlaces = 2) {
         if (_engine == null) return null;
         lock (_lock) {
             if (_engine == null) return null;
             try {
+                _engine.Execute($"_ALGEBRA_DECIMALS = {decimalPlaces};");
                 var json = _engine.Evaluate($"getAlgebraResults({JsonSerializer.Serialize(expr)})");
                 if (json.IsNull() || json.IsUndefined()) return null;
                 var jsonStr = json.AsString();

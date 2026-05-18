@@ -31,7 +31,7 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
         // Equation detection: queries containing '=' are routed to NerdamerEngine.
         // math.js already rejects assignments, so these queries would return empty anyway.
         if (q.Contains('=')) {
-            var solveResult = nerdamerEngine.TrySolve(q);
+            var solveResult = nerdamerEngine.TrySolve(q, settings.CalculatorDecimalPlaces);
             if (solveResult != null) return BuildEquationResult(solveResult, q);
             return [];
         }
@@ -186,7 +186,7 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
                 logger.LogDebug("Calculator query=\"{Query}\" → error {Kind}: {Hint}", q, r.ErrorKind, LastHint);
                 break;
             case ErrorResult r when r.ErrorKind == CalcErrorKind.UnknownSymbol: {
-                var algebraResult = nerdamerEngine.TryAlgebra(q);
+                var algebraResult = nerdamerEngine.TryAlgebra(q, settings.CalculatorDecimalPlaces);
                 if (algebraResult != null) return BuildAlgebraResult(algebraResult, q);
                 break;
             }

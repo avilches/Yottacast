@@ -11,6 +11,21 @@
 //   - All solutions are trivial (solution === variable name)
 //   - nerdamer throws (syntax error, unsupported expression)
 
+var _ALGEBRA_DECIMALS = 2; // injected by C# before each call
+
+function roundLongDecimals(text) {
+    return text.replace(/-?\d+\.\d+/g, function(match) {
+        var dot = match.indexOf('.');
+        var decimPart = match.substring(dot + 1);
+        if (decimPart.length > _ALGEBRA_DECIMALS) {
+            var n = parseFloat(match);
+            var rounded = parseFloat(n.toFixed(_ALGEBRA_DECIMALS)).toString();
+            return rounded;
+        }
+        return match;
+    });
+}
+
 function solveEquation(query) {
     try {
         var eqIdx = query.indexOf('=');
@@ -59,7 +74,7 @@ function solveEquation(query) {
                 var solStrs = [];
                 for (var j = 0; j < solArr.length; j++) {
                     var sol = solArr[j];
-                    var solText = sol.text ? sol.text() : String(sol);
+                    var solText = roundLongDecimals(sol.text ? sol.text() : String(sol));
 
                     // Check for free variables in this solution (parametric case).
                     var freeVars = [];
@@ -126,7 +141,7 @@ function getAlgebraResults(expr) {
             try {
                 var r = fn();
                 if (!r) return;
-                var text = r.text ? r.text() : String(r);
+                var text = roundLongDecimals(r.text ? r.text() : String(r));
                 if (text === expr) return;          // no-op: result equals raw input
                 if (seenResults[text]) return;      // deduplicate
                 seenResults[text] = true;
