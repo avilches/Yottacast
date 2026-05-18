@@ -75,6 +75,8 @@ public partial class App : Application {
 
             // Recreate engine when user changes calculator settings (format, toggles)
             _services.GetRequiredService<UserSettings>().SearchSettingsChanged += () => {
+                var settings = _services.GetRequiredService<UserSettings>();
+                engineProvider.Current?.UpdateConfig(BuildFormatConfig(settings));
                 exchangeService.NotifySettingsChanged();
             };
 
