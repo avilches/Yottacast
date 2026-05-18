@@ -37,8 +37,7 @@ El fichero de preferencias se crea automaticamente en la primera ejecucion y se 
 | SearchFolders | Carpetas por defecto de la plataforma | Directorios donde buscar archivos del usuario |
 | AppDirectories | Directorios por defecto de la plataforma | Directorios donde buscar aplicaciones |
 | EnableAppSearch | `true` | Activa/desactiva la busqueda de aplicaciones |
-| EnableCalculator | `true` | Toggle de la fuente calculadora |
-| EnableConverter | `true` | Toggle del conversor de unidades y divisas |
+| EnableCalculator | `true` | Toggle de la fuente calculadora: controla aritmética, ecuaciones, conversiones de unidades y divisas |
 | EnableClipboard | `true` | Toggle de la fuente clipboard |
 | EnableEmoji | `true` | Toggle de la fuente emoji |
 | EnableFileSearch | `true` | Activa/desactiva la busqueda de ficheros |
