@@ -179,6 +179,9 @@ public partial class App : Application {
                 if (mw is { IsVisible: false })
                     AppHandler.Instance.ShowWindow(mw);
                 _settingsWindow?.Close();
+                // FocusWindow usa activateIgnoringOtherApps:YES + makeKeyAndOrderFront:,
+                // necesario porque Closed handler cambia la política a Accessory antes de Activate().
+                if (mw != null) AppHandler.Instance.FocusWindow(mw);
             });
         _settingsWindow = new SettingsWindow {
             DataContext = _settingsVm,
