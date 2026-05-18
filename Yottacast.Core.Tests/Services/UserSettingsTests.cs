@@ -1205,6 +1205,12 @@ public class UserSettingsTests : IDisposable {
         Assert.False(settings.EnableCalculator);
     }
 
+    [Fact]
+    public void Load_EnableCalculatorTrue_ConverterFalse_StaysEnabled() {
+        File.WriteAllText(_settingsFile, """{"enableCalculator":true,"enableConverter":false}""");
+        Assert.True(Load().EnableCalculator);
+    }
+
     /// <summary>Platform provider with configurable default search folders (no browsers/terminals).</summary>
     private sealed class PlatformWithSearchFolders(List<string> searchFolders) : PlatformProvider {
         public override bool? IsSystemDarkMode() => null;

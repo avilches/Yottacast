@@ -31,7 +31,6 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
         // Equation detection: queries containing '=' are routed to NerdamerEngine.
         // math.js already rejects assignments, so these queries would return empty anyway.
         if (q.Contains('=')) {
-            if (!settings.EnableCalculator) return [];
             var solveResult = nerdamerEngine.TrySolve(q);
             if (solveResult != null) return BuildEquationResult(solveResult, q);
             return [];
