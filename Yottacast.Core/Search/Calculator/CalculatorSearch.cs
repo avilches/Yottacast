@@ -25,7 +25,7 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
     public IReadOnlyList<BaseResultItemViewModel> Search(string query, int _) {
         LastHint = null;
         LastHintKind = SearchHintKind.Info;
-        if (!settings.EnableCalculator && !settings.EnableConverter) return [];
+        if (!settings.EnableCalculator) return [];
         var q = query.Trim();
 
         // Equation detection: queries containing '=' are routed to NerdamerEngine.
@@ -50,7 +50,6 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
 
         switch (engine.Evaluate(q)) {
             case ConversionResult r: {
-                if (!settings.EnableConverter) return [];
                 var fromUnit      = engine.DisplayUnit(r.FromUnit);
                 var toUnit        = engine.DisplayUnit(r.ToUnit);
                 var fromShort     = $"{r.FromValue} {fromUnit}".Trim();

@@ -1190,18 +1190,19 @@ public class UserSettingsTests : IDisposable {
     }
 
     [Fact]
-    public void Defaults_EnableConverter_IsTrue() {
+    public void Load_LegacyEnableConverter_True_MigratesEnableCalculator() {
+        // Simula JSON legacy: enableConverter=true, enableCalculator=false
+        File.WriteAllText(_settingsFile, """{"enableCalculator":false,"enableConverter":true}""");
         var settings = Load();
-        Assert.True(settings.EnableConverter);
+        Assert.True(settings.EnableCalculator);
     }
 
     [Fact]
-    public void EnableConverter_RoundTrips_ThroughJson() {
+    public void Load_BothDisabled_StaysDisabled() {
+        // Simula JSON legacy: ambos false
+        File.WriteAllText(_settingsFile, """{"enableCalculator":false,"enableConverter":false}""");
         var settings = Load();
-        settings.EnableConverter = false;
-        settings.Save();
-        var loaded = Load();
-        Assert.False(loaded.EnableConverter);
+        Assert.False(settings.EnableCalculator);
     }
 
     /// <summary>Platform provider with configurable default search folders (no browsers/terminals).</summary>
