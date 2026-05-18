@@ -40,6 +40,7 @@ public partial class App : Application {
     private IGlobalHook? _globalHook;
     private SettingsWindow? _settingsWindow;
     private SettingsWindowViewModel? _settingsVm;
+    private MainWindowViewModel? _mainVm;
     private IServiceProvider _services = null!;
     private volatile bool _isToggling = false;
     private volatile bool _hotkeyDown = false;
@@ -92,7 +93,8 @@ public partial class App : Application {
             // More info: https://docs.avaloniaui.net/docs/guides/development-guides/data-validation#manage-validationplugins
             DisableAvaloniaDataAnnotationValidation();
 
-            var mainWindowViewModel = _services.GetRequiredService<MainWindowViewModel>();
+            _mainVm = _services.GetRequiredService<MainWindowViewModel>();
+            var mainWindowViewModel = _mainVm;
             mainWindowViewModel.Initialize();
             var mainWindow = new MainWindow(userSettings, _services.GetRequiredService<ILogger<MainWindow>>()) { DataContext = mainWindowViewModel };
             desktop.MainWindow = mainWindow;
@@ -174,14 +176,10 @@ public partial class App : Application {
         _settingsVm = _services.GetRequiredService<SettingsWindowViewModel>();
         _settingsVm.OpenWithQuery = query =>
             Dispatcher.UIThread.InvokeAsync(() => {
-                _services.GetRequiredService<MainWindowViewModel>().SearchText = query;
+                _mainVm!.SearchText = query;
                 var mw = (ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
                 if (mw is { IsVisible: false })
                     AppHandler.Instance.ShowWindow(mw);
-                _settingsWindow?.Close();
-                // FocusWindow usa activateIgnoringOtherApps:YES + makeKeyAndOrderFront:,
-                // necesario porque Closed handler cambia la política a Accessory antes de Activate().
-                if (mw != null) AppHandler.Instance.FocusWindow(mw);
             });
         _settingsWindow = new SettingsWindow {
             DataContext = _settingsVm,
