@@ -1271,6 +1271,12 @@
                                 <TextBlock Grid.Column="1" Classes="expr-desc" Text="Cross-unit rate conversion" Margin="8,0"/>
                             </Grid>
                         </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="100000 mm">
+                            <Grid ColumnDefinitions="130,*">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="100000 mm"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Normalization → 100 m" Margin="8,0"/>
+                            </Grid>
+                        </Button>
                     </StackPanel>
 
                     <TextBlock Classes="label" Text="Currency Exchange"/>
@@ -1294,6 +1300,13 @@
                             <Grid ColumnDefinitions="130,*">
                                 <TextBlock Grid.Column="0" Classes="expr-mono" Text="1 BTC"/>
                                 <TextBlock Grid.Column="1" Classes="expr-desc" Text="{Binding CryptoCurrencyExampleDesc}" Margin="8,0"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="1 BTC/year to EUR/h"
+                                IsVisible="{Binding CalculatorIncludeCrypto}">
+                            <Grid ColumnDefinitions="130,*">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="1 BTC/year to EUR/h"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Cross-currency rate" Margin="8,0"/>
                             </Grid>
                         </Button>
                     </StackPanel>
