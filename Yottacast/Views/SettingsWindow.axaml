@@ -1077,13 +1077,13 @@
                         <TextBlock Classes="label" Text="Default Currency Pair"/>
                         <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                             <ComboBox ItemsSource="{Binding AvailableForexCurrencies}"
-                                      SelectedItem="{Binding CalculatorCurrencyA}"
-                                      Width="80"/>
+                                      SelectedItem="{Binding SelectedCurrencyA}"
+                                      Width="160"/>
                             <TextBlock Text="/" Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
                                        VerticalAlignment="Center" FontSize="16"/>
                             <ComboBox ItemsSource="{Binding AvailableForexCurrencies}"
-                                      SelectedItem="{Binding CalculatorCurrencyB}"
-                                      Width="80"/>
+                                      SelectedItem="{Binding SelectedCurrencyB}"
+                                      Width="160"/>
                         </StackPanel>
                         <TextBlock Classes="description"
                                    Text="When you type an amount in any currency, it converts to the left currency. The left currency converts to the right."/>
@@ -1250,7 +1250,25 @@
                         <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="1 AU to km">
                             <Grid ColumnDefinitions="130,*">
                                 <TextBlock Grid.Column="0" Classes="expr-mono" Text="1 AU to km"/>
-                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Astronomical → Earth-Sun distance" Margin="8,0"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Earth-Sun distance → 149 597 871 km" Margin="8,0"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="300 Mbps">
+                            <Grid ColumnDefinitions="130,*">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="300 Mbps"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Data rate → 37.5 MB/s" Margin="8,0"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="440 Hz">
+                            <Grid ColumnDefinitions="130,*">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="440 Hz"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="A4 note frequency → 26 400 rpm" Margin="8,0"/>
+                            </Grid>
+                        </Button>
+                        <Button Classes="example-row" Command="{Binding TryExampleCommand}" CommandParameter="100 km/day to ft/year">
+                            <Grid ColumnDefinitions="130,*">
+                                <TextBlock Grid.Column="0" Classes="expr-mono" Text="100 km/day to ft/year"/>
+                                <TextBlock Grid.Column="1" Classes="expr-desc" Text="Cross-unit rate conversion" Margin="8,0"/>
                             </Grid>
                         </Button>
                     </StackPanel>

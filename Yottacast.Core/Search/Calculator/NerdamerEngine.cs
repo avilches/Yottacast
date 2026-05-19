@@ -57,8 +57,7 @@ public sealed class NerdamerEngine : IDisposable {
         lock (_lock) {
             if (_engine == null) return null;
             try {
-                _engine.Execute($"_ALGEBRA_DECIMALS = {decimalPlaces};");
-                var json = _engine.Evaluate($"solveEquation({JsonSerializer.Serialize(query)})");
+                var json = _engine.Evaluate($"solveEquation({JsonSerializer.Serialize(query)}, {decimalPlaces})");
                 if (json.IsNull() || json.IsUndefined()) return null;
                 var jsonStr = json.AsString();
                 if (string.IsNullOrEmpty(jsonStr)) return null;
@@ -82,8 +81,7 @@ public sealed class NerdamerEngine : IDisposable {
         lock (_lock) {
             if (_engine == null) return null;
             try {
-                _engine.Execute($"_ALGEBRA_DECIMALS = {decimalPlaces};");
-                var json = _engine.Evaluate($"getAlgebraResults({JsonSerializer.Serialize(expr)})");
+                var json = _engine.Evaluate($"getAlgebraResults({JsonSerializer.Serialize(expr)}, {decimalPlaces})");
                 if (json.IsNull() || json.IsUndefined()) return null;
                 var jsonStr = json.AsString();
                 if (string.IsNullOrEmpty(jsonStr)) return null;

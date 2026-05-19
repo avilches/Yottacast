@@ -2,6 +2,11 @@ math.createUnit('USD');
 var _currencySet = new Set(['USD']);
 var _cryptoCurrencySet = new Set();
 
+// Astronomical unit (IAU 2012 exact definition: 149597870700 m).
+// No lowercase alias 'au' — that conflicts with atto-atomic-mass-unit (a+u prefix+unit).
+// The normalization pipeline resolves 'AU' case-insensitively via the unit symbol map.
+math.createUnit('AU', { definition: '149597870700 m' });
+
 // Velocidad: mph y kmh como unidades simples
 math.createUnit('kmh', { definition: math.unit(1000/3600, 'm/s') });
 math.createUnit('mph', { definition: math.unit(1609.344/3600, 'm/s') });
@@ -554,8 +559,11 @@ function smartFormat(r) {
         if (_cryptoCurrencySet.has(suffix)) {
             // Crypto < 1: always _FMT_CRYPTO_DECIMALS decimal places (e.g. 0.00000001 BTC)
             numStr = n.toFixed(_FMT_CRYPTO_DECIMALS);
+        } else if (_currencySet.has(suffix) && Math.abs(n) >= 0.01) {
+            // FIAT between 0.01 and 1: use 2 dp (e.g. 0.86 EUR, not 0.861)
+            numStr = n.toFixed(_FMT_FIAT_DECIMALS);
         } else {
-            // FIAT and non-currency small values: significant figures (e.g. 0.000042 USD)
+            // Very small FIAT (< 0.01) and non-currency: significant figures
             var magnitude = Math.floor(Math.log10(Math.abs(n)));
             var decimalPlaces = _FMT_SMALL_SIG_FIGS - 1 - magnitude;
             var factor = Math.pow(10, decimalPlaces);

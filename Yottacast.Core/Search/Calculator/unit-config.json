@@ -172,7 +172,8 @@
     "Gbps": "gigabit per second",
     "Tbps": "terabit per second",
     "kmh": "kilometer per hour",
-    "mph": "mile per hour"
+    "mph": "mile per hour",
+    "AU": "astronomical unit"
   },
   "defaultTargets": {
     "ms": "s",
@@ -278,7 +279,9 @@
     "ft / h": "km / h",
     "yard / s": "m / s",
     "yard / minute": "m / minute",
-    "yard / h": "km / h"
+    "yard / h": "km / h",
+    "AU": "km",
+    "au": "km"
   },
   "defaultPairs": [
     [

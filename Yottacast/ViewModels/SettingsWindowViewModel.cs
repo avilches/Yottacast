@@ -23,6 +23,11 @@ public enum SettingsSection {
     General, AppSearch, WebSearch, FileSearch, Calculator, Clipboard, Emoji, Dictionary, DateSearch, History
 }
 
+/// <summary>Item shown in the currency-pair ComboBox. Code is the ISO code; Label is "EUR - Euro" (or just "EUR").</summary>
+public record CurrencyOption(string Code, string Label) {
+    public override string ToString() => Label;
+}
+
 public partial class SettingsWindowViewModel : ViewModelBase {
     // ── Section navigation ───────────────────────────────────────────────────
     [ObservableProperty]
@@ -223,32 +228,58 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [NotifyPropertyChangedFor(nameof(CurrencyBExampleQuery))]
     private string _calculatorCurrencyA = "EUR";
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CurrencyBExampleQuery))]
+    private string _calculatorCurrencyB = "USD";
+
+    [ObservableProperty] private CurrencyOption? _selectedCurrencyA;
+    [ObservableProperty] private CurrencyOption? _selectedCurrencyB;
+
     public string CurrencyExampleDesc       => $"Convert to {CalculatorCurrencyA}";
     public string CryptoCurrencyExampleDesc => $"Bitcoin in {CalculatorCurrencyA}";
     public string CurrencyAExampleQuery     => $"100 {CalculatorCurrencyB}";
     public string CurrencyBExampleQuery     => $"50 {CalculatorCurrencyA} to {CalculatorCurrencyB}";
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CurrencyBExampleQuery))]
-    private string _calculatorCurrencyB = "USD";
     [ObservableProperty] private int _calculatorDecimalPlaces = 2;
     [ObservableProperty] private bool _calculatorIncludeMetals;
     [ObservableProperty] private bool _calculatorIncludeCrypto;
     [ObservableProperty] private decimal _exchangeRateRefreshIntervalHours;
 
+    partial void OnSelectedCurrencyAChanged(CurrencyOption? value) {
+        if (value != null) CalculatorCurrencyA = value.Code;
+    }
+    partial void OnSelectedCurrencyBChanged(CurrencyOption? value) {
+        if (value != null) CalculatorCurrencyB = value.Code;
+    }
+
     partial void OnCalculatorCurrencyAChanged(string value) {
         var upper = value.ToUpperInvariant();
         _settings.CalculatorCurrencyA = upper;
+        if (string.Equals(upper, CalculatorCurrencyB, StringComparison.OrdinalIgnoreCase)) {
+            CalculatorCurrencyB = upper == "USD" ? "EUR" : "USD";
+        }
         _settings.Save();
         _logger.LogInformation("Settings: CalculatorCurrencyA = \"{Value}\"", upper);
         _settings.NotifySearchSettingsChanged();
+        SyncCurrencySelectors();
     }
     partial void OnCalculatorCurrencyBChanged(string value) {
         var upper = value.ToUpperInvariant();
         _settings.CalculatorCurrencyB = upper;
+        if (string.Equals(upper, CalculatorCurrencyA, StringComparison.OrdinalIgnoreCase)) {
+            CalculatorCurrencyA = upper == "USD" ? "EUR" : "USD";
+        }
         _settings.Save();
         _logger.LogInformation("Settings: CalculatorCurrencyB = \"{Value}\"", upper);
         _settings.NotifySearchSettingsChanged();
+        SyncCurrencySelectors();
+    }
+
+    private void SyncCurrencySelectors() {
+        var optA = AvailableForexCurrencies.FirstOrDefault(o => o.Code == CalculatorCurrencyA);
+        var optB = AvailableForexCurrencies.FirstOrDefault(o => o.Code == CalculatorCurrencyB);
+        if (optA != null) SelectedCurrencyA = optA;
+        if (optB != null) SelectedCurrencyB = optB;
     }
     partial void OnCalculatorDecimalPlacesChanged(int value) {
         _settings.CalculatorDecimalPlaces = value;
@@ -299,7 +330,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     private readonly ILogger<SettingsWindowViewModel> _logger;
     private bool _appDirectoriesDirty;
     private readonly HistoryService _historyService;
-    public IReadOnlyList<string> AvailableForexCurrencies { get; private set; } = [];
+    public IReadOnlyList<CurrencyOption> AvailableForexCurrencies { get; private set; } = [];
 
     public SettingsWindowViewModel(
         UserSettings settings,
@@ -320,12 +351,15 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _exchangeRateService  = exchangeRateService;
         _logger               = logger;
 
-        var forex = exchangeRateService.GetForexCurrencyCodes();
+        var forexCodes = exchangeRateService.GetForexCurrencyCodes();
         // Ensure currently saved values are always in the list (handles custom/old codes)
-        var extra = new[] { settings.CalculatorCurrencyA, settings.CalculatorCurrencyB }
-            .Where(c => !string.IsNullOrEmpty(c) && !forex.Contains(c, StringComparer.OrdinalIgnoreCase))
+        var extraCodes = new[] { settings.CalculatorCurrencyA, settings.CalculatorCurrencyB }
+            .Where(c => !string.IsNullOrEmpty(c) && !forexCodes.Contains(c, StringComparer.OrdinalIgnoreCase))
             .Select(c => c.ToUpperInvariant());
-        AvailableForexCurrencies = forex.Concat(extra).OrderBy(c => c).ToList();
+        AvailableForexCurrencies = forexCodes.Concat(extraCodes)
+            .OrderBy(c => c)
+            .Select(c => new CurrencyOption(c, CurrencyClassifier.GetComboLabel(c)))
+            .ToList();
 
         _logger.LogInformation("Settings: opened");
 
@@ -363,6 +397,8 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         }
         _calculatorCurrencyA                  = settings.CalculatorCurrencyA;
         _calculatorCurrencyB                  = settings.CalculatorCurrencyB;
+        _selectedCurrencyA = AvailableForexCurrencies.FirstOrDefault(o => o.Code == settings.CalculatorCurrencyA.ToUpperInvariant());
+        _selectedCurrencyB = AvailableForexCurrencies.FirstOrDefault(o => o.Code == settings.CalculatorCurrencyB.ToUpperInvariant());
         _calculatorDecimalPlaces              = settings.CalculatorDecimalPlaces;
         _calculatorIncludeMetals              = settings.CalculatorIncludeMetals;
         _calculatorIncludeCrypto              = settings.CalculatorIncludeCrypto;

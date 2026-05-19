@@ -32,6 +32,8 @@ public class UnitConverterSearchTests(MathJsEngineFixture fixture, NerdamerEngin
         { "1 kg to g",                   "1000 g",            "g"       },
         { "5 miles to km",               "8.05 km",           "km"      },
         { "1 km to m",                   "1000 m",            "m"       },
+        // Astronomical unit (custom unit registered in mathjs-helpers.js)
+        { "1 AU to km",                  "149597870.7 km",    "km"      },
         // Temperatura: long-form aliases normalize to canonical (degC/degF) with display names °C/°F
         { "100 fahrenheit to celsius",   "37.78 °C",          "°C"      },
         { "0 celsius to fahrenheit",     "32 °F",             "°F"      },

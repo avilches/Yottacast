@@ -83,4 +83,12 @@ public static class CurrencyClassifier {
         var type = Classify(code);
         return type == CurrencyType.Crypto ? "Crypto" : Names.GetValueOrDefault(code);
     }
+
+    /// <summary>
+    /// Returns the combo-box label for a currency code: "EUR - Euro" when a name exists, or just "EUR".
+    /// </summary>
+    public static string GetComboLabel(string code) {
+        var upper = code.ToUpperInvariant();
+        return Names.TryGetValue(upper, out var name) ? $"{upper} - {name}" : upper;
+    }
 }

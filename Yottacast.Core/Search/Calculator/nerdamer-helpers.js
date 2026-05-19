@@ -2,8 +2,8 @@
 // Loaded in a dedicated Jint engine (separate from mathjs).
 // Requires: nerdamer.core.min.js + Algebra.min.js + Calculus.min.js + Solve.min.js loaded before this file.
 //
-// Exposes: solveEquation(query) → JSON string | null
-//          getAlgebraResults(expr) → JSON string | null
+// Exposes: solveEquation(query, decimalPlaces) → JSON string | null
+//          getAlgebraResults(expr, decimalPlaces) → JSON string | null
 //
 // Returns null when:
 //   - No '=' in query
@@ -11,22 +11,21 @@
 //   - All solutions are trivial (solution === variable name)
 //   - nerdamer throws (syntax error, unsupported expression)
 
-var _ALGEBRA_DECIMALS = 2; // injected by C# before each call
-
-function roundLongDecimals(text) {
+function roundLongDecimals(text, decimalPlaces) {
     return text.replace(/-?\d+\.\d+/g, function(match) {
         var dot = match.indexOf('.');
         var decimPart = match.substring(dot + 1);
-        if (decimPart.length > _ALGEBRA_DECIMALS) {
+        if (decimPart.length > decimalPlaces) {
             var n = parseFloat(match);
-            var rounded = parseFloat(n.toFixed(_ALGEBRA_DECIMALS)).toString();
+            var rounded = parseFloat(n.toFixed(decimalPlaces)).toString();
             return rounded;
         }
         return match;
     });
 }
 
-function solveEquation(query) {
+function solveEquation(query, decimalPlaces) {
+    if (decimalPlaces === undefined) decimalPlaces = 2;
     try {
         var eqIdx = query.indexOf('=');
         if (eqIdx < 0) return null;
@@ -74,7 +73,7 @@ function solveEquation(query) {
                 var solStrs = [];
                 for (var j = 0; j < solArr.length; j++) {
                     var sol = solArr[j];
-                    var solText = roundLongDecimals(sol.text ? sol.text() : String(sol));
+                    var solText = roundLongDecimals(sol.text ? sol.text() : String(sol), decimalPlaces);
 
                     // Check for free variables in this solution (parametric case).
                     var freeVars = [];
@@ -119,7 +118,8 @@ function solveEquation(query) {
 // Filters: drops cells where result equals the raw input expression.
 // Deduplicates: keeps first cell per unique result string.
 // Returns null when: no variables found, nerdamer can't parse, or all cells filtered.
-function getAlgebraResults(expr) {
+function getAlgebraResults(expr, decimalPlaces) {
+    if (decimalPlaces === undefined) decimalPlaces = 2;
     try {
         var vars;
         try {
@@ -141,7 +141,7 @@ function getAlgebraResults(expr) {
             try {
                 var r = fn();
                 if (!r) return;
-                var text = roundLongDecimals(r.text ? r.text() : String(r));
+                var text = roundLongDecimals(r.text ? r.text() : String(r), decimalPlaces);
                 if (text === expr) return;          // no-op: result equals raw input
                 if (seenResults[text]) return;      // deduplicate
                 seenResults[text] = true;

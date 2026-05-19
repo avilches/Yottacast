@@ -1,8 +1,9 @@
 {
   "version": "11.12.0",
-  "unitCount": 259,
+  "unitCount": 260,
   "units": [
     "A",
+    "AU",
     "B",
     "BTU",
     "BTUs",
@@ -490,6 +491,7 @@
   },
   "symbols": [
     "A",
+    "AU",
     "B",
     "BTU",
     "BTUs",
