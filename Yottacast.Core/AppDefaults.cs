@@ -19,6 +19,16 @@ public static class AppDefaults {
     /// except exact full-name-with-extension (3.85). Must be > AppMaxFileScore (3.50) and < AppFileExactScore (3.85).
     public const double AppMinScore = 3.6;
 
+    // ── Search — algebra (nerdamer TryAlgebra) ────────────────────────────────
+    /// Minimum query length to attempt symbolic algebra evaluation.
+    /// Prevents false positives like "1p" or "2x" (single-letter variables in tiny queries).
+    public const int AlgebraMinQueryLength = 3;
+
+    /// Score for symbolic algebra results. Sits just above an app with exact-prefix match (4.0)
+    /// and below an exact app name match (4.4). A single LaunchHistory bonus on the app (~+0.35)
+    /// pushes the app above algebra, so frequently-used apps win after one use.
+    public const double AlgebraResultScore = 4.01;
+
     // ── Search — result limits per source (-1 = no limit) ────────────────────
     /// Fallback limit passed to GlobalSearch.SearchInstant/SearchDeferredAsync.
     /// Used by unlimited sources (Limit = -1) as their effective cap, and by deferred sources.

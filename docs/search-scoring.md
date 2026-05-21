@@ -90,7 +90,7 @@ Los emojis se activan cuando la query comienza con `:`. El sistema aplica un sco
 
 ## 5. Calculadora y conversor de unidades
 
-La calculadora evalua expresiones matematicas y conversiones de unidades. Los resultados de calculadora y conversor tienen un score fijo de **7**.
+La calculadora evalua expresiones matematicas y conversiones de unidades. Los resultados aritméticos, de conversión de unidades y de ecuaciones (queries con `=`) tienen un score fijo de **7**. Los resultados de **álgebra simbólica** (queries con variables sin `=`, ej. `2*x+3*x`, `x^2-1`) se rebajan a `AppDefaults.AlgebraResultScore` (**4.01**), porque la detección es ambigua y debe poder ser superada por apps usadas con frecuencia.
 
 **Invariantes:**
 - Si la expresion produce un resultado valido y distinto de la query original, siempre aparece un resultado.
@@ -98,8 +98,9 @@ La calculadora evalua expresiones matematicas y conversiones de unidades. Los re
 - No se muestra resultado si la evaluacion devuelve el mismo texto que la query (evita "5" -> "5").
 - Activar el resultado copia el valor al portapapeles.
 - Si hay un error de unidades incompatibles, se muestra un hint informativo en lugar de un resultado.
+- El modo álgebra simbólica (sin `=`) requiere ≥`AppDefaults.AlgebraMinQueryLength` (3) caracteres y emite con score 4.01, no 7, para que las apps usadas puedan superarlo vía `LaunchHistory` bonus tras el primer uso.
 
-> **Verificar en:** `Search/Calculator/CalculatorSearch.cs` (metodo `Search`), `MainWindowViewModel.RefreshResults()` (seleccion automatica)
+> **Verificar en:** `Search/Calculator/CalculatorSearch.cs` (metodo `Search`, `BuildAlgebraResult`), `AppDefaults.AlgebraMinQueryLength` y `AppDefaults.AlgebraResultScore`, `MainWindowViewModel.RefreshResults()` (seleccion automatica)
 
 ---
 
@@ -211,9 +212,10 @@ La siguiente tabla resume los scores base por fuente, de mayor a menor prioridad
 | Score base | Fuente | Descripcion |
 |---|---|---|
 | 10.0 | LocalPath / URL | Intencion explicita del usuario |
-| 7.0 | Calculadora / Conversor | Score fijo. Siempre domina salvo ruta/URL |
+| 7.0 | Calculadora / Conversor / Ecuaciones | Score fijo. Siempre domina salvo ruta/URL |
 | 5.5 | Emoji (grilla) | Score fijo de la grilla como item global |
 | 3.6–4.4 (+bonus) | Aplicaciones | NameMatcher × 4 con floor 3.6; exact name = 4.4; max 5.4 con LaunchHistory |
+| 4.01 | Calculadora (álgebra simbólica) | Por debajo de match exacto de app (4.4); una app con 1+ uso supera el álgebra vía LaunchHistory bonus |
 | 3.85 | Archivos (exact full name+ext) | El unico match de fichero que supera al floor de apps |
 | 3.8 | Busqueda web (PrefixOnly) | Cuando el usuario uso un prefijo explicito |
 | 3.7 | Diccionario (PrefixOnly) | Cuando el usuario uso el prefijo (ej. "define") |
@@ -224,7 +226,7 @@ La siguiente tabla resume los scores base por fuente, de mayor a menor prioridad
 
 **Invariantes:**
 - Una URL o ruta explicita siempre aparece primero.
-- Un resultado de calculadora siempre aparece por encima de cualquier app o archivo, incluso muy usados.
+- Un resultado de calculadora numérico, conversor o ecuación siempre aparece por encima de cualquier app o archivo, incluso muy usados. El modo álgebra simbólica (4.01) es la excepción: cualquier app con prefijo exacto y al menos un lanzamiento previo lo supera.
 - Cualquier app que matchea (score > 0) aparece por encima de cualquier archivo, excepto cuando el fichero es match exacto nombre+extension (3.85 > floor de apps 3.6).
 - Typing el nombre exacto de una app ("pycharm") da el score mas alto de esa app (4.4), por encima de sus iniciales ("PC" → 4.0).
 

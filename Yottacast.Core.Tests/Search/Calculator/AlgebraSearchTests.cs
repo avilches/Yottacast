@@ -176,4 +176,28 @@ public class AlgebraSearchTests(NerdamerEngineFixture fixture, MathJsEngineFixtu
         var item = Assert.Single(results);
         Assert.IsType<CalculatorResultItemViewModel>(item);
     }
+
+    [Theory]
+    [InlineData("1p")]
+    [InlineData("2x")]
+    [InlineData("ax")]
+    public void CalculatorSearch_AlgebraQueryShorterThanMinLength_ReturnsEmpty(string query) {
+        var search = MakeCalcSearch();
+        Assert.Empty(search.Search(query, 5));
+    }
+
+    [Fact]
+    public void CalculatorSearch_AlgebraAtMinLength_ReturnsResult() {
+        var search = MakeCalcSearch();
+        var results = search.Search("x+1", 5);
+        Assert.IsType<AlgebraResultItemViewModel>(Assert.Single(results));
+    }
+
+    [Fact]
+    public void CalculatorSearch_AlgebraResult_UsesAlgebraResultScore() {
+        var search = MakeCalcSearch();
+        var results = search.Search("2*x+3*x", 5);
+        var vm = Assert.IsType<AlgebraResultItemViewModel>(Assert.Single(results));
+        Assert.Equal(AppDefaults.AlgebraResultScore, vm.Score);
+    }
 }

@@ -190,6 +190,7 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
                 logger.LogDebug("Calculator query=\"{Query}\" → error {Kind}: {Hint}", q, r.ErrorKind, LastHint);
                 break;
             case ErrorResult r when r.ErrorKind == CalcErrorKind.UnknownSymbol: {
+                if (q.Length < AppDefaults.AlgebraMinQueryLength) break;
                 var algebraResult = nerdamerEngine.TryAlgebra(q, settings.CalculatorDecimalPlaces);
                 if (algebraResult != null) return BuildAlgebraResult(algebraResult, q);
                 break;
@@ -243,11 +244,12 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
 
         AlgebraResultItemViewModel vm = null!;
         vm = new AlgebraResultItemViewModel {
-            Title   = result.Cells[0].Result,
-            Cells   = result.Cells,
-            Score   = 7,
-            OnLeft  = result.Cells.Length > 1 ? () => vm.MoveCellLeft()  : null,
-            OnRight = result.Cells.Length > 1 ? () => vm.MoveCellRight() : null,
+            Title       = result.Cells[0].Result,
+            Cells       = result.Cells,
+            Score       = AppDefaults.AlgebraResultScore,
+            ScoreReason = "Álgebra simbólica",
+            OnLeft      = result.Cells.Length > 1 ? () => vm.MoveCellLeft()  : null,
+            OnRight     = result.Cells.Length > 1 ? () => vm.MoveCellRight() : null,
             Actions = [
                 new() {
                     Label           = "Copy result",

@@ -44,8 +44,8 @@ public class BrowserTerminalDiscoveryTests : IDisposable {
     private string NonExistentPath(string name) =>
         Path.Combine(_tempDir, name);
 
-    private static UserSettings BuildSettings(FakePlatformProvider platform) =>
-        UserSettings.Load(platform);
+    private UserSettings BuildSettings(FakePlatformProvider platform) =>
+        UserSettings.Load(platform, settingsPath: Path.Combine(_tempDir, "settings.json"));
 
     // ─── BrowserDiscovery.Resolve — preferred name found in app directory ────
 

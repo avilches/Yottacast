@@ -169,7 +169,11 @@ Si tras el filtrado no queda ninguna celda útil, no se muestra ningún resultad
 
 El texto plano sin estructura matemática (`safari to km`) no produce resultado: nerdamer no detecta variables y devuelve `null`.
 
-> **Verificar en:** `getAlgebraResults()` en `nerdamer-helpers.js`; `NerdamerEngine.TryAlgebra()` en `NerdamerEngine.cs`; routing `UnknownSymbol` y `BuildAlgebraResult()` en `CalculatorSearch.cs`; decimal rounding via `_ALGEBRA_DECIMALS` in `nerdamer-helpers.js`
+**Longitud mínima**: el modo álgebra solo se activa si la query tiene al menos `AppDefaults.AlgebraMinQueryLength` caracteres (3). Esto descarta falsos positivos como `1p`, `2x` o `ax`, donde nerdamer aceptaría la variable de una sola letra pero el usuario casi seguro no está pidiendo álgebra. Las ecuaciones con `=` (ruta `TrySolve`) no aplican este filtro.
+
+**Score**: el resultado de álgebra simbólica usa `AppDefaults.AlgebraResultScore` (4.01), no el 7 fijo de los demás modos de calculadora. Queda justo por encima de una app con prefijo exacto (4.0) y por debajo del match exacto de nombre de app (4.4); con un solo lanzamiento de la app el bonus de `LaunchHistory` (~+0.35) la empuja por encima del álgebra. Esto permite que apps usadas con frecuencia ganen sobre álgebra ambigua sin sacrificar la respuesta cuando la query es claramente algebraica. Los resultados numéricos, conversiones y ecuaciones siguen con score 7.
+
+> **Verificar en:** `getAlgebraResults()` en `nerdamer-helpers.js`; `NerdamerEngine.TryAlgebra()` en `NerdamerEngine.cs`; routing `UnknownSymbol` y `BuildAlgebraResult()` en `CalculatorSearch.cs`; constantes `AlgebraMinQueryLength` y `AlgebraResultScore` en `AppDefaults.cs`; decimal rounding via `_ALGEBRA_DECIMALS` in `nerdamer-helpers.js`
 
 ---
 
