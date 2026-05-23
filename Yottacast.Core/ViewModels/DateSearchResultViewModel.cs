@@ -61,5 +61,11 @@ public class DateSearchResultViewModel : BaseResultItemViewModel, INotifyPropert
         return true;
     }
 
+    public DragPayload BuildDragPayload() {
+        if (Cells.Count == 0) return new DragPayload.Text("");
+        var idx = System.Math.Clamp(SelectedCell, 0, Cells.Count - 1);
+        return new DragPayload.Text(Cells[idx]);
+    }
+
     public event PropertyChangedEventHandler? PropertyChanged;
 }
