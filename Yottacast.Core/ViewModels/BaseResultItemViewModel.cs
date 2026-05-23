@@ -60,4 +60,15 @@ public abstract class BaseResultItemViewModel {
 
     /// <summary>Tooltip text for score badge in debug mode. Multi-line explanation. Set by RefreshResults().</summary>
     public string? ScoreTooltipText { get; set; }
+
+    // ============================================================================
+    // Drag-and-drop (set by each search source / VM when the item is draggable)
+    // ============================================================================
+
+    /// <summary>
+    /// If non-null, the item is draggable. The view invokes this on drag start and
+    /// translates the returned <see cref="DragPayload"/> into a platform IDataObject.
+    /// Returning null cancels the drag silently. Read on the UI thread.
+    /// </summary>
+    public Func<DragPayload?>? GetDragPayload { get; set; }
 }
