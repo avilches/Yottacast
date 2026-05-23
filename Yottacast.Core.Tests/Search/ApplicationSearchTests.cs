@@ -448,6 +448,18 @@ public class ApplicationSearchTests {
     }
 
     [Fact]
+    public async Task CreateResultItem_GetDragPayload_ReturnsFileWithBundlePath() {
+        var (search, _, _) = await CreateSearchAsync();
+
+        var item = search.CreateResultItem(new AppInfo("Safari", "/Applications/Safari.app"));
+
+        Assert.NotNull(item.GetDragPayload);
+        var payload = item.GetDragPayload!();
+        var file = Assert.IsType<DragPayload.File>(payload);
+        Assert.Equal("/Applications/Safari.app", file.AbsolutePath);
+    }
+
+    [Fact]
     public async Task Rescan_NoChange_NoAppAddedEvents() {
         var (search, settings, platform) = BuildSearchWithSettings("/Applications/Safari.app");
         var addedNames = new List<string>();

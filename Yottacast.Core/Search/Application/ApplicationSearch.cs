@@ -90,6 +90,7 @@ public sealed class ApplicationSearch(
             Score = score,
             ScoreReason = scoreReason,
             TitleRanges = titleRanges,
+            GetDragPayload = () => new DragPayload.File(path),
             Actions = [
                 new() {
                     Label        = "Open",
