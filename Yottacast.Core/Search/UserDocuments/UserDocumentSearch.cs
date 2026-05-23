@@ -163,6 +163,7 @@ public class UserDocumentSearch(
                             ScoreReason = scoreReason,
                             TitleRanges = titleRanges,
                             SubtitleRanges = subtitleRanges,
+                            GetDragPayload = () => new DragPayload.File(path),
                             Actions = [
                                 new() {
                                     Label        = "Open",
