@@ -172,6 +172,7 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
             OnUp    = () => grid.SelectUp(),
             OnDown  = () => grid.SelectDown(),
         };
+        grid.GetDragPayload = grid.BuildDragPayload;
         return grid;
     }
 
