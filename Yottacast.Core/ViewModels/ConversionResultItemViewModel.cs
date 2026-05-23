@@ -72,5 +72,13 @@ public class ConversionResultItemViewModel : BaseResultItemViewModel, INotifyPro
         return false;
     }
 
+    public DragPayload BuildDragPayload() => new DragPayload.Text(SelectedCellText);
+
+    private string SelectedCellText => SelectedCell switch {
+        ConversionCell.OrigFrom => FromShort,
+        ConversionCell.NormFrom => NormFromShort ?? FromShort,
+        _                       => ToShort,
+    };
+
     public event PropertyChangedEventHandler? PropertyChanged;
 }

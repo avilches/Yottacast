@@ -135,6 +135,7 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
                         },
                     ],
                 };
+                vm.GetDragPayload = vm.BuildDragPayload;
                 return [vm];
             }
             case CalcResult r when r.RawValue != q: {
