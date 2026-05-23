@@ -108,6 +108,7 @@ public class DictionarySource(
             var langName = GetLangName(langCode);
             var capturedUrl = $"https://{langCode}.wiktionary.org/wiki/{Uri.EscapeDataString(searchWord)}";
             var capturedDef = defs[0].Definition;
+            var capturedWord = searchWord;
             results.Add(new DictionaryResultViewModel {
                 IconBytes   = IconBytes,
                 Word        = searchWord,
@@ -116,6 +117,7 @@ public class DictionarySource(
                 Score       = score,
                 ScoreReason = scoreReason,
                 TitleRanges = titleRanges,
+                GetDragPayload = () => new DragPayload.Text(capturedWord),
                 Actions = [
                     new() {
                         Label        = "Open in Wiktionary",
@@ -189,6 +191,7 @@ public class DictionarySource(
                     var langName = entries.FirstOrDefault()?.Language ?? langCode;
                     var capturedUrl = $"https://{langCode}.wiktionary.org/wiki/{Uri.EscapeDataString(searchWord)}";
                     var capturedDef = defs[0].Definition;
+                    var capturedWord = searchWord;
                     results.Add(new DictionaryResultViewModel {
                         IconBytes   = IconBytes,
                         Word        = searchWord,
@@ -197,6 +200,7 @@ public class DictionarySource(
                         Score       = score,
                         ScoreReason = scoreReason,
                         TitleRanges = titleRanges,
+                        GetDragPayload = () => new DragPayload.Text(capturedWord),
                         Actions = [
                             new() {
                                 Label        = "Open in Wiktionary",
