@@ -104,6 +104,19 @@ public class UserDocumentSearchTests {
         Assert.Equal("/docs/report.pdf", copied);
     }
 
+    // ── Drag payload ──────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Results_HaveGetDragPayload_ReturnsFileWithPath() {
+        var search = BuildSearch(new FileResult("report.pdf", "/docs/report.pdf"));
+        var results = await SearchAllAsync(search, "report");
+        var item = Assert.Single(results);
+        Assert.NotNull(item.GetDragPayload);
+        var payload = item.GetDragPayload!();
+        var file = Assert.IsType<DragPayload.File>(payload);
+        Assert.Equal("/docs/report.pdf", file.AbsolutePath);
+    }
+
     // ── Order independence ────────────────────────────────────────────────────
 
     [Fact]

@@ -184,4 +184,9 @@ public static class AppDefaults {
     /// Default duration in seconds before auto-clearing the search text after hide.
     /// 0 means "always keep" (never auto-clear).
     public const int KeepValueWhenHideDuration = 60;
+
+    // ── Drag-and-drop ─────────────────────────────────────────────────────────
+    /// Pixel distance the cursor must travel with the left button held before a drag is initiated.
+    /// Below this threshold, click+release is treated as a normal click (selection).
+    public const double DragStartThresholdPx = 5.0;
 }

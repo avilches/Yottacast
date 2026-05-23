@@ -62,5 +62,11 @@ public class AlgebraResultItemViewModel : BaseResultItemViewModel, INotifyProper
         return true;
     }
 
+    public DragPayload BuildDragPayload() {
+        if (CellItems.Count == 0) return new DragPayload.Text("");
+        var idx = System.Math.Clamp(SelectedCell, 0, CellItems.Count - 1);
+        return new DragPayload.Text(CellItems[idx].Result);
+    }
+
     public event PropertyChangedEventHandler? PropertyChanged;
 }

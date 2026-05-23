@@ -256,6 +256,7 @@ Si un fichero de doc empieza a ser demasiado grande, sugiere dividirlo en dos.
   aplican al buscador, los colores nativos de Settings estan hardcodeados en `Yottacast/Views/SettingsWindow.axaml`. 
   Si se pide algun cambio de fuente o color o theme en los settings, hay que buscarlo hardcodeado ahi. 
   dentro de `Window.Resources > ResourceDictionary.ThemeDictionaries` (dos diccionarios: Light y Dark).
+- `docs/ui-drag-drop.md` — Drag-and-drop de resultados al sistema operativo (Finder, editores). Contrato `GetDragPayload` y disparo desde `MainWindow.axaml.cs`.
 - `docs/ui-hotkeys.md` — Hotkey global configurable, supresion a nivel de OS, mapa de teclas soportadas.
 - `docs/ui-main-window.md` — Layout de la ventana, bindings, indicadores de busqueda, banner de actualizacion.
 - `docs/unit-catalog.md` — Catalogo de unidades soportadas por la calculadora.

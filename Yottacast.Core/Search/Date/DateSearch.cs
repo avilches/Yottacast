@@ -115,6 +115,7 @@ public class DateSearch(UserSettings settings, ClipboardService clipboard, ILogg
                 },
             ],
         };
+        vm.GetDragPayload = vm.BuildDragPayload;
         return [vm];
     }
 
@@ -170,6 +171,7 @@ public class DateSearch(UserSettings settings, ClipboardService clipboard, ILogg
                 },
             ],
         };
+        vm.GetDragPayload = vm.BuildDragPayload;
         return [vm];
     }
 

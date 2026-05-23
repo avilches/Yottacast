@@ -25,6 +25,7 @@ public partial class MainWindow : Window {
     private PixelPoint _screenPosAtHide;
     private bool _screenPosKnown;
     private bool _positionDirty;
+    private (Point Origin, BaseResultItemViewModel Vm)? _dragCandidate;
 
     // Required by Avalonia's XAML resource loader; the app always uses the parameterized constructor.
     public MainWindow() : this(null!, null!) { }
@@ -47,6 +48,10 @@ public partial class MainWindow : Window {
         AddHandler(PointerMovedEvent, OnTunnelPointerMoved, RoutingStrategies.Tunnel);
         ResultsList.AddHandler(PointerMovedEvent, OnResultsPointerMoved, RoutingStrategies.Bubble);
         ResultsList.AddHandler(Gestures.TappedEvent, OnResultsTapped, RoutingStrategies.Bubble);
+        ResultsList.AddHandler(PointerPressedEvent, OnResultsPointerPressedForDrag, RoutingStrategies.Tunnel);
+        ResultsList.AddHandler(PointerMovedEvent, OnResultsPointerMovedForDrag, RoutingStrategies.Tunnel);
+        ResultsList.AddHandler(PointerReleasedEvent, OnResultsPointerReleasedForDrag, RoutingStrategies.Tunnel);
+        ResultsList.AddHandler(PointerCaptureLostEvent, OnResultsPointerCaptureLostForDrag, RoutingStrategies.Tunnel);
         PositionChanged += (_, _) => UpdatePositionInMemory();
         // Font diagnostics: log at startup and on first emoji activation. REMOVE after investigation.
         DataContextChanged += (_, _) => {
@@ -626,6 +631,55 @@ public partial class MainWindow : Window {
         if (!_cursorHidden) return;
         _cursorHidden = false;
         AppHandler.Instance.ShowCursor();
+    }
+
+    private void OnResultsPointerPressedForDrag(object? sender, PointerPressedEventArgs e) {
+        if (e.GetCurrentPoint(ResultsList).Properties.PointerUpdateKind != PointerUpdateKind.LeftButtonPressed)
+            return;
+        var item = FindListBoxItem(e.Source as Control);
+        if (item?.DataContext is BaseResultItemViewModel vm && vm.GetDragPayload is not null) {
+            _dragCandidate = (e.GetPosition(ResultsList), vm);
+        } else {
+            _dragCandidate = null;
+        }
+    }
+
+    private async void OnResultsPointerMovedForDrag(object? sender, PointerEventArgs e) {
+        if (_dragCandidate is not { } candidate) return;
+        var props = e.GetCurrentPoint(ResultsList).Properties;
+        if (!props.IsLeftButtonPressed) {
+            _dragCandidate = null;
+            return;
+        }
+        var current = e.GetPosition(ResultsList);
+        var dx = current.X - candidate.Origin.X;
+        var dy = current.Y - candidate.Origin.Y;
+        if (Math.Abs(dx) < AppDefaults.DragStartThresholdPx && Math.Abs(dy) < AppDefaults.DragStartThresholdPx)
+            return;
+
+        // Consume the candidate before awaiting so we don't double-start a drag.
+        _dragCandidate = null;
+
+        try {
+            var payload = candidate.Vm.GetDragPayload?.Invoke();
+            if (payload is null) return;
+            var data = await DragDataFactory.BuildAsync(this, payload);
+            if (data is null) {
+                _logger.LogDebug("Drag aborted: factory returned null payload for {Type}", payload.GetType().Name);
+                return;
+            }
+            await DragDrop.DoDragDrop(e, data, DragDropEffects.Copy);
+        } catch (Exception ex) {
+            _logger.LogWarning(ex, "Drag-and-drop failed");
+        }
+    }
+
+    private void OnResultsPointerReleasedForDrag(object? sender, PointerReleasedEventArgs e) {
+        _dragCandidate = null;
+    }
+
+    private void OnResultsPointerCaptureLostForDrag(object? sender, PointerCaptureLostEventArgs e) {
+        _dragCandidate = null;
     }
 
 }

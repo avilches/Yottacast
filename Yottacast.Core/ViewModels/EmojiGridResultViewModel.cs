@@ -304,5 +304,7 @@ public class EmojiGridResultViewModel : ResultItemViewModel, INotifyPropertyChan
             cell.ShowUsage = show && cell.HasUsageCount;
     }
 
+    public DragPayload BuildDragPayload() => new DragPayload.Text(SelectedEmoji?.Char ?? "");
+
     public event PropertyChangedEventHandler? PropertyChanged;
 }
