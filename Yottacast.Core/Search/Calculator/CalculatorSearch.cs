@@ -282,6 +282,7 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
                 },
             ],
         };
+        vm.GetDragPayload = vm.BuildDragPayload;
         return [vm];
     }
 
