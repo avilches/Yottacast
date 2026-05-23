@@ -19,10 +19,10 @@ public class UnitConverterSearchTests(MathJsEngineFixture fixture, NerdamerEngin
         return new CalculatorSearch(provider, exchangeRateService, clipboard, settings, NullLogger<CalculatorSearch>.Instance, nerdamerFixture.Engine);
     }
 
-    private static IReadOnlyList<ViewModels.ConversionResultItemViewModel> SearchResults(
+    private static IReadOnlyList<Yottacast.Core.ViewModels.ConversionResultItemViewModel> SearchResults(
         CalculatorSearch search, string query) {
         return search.Search(query, 5)
-            .Cast<ViewModels.ConversionResultItemViewModel>().ToList();
+            .Cast<Yottacast.Core.ViewModels.ConversionResultItemViewModel>().ToList();
     }
 
     // ── Conversions ───────────────────────────────────────────────────────────
@@ -88,7 +88,7 @@ public class UnitConverterSearchTests(MathJsEngineFixture fixture, NerdamerEngin
     public void ConversionResult_HasCopyActionWithPasteAndHint() {
         var search = BuildSearch(out _);
         var results = search.Search("5 km to miles", 5);
-        var item = Assert.Single(results.OfType<ViewModels.ConversionResultItemViewModel>());
+        var item = Assert.Single(results.OfType<Yottacast.Core.ViewModels.ConversionResultItemViewModel>());
         var metaCAction = item.Actions.First(a => a.Hotkey == ActionHotkey.MetaC);
         Assert.Equal("Result copied!", metaCAction.HintProvider?.Invoke());
         var enterAction = item.Actions.First(a => a.Hotkey == ActionHotkey.Enter);

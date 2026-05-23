@@ -155,6 +155,7 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
                     Category = "Calculator",
                     Score = 7,
                     ScoreReason = "Expresión detectada",
+                    GetDragPayload = () => new DragPayload.Text(captured),
                     Actions = [
                         new() {
                             Label           = "Copy result",
@@ -298,6 +299,7 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
             Category = "Calculator",
             Score = 7,
             ScoreReason = "Expresión detectada",
+            GetDragPayload = () => new DragPayload.Text(captured),
             Actions = [
                 new() {
                     Label           = "Copy result",
