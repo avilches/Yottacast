@@ -63,16 +63,7 @@ public class UserSettings {
     public int HistoryMaxItems { get; set; } = AppDefaults.HistoryMaxItems;
     public bool EnableFileEditor { get; set; } = true;
     public bool FileEditorAutoSave { get; set; } = false;
-    public List<string> FileEditorExtensions { get; set; } = [
-        "txt", "md", "markdown", "log", "csv",
-        "cs", "fs", "vb",
-        "py", "rb", "go", "rs", "java", "kt", "swift", "c", "cpp", "h",
-        "js", "ts", "jsx", "tsx", "vue",
-        "json", "yaml", "yml", "toml", "ini", "cfg", "conf", "config", "env",
-        "xml", "html", "htm", "css", "scss", "less",
-        "sh", "bash", "zsh", "fish", "ps1",
-        "gitignore", "gitattributes", "editorconfig", "dockerfile",
-    ];
+    public List<string> FileEditorExtensions { get; set; } = [..AppDefaults.FileEditorDefaultExtensions];
     public bool KeepValueWhenHide { get; set; } = true;
     public int KeepValueWhenHideDuration { get; set; } = AppDefaults.KeepValueWhenHideDuration;
 
@@ -272,7 +263,7 @@ public class UserSettings {
                     FileEditorAutoSave = data.FileEditorAutoSave,
                     FileEditorExtensions = data.FileEditorExtensions is { Count: > 0 }
                         ? data.FileEditorExtensions
-                        : new UserSettings(platform, logger, path).FileEditorExtensions,
+                        : [..AppDefaults.FileEditorDefaultExtensions],
                     EnableSystemSettings = data.EnableSystemSettings,
                 };
             }

@@ -199,4 +199,15 @@ public static class AppDefaults {
     public const int EditorMaxFileSizeMb = 5;
     /// Number of bytes read to detect binary content (null-byte heuristic).
     public const int EditorBinaryDetectionBytes = 8_192;
+    /// Default set of file extensions the editor will open (without leading dot).
+    public static readonly string[] FileEditorDefaultExtensions = [
+        "txt", "md", "markdown", "log", "csv",
+        "cs", "fs", "vb",
+        "py", "rb", "go", "rs", "java", "kt", "swift", "c", "cpp", "h",
+        "js", "ts", "jsx", "tsx", "vue",
+        "json", "yaml", "yml", "toml", "ini", "cfg", "conf", "config", "env",
+        "xml", "html", "htm", "css", "scss", "less",
+        "sh", "bash", "zsh", "fish", "ps1",
+        "gitignore", "gitattributes", "editorconfig", "dockerfile",
+    ];
 }
