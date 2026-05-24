@@ -143,20 +143,19 @@
         </Style>
     </Window.Styles>
 
+    <Border Margin="28"
+            CornerRadius="{DynamicResource Theme.Window.CornerRadius}"
+            Background="{DynamicResource Theme.Window.Background}"
+            TextElement.FontFamily="{DynamicResource Theme.Window.FontFamily}"
+            PointerPressed="OnRootPointerPressed">
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
 
-        <Border Grid.Column="0"
-                Width="{DynamicResource Theme.Window.Width}"
-                Margin="28"
-                CornerRadius="{DynamicResource Theme.Window.CornerRadius}"
-                Background="{DynamicResource Theme.Window.Background}"
-                TextElement.FontFamily="{DynamicResource Theme.Window.FontFamily}"
-                PointerPressed="OnRootPointerPressed">
-        <DockPanel>
+        <DockPanel Grid.Column="0"
+                   Width="{DynamicResource Theme.Window.Width}">
 
             <!-- ── Search row + hint ── -->
             <!-- StackPanel is transparent: window.background colors this header zone -->
@@ -552,7 +551,6 @@
             </Border>
 
         </DockPanel>
-        </Border>
 
         <Panel Grid.Column="1" IsVisible="{Binding IsEditorOpen}">
             <views:EditorPanelView DataContext="{Binding EditorPanel}"
@@ -560,5 +558,6 @@
                                    Height="640"/>
         </Panel>
     </Grid>
+    </Border>
 
 </Window>

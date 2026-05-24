@@ -38,7 +38,8 @@
                           ShowLineNumbers="True"
                           FontFamily="Cascadia Code, Fira Code, Menlo, Consolas, monospace"
                           FontSize="13"
-                          WordWrap="False"/>
+                          WordWrap="False"
+                          Background="{DynamicResource Theme.Results.Background}"/>
 
         <!-- Status bar -->
         <Border Grid.Row="2"
