@@ -9,6 +9,7 @@ namespace Yottacast.Views;
 
 public partial class EditorPanelView : UserControl {
     private bool _settingContent;
+    private EditorPanelViewModel? _currentVm;
 
     public EditorPanelView() {
         InitializeComponent();
@@ -18,12 +19,18 @@ public partial class EditorPanelView : UserControl {
 
     protected override void OnDataContextChanged(EventArgs e) {
         base.OnDataContextChanged(e);
-        if (DataContext is EditorPanelViewModel vm) {
-            vm.PropertyChanged += OnViewModelPropertyChanged;
+
+        if (_currentVm != null)
+            _currentVm.PropertyChanged -= OnViewModelPropertyChanged;
+
+        _currentVm = DataContext as EditorPanelViewModel;
+
+        if (_currentVm != null) {
+            _currentVm.PropertyChanged += OnViewModelPropertyChanged;
             _settingContent = true;
-            Editor.Text = vm.Content;
+            Editor.Text = _currentVm.Content;
             _settingContent = false;
-            ApplySyntaxHighlighting(vm.FilePath);
+            ApplySyntaxHighlighting(_currentVm.FilePath);
         }
     }
 
