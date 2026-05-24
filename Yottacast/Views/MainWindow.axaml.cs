@@ -396,6 +396,16 @@ public partial class MainWindow : Window {
             }
         }
 
+        // ── Cmd+S: guardar desde el editor ──────────────────────────────────────
+        if (vm.IsEditorOpen
+            && !vm.EditorPanel.IsAutoSave
+            && AppHandler.Instance.MatchesHotkey(e, ActionHotkey.MetaS)) {
+            vm.EditorPanel.SaveFile();
+            vm.ShowCopiedMessage("Guardado");
+            e.Handled = true;
+            return;
+        }
+
         // ── Generic action hotkeys (excluding Enter, handled in OnKeyDown) ───────
         foreach (var action in vm.SelectedResult?.Actions ?? []) {
             if (action.Hotkey == null || action.Hotkey == ActionHotkey.Enter) continue;
