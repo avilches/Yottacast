@@ -5,6 +5,13 @@ public sealed class ResultAction {
     /// <summary>Display label shown in overlay and footer (e.g. "Open", "Copy path").</summary>
     public required string Label { get; init; }
 
+    /// <summary>
+    /// Optional dynamic label. When non-null, its return value overrides <see cref="Label"/> in
+    /// the footer and options menu. Used when the label depends on metadata that is resolved
+    /// asynchronously (e.g. "Open in Preview" once the default app for an extension is known).
+    /// </summary>
+    public Func<string>? LabelProvider { get; init; }
+
     /// <summary>Optional hotkey. Null = action only accessible via overlay or mouse.</summary>
     public ActionHotkey? Hotkey { get; init; }
 

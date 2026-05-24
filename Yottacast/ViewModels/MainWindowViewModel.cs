@@ -69,7 +69,7 @@ public partial class MainWindowViewModel(
 
             var hints = new List<string>();
             foreach (var a in actions.Where(a => a.ShowInFooter && a.Hotkey != null))
-                hints.Add($"{AppHandler.Instance.FormatHotkey(a.Hotkey!)}  {a.Label}");
+                hints.Add($"{AppHandler.Instance.FormatHotkey(a.Hotkey!)}  {a.LabelProvider?.Invoke() ?? a.Label}");
 
             if (actions.Any(a => a.ShowInMenu))
                 hints.Add("Tab  Options");
@@ -88,7 +88,7 @@ public partial class MainWindowViewModel(
 
     public IReadOnlyList<OptionsMenuItemVm> OptionsMenuItems =>
         OptionsMenuActions.Select(a => new OptionsMenuItemVm(
-            Label: a.Label,
+            Label: a.LabelProvider?.Invoke() ?? a.Label,
             FormattedHotkey: a.Hotkey != null ? AppHandler.Instance.FormatHotkey(a.Hotkey) : null
         )).ToList();
 
@@ -211,6 +211,11 @@ public partial class MainWindowViewModel(
             foreach (var item in _deferredSnapshot)
                 if (item is ResultItemViewModel r && r.BadgeIconBytes is null)
                     r.BadgeIconBytes = userDocumentSearch.GetBadge(r.Subtitle);
+            // App-name resolution may also have completed: re-evaluate the dynamic Open label
+            // for the currently selected item (RefreshResults reassigns SelectedResult, but
+            // CommunityToolkit setters short-circuit on equal references).
+            OnPropertyChanged(nameof(FooterHints));
+            OnPropertyChanged(nameof(OptionsMenuItems));
             RefreshResults();
         });
     }

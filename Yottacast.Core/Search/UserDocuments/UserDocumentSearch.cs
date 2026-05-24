@@ -26,11 +26,15 @@ public class UserDocumentSearch(
 
     // Badge icon cache: keyed by lowercase extension; null means "no default app found"
     private readonly ConcurrentDictionary<string, byte[]?> _badgeByExtension = new();
+    // Default-app display name cache: keyed by lowercase extension; null means "no default app or
+    // file IS the app". Decoupled from the badge cache because the badge can be suppressed
+    // (same icon, e.g. .cs → Rider) while the app name is still useful for the "Open in X" label.
+    private readonly ConcurrentDictionary<string, string?> _appNameByExtension = new();
     private readonly ConcurrentDictionary<string, byte> _badgePreloading = new();
     private readonly string _badgeCacheDir = AppPaths.BadgeIconCacheDir;
     private const string BadgeCacheVersion = "v1";
 
-    /// <summary>Fired (on a thread-pool thread) when a badge icon finishes loading for an extension.</summary>
+    /// <summary>Fired (on a thread-pool thread) when badge or app-name metadata finishes loading for an extension.</summary>
     public event Action? BadgeIconLoaded;
 
     /// <summary>Returns the cached badge icon bytes for the file's extension, or null if suppressed/not yet loaded.</summary>
@@ -39,9 +43,16 @@ public class UserDocumentSearch(
         return string.IsNullOrEmpty(ext) ? null : _badgeByExtension.GetValueOrDefault(ext);
     }
 
-    /// <summary>Clears all badge icon caches (memory and disk). Called when installed apps change.</summary>
+    /// <summary>Returns the cached default-app display name for the file's extension, or null if unknown/not yet resolved.</summary>
+    public string? GetDefaultAppName(string filePath) {
+        var ext = Path.GetExtension(filePath).ToLowerInvariant();
+        return string.IsNullOrEmpty(ext) ? null : _appNameByExtension.GetValueOrDefault(ext);
+    }
+
+    /// <summary>Clears all badge/app-name caches (memory and disk). Called when installed apps change.</summary>
     public void InvalidateAll() {
         _badgeByExtension.Clear();
+        _appNameByExtension.Clear();
         _badgePreloading.Clear();
         if (!Directory.Exists(_badgeCacheDir)) return;
         foreach (var f in Directory.GetFiles(_badgeCacheDir, $"*_{BadgeCacheVersion}.png")) {
@@ -166,7 +177,11 @@ public class UserDocumentSearch(
                             GetDragPayload = () => new DragPayload.File(path),
                             Actions = [
                                 new() {
-                                    Label        = "Open",
+                                    Label         = "Open",
+                                    LabelProvider = () => {
+                                        var appName = _appNameByExtension.GetValueOrDefault(ext);
+                                        return appName != null ? $"Open in {appName}" : "Open";
+                                    },
                                     Hotkey       = ActionHotkey.Enter,
                                     ShowInFooter = true,
                                     ShowInMenu   = true,
@@ -237,45 +252,59 @@ public class UserDocumentSearch(
     private void PreloadBadgeIconAsync(string filePath) {
         var ext = Path.GetExtension(filePath).ToLowerInvariant();
         if (string.IsNullOrEmpty(ext)) return;
-        if (_badgeByExtension.ContainsKey(ext)) return;
 
-        // Disk cache hit → load synchronously so the first snapshot already has the badge
-        var diskBytes = TryBadgeDiskCache(ext);
-        if (diskBytes != null) {
-            _badgeByExtension[ext] = diskBytes;
-            return;
+        // Disk cache hit for badge → load synchronously so the first snapshot already has it.
+        if (!_badgeByExtension.ContainsKey(ext)) {
+            var diskBytes = TryBadgeDiskCache(ext);
+            if (diskBytes != null) _badgeByExtension[ext] = diskBytes;
         }
+
+        // Both already known: nothing to resolve.
+        if (_badgeByExtension.ContainsKey(ext) && _appNameByExtension.ContainsKey(ext)) return;
 
         if (!_badgePreloading.TryAdd(ext, 0)) return;
         Task.Run(() => {
             var appPath = platform.GetDefaultAppPath(filePath);
             logger.LogDebug("Badge [{Ext}] appPath={App}", ext, appPath ?? "(null)");
-            if (appPath == null) { _badgeByExtension[ext] = null; return; }
 
-            // Same path: the file IS the app (e.g. .app bundles)
-            if (string.Equals(Path.GetFullPath(appPath), Path.GetFullPath(filePath),
-                    StringComparison.OrdinalIgnoreCase)) {
-                logger.LogDebug("Badge [{Ext}] suppressed: same path", ext);
-                _badgeByExtension[ext] = null;
-                return;
+            var samePath = appPath != null && string.Equals(
+                Path.GetFullPath(appPath), Path.GetFullPath(filePath),
+                StringComparison.OrdinalIgnoreCase);
+
+            // App name: useful for the "Open in X" label even when the badge is suppressed
+            // because the app's icon matches the file icon (e.g. .cs → Rider).
+            // Suppressed only when there's no default app, or when the file IS the app itself.
+            if (!_appNameByExtension.ContainsKey(ext)) {
+                _appNameByExtension[ext] = (appPath == null || samePath)
+                    ? null
+                    : Path.GetFileNameWithoutExtension(appPath);
+                logger.LogDebug("AppName [{Ext}] = {Name}", ext, _appNameByExtension[ext] ?? "(null)");
             }
 
-            // Same icon: macOS uses the app icon as the document icon for this file type
-            // (e.g. .cs → Rider, .java → IntelliJ). Compare raw TIFF data before normalization.
-            if (platform.AreIconsSame(filePath, appPath)) {
-                logger.LogDebug("Badge [{Ext}] suppressed: same icon (TIFF)", ext);
-                _badgeByExtension[ext] = null;
-                return;
+            // Badge: skip if already loaded from disk cache above.
+            if (!_badgeByExtension.ContainsKey(ext)) {
+                if (appPath == null) {
+                    _badgeByExtension[ext] = null;
+                } else if (samePath) {
+                    logger.LogDebug("Badge [{Ext}] suppressed: same path", ext);
+                    _badgeByExtension[ext] = null;
+                } else if (platform.AreIconsSame(filePath, appPath)) {
+                    // macOS uses the app icon as the document icon for this file type
+                    // (e.g. .cs → Rider, .java → IntelliJ). Compare raw TIFF before normalization.
+                    logger.LogDebug("Badge [{Ext}] suppressed: same icon (TIFF)", ext);
+                    _badgeByExtension[ext] = null;
+                } else {
+                    var badgeBytes = platform.GetAppIconBytes(appPath);
+                    logger.LogDebug("Badge [{Ext}] loaded {N} bytes", ext, badgeBytes?.Length ?? -1);
+                    _badgeByExtension[ext] = badgeBytes;
+                    if (badgeBytes is not null) {
+                        Directory.CreateDirectory(_badgeCacheDir);
+                        File.WriteAllBytes(BadgeDiskPath(ext), badgeBytes);
+                    }
+                }
             }
 
-            var badgeBytes = platform.GetAppIconBytes(appPath);
-            logger.LogDebug("Badge [{Ext}] loaded {N} bytes", ext, badgeBytes?.Length ?? -1);
-            _badgeByExtension[ext] = badgeBytes;
-            if (badgeBytes is not null) {
-                Directory.CreateDirectory(_badgeCacheDir);
-                File.WriteAllBytes(BadgeDiskPath(ext), badgeBytes);
-                BadgeIconLoaded?.Invoke();
-            }
+            BadgeIconLoaded?.Invoke();
         });
     }
 }

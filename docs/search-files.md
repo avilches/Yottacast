@@ -131,6 +131,12 @@ Cada resultado se presenta como un `ResultItemViewModel` con:
 | `BadgeIconBytes` | Icono miniatura de la app predeterminada (puede ser `null`) |
 | `OnActivate` | Abre el fichero con la app predeterminada del SO |
 
+La accion principal ("Open") usa una etiqueta dinamica via `LabelProvider`: si se conoce el nombre de la app predeterminada para la extension, la etiqueta pasa a ser `"Open in {AppName}"` (p. ej. "Open in Preview"). Si no se conoce todavia o no hay app por defecto, queda como `"Open"`. La etiqueta se actualiza en footer y menu de opciones cuando `BadgeIconLoaded` se dispara.
+
+El nombre de la app se cachea por extension en `_appNameByExtension` (memoria, paralelo al cache de badge). Se resuelve a la vez que el badge en `PreloadBadgeIconAsync`, pero esta desacoplado de la supresion del icono: el badge puede estar suprimido (mismo icono que el fichero, p. ej. .cs → Rider) y la etiqueta sigue mostrando "Open in Rider". Solo se suprime el nombre cuando no hay app por defecto o cuando el fichero **es** la app (`.app` bundles).
+
+> **Verificar en:** `UserDocumentSearch.PreloadBadgeIconAsync` (resolucion de `_appNameByExtension`), `UserDocumentSearch.GetDefaultAppName`, `MainWindowViewModel.FooterHints` y `OptionsMenuItems` (uso de `LabelProvider`), `ResultAction.LabelProvider`.
+
 > **Verificar en:** `UserDocumentSearch.SearchAsync` (construccion de `ResultItemViewModel`).
 
 ---
