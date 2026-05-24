@@ -186,6 +186,24 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     partial void OnEnableFileSearchChanged(bool value)              { _settings.EnableFileSearch             = value; _settings.Save(); _logger.LogInformation("Settings: EnableFileSearch = {Value}", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnEnableFileEditorChanged(bool value)             { _settings.EnableFileEditor             = value; _settings.Save(); _logger.LogInformation("Settings: EnableFileEditor = {Value}", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnFileEditorAutoSaveChanged(bool value)           { _settings.FileEditorAutoSave           = value; _settings.Save(); _logger.LogInformation("Settings: FileEditorAutoSave = {Value}", value); }
+
+    public List<string> FileEditorExtensions => _settings.FileEditorExtensions;
+
+    public void AddFileEditorExtension(string ext) {
+        if (string.IsNullOrWhiteSpace(ext)) return;
+        var normalized = ext.TrimStart('.').Trim().ToLowerInvariant();
+        if (string.IsNullOrEmpty(normalized)) return;
+        if (!_settings.FileEditorExtensions.Contains(normalized, StringComparer.OrdinalIgnoreCase))
+            _settings.FileEditorExtensions.Add(normalized);
+        _settings.Save();
+        OnPropertyChanged(nameof(FileEditorExtensions));
+    }
+
+    public void RemoveFileEditorExtension(string ext) {
+        _settings.FileEditorExtensions.RemoveAll(e => e.Equals(ext, StringComparison.OrdinalIgnoreCase));
+        _settings.Save();
+        OnPropertyChanged(nameof(FileEditorExtensions));
+    }
     partial void OnEnableWebSearchChanged(bool value)               { _settings.EnableWebSearch              = value; _settings.Save(); _logger.LogInformation("Settings: EnableWebSearch = {Value}", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnEnableUrlValidationChanged(bool value)           { _settings.EnableUrlValidation          = value; _settings.Save(); _logger.LogInformation("Settings: EnableUrlValidation = {Value}", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnShowDisabledWebSearchEnginesChanged(bool value) {

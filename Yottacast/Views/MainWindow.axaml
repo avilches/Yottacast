@@ -554,11 +554,11 @@
         </DockPanel>
         </Border>
 
-        <views:EditorPanelView Grid.Column="1"
-                               IsVisible="{Binding IsEditorOpen}"
-                               DataContext="{Binding EditorPanel}"
-                               Width="680"
-                               Height="640"/>
+        <Panel Grid.Column="1" IsVisible="{Binding IsEditorOpen}">
+            <views:EditorPanelView DataContext="{Binding EditorPanel}"
+                                   Width="680"
+                                   Height="640"/>
+        </Panel>
     </Grid>
 
 </Window>

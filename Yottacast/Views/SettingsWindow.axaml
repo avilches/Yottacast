@@ -1090,6 +1090,36 @@
                                   IsChecked="{Binding FileEditorAutoSave}"/>
                         <TextBlock Classes="description"
                                    Text="If disabled, a save button (&#x2318;S) appears in the editor header."/>
+                        <TextBlock Classes="label" Text="Editable extensions"/>
+                        <ItemsControl ItemsSource="{Binding FileEditorExtensions}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="sys:String">
+                                    <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding}"
+                                                   VerticalAlignment="Center"
+                                                   FontSize="12"/>
+                                        <Button Grid.Column="1"
+                                                Content="✕"
+                                                FontSize="11"
+                                                Padding="6,2"
+                                                Click="OnRemoveExtensionClick"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                            <TextBox Grid.Column="0"
+                                     x:Name="NewExtensionBox"
+                                     Watermark="e.g. txt"
+                                     FontSize="12"/>
+                            <Button Grid.Column="1"
+                                    Content="Add"
+                                    FontSize="12"
+                                    Padding="10,4"
+                                    Margin="6,0,0,0"
+                                    Click="OnAddExtensionClick"/>
+                        </Grid>
                     </StackPanel>
                 </StackPanel>
 
