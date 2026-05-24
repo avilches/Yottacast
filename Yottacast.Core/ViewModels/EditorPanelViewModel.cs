@@ -18,7 +18,7 @@ public partial class EditorPanelViewModel(FileEditorService fileEditorService) :
     public bool IsAutoSave { get; private set; }
     public bool ShowSaveButton => !IsAutoSave;
 
-    public Action? CloseRequested { get; init; }
+    public Action? CloseRequested { get; set; }
 
     // Notify IsDirty when Content changes (Content uses [ObservableProperty] generated setter)
     partial void OnContentChanged(string value) => OnPropertyChanged(nameof(IsDirty));

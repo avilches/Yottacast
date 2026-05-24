@@ -31,6 +31,7 @@ public partial class MainWindowViewModel(
     UrlSearch urlSearch,
     DateSearch dateSearch,
     LaunchHistory launchHistory,
+    FileEditorService fileEditorService,
     IEnumerable<IEmptyStateSource> emptySources)
     : ViewModelBase {
 
@@ -50,6 +51,8 @@ public partial class MainWindowViewModel(
 
     [ObservableProperty] private bool _isOptionsMenuOpen;
     [ObservableProperty] private int _optionsMenuSelectedIndex;
+
+    [ObservableProperty] private bool _isEditorOpen;
 
     [ObservableProperty] private bool _updateAvailable;
     [ObservableProperty] private string _updateBannerText = "";
@@ -152,6 +155,7 @@ public partial class MainWindowViewModel(
     }
 
     public void Initialize() {
+        EditorPanel.CloseRequested = () => IsEditorOpen = false;
         _ = CheckForUpdateAsync();
         appSearch.IconLoaded += OnAppCacheChanged;
         appSearch.AppsChanged += OnAppCacheChanged;
@@ -444,6 +448,13 @@ public partial class MainWindowViewModel(
             await Task.Delay(AppDefaults.CopiedMessageDurationMs, ct);
             if (SearchHint == msg) SetSearchHint(null);
         } catch (OperationCanceledException) { }
+    }
+
+    public EditorPanelViewModel EditorPanel { get; } = new EditorPanelViewModel(fileEditorService);
+
+    public void OpenEditor(string path) {
+        EditorPanel.Load(path, settings.FileEditorAutoSave);
+        IsEditorOpen = true;
     }
 
     public void RecordLaunch(BaseResultItemViewModel item) {
