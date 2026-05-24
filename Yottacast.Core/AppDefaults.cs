@@ -189,4 +189,14 @@ public static class AppDefaults {
     /// Pixel distance the cursor must travel with the left button held before a drag is initiated.
     /// Below this threshold, click+release is treated as a normal click (selection).
     public const double DragStartThresholdPx = 5.0;
+
+    // ── File Editor ────────────────────────────────────────────────────────────
+    /// Width of the inline editor panel in pixels.
+    public const double EditorWidth = 680;
+    /// Height of the inline editor panel in pixels (≈ max launcher height with full results).
+    public const double EditorHeight = 640;
+    /// Maximum file size in MB the editor will open.
+    public const int EditorMaxFileSizeMb = 5;
+    /// Number of bytes read to detect binary content (null-byte heuristic).
+    public const int EditorBinaryDetectionBytes = 8_192;
 }
