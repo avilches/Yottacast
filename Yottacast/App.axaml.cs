@@ -246,6 +246,7 @@ public partial class App : Application {
         services.AddSingleton<BrowserDiscovery>();
         services.AddSingleton<TerminalDiscovery>();
         services.AddSingleton<FileSearch>();
+        services.AddSingleton<FileEditorService>();
         services.AddSingleton<ClipboardService>();
         services.AddSingleton<HttpClient>();
         services.AddSingleton<ExchangeRateService>();
