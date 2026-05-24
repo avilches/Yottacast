@@ -85,11 +85,13 @@ builder.Services.AddSingleton<HistoryService>(sp => new HistoryService(
 // Search sources
 builder.Services.AddSingleton<ApplicationSearch>();
 builder.Services.AddSingleton<CalculatorSearch>();
+builder.Services.AddSingleton<EmojiLayoutConfig>();
 builder.Services.AddSingleton<EmojiSearch>(sp => new EmojiSearch(
     sp.GetRequiredService<ClipboardService>(),
     AppPaths.EmojiCacheFile,
     sp.GetRequiredService<EmojiDataLoader>(),
     sp.GetRequiredService<EmojiUsageStore>(),
+    sp.GetRequiredService<EmojiLayoutConfig>(),
     sp.GetRequiredService<ILogger<EmojiSearch>>(),
     sp.GetRequiredService<UserSettings>()));
 builder.Services.AddSingleton<WebSearchSource>();

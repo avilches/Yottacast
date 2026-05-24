@@ -36,7 +36,7 @@ desktop.ini
 
 # Runtime user data (symlinks to local dirs)
 user-data/
-.claude/settings*
+**/.claude/settings*
 
 # kaikki dictionary build artifacts (large files, generated)
 tools/kaikki/cache/
