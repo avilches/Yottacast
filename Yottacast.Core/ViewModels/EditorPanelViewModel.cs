@@ -31,12 +31,14 @@ public partial class EditorPanelViewModel(FileEditorService fileEditorService) :
         _originalContent = content;
         Content = content;
         ShowUnsavedDialog = false;
+        OnPropertyChanged(nameof(ShowSaveButton));
     }
 
     [RelayCommand]
     public void SaveFile() {
         fileEditorService.WriteFile(FilePath, Content);
         _originalContent = Content;
+        OnPropertyChanged(nameof(IsDirty));
     }
 
     [RelayCommand]
@@ -47,7 +49,7 @@ public partial class EditorPanelViewModel(FileEditorService fileEditorService) :
 
     [RelayCommand]
     public void DiscardAndClose() {
-        _originalContent = Content;
+        Content = _originalContent;  // Restore to disk content so IsDirty becomes false
         CloseRequested?.Invoke();
     }
 
