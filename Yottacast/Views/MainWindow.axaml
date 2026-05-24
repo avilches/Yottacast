@@ -5,12 +5,12 @@
         xmlns:viewModels="clr-namespace:Yottacast.Core.ViewModels;assembly=Yottacast.Core"
         xmlns:results="using:Yottacast.Views.Results"
         xmlns:controls="using:Yottacast.Controls"
+        xmlns:views="using:Yottacast.Views"
         x:Class="Yottacast.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         x:Name="RootWindow"
         Title="Yottacast"
-        Width="{DynamicResource Theme.Window.Width}"
-        SizeToContent="Height"
+        SizeToContent="WidthAndHeight"
         SystemDecorations="None"
         TransparencyLevelHint="Transparent"
         Background="Transparent"
@@ -143,11 +143,19 @@
         </Style>
     </Window.Styles>
 
-    <Border Margin="28"
-            CornerRadius="{DynamicResource Theme.Window.CornerRadius}"
-            Background="{DynamicResource Theme.Window.Background}"
-            TextElement.FontFamily="{DynamicResource Theme.Window.FontFamily}"
-            PointerPressed="OnRootPointerPressed">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0"
+                Width="{DynamicResource Theme.Window.Width}"
+                Margin="28"
+                CornerRadius="{DynamicResource Theme.Window.CornerRadius}"
+                Background="{DynamicResource Theme.Window.Background}"
+                TextElement.FontFamily="{DynamicResource Theme.Window.FontFamily}"
+                PointerPressed="OnRootPointerPressed">
         <DockPanel>
 
             <!-- ── Search row + hint ── -->
@@ -544,6 +552,13 @@
             </Border>
 
         </DockPanel>
-    </Border>
+        </Border>
+
+        <views:EditorPanelView Grid.Column="1"
+                               IsVisible="{Binding IsEditorOpen}"
+                               DataContext="{Binding EditorPanel}"
+                               Width="680"
+                               Height="640"/>
+    </Grid>
 
 </Window>
