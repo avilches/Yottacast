@@ -20,6 +20,7 @@ namespace Yottacast.Views;
 public partial class MainWindow : Window {
     private readonly UserSettings _settings;
     private readonly ILogger<MainWindow> _logger;
+    private readonly FileEditorService _fileEditorService;
     private bool _cursorHidden;
     private bool _dragging;
     private PixelPoint _screenPosAtHide;
@@ -28,11 +29,12 @@ public partial class MainWindow : Window {
     private (Point Origin, BaseResultItemViewModel Vm)? _dragCandidate;
 
     // Required by Avalonia's XAML resource loader; the app always uses the parameterized constructor.
-    public MainWindow() : this(null!, null!) { }
+    public MainWindow() : this(null!, null!, null!) { }
 
-    public MainWindow(UserSettings settings, ILogger<MainWindow> logger) {
+    public MainWindow(UserSettings settings, ILogger<MainWindow> logger, FileEditorService fileEditorService) {
         _settings = settings;
         _logger = logger;
+        _fileEditorService = fileEditorService;
         InitializeComponent();
         Opened += (_, _) => SearchBox.Focus();
         // Restore focus to SearchBox when the window regains key status (e.g. after
@@ -374,6 +376,26 @@ public partial class MainWindow : Window {
                 break;
         }
 
+        // ── Cmd+E: open/close inline file editor ────────────────────────────────
+        if (AppHandler.Instance.MatchesHotkey(e, ActionHotkey.MetaE)) {
+            if (vm.IsEditorOpen) {
+                vm.EditorPanel.RequestClose();
+                e.Handled = true;
+                return;
+            }
+            if (_settings.EnableFileEditor
+                && vm.SelectedResult is ResultItemViewModel { ItemPath: { } path }) {
+                var check = _fileEditorService.CanOpen(path, _settings.FileEditorExtensions);
+                if (check.CanOpen) {
+                    vm.OpenEditor(path);
+                } else if (check.Error != null) {
+                    vm.ShowCopiedMessage(check.Error);
+                }
+                e.Handled = true;
+                return;
+            }
+        }
+
         // ── Generic action hotkeys (excluding Enter, handled in OnKeyDown) ───────
         foreach (var action in vm.SelectedResult?.Actions ?? []) {
             if (action.Hotkey == null || action.Hotkey == ActionHotkey.Enter) continue;
@@ -442,6 +464,11 @@ public partial class MainWindow : Window {
                 break;
 
             case Key.Escape:
+                if (vm.IsEditorOpen && vm.EditorPanel.ShowUnsavedDialog) {
+                    vm.EditorPanel.CancelUnsavedDialog();
+                    e.Handled = true;
+                    break;
+                }
                 if (vm.IsOptionsMenuOpen) {
                     vm.CloseOptionsMenu();
                 } else if (vm.IsSearching) {
