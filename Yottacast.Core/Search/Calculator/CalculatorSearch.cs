@@ -101,7 +101,7 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
                     OnRight = r.FromWasNormalized ? () => vm.MoveCellRight() : null,
                     Actions = [
                         new() {
-                            Label           = "Copy value",
+                            Label           = "Close and paste",
                             Hotkey          = ActionHotkey.Enter,
                             ShowInFooter    = true,
                             ShowInMenu      = true,
@@ -159,7 +159,7 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
                     GetDragPayload = () => new DragPayload.Text(captured),
                     Actions = [
                         new() {
-                            Label           = "Copy result",
+                            Label           = "Close and paste",
                             Hotkey          = ActionHotkey.Enter,
                             ShowInFooter    = true,
                             ShowInMenu      = true,
@@ -254,7 +254,7 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
             OnRight     = result.Cells.Length > 1 ? () => vm.MoveCellRight() : null,
             Actions = [
                 new() {
-                    Label           = "Copy result",
+                    Label           = "Close and paste",
                     Hotkey          = ActionHotkey.Enter,
                     ShowInFooter    = true,
                     ShowInMenu      = true,
@@ -304,7 +304,7 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
             GetDragPayload = () => new DragPayload.Text(captured),
             Actions = [
                 new() {
-                    Label           = "Copy result",
+                    Label           = "Close and paste",
                     Hotkey          = ActionHotkey.Enter,
                     ShowInFooter    = true,
                     ShowInMenu      = true,

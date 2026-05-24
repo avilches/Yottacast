@@ -10,36 +10,74 @@ namespace Yottacast.Core.Search.Date;
 /// Instant search source that detects dates and date ranges in natural language using
 /// Microsoft.Recognizers.Text.DateTime. Detection runs against all available languages;
 /// output language and cell formats are controlled by AppLanguage / DateIsoFormat / DateLongFormat.
+/// Recognition runs in a background task because Microsoft.Recognizers.Text lazily compiles
+/// per-language grammars on first use (~1s cold start across 11 languages). Search returns
+/// synchronously with the cached result for the current query and fires ResultChanged when
+/// the background task lands; the view model then re-issues the search to pick it up.
 /// </summary>
 public class DateSearch(UserSettings settings, ClipboardService clipboard, ILogger<DateSearch> logger)
     : IInstantSearchSource
 {
+    private readonly Lock _lock = new();
+    private string? _currentQuery;
+    private IReadOnlyList<BaseResultItemViewModel> _currentResult = [];
+    private CancellationTokenSource? _cts;
+
+    /// <summary>Fires (on a thread-pool thread) when background recognition completes for the latest query, with or without a match.</summary>
+    public event Action? ResultChanged;
+
     public int Limit => 1;
     public void Start() { }
     public Task WhenReady() => Task.CompletedTask;
-    public Task Stop() => Task.CompletedTask;
+    public Task Stop() {
+        lock (_lock) {
+            _cts?.Cancel();
+            _cts = null;
+            _currentQuery = null;
+            _currentResult = [];
+        }
+        return Task.CompletedTask;
+    }
 
     public IReadOnlyList<BaseResultItemViewModel> Search(string query, int limit)
     {
         if (!settings.DateSearchEnabled) return [];
         if (string.IsNullOrWhiteSpace(query)) return [];
 
+        lock (_lock) {
+            if (_currentQuery == query) return _currentResult;
+            _cts?.Cancel();
+            var cts = new CancellationTokenSource();
+            _cts = cts;
+            _currentQuery = query;
+            _currentResult = [];
+            _ = Task.Run(() => RecognizeInBackground(query, cts.Token));
+            return [];
+        }
+    }
+
+    private void RecognizeInBackground(string query, CancellationToken ct) {
         try {
-                // Detect against ALL available languages; first match wins.
-            var result = AppDefaults.DateSearchAvailableLanguages
+            // Detect against ALL available languages; first match wins.
+            var recognized = AppDefaults.DateSearchAvailableLanguages
                 .SelectMany(l => DateTimeRecognizer.RecognizeDateTime(query, l.Code))
                 .DistinctBy(r => r.Text)
                 .FirstOrDefault(r => r.TypeName is "datetimeV2.date" or "datetimeV2.daterange"
                                                  or "datetimeV2.datetime" or "datetimeV2.datetimerange"
                                   && r.Text.Length >= query.Length * AppDefaults.DateSearchMinCoverage);
 
-            if (result is null) return [];
+            if (ct.IsCancellationRequested) return;
 
-            return BuildViewModel(result, settings, clipboard);
+            var result = recognized is null ? [] : BuildViewModel(recognized, settings, clipboard);
+
+            lock (_lock) {
+                if (_currentQuery != query) return;
+                _currentResult = result;
+            }
+            ResultChanged?.Invoke();
         }
         catch (Exception ex) {
             logger.LogError(ex, "DateSearch: error recognizing date in query \"{Query}\"", query);
-            return [];
         }
     }
 
@@ -96,13 +134,14 @@ public class DateSearch(UserSettings settings, ClipboardService clipboard, ILogg
             OnRight       = () => vm.MoveCellRight(),
             Actions = [
                 new() {
-                    Label        = "Copy date",
-                    Hotkey       = ActionHotkey.Enter,
-                    ShowInFooter = true,
-                    ShowInMenu   = true,
-                    ClosesMenu   = true,
-                    ClosesWindow = true,
-                    Execute      = () => clipboard.CopyText(vm.Cells[vm.SelectedCell]),
+                    Label           = "Close and paste",
+                    Hotkey          = ActionHotkey.Enter,
+                    ShowInFooter    = true,
+                    ShowInMenu      = true,
+                    ClosesMenu      = true,
+                    ClosesWindow    = true,
+                    PasteAfterClose = true,
+                    Execute         = () => clipboard.CopyText(vm.Cells[vm.SelectedCell]),
                 },
                 new() {
                     Label        = "Copy date",
@@ -152,13 +191,14 @@ public class DateSearch(UserSettings settings, ClipboardService clipboard, ILogg
             OnRight = () => vm.MoveCellRight(),
             Actions = [
                 new() {
-                    Label        = "Copy date",
-                    Hotkey       = ActionHotkey.Enter,
-                    ShowInFooter = true,
-                    ShowInMenu   = true,
-                    ClosesMenu   = true,
-                    ClosesWindow = true,
-                    Execute      = () => clipboard.CopyText(vm.Cells[vm.SelectedCell]),
+                    Label           = "Close and paste",
+                    Hotkey          = ActionHotkey.Enter,
+                    ShowInFooter    = true,
+                    ShowInMenu      = true,
+                    ClosesMenu      = true,
+                    ClosesWindow    = true,
+                    PasteAfterClose = true,
+                    Execute         = () => clipboard.CopyText(vm.Cells[vm.SelectedCell]),
                 },
                 new() {
                     Label        = "Copy date",

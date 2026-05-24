@@ -113,7 +113,7 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
             PinnedSectionHeader = hasPinned ? "Favorites & recently used" : "",
             Actions = [
                 new() {
-                    Label           = "Paste",
+                    Label           = "Close and paste",
                     Hotkey          = ActionHotkey.Enter,
                     ShowInFooter    = true,
                     ShowInMenu      = true,

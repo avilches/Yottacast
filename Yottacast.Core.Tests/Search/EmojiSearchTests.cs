@@ -190,7 +190,7 @@ public class EmojiSearchTests {
     public async Task PasteAction_CopiesAndRecordsUsage() {
         var (search, _, usageStore, getLastCopied) = await CreateSearchAsync();
         var result = (EmojiGridResultViewModel)search.Search(":", 10).Single();
-        var paste = result.Actions.Single(a => a.Label == "Paste");
+        var paste = result.Actions.Single(a => a.Label == "Close and paste");
         var char0 = result.Cells[0].Char;
 
         paste.Execute();
@@ -421,7 +421,7 @@ public class EmojiSearchTests {
     public async Task PasteAction_HasPasteAfterClose() {
         var (search, _, _, _) = await CreateSearchAsync();
         var result = (EmojiGridResultViewModel)search.Search(":", 10).Single();
-        var paste = result.Actions.Single(a => a.Label == "Paste");
+        var paste = result.Actions.Single(a => a.Label == "Close and paste");
 
         Assert.True(paste.PasteAfterClose);
         Assert.True(paste.ClosesWindow);
