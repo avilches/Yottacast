@@ -196,7 +196,9 @@ public class SystemSettingsSearchTests {
     }
 
     [Fact]
-    public async Task Search_DynamicItems_CachesWithinTtl() {
+    public async Task Search_DynamicItems_RefreshedOnceDuringStartup() {
+        // El refresco dinámico ocurre en background durante Start(); las llamadas a
+        // Search() solo leen del cache. Con TTL<=0 el bucle de refresco queda deshabilitado.
         var platform = new CountingDynamicProvider { WifiNetwork = "TestNet" };
         var settings = UserSettings.Load(platform);
         var iconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
@@ -204,7 +206,7 @@ public class SystemSettingsSearchTests {
             settings, platform, iconCache,
             NullLogger<SystemSettingsSearch>.Instance,
             thirdPartyDirs: [],
-            dynamicCacheTtl: TimeSpan.FromHours(1));
+            dynamicCacheTtl: TimeSpan.Zero);
         search.Start();
         await search.WhenReady();
 
@@ -215,7 +217,9 @@ public class SystemSettingsSearchTests {
     }
 
     [Fact]
-    public async Task Search_DynamicItems_RefreshesAfterTtlExpiry() {
+    public async Task Search_DynamicItems_BackgroundRefreshLoop() {
+        // Con un TTL pequeño, el bucle background refresca el cache periódicamente
+        // sin que las llamadas a Search() disparen subprocess.
         var platform = new CountingDynamicProvider { WifiNetwork = "TestNet" };
         var settings = UserSettings.Load(platform);
         var iconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
@@ -223,14 +227,16 @@ public class SystemSettingsSearchTests {
             settings, platform, iconCache,
             NullLogger<SystemSettingsSearch>.Instance,
             thirdPartyDirs: [],
-            dynamicCacheTtl: TimeSpan.Zero); // expira inmediatamente
+            dynamicCacheTtl: TimeSpan.FromMilliseconds(50));
         search.Start();
         await search.WhenReady();
+        var initialCount = platform.WifiCallCount;
 
-        _ = search.Search("TestNet", 10);
-        _ = search.Search("TestNet", 10);
+        await Task.Delay(250);
+        await search.Stop();
 
-        Assert.Equal(2, platform.WifiCallCount);
+        Assert.True(platform.WifiCallCount > initialCount,
+            $"Expected background refresh to increment WifiCallCount, got {platform.WifiCallCount} (started at {initialCount})");
     }
 
     [Fact(Skip = "manual — abre System Settings para verificar visualmente cada anchor")]

@@ -25,9 +25,9 @@ public sealed class SystemSettingsSearch(
     private readonly TimeSpan _cacheTtl = dynamicCacheTtl ?? AppDefaults.SystemSettingsDynamicCacheTtl;
     private readonly List<SystemSettingsPanel> _panels = [];
     private readonly TaskCompletionSource _readyTcs = new();
+    private CancellationTokenSource? _backgroundCts;
 
-    private IReadOnlyList<SystemSettingsPanel> _dynamicCache = [];
-    private DateTime _dynamicCacheTime = DateTime.MinValue;
+    private volatile IReadOnlyList<SystemSettingsPanel> _dynamicCache = [];
 
     public int Limit => AppDefaults.SystemSettingsSearchLimit;
 
@@ -36,19 +36,22 @@ public sealed class SystemSettingsSearch(
             _readyTcs.TrySetResult();
             return;
         }
-        Task.Run(Load);
+        _backgroundCts = new CancellationTokenSource();
+        _ = Task.Run(() => LoadAndRefreshLoop(_backgroundCts.Token));
     }
 
     public Task WhenReady() => _readyTcs.Task;
 
     public Task Stop() {
+        _backgroundCts?.Cancel();
+        _backgroundCts = null;
         _panels.Clear();
         return Task.CompletedTask;
     }
 
     public IReadOnlyList<BaseResultItemViewModel> Search(string query, int limit) {
         if (!settings.EnableSystemSettings || !settings.EnableAppSearch) return [];
-        return _panels.Concat(GetDynamicPanels())
+        return _panels.Concat(_dynamicCache)
             .Select(p => (panel: p, match: NameMatcher.Match(p.Name, query)))
             .Where(x => x.match.Score > 0)
             .OrderByDescending(x => x.match.Score)
@@ -61,10 +64,7 @@ public sealed class SystemSettingsSearch(
             .ToList();
     }
 
-    private IReadOnlyList<SystemSettingsPanel> GetDynamicPanels() {
-        if (DateTime.UtcNow - _dynamicCacheTime < _cacheTtl)
-            return _dynamicCache;
-
+    private void RefreshDynamicCache() {
         var items = new List<SystemSettingsPanel>();
 
         var wifi = platform.GetCurrentWifiNetworkName();
@@ -83,8 +83,6 @@ public sealed class SystemSettingsSearch(
                 ParentName: "Network"));
 
         _dynamicCache = items;
-        _dynamicCacheTime = DateTime.UtcNow;
-        return _dynamicCache;
     }
 
     private ResultItemViewModel BuildResult(SystemSettingsPanel panel, double score,
@@ -121,6 +119,31 @@ public sealed class SystemSettingsSearch(
         };
     }
 
+    private async Task LoadAndRefreshLoop(CancellationToken ct) {
+        try {
+            Load();
+            try { RefreshDynamicCache(); }
+            catch (Exception ex) { logger.LogWarning(ex, "SystemSettings: error in initial dynamic cache refresh"); }
+        } finally {
+            _readyTcs.TrySetResult();
+        }
+
+        if (_cacheTtl <= TimeSpan.Zero) return;
+
+        while (!ct.IsCancellationRequested) {
+            try {
+                await Task.Delay(_cacheTtl, ct);
+            } catch (OperationCanceledException) {
+                return;
+            }
+            try {
+                RefreshDynamicCache();
+            } catch (Exception ex) {
+                logger.LogWarning(ex, "SystemSettings: error refreshing dynamic cache");
+            }
+        }
+    }
+
     private void Load() {
         try {
             foreach (var panel in BuiltinPanels.All)
@@ -142,8 +165,6 @@ public sealed class SystemSettingsSearch(
             logger.LogInformation("SystemSettings: loaded {Count} panels", _panels.Count);
         } catch (Exception ex) {
             logger.LogWarning(ex, "SystemSettings: error loading panels, using partial results");
-        } finally {
-            _readyTcs.TrySetResult();
         }
     }
 
