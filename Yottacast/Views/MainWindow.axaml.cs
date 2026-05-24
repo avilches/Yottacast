@@ -660,6 +660,7 @@ public partial class MainWindow : Window {
         // Consume the candidate before awaiting so we don't double-start a drag.
         _dragCandidate = null;
 
+        var vm = DataContext as MainWindowViewModel;
         try {
             var payload = candidate.Vm.GetDragPayload?.Invoke();
             if (payload is null) return;
@@ -668,9 +669,12 @@ public partial class MainWindow : Window {
                 _logger.LogDebug("Drag aborted: factory returned null payload for {Type}", payload.GetType().Name);
                 return;
             }
-            await DragDrop.DoDragDrop(e, data, DragDropEffects.Copy);
+            vm?.BeginDragHint();
+            await DragDrop.DoDragDrop(e, data, DragDropEffects.Copy | DragDropEffects.Move | DragDropEffects.Link);
         } catch (Exception ex) {
             _logger.LogWarning(ex, "Drag-and-drop failed");
+        } finally {
+            vm?.EndDragHint();
         }
     }
 

@@ -31,15 +31,20 @@ public static class DragDataFactory {
         var topLevel = TopLevel.GetTopLevel(visual);
         var storage = topLevel?.StorageProvider;
         if (storage is null) return null;
-        IStorageItem? file;
+        IStorageItem? item;
         try {
-            file = await storage.TryGetFileFromPathAsync(new Uri(absolutePath));
+            var uri = new Uri(absolutePath);
+            // .app bundles and regular folders are directories on the filesystem; try file first
+            // (regular files), then folder (apps + folders). macOS Finder treats both identically
+            // once they're in DataFormats.Files.
+            item = await storage.TryGetFileFromPathAsync(uri)
+                ?? (IStorageItem?)await storage.TryGetFolderFromPathAsync(uri);
         } catch (Exception) {
             return null;
         }
-        if (file is null) return null;
+        if (item is null) return null;
         var data = new DataObject();
-        data.Set(DataFormats.Files, new[] { file });
+        data.Set(DataFormats.Files, new[] { item });
         return data;
     }
 }

@@ -318,6 +318,31 @@ public partial class MainWindowViewModel(
         } catch (OperationCanceledException) { }
     }
 
+    private string? _savedHintText;
+    private bool _savedHintIsError;
+    private bool _savedHintIsInfo;
+    private bool _dragHintActive;
+
+    public void BeginDragHint() {
+        if (_dragHintActive) return;
+        _dragHintActive = true;
+        _savedHintText = SearchHint;
+        _savedHintIsError = SearchHintIsError;
+        _savedHintIsInfo = SearchHintIsInfo;
+        var meta = AppHandler.Instance.MetaSymbol;
+        var alt  = AppHandler.Instance.AltSymbol;
+        SetSearchHint($"{meta} Mover   {alt} Copiar   {meta}{alt} Alias", SearchHintKind.Info);
+    }
+
+    public void EndDragHint() {
+        if (!_dragHintActive) return;
+        _dragHintActive = false;
+        SearchHint = _savedHintText;
+        SearchHintIsError = _savedHintIsError;
+        SearchHintIsInfo = _savedHintIsInfo;
+        _savedHintText = null;
+    }
+
     partial void OnSelectedResultChanged(BaseResultItemViewModel? value) {
         OnPropertyChanged(nameof(IsEmojiMode));
         OnPropertyChanged(nameof(FooterHints));
