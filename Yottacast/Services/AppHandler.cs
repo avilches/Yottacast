@@ -154,6 +154,9 @@ internal abstract class AppHandler {
     /// <summary>True on macOS: System Settings panels can be opened via URL scheme.</summary>
     public virtual bool SupportsSystemSettingsSearch => false;
 
+    /// <summary>OS-level permissions service. Noop on platforms that don't expose any (Windows, Linux).</summary>
+    public virtual PermissionsService Permissions => NoopPermissionsService.Instance;
+
     /// <summary>Restores the system mouse cursor.</summary>
     public virtual void ShowCursor() { }
 

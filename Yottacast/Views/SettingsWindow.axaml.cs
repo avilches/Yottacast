@@ -16,8 +16,20 @@ using Yottacast.ViewModels;
 namespace Yottacast.Views;
 
 public partial class SettingsWindow : Window {
+    private bool _wasDeactivated;
+
     public SettingsWindow() {
         InitializeComponent();
+
+        // Re-check permissions when the user comes back from the System Settings panel.
+        // We only react to focus regain after a real loss to avoid double-refresh on open.
+        Deactivated += (_, _) => _wasDeactivated = true;
+        Activated   += (_, _) => {
+            if (!_wasDeactivated) return;
+            _wasDeactivated = false;
+            if (DataContext is SettingsWindowViewModel { IsPermissionsSelected: true } vm)
+                vm.RefreshPermissions();
+        };
 
         // Fijar el ThemeVariant según el OS, ignorando el tema del buscador.
         // Window.RequestedThemeVariant prevalece sobre Application.RequestedThemeVariant.

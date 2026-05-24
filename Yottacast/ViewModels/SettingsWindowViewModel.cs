@@ -20,7 +20,7 @@ using Yottacast.Services;
 namespace Yottacast.ViewModels;
 
 public enum SettingsSection {
-    General, AppSearch, WebSearch, FileSearch, Calculator, Clipboard, Emoji, Dictionary, DateSearch, History
+    General, AppSearch, WebSearch, FileSearch, Calculator, Clipboard, Emoji, Dictionary, DateSearch, History, Permissions
 }
 
 /// <summary>Item shown in the currency-pair ComboBox. Code is the ISO code; Label is "EUR - Euro" (or just "EUR").</summary>
@@ -41,11 +41,14 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [NotifyPropertyChangedFor(nameof(IsDictionarySelected))]
     [NotifyPropertyChangedFor(nameof(IsDateSearchSelected))]
     [NotifyPropertyChangedFor(nameof(IsHistorySelected))]
+    [NotifyPropertyChangedFor(nameof(IsPermissionsSelected))]
     private SettingsSection _selectedSection = SettingsSection.General;
 
     partial void OnSelectedSectionChanged(SettingsSection oldValue, SettingsSection newValue) {
         if (oldValue == SettingsSection.AppSearch)
             FlushAppDirectoryChanges();
+        if (newValue == SettingsSection.Permissions)
+            RefreshPermissions();
         _logger.LogInformation("Settings: section {Old} → {New}", oldValue, newValue);
     }
 
@@ -59,7 +62,9 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     public bool IsDictionarySelected          => SelectedSection == SettingsSection.Dictionary;
     public bool IsDateSearchSelected          => SelectedSection == SettingsSection.DateSearch;
     public bool IsHistorySelected             => SelectedSection == SettingsSection.History;
+    public bool IsPermissionsSelected          => SelectedSection == SettingsSection.Permissions;
     public bool IsSystemSettingsSectionVisible => AppHandler.Instance.SupportsSystemSettingsSearch;
+    public bool IsPermissionsSectionVisible    => AppHandler.Instance.Permissions.IsSupported;
 
     [RelayCommand] private void SelectGeneral()   => SelectedSection = SettingsSection.General;
     [RelayCommand] private void SelectAppSearch() => SelectedSection = SettingsSection.AppSearch;
@@ -80,6 +85,37 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [RelayCommand] private void SelectDictionary()     => SelectedSection = SettingsSection.Dictionary;
     [RelayCommand] private void SelectDateSearch()     => SelectedSection = SettingsSection.DateSearch;
     [RelayCommand] private void SelectHistory()        => SelectedSection = SettingsSection.History;
+    [RelayCommand] private void SelectPermissions()    => SelectedSection = SettingsSection.Permissions;
+
+    // ── Permissions section ──────────────────────────────────────────────────
+    public ObservableCollection<PermissionRowViewModel> PermissionRows { get; } = new();
+
+    /// <summary>True when the service is supported and at least one permission isn't Granted.</summary>
+    public bool HasPermissionIssue =>
+        AppHandler.Instance.Permissions.IsSupported &&
+        PermissionRows.Any(r => !r.IsGranted);
+
+    public string PermissionsProcessName => System.Diagnostics.Process.GetCurrentProcess().ProcessName;
+    public string PermissionsProcessPath => Environment.ProcessPath ?? "(unknown)";
+
+    public void RefreshPermissions() {
+        var svc = AppHandler.Instance.Permissions;
+        if (!svc.IsSupported) return;
+        var infos = svc.CheckAll();
+
+        // Update existing rows in place when possible so XAML bindings retain identity.
+        for (int i = 0; i < infos.Count; i++) {
+            if (i < PermissionRows.Count)
+                PermissionRows[i].Info = infos[i];
+            else
+                PermissionRows.Add(new PermissionRowViewModel(infos[i]));
+        }
+        while (PermissionRows.Count > infos.Count)
+            PermissionRows.RemoveAt(PermissionRows.Count - 1);
+
+        OnPropertyChanged(nameof(HasPermissionIssue));
+        _logger.LogInformation("Settings: permissions refreshed ({Count})", infos.Count);
+    }
 
     // ── General section ──────────────────────────────────────────────────────
     [ObservableProperty] private string? _selectedBrowser;
@@ -456,6 +492,10 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         settings.EnsurePluginSettings(pluginService.Plugins);
         WebSearchGroups = BuildWebSearchGroups();
         pluginService.PluginsChanged += OnPluginsReloaded;
+
+        // Initial check so the sidebar badge reflects the state when Settings opens.
+        if (AppHandler.Instance.Permissions.IsSupported)
+            RefreshPermissions();
     }
 
     private void OnThemesChanged() {

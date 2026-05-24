@@ -14,6 +14,9 @@ namespace Yottacast.Services;
 
 internal sealed class MacAppHandler : AppHandler {
     private IntPtr _previousApp = IntPtr.Zero;
+    private readonly MacPermissionsService _permissions = new();
+
+    public override PermissionsService Permissions => _permissions;
 
     // NSApplicationActivationPolicyAccessory = 1: no Dock icon, no menu bar shown.
     public override void OnFrameworkInitializationCompleted() {
