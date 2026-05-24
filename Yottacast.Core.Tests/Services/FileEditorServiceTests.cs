@@ -1,10 +1,11 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 using Yottacast.Core.Services;
 
 namespace Yottacast.Core.Tests.Services;
 
 public class FileEditorServiceTests {
-    private readonly FileEditorService _svc = new();
+    private readonly FileEditorService _svc = new(NullLogger<FileEditorService>.Instance);
 
     [Fact]
     public void HasEditableExtension_KnownExtension_ReturnsTrue() {
@@ -70,8 +71,16 @@ public class FileEditorServiceTests {
         try {
             var result = _svc.CanOpen(tmp, ["neverexists"]);
             Assert.False(result.CanOpen);
+            Assert.Null(result.Error);
         }
         finally { File.Delete(tmp); }
+    }
+
+    [Fact]
+    public void CanOpen_NonExistentFile_ReturnsError() {
+        var result = _svc.CanOpen("/nonexistent/file.txt", ["txt"]);
+        Assert.False(result.CanOpen);
+        Assert.NotNull(result.Error);
     }
 
     [Fact]

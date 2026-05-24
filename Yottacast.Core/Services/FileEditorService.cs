@@ -1,10 +1,12 @@
+using Microsoft.Extensions.Logging;
+
 namespace Yottacast.Core.Services;
 
-public class FileEditorService {
+public class FileEditorService(ILogger<FileEditorService> logger) {
     public record OpenResult(bool CanOpen, string? Error = null);
 
     public bool HasEditableExtension(string filePath, IReadOnlyList<string> extensions) {
-        var ext = Path.GetExtension(filePath).TrimStart('.').ToLowerInvariant();
+        var ext = Path.GetExtension(filePath).TrimStart('.');
         if (string.IsNullOrEmpty(ext)) return false;
         return extensions.Any(e => e.Equals(ext, StringComparison.OrdinalIgnoreCase));
     }
@@ -20,7 +22,8 @@ public class FileEditorService {
             for (var i = 0; i < read; i++)
                 if (buffer[i] == 0) return false;
             return true;
-        } catch {
+        } catch (Exception ex) {
+            logger.LogWarning(ex, "Failed to read file for binary detection: {Path}", filePath);
             return false;
         }
     }
