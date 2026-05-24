@@ -18,13 +18,34 @@ public class DateSearchTests
         return new DateSearch(settings, clipboard, NullLogger<DateSearch>.Instance);
     }
 
+    /// <summary>
+    /// Search runs recognition in a background thread and fires ResultChanged when done.
+    /// Tests use this helper to drive the source synchronously: kick off the search, wait on
+    /// the event, then read the cached result via a second Search call.
+    /// </summary>
+    private static IReadOnlyList<BaseResultItemViewModel> SearchAndWait(DateSearch search, string query, int limit)
+    {
+        using var ev = new System.Threading.ManualResetEventSlim();
+        void Handler() => ev.Set();
+        search.ResultChanged += Handler;
+        try {
+            var first = search.Search(query, limit);
+            if (first.Count > 0) return first;
+            if (!ev.Wait(TimeSpan.FromSeconds(15)))
+                throw new TimeoutException($"DateSearch did not complete recognition for query \"{query}\" within 15s");
+            return search.Search(query, limit);
+        } finally {
+            search.ResultChanged -= Handler;
+        }
+    }
+
     // ── 1. Spanish date ────────────────────────────────────────────────────────
 
     [Fact]
     public void Search_WithSpanishDate_ReturnsResult()
     {
         var search  = BuildSearch(out _, null);
-        var results = search.Search("3 de mayo", 5);
+        var results = SearchAndWait(search, "3 de mayo", 5);
 
         var item = Assert.Single(results);
         var vm   = Assert.IsType<DateSearchResultViewModel>(item);
@@ -41,7 +62,7 @@ public class DateSearchTests
     public void Search_WithEnglishDate_ReturnsResult()
     {
         var search  = BuildSearch(out _, null);
-        var results = search.Search("next Monday", 5);
+        var results = SearchAndWait(search, "next Monday", 5);
 
         var item = Assert.Single(results);
         Assert.IsType<DateSearchResultViewModel>(item);
@@ -53,7 +74,7 @@ public class DateSearchTests
     public void Search_WithDateRange_ReturnsRangeResult()
     {
         var search  = BuildSearch(out _, null);
-        var results = search.Search("del 1 al 5 de junio", 5);
+        var results = SearchAndWait(search, "del 1 al 5 de junio", 5);
 
         var item = Assert.Single(results);
         var vm   = Assert.IsType<DateSearchResultViewModel>(item);
@@ -94,7 +115,7 @@ public class DateSearchTests
     public void Search_WithDate_SubtitleCountMatchesCellCount()
     {
         var search  = BuildSearch(out _);
-        var results = search.Search("3 de mayo", 5);
+        var results = SearchAndWait(search, "3 de mayo", 5);
         var vm      = Assert.IsType<DateSearchResultViewModel>(Assert.Single(results));
 
         Assert.Equal(vm.Cells.Count, vm.CellSubtitles.Count);
@@ -112,7 +133,7 @@ public class DateSearchTests
             copy: text => copied = text,
             read: () => Task.FromResult<string?>(null));
 
-        var results = search.Search("3 de mayo", 5);
+        var results = SearchAndWait(search, "3 de mayo", 5);
         var vm      = Assert.IsType<DateSearchResultViewModel>(Assert.Single(results));
 
         var enterAction = vm.Actions.FirstOrDefault(a => a.Hotkey == ActionHotkey.Enter);
@@ -129,7 +150,7 @@ public class DateSearchTests
     public void MoveCellRight_CyclesFromLastToFirst()
     {
         var search  = BuildSearch(out _, null);
-        var results = search.Search("3 de mayo", 5);
+        var results = SearchAndWait(search, "3 de mayo", 5);
         var vm      = Assert.IsType<DateSearchResultViewModel>(Assert.Single(results));
 
         // Navigate to last cell
@@ -149,7 +170,7 @@ public class DateSearchTests
     public void MoveCellLeft_CyclesFromFirstToLast()
     {
         var search  = BuildSearch(out _, null);
-        var results = search.Search("3 de mayo", 5);
+        var results = SearchAndWait(search, "3 de mayo", 5);
         var vm      = Assert.IsType<DateSearchResultViewModel>(Assert.Single(results));
 
         Assert.Equal(0, vm.SelectedCell);

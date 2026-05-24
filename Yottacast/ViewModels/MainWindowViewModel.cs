@@ -11,6 +11,7 @@ using CommunityToolkit.Mvvm.Input;
 using Yottacast.Core;
 using Yottacast.Core.Search;
 using Yottacast.Core.Search.Application;
+using Yottacast.Core.Search.Date;
 using Yottacast.Core.Search.Url;
 using Yottacast.Core.Search.UserDocuments;
 using Yottacast.Core.Services;
@@ -28,6 +29,7 @@ public partial class MainWindowViewModel(
     UpdateChecker updateChecker,
     HistoryService historyService,
     UrlSearch urlSearch,
+    DateSearch dateSearch,
     LaunchHistory launchHistory,
     IEnumerable<IEmptyStateSource> emptySources)
     : ViewModelBase {
@@ -159,6 +161,7 @@ public partial class MainWindowViewModel(
         userDocumentSearch.BadgeIconLoaded += OnBadgeIconLoaded;
         settings.SearchSettingsChanged += OnSearchSettingsChanged;
         urlSearch.ResultChanged += OnUrlResultChanged;
+        dateSearch.ResultChanged += OnDateResultChanged;
         foreach (var source in _emptySources)
         {
             source.Start();
@@ -213,6 +216,10 @@ public partial class MainWindowViewModel(
     }
 
     private void OnUrlResultChanged() {
+        Dispatcher.UIThread.Post(RefreshSearch);
+    }
+
+    private void OnDateResultChanged() {
         Dispatcher.UIThread.Post(RefreshSearch);
     }
 
