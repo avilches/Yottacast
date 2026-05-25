@@ -60,6 +60,7 @@ public partial class MainWindow : Window {
         DataContextChanged += (_, _) => {
             if (DataContext is not MainWindowViewModel vm) return;
             LogFontDiagnostics("startup");
+            UpdateEditorLayout();
             var emojiLogged = false;
             vm.PropertyChanged += (_, args) => {
                 if (args.PropertyName == nameof(MainWindowViewModel.IsEmojiMode) && vm.IsEmojiMode && !emojiLogged) {
@@ -68,6 +69,12 @@ public partial class MainWindow : Window {
                 }
                 if (args.PropertyName == nameof(MainWindowViewModel.IsOptionsMenuOpen) && vm.IsOptionsMenuOpen)
                     Avalonia.Threading.Dispatcher.UIThread.Post(PositionOptionsMenu, Avalonia.Threading.DispatcherPriority.Background);
+                if (args.PropertyName == nameof(MainWindowViewModel.IsEditorOpen))
+                    UpdateEditorLayout();
+            };
+            vm.EditorPanel.PropertyChanged += (_, args) => {
+                if (args.PropertyName == nameof(EditorPanelViewModel.Mode))
+                    UpdateEditorLayout();
             };
         };
     }
@@ -164,6 +171,22 @@ public partial class MainWindow : Window {
         s == null ? "null" : $"WorkingArea={s.WorkingArea} Scaling={s.Scaling}";
 
     private void Log(string msg) => _logger.LogDebug("{Msg}", msg);
+
+    private void UpdateEditorLayout() {
+        if (DataContext is not MainWindowViewModel vm) return;
+        bool isEdit = vm.IsEditorOpen && vm.EditorPanel.IsEditMode;
+        if (isEdit) {
+            Grid.SetColumn(EditorContainer, 0);
+            Grid.SetColumnSpan(EditorContainer, 2);
+            EditorWidthSpacer.IsVisible = true;
+            EditorView.Width = double.NaN;
+        } else {
+            Grid.SetColumn(EditorContainer, 1);
+            Grid.SetColumnSpan(EditorContainer, 1);
+            EditorWidthSpacer.IsVisible = false;
+            EditorView.Width = 680;
+        }
+    }
 
     // ── Font diagnostics ──────────────────────────────────────────────────────
     // Logs which font Avalonia actually uses to render each keyboard symbol.
@@ -412,6 +435,14 @@ public partial class MainWindow : Window {
             return;
         }
 
+        // En modo Edit, suprimir teclas de navegación del buscador
+        if (vm.IsEditorOpen && vm.EditorPanel.IsEditMode
+            && e.Key is Key.Up or Key.Down or Key.Left or Key.Right
+                or Key.Prior or Key.Next or Key.Return or Key.Tab) {
+            e.Handled = true;
+            return;
+        }
+
         // ── Generic action hotkeys (excluding Enter, handled in OnKeyDown) ───────
         foreach (var action in vm.SelectedResult?.Actions ?? []) {
             if (action.Hotkey == null || action.Hotkey == ActionHotkey.Enter) continue;
@@ -466,6 +497,12 @@ public partial class MainWindow : Window {
 
         var vm = DataContext as MainWindowViewModel;
         if (vm is null) return;
+
+        // En modo Edit el editor captura flechas/Enter; solo Escape se gestiona abajo
+        if (vm.IsEditorOpen && vm.EditorPanel.IsEditMode
+            && e.Key is not (Key.Escape or Key.LeftAlt or Key.RightAlt or Key.OemComma)) {
+            return;
+        }
 
         switch (e.Key) {
 

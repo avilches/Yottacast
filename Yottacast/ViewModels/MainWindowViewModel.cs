@@ -173,7 +173,6 @@ public partial class MainWindowViewModel(
             if (args.PropertyName is nameof(EditorPanelViewModel.Mode)
                 or nameof(EditorPanelViewModel.ShowSaveButton)) {
                 OnPropertyChanged(nameof(FooterHints));
-                OnPropertyChanged(nameof(ShowSearchPanel));
             }
         };
         _ = CheckForUpdateAsync();
@@ -372,12 +371,9 @@ public partial class MainWindowViewModel(
         _savedHintText = null;
     }
 
-    public bool ShowSearchPanel => !(IsEditorOpen && EditorPanel.IsEditMode);
-
     partial void OnIsEditorOpenChanged(bool value) {
         OnPropertyChanged(nameof(FooterHints));
         OnPropertyChanged(nameof(HasFooterHints));
-        OnPropertyChanged(nameof(ShowSearchPanel));
     }
 
     partial void OnHasResultsChanged(bool value) => OnPropertyChanged(nameof(HasFooterHints));
@@ -391,18 +387,11 @@ public partial class MainWindowViewModel(
         if (!HasOptionsMenu) CloseOptionsMenu();
 
         if (IsEditorOpen && value is ResultItemViewModel { ItemPath: { } path } && path != EditorPanel.FilePath) {
-            if (EditorPanel.IsPreviewMode) {
-                if (fileEditorService.IsTextContent(path))
-                    EditorPanel.LoadPreview(path);
-                else
-                    IsEditorOpen = false;
-            } else {
-                var check = fileEditorService.CanOpen(path, settings.FileEditorExtensions);
-                if (check.CanOpen) {
-                    if (EditorPanel.IsDirty) EditorPanel.SaveFile();
-                    EditorPanel.LoadEdit(path, settings.FileEditorAutoSave);
-                }
-            }
+            if (EditorPanel.IsEditMode) return; // buscador pausado: no cambiar fichero mientras se edita
+            if (fileEditorService.IsTextContent(path))
+                EditorPanel.LoadPreview(path);
+            else
+                IsEditorOpen = false;
         }
     }
 
