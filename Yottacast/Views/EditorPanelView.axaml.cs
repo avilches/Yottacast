@@ -50,6 +50,7 @@ public partial class EditorPanelView : UserControl {
     private void OnEditorTextChanged(object? sender, EventArgs e) {
         if (_settingContent) return;
         if (DataContext is EditorPanelViewModel vm) {
+            if (vm.IsPreviewMode) return;
             _settingContent = true;
             vm.Content = Editor.Text;
             _settingContent = false;

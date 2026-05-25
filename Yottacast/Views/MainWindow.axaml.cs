@@ -22,6 +22,7 @@ public partial class MainWindow : Window {
     private readonly ILogger<MainWindow> _logger;
     private readonly FileEditorService _fileEditorService;
     private bool _cursorHidden;
+    private KeyModifiers _lastClickModifiers;
     private bool _dragging;
     private PixelPoint _screenPosAtHide;
     private bool _screenPosKnown;
@@ -376,29 +377,37 @@ public partial class MainWindow : Window {
                 break;
         }
 
-        // ── Cmd+E: open/close inline file editor ────────────────────────────────
+        // ── Cmd+E: preview → edit → close cycle ─────────────────────────────────
         if (AppHandler.Instance.MatchesHotkey(e, ActionHotkey.MetaE)) {
             if (vm.IsEditorOpen) {
-                vm.EditorPanel.RequestClose();
+                if (vm.EditorPanel.IsEditMode) {
+                    vm.EditorPanel.RequestClose();
+                } else {
+                    // Preview mode
+                    if (vm.EditorPanel.IsTextFile) {
+                        var check = _fileEditorService.CanOpen(vm.EditorPanel.FilePath, _settings.FileEditorExtensions);
+                        if (check.CanOpen) {
+                            vm.EditorPanel.SwitchToEdit(_settings.FileEditorAutoSave);
+                        } else {
+                            vm.ShowCopiedMessage(check.Error ?? "Cannot edit this file");
+                        }
+                    } else {
+                        vm.EditorPanel.RequestClose();
+                    }
+                }
                 e.Handled = true;
                 return;
             }
             if (_settings.EnableFileEditor
                 && vm.SelectedResult is ResultItemViewModel { ItemPath: { } path }) {
-                var check = _fileEditorService.CanOpen(path, _settings.FileEditorExtensions);
-                if (check.CanOpen) {
-                    vm.OpenEditor(path);
-                } else if (check.Error != null) {
-                    vm.ShowCopiedMessage(check.Error);
-                }
+                vm.OpenPreview(path);
                 e.Handled = true;
                 return;
             }
         }
 
-        // ── Cmd+S: guardar desde el editor ──────────────────────────────────────
-        if (vm.IsEditorOpen
-            && !vm.EditorPanel.IsAutoSave
+        // ── Cmd+S: save in edit mode ─────────────────────────────────────────────
+        if (vm.IsEditorOpen && vm.EditorPanel.IsEditMode && !vm.EditorPanel.IsAutoSave
             && AppHandler.Instance.MatchesHotkey(e, ActionHotkey.MetaS)) {
             vm.EditorPanel.SaveFile();
             vm.ShowCopiedMessage("Guardado");
@@ -474,8 +483,11 @@ public partial class MainWindow : Window {
                 break;
 
             case Key.Escape:
-                if (vm.IsEditorOpen && vm.EditorPanel.ShowUnsavedDialog) {
-                    vm.EditorPanel.CancelUnsavedDialog();
+                if (vm.IsEditorOpen) {
+                    if (vm.EditorPanel.ShowUnsavedDialog)
+                        vm.EditorPanel.CancelUnsavedDialog();
+                    else
+                        vm.EditorPanel.RequestClose();
                     e.Handled = true;
                     break;
                 }
@@ -519,8 +531,17 @@ public partial class MainWindow : Window {
                 if (!vm.IsOptionsMenuOpen) {
                     var enterAction = vm.SelectedResult?.Actions
                         .FirstOrDefault(a => a.Hotkey == ActionHotkey.Enter);
-                    if (enterAction != null)
-                        ExecuteAction(vm, enterAction);
+                    if (enterAction != null) {
+                        if (e.KeyModifiers.HasFlag(KeyModifiers.Meta)) {
+                            // Cmd+Enter: execute without closing the search window
+                            enterAction.Execute();
+                            if (vm.SelectedResult != null) vm.RecordLaunch(vm.SelectedResult);
+                            var hint = enterAction.HintProvider?.Invoke();
+                            if (hint != null) vm.ShowCopiedMessage(hint);
+                        } else {
+                            ExecuteAction(vm, enterAction);
+                        }
+                    }
                 }
                 e.Handled = true;
                 break;
@@ -641,9 +662,19 @@ public partial class MainWindow : Window {
 
     private void OnResultsTapped(object? sender, TappedEventArgs e) {
         if (DataContext is not MainWindowViewModel vm) return;
+
         var enterAction = vm.SelectedResult?.Actions.FirstOrDefault(a => a.Hotkey == ActionHotkey.Enter);
-        if (enterAction != null)
+        if (enterAction == null) return;
+
+        if (_lastClickModifiers.HasFlag(KeyModifiers.Meta)) {
+            // Cmd+Click: execute action without closing the search window
+            enterAction.Execute();
+            if (vm.SelectedResult != null) vm.RecordLaunch(vm.SelectedResult);
+            var hint = enterAction.HintProvider?.Invoke();
+            if (hint != null) vm.ShowCopiedMessage(hint);
+        } else {
             ExecuteAction(vm, enterAction);
+        }
     }
 
     private static ListBoxItem? FindListBoxItem(Control? control) {
@@ -671,6 +702,7 @@ public partial class MainWindow : Window {
     }
 
     private void OnResultsPointerPressedForDrag(object? sender, PointerPressedEventArgs e) {
+        _lastClickModifiers = e.KeyModifiers;
         if (e.GetCurrentPoint(ResultsList).Properties.PointerUpdateKind != PointerUpdateKind.LeftButtonPressed)
             return;
         var item = FindListBoxItem(e.Source as Control);

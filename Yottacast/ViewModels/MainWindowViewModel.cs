@@ -65,8 +65,23 @@ public partial class MainWindowViewModel(
     public string ShiftSymbol => AppHandler.Instance.ShiftSymbol;
     public string SettingsShortcutText => $"{MetaSymbol},  settings";
 
+    public bool HasFooterHints => HasResults || IsEditorOpen;
+
     public IReadOnlyList<string> FooterHints {
         get {
+            if (IsEditorOpen) {
+                var meta = MetaSymbol;
+                if (EditorPanel.IsEditMode) {
+                    return EditorPanel.ShowSaveButton
+                        ? [$"{meta}S  Save", "Esc  Close"]
+                        : ["Esc  Close"];
+                }
+                // Preview mode
+                return EditorPanel.IsTextFile
+                    ? [$"{meta}E  Edit", "Esc  Close"]
+                    : ["Esc  Close"];
+            }
+
             var actions = SelectedResult?.Actions;
             if (actions is null or { Count: 0 }) return [];
 
@@ -156,6 +171,13 @@ public partial class MainWindowViewModel(
 
     public void Initialize() {
         EditorPanel.CloseRequested = () => IsEditorOpen = false;
+        EditorPanel.PropertyChanged += (_, args) => {
+            if (args.PropertyName is nameof(EditorPanelViewModel.Mode)
+                or nameof(EditorPanelViewModel.ShowSaveButton)
+                or nameof(EditorPanelViewModel.IsTextFile)) {
+                OnPropertyChanged(nameof(FooterHints));
+            }
+        };
         _ = CheckForUpdateAsync();
         appSearch.IconLoaded += OnAppCacheChanged;
         appSearch.AppsChanged += OnAppCacheChanged;
@@ -352,6 +374,13 @@ public partial class MainWindowViewModel(
         _savedHintText = null;
     }
 
+    partial void OnIsEditorOpenChanged(bool value) {
+        OnPropertyChanged(nameof(FooterHints));
+        OnPropertyChanged(nameof(HasFooterHints));
+    }
+
+    partial void OnHasResultsChanged(bool value) => OnPropertyChanged(nameof(HasFooterHints));
+
     partial void OnSelectedResultChanged(BaseResultItemViewModel? value) {
         OnPropertyChanged(nameof(IsEmojiMode));
         OnPropertyChanged(nameof(FooterHints));
@@ -359,6 +388,18 @@ public partial class MainWindowViewModel(
         OnPropertyChanged(nameof(OptionsMenuItems));
         OnPropertyChanged(nameof(HasOptionsMenu));
         if (!HasOptionsMenu) CloseOptionsMenu();
+
+        if (IsEditorOpen && value is ResultItemViewModel { ItemPath: { } path } && path != EditorPanel.FilePath) {
+            if (EditorPanel.IsPreviewMode) {
+                EditorPanel.LoadPreview(path);
+            } else {
+                var check = fileEditorService.CanOpen(path, settings.FileEditorExtensions);
+                if (check.CanOpen) {
+                    if (EditorPanel.IsDirty) EditorPanel.SaveFile();
+                    EditorPanel.LoadEdit(path, settings.FileEditorAutoSave);
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -452,8 +493,13 @@ public partial class MainWindowViewModel(
 
     public EditorPanelViewModel EditorPanel { get; } = new EditorPanelViewModel(fileEditorService);
 
+    public void OpenPreview(string path) {
+        EditorPanel.LoadPreview(path);
+        IsEditorOpen = true;
+    }
+
     public void OpenEditor(string path) {
-        EditorPanel.Load(path, settings.FileEditorAutoSave);
+        EditorPanel.LoadEdit(path, settings.FileEditorAutoSave);
         IsEditorOpen = true;
     }
 

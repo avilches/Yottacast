@@ -5,7 +5,7 @@
              x:Class="Yottacast.Views.EditorPanelView"
              x:DataType="vm:EditorPanelViewModel">
 
-    <Grid RowDefinitions="40,*,24">
+    <Grid RowDefinitions="Auto,*,Auto">
 
         <!-- Separator vertical izquierdo -->
         <Border Grid.RowSpan="3"
@@ -13,10 +13,26 @@
                 HorizontalAlignment="Left"
                 Background="{DynamicResource Theme.Divider.Color}"/>
 
-        <!-- Header bar -->
+        <!-- ── Preview header: height matches search input area ── -->
+        <Border Grid.Row="0"
+                IsVisible="{Binding IsPreviewMode}"
+                Margin="{DynamicResource Theme.Search.Input.Margin}"
+                Padding="{DynamicResource Theme.Search.Input.Padding}">
+            <Grid MinHeight="46">
+                <TextBlock Text="{Binding FileName}"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"
+                           Foreground="{DynamicResource Theme.Results.Color}"
+                           FontSize="13"/>
+            </Grid>
+        </Border>
+
+        <!-- ── Edit header ── -->
         <Grid Grid.Row="0"
+              IsVisible="{Binding IsEditMode}"
               ColumnDefinitions="*,Auto"
-              Margin="12,0,8,0">
+              Margin="12,0,8,0"
+              MinHeight="40">
             <TextBlock Grid.Column="0"
                        Text="{Binding FileName}"
                        VerticalAlignment="Center"
@@ -32,28 +48,142 @@
                     FontSize="12"/>
         </Grid>
 
-        <!-- AvaloniaEdit TextEditor -->
-        <aedit:TextEditor Grid.Row="1"
-                          x:Name="Editor"
-                          ShowLineNumbers="True"
-                          FontFamily="Cascadia Code, Fira Code, Menlo, Consolas, monospace"
-                          FontSize="13"
-                          WordWrap="False"
-                          Background="{DynamicResource Theme.Results.Background}"/>
+        <!-- ── Content area ── -->
+        <Grid Grid.Row="1">
 
-        <!-- Status bar -->
+            <!-- Text editor (read-only in preview, editable in edit) -->
+            <aedit:TextEditor x:Name="Editor"
+                              IsVisible="{Binding IsTextFile}"
+                              IsReadOnly="{Binding IsPreviewMode}"
+                              ShowLineNumbers="True"
+                              FontFamily="Cascadia Code, Fira Code, Menlo, Consolas, monospace"
+                              FontSize="13"
+                              WordWrap="False"
+                              Background="{DynamicResource Theme.Results.Background}"/>
+
+            <!-- Metadata panel for non-text files in preview mode -->
+            <ScrollViewer IsVisible="{Binding IsMetadataOnly}"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
+                <StackPanel VerticalAlignment="Center"
+                            HorizontalAlignment="Center"
+                            Spacing="20"
+                            Margin="32,40">
+
+                    <TextBlock Text="{Binding FileName}"
+                               FontSize="15"
+                               FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis"
+                               TextAlignment="Center"
+                               Foreground="{DynamicResource Theme.Results.Color}"
+                               MaxWidth="400"/>
+
+                    <StackPanel Spacing="10">
+                        <!-- Kind -->
+                        <Grid ColumnDefinitions="110,*">
+                            <TextBlock Grid.Column="0"
+                                       Text="Kind"
+                                       Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
+                                       FontSize="12"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding FileKind}"
+                                       Foreground="{DynamicResource Theme.Results.Color}"
+                                       FontSize="12"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <!-- Size -->
+                        <Grid ColumnDefinitions="110,*">
+                            <TextBlock Grid.Column="0"
+                                       Text="Size"
+                                       Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
+                                       FontSize="12"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding FileSize}"
+                                       Foreground="{DynamicResource Theme.Results.Color}"
+                                       FontSize="12"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <!-- Created -->
+                        <Grid ColumnDefinitions="110,*">
+                            <TextBlock Grid.Column="0"
+                                       Text="Created"
+                                       Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
+                                       FontSize="12"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding FileCreated}"
+                                       Foreground="{DynamicResource Theme.Results.Color}"
+                                       FontSize="12"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <!-- Modified -->
+                        <Grid ColumnDefinitions="110,*">
+                            <TextBlock Grid.Column="0"
+                                       Text="Modified"
+                                       Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
+                                       FontSize="12"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding FileModified}"
+                                       Foreground="{DynamicResource Theme.Results.Color}"
+                                       FontSize="12"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <!-- Path -->
+                        <Grid ColumnDefinitions="110,*">
+                            <TextBlock Grid.Column="0"
+                                       Text="Path"
+                                       Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
+                                       FontSize="12"
+                                       VerticalAlignment="Top"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding FilePath}"
+                                       Foreground="{DynamicResource Theme.Results.Color}"
+                                       FontSize="12"
+                                       TextWrapping="Wrap"/>
+                        </Grid>
+                    </StackPanel>
+
+                </StackPanel>
+            </ScrollViewer>
+
+        </Grid>
+
+        <!-- ── Edit status bar ── -->
         <Border Grid.Row="2"
+                IsVisible="{Binding IsEditMode}"
                 Background="{DynamicResource Theme.Window.Background}"
                 BorderThickness="0,1,0,0"
                 BorderBrush="{DynamicResource Theme.Divider.Color}"
-                Padding="12,0">
+                Padding="12,0"
+                MinHeight="24">
             <TextBlock Text="{Binding StatusText}"
                        FontSize="11"
                        VerticalAlignment="Center"
                        Foreground="{DynamicResource Theme.Results.Subtitle.Color}"/>
         </Border>
 
-        <!-- Unsaved changes overlay -->
+        <!-- ── Preview footer: height matches search footer ── -->
+        <Border Grid.Row="2"
+                IsVisible="{Binding IsPreviewMode}"
+                Background="{DynamicResource Theme.Footer.Background}"
+                BorderBrush="{DynamicResource Theme.Footer.Border}"
+                BorderThickness="0,1,0,0"
+                CornerRadius="{DynamicResource Theme.Window.CornerRadius.Bottom}"
+                Padding="18,10">
+            <TextBlock Text="Solo lectura"
+                       FontSize="{DynamicResource Theme.Footer.Size}"
+                       VerticalAlignment="Center"
+                       Foreground="{DynamicResource Theme.Footer.Color}"/>
+        </Border>
+
+        <!-- Unsaved changes overlay (edit mode only) -->
         <Grid Grid.RowSpan="3"
               IsVisible="{Binding ShowUnsavedDialog}"
               Background="#B0000000">
@@ -83,7 +213,7 @@
                                 HorizontalAlignment="Stretch"
                                 HorizontalContentAlignment="Center"
                                 Padding="0,8"/>
-                        <Button Content="⌘E  —  Guardar y cerrar"
+                        <Button Content="⌘S  —  Guardar y cerrar"
                                 Command="{Binding SaveAndCloseCommand}"
                                 HorizontalAlignment="Stretch"
                                 HorizontalContentAlignment="Center"

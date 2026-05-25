@@ -288,8 +288,62 @@
                 </StackPanel>
             </Border>
 
+            <!-- ── Update banner ── -->
+            <Button DockPanel.Dock="Bottom"
+                    Command="{Binding UpdateBannerClickCommand}"
+                    IsVisible="{Binding UpdateAvailable}"
+                    Background="{DynamicResource Theme.Update.Background}"
+                    BorderThickness="0"
+                    Padding="18,9"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center"
+                    Cursor="Hand">
+                <TextBlock Text="{Binding UpdateBannerText}"
+                           Foreground="{DynamicResource Theme.Update.Color}"
+                           FontSize="{DynamicResource Theme.Update.Size}"
+                           FontWeight="Medium"
+                           HorizontalAlignment="Center"/>
+            </Button>
+
+            <!-- ── Footer ── -->
+            <Border DockPanel.Dock="Bottom"
+                    Padding="18,10"
+                    Background="{DynamicResource Theme.Footer.Background}"
+                    BorderBrush="{DynamicResource Theme.Footer.Border}"
+                    BorderThickness="0,1,0,0"
+                    CornerRadius="{DynamicResource Theme.Window.CornerRadius.Bottom}">
+                <Grid ColumnDefinitions="Auto,*">
+                    <!-- Left: Settings shortcut hint -->
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding SettingsShortcutText}"
+                               Foreground="{DynamicResource Theme.Footer.Color}"
+                               FontSize="{DynamicResource Theme.Footer.Size}"
+                               VerticalAlignment="Center"/>
+
+                    <!-- Right: dynamic hints -->
+                    <ItemsControl Grid.Column="1"
+                                  ItemsSource="{Binding FooterHints}"
+                                  IsVisible="{Binding HasFooterHints}"
+                                  HorizontalAlignment="Right"
+                                  VerticalAlignment="Center">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="16"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:CompileBindings="False">
+                                <TextBlock Text="{Binding}"
+                                           Foreground="{DynamicResource Theme.Footer.Color}"
+                                           FontSize="{DynamicResource Theme.Footer.Size}"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Grid>
+            </Border>
+
             <!-- ── Results list + Options overlay ── -->
-            <Panel DockPanel.Dock="Top" x:Name="ResultsPanel">
+            <Panel x:Name="ResultsPanel">
 
                 <ListBox x:Name="ResultsList"
                          ItemsSource="{Binding Results}"
@@ -495,60 +549,6 @@
                 </Border>
 
             </Panel>
-
-            <!-- ── Update banner ── -->
-            <Button DockPanel.Dock="Bottom"
-                    Command="{Binding UpdateBannerClickCommand}"
-                    IsVisible="{Binding UpdateAvailable}"
-                    Background="{DynamicResource Theme.Update.Background}"
-                    BorderThickness="0"
-                    Padding="18,9"
-                    HorizontalAlignment="Stretch"
-                    HorizontalContentAlignment="Center"
-                    Cursor="Hand">
-                <TextBlock Text="{Binding UpdateBannerText}"
-                           Foreground="{DynamicResource Theme.Update.Color}"
-                           FontSize="{DynamicResource Theme.Update.Size}"
-                           FontWeight="Medium"
-                           HorizontalAlignment="Center"/>
-            </Button>
-
-            <!-- ── Footer ── -->
-            <Border DockPanel.Dock="Bottom"
-                    Padding="18,10"
-                    Background="{DynamicResource Theme.Footer.Background}"
-                    BorderBrush="{DynamicResource Theme.Footer.Border}"
-                    BorderThickness="0,1,0,0"
-                    CornerRadius="{DynamicResource Theme.Window.CornerRadius.Bottom}">
-                <Grid ColumnDefinitions="Auto,*">
-                    <!-- Left: Settings shortcut hint -->
-                    <TextBlock Grid.Column="0"
-                               Text="{Binding SettingsShortcutText}"
-                               Foreground="{DynamicResource Theme.Footer.Color}"
-                               FontSize="{DynamicResource Theme.Footer.Size}"
-                               VerticalAlignment="Center"/>
-
-                    <!-- Right: dynamic hints -->
-                    <ItemsControl Grid.Column="1"
-                                  ItemsSource="{Binding FooterHints}"
-                                  IsVisible="{Binding HasResults}"
-                                  HorizontalAlignment="Right"
-                                  VerticalAlignment="Center">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <StackPanel Orientation="Horizontal" Spacing="16"/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:CompileBindings="False">
-                                <TextBlock Text="{Binding}"
-                                           Foreground="{DynamicResource Theme.Footer.Color}"
-                                           FontSize="{DynamicResource Theme.Footer.Size}"/>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </Grid>
-            </Border>
 
         </DockPanel>
 
