@@ -48,112 +48,15 @@
                     FontSize="12"/>
         </Grid>
 
-        <!-- ── Content area ── -->
-        <Grid Grid.Row="1">
-
-            <!-- Text editor (read-only in preview, editable in edit) -->
-            <aedit:TextEditor x:Name="Editor"
-                              IsVisible="{Binding IsTextFile}"
-                              IsReadOnly="{Binding IsPreviewMode}"
-                              ShowLineNumbers="True"
-                              FontFamily="Cascadia Code, Fira Code, Menlo, Consolas, monospace"
-                              FontSize="13"
-                              WordWrap="False"
-                              Background="{DynamicResource Theme.Results.Background}"/>
-
-            <!-- Metadata panel for non-text files in preview mode -->
-            <ScrollViewer IsVisible="{Binding IsMetadataOnly}"
-                          HorizontalScrollBarVisibility="Disabled"
-                          VerticalScrollBarVisibility="Auto">
-                <StackPanel VerticalAlignment="Center"
-                            HorizontalAlignment="Center"
-                            Spacing="20"
-                            Margin="32,40">
-
-                    <TextBlock Text="{Binding FileName}"
-                               FontSize="15"
-                               FontWeight="SemiBold"
-                               TextTrimming="CharacterEllipsis"
-                               TextAlignment="Center"
-                               Foreground="{DynamicResource Theme.Results.Color}"
-                               MaxWidth="400"/>
-
-                    <StackPanel Spacing="10">
-                        <!-- Kind -->
-                        <Grid ColumnDefinitions="110,*">
-                            <TextBlock Grid.Column="0"
-                                       Text="Kind"
-                                       Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
-                                       FontSize="12"
-                                       VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="1"
-                                       Text="{Binding FileKind}"
-                                       Foreground="{DynamicResource Theme.Results.Color}"
-                                       FontSize="12"
-                                       VerticalAlignment="Center"/>
-                        </Grid>
-
-                        <!-- Size -->
-                        <Grid ColumnDefinitions="110,*">
-                            <TextBlock Grid.Column="0"
-                                       Text="Size"
-                                       Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
-                                       FontSize="12"
-                                       VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="1"
-                                       Text="{Binding FileSize}"
-                                       Foreground="{DynamicResource Theme.Results.Color}"
-                                       FontSize="12"
-                                       VerticalAlignment="Center"/>
-                        </Grid>
-
-                        <!-- Created -->
-                        <Grid ColumnDefinitions="110,*">
-                            <TextBlock Grid.Column="0"
-                                       Text="Created"
-                                       Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
-                                       FontSize="12"
-                                       VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="1"
-                                       Text="{Binding FileCreated}"
-                                       Foreground="{DynamicResource Theme.Results.Color}"
-                                       FontSize="12"
-                                       VerticalAlignment="Center"/>
-                        </Grid>
-
-                        <!-- Modified -->
-                        <Grid ColumnDefinitions="110,*">
-                            <TextBlock Grid.Column="0"
-                                       Text="Modified"
-                                       Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
-                                       FontSize="12"
-                                       VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="1"
-                                       Text="{Binding FileModified}"
-                                       Foreground="{DynamicResource Theme.Results.Color}"
-                                       FontSize="12"
-                                       VerticalAlignment="Center"/>
-                        </Grid>
-
-                        <!-- Path -->
-                        <Grid ColumnDefinitions="110,*">
-                            <TextBlock Grid.Column="0"
-                                       Text="Path"
-                                       Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
-                                       FontSize="12"
-                                       VerticalAlignment="Top"/>
-                            <TextBlock Grid.Column="1"
-                                       Text="{Binding FilePath}"
-                                       Foreground="{DynamicResource Theme.Results.Color}"
-                                       FontSize="12"
-                                       TextWrapping="Wrap"/>
-                        </Grid>
-                    </StackPanel>
-
-                </StackPanel>
-            </ScrollViewer>
-
-        </Grid>
+        <!-- ── AvaloniaEdit TextEditor (read-only in preview, editable in edit) ── -->
+        <aedit:TextEditor Grid.Row="1"
+                          x:Name="Editor"
+                          IsReadOnly="{Binding IsPreviewMode}"
+                          ShowLineNumbers="True"
+                          FontFamily="Cascadia Code, Fira Code, Menlo, Consolas, monospace"
+                          FontSize="13"
+                          WordWrap="False"
+                          Background="{DynamicResource Theme.Results.Background}"/>
 
         <!-- ── Edit status bar ── -->
         <Border Grid.Row="2"

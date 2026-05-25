@@ -383,23 +383,20 @@ public partial class MainWindow : Window {
                 if (vm.EditorPanel.IsEditMode) {
                     vm.EditorPanel.RequestClose();
                 } else {
-                    // Preview mode
-                    if (vm.EditorPanel.IsTextFile) {
-                        var check = _fileEditorService.CanOpen(vm.EditorPanel.FilePath, _settings.FileEditorExtensions);
-                        if (check.CanOpen) {
-                            vm.EditorPanel.SwitchToEdit(_settings.FileEditorAutoSave);
-                        } else {
-                            vm.ShowCopiedMessage(check.Error ?? "Cannot edit this file");
-                        }
+                    // Preview mode (always text — non-text files never reach preview)
+                    var check = _fileEditorService.CanOpen(vm.EditorPanel.FilePath, _settings.FileEditorExtensions);
+                    if (check.CanOpen) {
+                        vm.EditorPanel.SwitchToEdit(_settings.FileEditorAutoSave);
                     } else {
-                        vm.EditorPanel.RequestClose();
+                        vm.ShowCopiedMessage(check.Error ?? "Cannot edit this file");
                     }
                 }
                 e.Handled = true;
                 return;
             }
             if (_settings.EnableFileEditor
-                && vm.SelectedResult is ResultItemViewModel { ItemPath: { } path }) {
+                && vm.SelectedResult is ResultItemViewModel { ItemPath: { } path }
+                && _fileEditorService.IsTextContent(path)) {
                 vm.OpenPreview(path);
                 e.Handled = true;
                 return;

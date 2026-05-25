@@ -76,10 +76,8 @@ public partial class MainWindowViewModel(
                         ? [$"{meta}S  Save", "Esc  Close"]
                         : ["Esc  Close"];
                 }
-                // Preview mode
-                return EditorPanel.IsTextFile
-                    ? [$"{meta}E  Edit", "Esc  Close"]
-                    : ["Esc  Close"];
+                // Preview mode (only text files reach here)
+                return [$"{meta}E  Edit", "Esc  Close"];
             }
 
             var actions = SelectedResult?.Actions;
@@ -173,8 +171,7 @@ public partial class MainWindowViewModel(
         EditorPanel.CloseRequested = () => IsEditorOpen = false;
         EditorPanel.PropertyChanged += (_, args) => {
             if (args.PropertyName is nameof(EditorPanelViewModel.Mode)
-                or nameof(EditorPanelViewModel.ShowSaveButton)
-                or nameof(EditorPanelViewModel.IsTextFile)) {
+                or nameof(EditorPanelViewModel.ShowSaveButton)) {
                 OnPropertyChanged(nameof(FooterHints));
             }
         };
@@ -391,7 +388,10 @@ public partial class MainWindowViewModel(
 
         if (IsEditorOpen && value is ResultItemViewModel { ItemPath: { } path } && path != EditorPanel.FilePath) {
             if (EditorPanel.IsPreviewMode) {
-                EditorPanel.LoadPreview(path);
+                if (fileEditorService.IsTextContent(path))
+                    EditorPanel.LoadPreview(path);
+                else
+                    IsEditorOpen = false;
             } else {
                 var check = fileEditorService.CanOpen(path, settings.FileEditorExtensions);
                 if (check.CanOpen) {
