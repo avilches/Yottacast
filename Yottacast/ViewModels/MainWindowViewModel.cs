@@ -167,8 +167,10 @@ public partial class MainWindowViewModel(
         RefreshResults();
     }
 
+    private bool _isPreviewEnabled;
+
     public void Initialize() {
-        EditorPanel.CloseRequested = () => IsEditorOpen = false;
+        EditorPanel.CloseRequested = () => { IsEditorOpen = false; _isPreviewEnabled = false; };
         EditorPanel.PropertyChanged += (_, args) => {
             if (args.PropertyName is nameof(EditorPanelViewModel.Mode)
                 or nameof(EditorPanelViewModel.ShowSaveButton)) {
@@ -386,12 +388,18 @@ public partial class MainWindowViewModel(
         OnPropertyChanged(nameof(HasOptionsMenu));
         if (!HasOptionsMenu) CloseOptionsMenu();
 
-        if (IsEditorOpen && value is ResultItemViewModel { ItemPath: { } path } && path != EditorPanel.FilePath) {
-            if (EditorPanel.IsEditMode) return; // buscador pausado: no cambiar fichero mientras se edita
-            if (fileEditorService.IsTextContent(path))
+        if (!IsEditorOpen && !_isPreviewEnabled) return;
+        if (EditorPanel.IsEditMode) return; // buscador pausado: no cambiar fichero mientras se edita
+
+        if (value is ResultItemViewModel { ItemPath: { } path }) {
+            if (fileEditorService.IsTextContent(path)) {
                 EditorPanel.LoadPreview(path);
-            else
-                IsEditorOpen = false;
+                IsEditorOpen = true;
+            } else {
+                IsEditorOpen = false; // sin preview para este elemento; _isPreviewEnabled permanece activo
+            }
+        } else {
+            IsEditorOpen = false;
         }
     }
 
@@ -489,6 +497,7 @@ public partial class MainWindowViewModel(
     public void OpenPreview(string path) {
         EditorPanel.LoadPreview(path);
         IsEditorOpen = true;
+        _isPreviewEnabled = true;
     }
 
     public void OpenEditor(string path) {

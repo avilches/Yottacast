@@ -181,7 +181,9 @@ public partial class MainWindow : Window {
             EditorWidthSpacer.IsVisible = true;
             EditorView.Width = double.NaN;
             SearchBox.IsEnabled = false;
-            EditorView.FocusEditor();
+            Avalonia.Threading.Dispatcher.UIThread.Post(
+                () => { if (DataContext is MainWindowViewModel v && v.IsEditorOpen && v.EditorPanel.IsEditMode) EditorView.FocusEditor(); },
+                Avalonia.Threading.DispatcherPriority.Loaded);
         } else {
             Grid.SetColumn(EditorContainer, 1);
             Grid.SetColumnSpan(EditorContainer, 1);
@@ -329,15 +331,15 @@ public partial class MainWindow : Window {
     }
 
     private void OnTunnelKeyDown(object? sender, KeyEventArgs e) {
-        // Tunnel phase fires before any child handles the event, so we reliably
-        // catch character keys that the TextBox would otherwise consume.
-        if (e.Key is not (Key.LeftAlt or Key.RightAlt or Key.LeftCtrl or Key.RightCtrl
+        var vm = DataContext as MainWindowViewModel;
+        if (vm is null) return;
+
+        // Hide cursor on typing; not in Edit mode (user needs to see the text cursor)
+        bool isEditMode = vm.IsEditorOpen && vm.EditorPanel.IsEditMode;
+        if (!isEditMode && e.Key is not (Key.LeftAlt or Key.RightAlt or Key.LeftCtrl or Key.RightCtrl
                 or Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin)) {
             HideCursor();
         }
-
-        var vm = DataContext as MainWindowViewModel;
-        if (vm is null) return;
 
         // ── Overlay navigation (when options menu is open) ──────────────────────
         if (vm.IsOptionsMenuOpen) {
@@ -380,6 +382,19 @@ public partial class MainWindow : Window {
             // Non-navigation keys (e.g. ⌘C, ⌘⇧F) fall through to the action hotkey loop below
         }
 
+        // ── Editor Edit mode: only intercept editor hotkeys; let everything else reach AvaloniaEdit ──
+        if (isEditMode) {
+            if (AppHandler.Instance.MatchesHotkey(e, ActionHotkey.MetaE)) {
+                vm.EditorPanel.RequestClose();
+                e.Handled = true;
+            } else if (!vm.EditorPanel.IsAutoSave && AppHandler.Instance.MatchesHotkey(e, ActionHotkey.MetaS)) {
+                vm.EditorPanel.SaveFile();
+                vm.ShowCopiedMessage("Guardado");
+                e.Handled = true;
+            }
+            return; // all other keys (arrows, Tab, Enter…) pass through to AvaloniaEdit
+        }
+
         // ── Tab opens overlay ───────────────────────────────────────────────────
         if (e.Key == Key.Tab) {
             if (vm.HasOptionsMenu) vm.OpenOptionsMenu();
@@ -411,19 +426,15 @@ public partial class MainWindow : Window {
                 break;
         }
 
-        // ── Cmd+E: preview → edit → close cycle ─────────────────────────────────
+        // ── Cmd+E: open preview, or switch preview→edit ─────────────────────────
         if (AppHandler.Instance.MatchesHotkey(e, ActionHotkey.MetaE)) {
             if (vm.IsEditorOpen) {
-                if (vm.EditorPanel.IsEditMode) {
-                    vm.EditorPanel.RequestClose();
+                // Edit mode case handled above; here we're always in Preview mode
+                var check = _fileEditorService.CanOpen(vm.EditorPanel.FilePath, _settings.FileEditorExtensions);
+                if (check.CanOpen) {
+                    vm.EditorPanel.SwitchToEdit(_settings.FileEditorAutoSave);
                 } else {
-                    // Preview mode (always text — non-text files never reach preview)
-                    var check = _fileEditorService.CanOpen(vm.EditorPanel.FilePath, _settings.FileEditorExtensions);
-                    if (check.CanOpen) {
-                        vm.EditorPanel.SwitchToEdit(_settings.FileEditorAutoSave);
-                    } else {
-                        vm.ShowCopiedMessage(check.Error ?? "Cannot edit this file");
-                    }
+                    vm.ShowCopiedMessage(check.Error ?? "Cannot edit this file");
                 }
                 e.Handled = true;
                 return;
@@ -435,23 +446,6 @@ public partial class MainWindow : Window {
                 e.Handled = true;
                 return;
             }
-        }
-
-        // ── Cmd+S: save in edit mode ─────────────────────────────────────────────
-        if (vm.IsEditorOpen && vm.EditorPanel.IsEditMode && !vm.EditorPanel.IsAutoSave
-            && AppHandler.Instance.MatchesHotkey(e, ActionHotkey.MetaS)) {
-            vm.EditorPanel.SaveFile();
-            vm.ShowCopiedMessage("Guardado");
-            e.Handled = true;
-            return;
-        }
-
-        // En modo Edit, suprimir teclas de navegación del buscador
-        if (vm.IsEditorOpen && vm.EditorPanel.IsEditMode
-            && e.Key is Key.Up or Key.Down or Key.Left or Key.Right
-                or Key.Prior or Key.Next or Key.Return or Key.Tab) {
-            e.Handled = true;
-            return;
         }
 
         // ── Generic action hotkeys (excluding Enter, handled in OnKeyDown) ───────
@@ -509,7 +503,7 @@ public partial class MainWindow : Window {
         var vm = DataContext as MainWindowViewModel;
         if (vm is null) return;
 
-        // En modo Edit el editor captura flechas/Enter; solo Escape se gestiona abajo
+        // En modo Edit, solo Esc/Alt/Cmd+, se gestionan aquí; todo lo demás pertenece a AvaloniaEdit
         if (vm.IsEditorOpen && vm.EditorPanel.IsEditMode
             && e.Key is not (Key.Escape or Key.LeftAlt or Key.RightAlt or Key.OemComma)) {
             return;
