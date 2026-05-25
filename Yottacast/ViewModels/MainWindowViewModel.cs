@@ -173,6 +173,7 @@ public partial class MainWindowViewModel(
             if (args.PropertyName is nameof(EditorPanelViewModel.Mode)
                 or nameof(EditorPanelViewModel.ShowSaveButton)) {
                 OnPropertyChanged(nameof(FooterHints));
+                OnPropertyChanged(nameof(ShowSearchPanel));
             }
         };
         _ = CheckForUpdateAsync();
@@ -371,9 +372,12 @@ public partial class MainWindowViewModel(
         _savedHintText = null;
     }
 
+    public bool ShowSearchPanel => !(IsEditorOpen && EditorPanel.IsEditMode);
+
     partial void OnIsEditorOpenChanged(bool value) {
         OnPropertyChanged(nameof(FooterHints));
         OnPropertyChanged(nameof(HasFooterHints));
+        OnPropertyChanged(nameof(ShowSearchPanel));
     }
 
     partial void OnHasResultsChanged(bool value) => OnPropertyChanged(nameof(HasFooterHints));

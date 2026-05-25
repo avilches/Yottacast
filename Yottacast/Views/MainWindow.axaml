@@ -155,7 +155,8 @@
         </Grid.ColumnDefinitions>
 
         <DockPanel Grid.Column="0"
-                   Width="{DynamicResource Theme.Window.Width}">
+                   Width="{DynamicResource Theme.Window.Width}"
+                   IsVisible="{Binding ShowSearchPanel}">
 
             <!-- ── Search row + hint ── -->
             <!-- StackPanel is transparent: window.background colors this header zone -->
