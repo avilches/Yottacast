@@ -17,6 +17,8 @@ public partial class EditorPanelView : UserControl {
         Editor.TextChanged += OnEditorTextChanged;
     }
 
+    public void FocusEditor() => Editor.Focus();
+
     protected override void OnDataContextChanged(EventArgs e) {
         base.OnDataContextChanged(e);
 

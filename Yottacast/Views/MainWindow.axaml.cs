@@ -37,11 +37,11 @@ public partial class MainWindow : Window {
         _logger = logger;
         _fileEditorService = fileEditorService;
         InitializeComponent();
-        Opened += (_, _) => SearchBox.Focus();
+        Opened += (_, _) => FocusCorrectControl();
         // Restore focus to SearchBox when the window regains key status (e.g. after
         // MacAppHandler's makeKeyWindow call re-makes us key without activating the app).
         Activated += (_, _) => {
-            SearchBox.Focus();
+            FocusCorrectControl();
             if (DataContext is MainWindowViewModel vm)
                 vm.CancelDecayTimer();
         };
@@ -89,7 +89,7 @@ public partial class MainWindow : Window {
                 ApplyPositionOnShow();
                 _positionDirty = false;
                 _screenPosKnown = false;
-                SearchBox.Focus();
+                FocusCorrectControl();
                 if (DataContext is MainWindowViewModel vm) {
                     vm.CancelDecayTimer();
                     if (string.IsNullOrEmpty(vm.SearchText))
@@ -180,12 +180,23 @@ public partial class MainWindow : Window {
             Grid.SetColumnSpan(EditorContainer, 2);
             EditorWidthSpacer.IsVisible = true;
             EditorView.Width = double.NaN;
+            SearchBox.IsEnabled = false;
+            EditorView.FocusEditor();
         } else {
             Grid.SetColumn(EditorContainer, 1);
             Grid.SetColumnSpan(EditorContainer, 1);
             EditorWidthSpacer.IsVisible = false;
             EditorView.Width = 680;
+            SearchBox.IsEnabled = true;
+            if (IsVisible) SearchBox.Focus();
         }
+    }
+
+    private void FocusCorrectControl() {
+        if (DataContext is MainWindowViewModel vm && vm.IsEditorOpen && vm.EditorPanel.IsEditMode)
+            EditorView.FocusEditor();
+        else
+            SearchBox.Focus();
     }
 
     // ── Font diagnostics ──────────────────────────────────────────────────────

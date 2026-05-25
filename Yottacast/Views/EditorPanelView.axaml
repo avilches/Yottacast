@@ -5,7 +5,8 @@
              x:Class="Yottacast.Views.EditorPanelView"
              x:DataType="vm:EditorPanelViewModel">
 
-    <Grid RowDefinitions="Auto,*,Auto">
+    <Grid RowDefinitions="Auto,*,Auto"
+          Background="{DynamicResource Theme.Window.Background}">
 
         <!-- Separator vertical izquierdo -->
         <Border Grid.RowSpan="3"
