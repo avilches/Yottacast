@@ -61,6 +61,9 @@ public class UserSettings {
     public string DateLongFormat { get; set; } = AppDefaults.DateLongFormat;
     public bool EnableHistory { get; set; } = true;
     public int HistoryMaxItems { get; set; } = AppDefaults.HistoryMaxItems;
+    public bool EnableFileEditor { get; set; } = true;
+    public bool FileEditorAutoSave { get; set; } = false;
+    public List<string> FileEditorExtensions { get; set; } = [..AppDefaults.FileEditorDefaultExtensions];
     public bool KeepValueWhenHide { get; set; } = true;
     public int KeepValueWhenHideDuration { get; set; } = AppDefaults.KeepValueWhenHideDuration;
 
@@ -185,6 +188,9 @@ public class UserSettings {
         [JsonPropertyName("historyMaxItems")] public int HistoryMaxItems { get; init; } = AppDefaults.HistoryMaxItems;
         [JsonPropertyName("keepValueWhenHide")] public bool KeepValueWhenHide { get; init; } = true;
         [JsonPropertyName("keepValueWhenHideDuration")] public int KeepValueWhenHideDuration { get; init; } = AppDefaults.KeepValueWhenHideDuration;
+        [JsonPropertyName("enableFileEditor")] public bool EnableFileEditor { get; init; } = true;
+        [JsonPropertyName("fileEditorAutoSave")] public bool FileEditorAutoSave { get; init; } = false;
+        [JsonPropertyName("fileEditorExtensions")] public List<string>? FileEditorExtensions { get; init; }
     }
 
     public static UserSettings Load(PlatformProvider platform, ILogger<UserSettings>? logger = null, string? settingsPath = null) {
@@ -253,6 +259,11 @@ public class UserSettings {
                     KeepValueWhenHideDuration = data.KeepValueWhenHideDuration >= 0
                         ? data.KeepValueWhenHideDuration
                         : AppDefaults.KeepValueWhenHideDuration,
+                    EnableFileEditor = data.EnableFileEditor,
+                    FileEditorAutoSave = data.FileEditorAutoSave,
+                    FileEditorExtensions = data.FileEditorExtensions is { Count: > 0 }
+                        ? data.FileEditorExtensions
+                        : [..AppDefaults.FileEditorDefaultExtensions],
                     EnableSystemSettings = data.EnableSystemSettings,
                 };
             }
@@ -367,6 +378,9 @@ public class UserSettings {
                 HistoryMaxItems = HistoryMaxItems,
                 KeepValueWhenHide = KeepValueWhenHide,
                 KeepValueWhenHideDuration = KeepValueWhenHideDuration,
+                EnableFileEditor = EnableFileEditor,
+                FileEditorAutoSave = FileEditorAutoSave,
+                FileEditorExtensions = FileEditorExtensions,
                 EnableSystemSettings = EnableSystemSettings,
                 WebSearchEngines = WebSearchEngines
                     .Select(s => new WebSearchEngineSettingsData {

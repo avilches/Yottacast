@@ -1,0 +1,131 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:Yottacast.Core.ViewModels;assembly=Yottacast.Core"
+             xmlns:aedit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
+             x:Class="Yottacast.Views.EditorPanelView"
+             x:DataType="vm:EditorPanelViewModel">
+
+    <Grid RowDefinitions="Auto,*,Auto"
+          Background="{DynamicResource Theme.Window.Background}">
+
+        <!-- Separator vertical izquierdo -->
+        <Border Grid.RowSpan="3"
+                Width="1"
+                HorizontalAlignment="Left"
+                Background="{DynamicResource Theme.Divider.Color}"/>
+
+        <!-- ── Preview header: height matches search input area ── -->
+        <Border Grid.Row="0"
+                IsVisible="{Binding IsPreviewMode}"
+                Margin="{DynamicResource Theme.Search.Input.Margin}"
+                Padding="{DynamicResource Theme.Search.Input.Padding}">
+            <Grid MinHeight="46">
+                <TextBlock Text="{Binding FileName}"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"
+                           Foreground="{DynamicResource Theme.Results.Color}"
+                           FontSize="13"/>
+            </Grid>
+        </Border>
+
+        <!-- ── Edit header ── -->
+        <Grid Grid.Row="0"
+              IsVisible="{Binding IsEditMode}"
+              ColumnDefinitions="*,Auto"
+              Margin="12,0,8,0"
+              MinHeight="40">
+            <TextBlock Grid.Column="0"
+                       Text="{Binding FileName}"
+                       VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis"
+                       Foreground="{DynamicResource Theme.Results.Color}"
+                       FontSize="13"/>
+            <Button Grid.Column="1"
+                    Content="Guardar"
+                    IsVisible="{Binding ShowSaveButton}"
+                    Command="{Binding SaveFileCommand}"
+                    VerticalAlignment="Center"
+                    Padding="10,4"
+                    FontSize="12"/>
+        </Grid>
+
+        <!-- ── AvaloniaEdit TextEditor (read-only in preview, editable in edit) ── -->
+        <aedit:TextEditor Grid.Row="1"
+                          x:Name="Editor"
+                          IsReadOnly="{Binding IsPreviewMode}"
+                          ShowLineNumbers="True"
+                          FontFamily="Cascadia Code, Fira Code, Menlo, Consolas, monospace"
+                          FontSize="13"
+                          WordWrap="False"
+                          Background="{DynamicResource Theme.Results.Background}"/>
+
+        <!-- ── Edit status bar ── -->
+        <Border Grid.Row="2"
+                IsVisible="{Binding IsEditMode}"
+                Background="{DynamicResource Theme.Window.Background}"
+                BorderThickness="0,1,0,0"
+                BorderBrush="{DynamicResource Theme.Divider.Color}"
+                Padding="12,0"
+                MinHeight="24">
+            <TextBlock Text="{Binding StatusText}"
+                       FontSize="11"
+                       VerticalAlignment="Center"
+                       Foreground="{DynamicResource Theme.Results.Subtitle.Color}"/>
+        </Border>
+
+        <!-- ── Preview footer: height matches search footer ── -->
+        <Border Grid.Row="2"
+                IsVisible="{Binding IsPreviewMode}"
+                Background="{DynamicResource Theme.Footer.Background}"
+                BorderBrush="{DynamicResource Theme.Footer.Border}"
+                BorderThickness="0,1,0,0"
+                CornerRadius="{DynamicResource Theme.Window.CornerRadius.Bottom}"
+                Padding="18,10">
+            <TextBlock Text="Solo lectura"
+                       FontSize="{DynamicResource Theme.Footer.Size}"
+                       VerticalAlignment="Center"
+                       Foreground="{DynamicResource Theme.Footer.Color}"/>
+        </Border>
+
+        <!-- Unsaved changes overlay (edit mode only) -->
+        <Grid Grid.RowSpan="3"
+              IsVisible="{Binding ShowUnsavedDialog}"
+              Background="#B0000000">
+            <Border CornerRadius="10"
+                    Background="{DynamicResource Theme.Window.Background}"
+                    MaxWidth="340"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Padding="28,24">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="Cambios sin guardar"
+                               FontWeight="SemiBold"
+                               FontSize="14"
+                               Foreground="{DynamicResource Theme.Results.Color}"/>
+                    <TextBlock Text="{Binding FileName}"
+                               TextTrimming="CharacterEllipsis"
+                               Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
+                               FontSize="13"/>
+                    <StackPanel Spacing="8" Margin="0,4,0,0">
+                        <Button Content="Esc  —  Seguir editando"
+                                Command="{Binding CancelUnsavedDialogCommand}"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"
+                                Padding="0,8"/>
+                        <Button Content="No guardar"
+                                Command="{Binding DiscardAndCloseCommand}"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"
+                                Padding="0,8"/>
+                        <Button Content="⌘S  —  Guardar y cerrar"
+                                Command="{Binding SaveAndCloseCommand}"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"
+                                Padding="0,8"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+    </Grid>
+</UserControl>

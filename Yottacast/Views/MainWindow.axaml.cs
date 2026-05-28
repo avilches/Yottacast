@@ -20,7 +20,9 @@ namespace Yottacast.Views;
 public partial class MainWindow : Window {
     private readonly UserSettings _settings;
     private readonly ILogger<MainWindow> _logger;
+    private readonly FileEditorService _fileEditorService;
     private bool _cursorHidden;
+    private KeyModifiers _lastClickModifiers;
     private bool _dragging;
     private PixelPoint _screenPosAtHide;
     private bool _screenPosKnown;
@@ -28,17 +30,18 @@ public partial class MainWindow : Window {
     private (Point Origin, BaseResultItemViewModel Vm)? _dragCandidate;
 
     // Required by Avalonia's XAML resource loader; the app always uses the parameterized constructor.
-    public MainWindow() : this(null!, null!) { }
+    public MainWindow() : this(null!, null!, null!) { }
 
-    public MainWindow(UserSettings settings, ILogger<MainWindow> logger) {
+    public MainWindow(UserSettings settings, ILogger<MainWindow> logger, FileEditorService fileEditorService) {
         _settings = settings;
         _logger = logger;
+        _fileEditorService = fileEditorService;
         InitializeComponent();
-        Opened += (_, _) => SearchBox.Focus();
+        Opened += (_, _) => FocusCorrectControl();
         // Restore focus to SearchBox when the window regains key status (e.g. after
         // MacAppHandler's makeKeyWindow call re-makes us key without activating the app).
         Activated += (_, _) => {
-            SearchBox.Focus();
+            FocusCorrectControl();
             if (DataContext is MainWindowViewModel vm)
                 vm.CancelDecayTimer();
         };
@@ -57,6 +60,7 @@ public partial class MainWindow : Window {
         DataContextChanged += (_, _) => {
             if (DataContext is not MainWindowViewModel vm) return;
             LogFontDiagnostics("startup");
+            UpdateEditorLayout();
             var emojiLogged = false;
             vm.PropertyChanged += (_, args) => {
                 if (args.PropertyName == nameof(MainWindowViewModel.IsEmojiMode) && vm.IsEmojiMode && !emojiLogged) {
@@ -65,6 +69,12 @@ public partial class MainWindow : Window {
                 }
                 if (args.PropertyName == nameof(MainWindowViewModel.IsOptionsMenuOpen) && vm.IsOptionsMenuOpen)
                     Avalonia.Threading.Dispatcher.UIThread.Post(PositionOptionsMenu, Avalonia.Threading.DispatcherPriority.Background);
+                if (args.PropertyName == nameof(MainWindowViewModel.IsEditorOpen))
+                    UpdateEditorLayout();
+            };
+            vm.EditorPanel.PropertyChanged += (_, args) => {
+                if (args.PropertyName == nameof(EditorPanelViewModel.Mode))
+                    UpdateEditorLayout();
             };
         };
     }
@@ -79,7 +89,7 @@ public partial class MainWindow : Window {
                 ApplyPositionOnShow();
                 _positionDirty = false;
                 _screenPosKnown = false;
-                SearchBox.Focus();
+                FocusCorrectControl();
                 if (DataContext is MainWindowViewModel vm) {
                     vm.CancelDecayTimer();
                     if (string.IsNullOrEmpty(vm.SearchText))
@@ -161,6 +171,35 @@ public partial class MainWindow : Window {
         s == null ? "null" : $"WorkingArea={s.WorkingArea} Scaling={s.Scaling}";
 
     private void Log(string msg) => _logger.LogDebug("{Msg}", msg);
+
+    private void UpdateEditorLayout() {
+        if (DataContext is not MainWindowViewModel vm) return;
+        bool isEdit = vm.IsEditorOpen && vm.EditorPanel.IsEditMode;
+        if (isEdit) {
+            Grid.SetColumn(EditorContainer, 0);
+            Grid.SetColumnSpan(EditorContainer, 2);
+            EditorWidthSpacer.IsVisible = true;
+            EditorView.Width = double.NaN;
+            SearchBox.IsEnabled = false;
+            Avalonia.Threading.Dispatcher.UIThread.Post(
+                () => { if (DataContext is MainWindowViewModel v && v.IsEditorOpen && v.EditorPanel.IsEditMode) EditorView.FocusEditor(); },
+                Avalonia.Threading.DispatcherPriority.Loaded);
+        } else {
+            Grid.SetColumn(EditorContainer, 1);
+            Grid.SetColumnSpan(EditorContainer, 1);
+            EditorWidthSpacer.IsVisible = false;
+            EditorView.Width = 680;
+            SearchBox.IsEnabled = true;
+            if (IsVisible) SearchBox.Focus();
+        }
+    }
+
+    private void FocusCorrectControl() {
+        if (DataContext is MainWindowViewModel vm && vm.IsEditorOpen && vm.EditorPanel.IsEditMode)
+            EditorView.FocusEditor();
+        else
+            SearchBox.Focus();
+    }
 
     // ── Font diagnostics ──────────────────────────────────────────────────────
     // Logs which font Avalonia actually uses to render each keyboard symbol.
@@ -292,15 +331,15 @@ public partial class MainWindow : Window {
     }
 
     private void OnTunnelKeyDown(object? sender, KeyEventArgs e) {
-        // Tunnel phase fires before any child handles the event, so we reliably
-        // catch character keys that the TextBox would otherwise consume.
-        if (e.Key is not (Key.LeftAlt or Key.RightAlt or Key.LeftCtrl or Key.RightCtrl
+        var vm = DataContext as MainWindowViewModel;
+        if (vm is null) return;
+
+        // Hide cursor on typing; not in Edit mode (user needs to see the text cursor)
+        bool isEditMode = vm.IsEditorOpen && vm.EditorPanel.IsEditMode;
+        if (!isEditMode && e.Key is not (Key.LeftAlt or Key.RightAlt or Key.LeftCtrl or Key.RightCtrl
                 or Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin)) {
             HideCursor();
         }
-
-        var vm = DataContext as MainWindowViewModel;
-        if (vm is null) return;
 
         // ── Overlay navigation (when options menu is open) ──────────────────────
         if (vm.IsOptionsMenuOpen) {
@@ -343,6 +382,19 @@ public partial class MainWindow : Window {
             // Non-navigation keys (e.g. ⌘C, ⌘⇧F) fall through to the action hotkey loop below
         }
 
+        // ── Editor Edit mode: only intercept editor hotkeys; let everything else reach AvaloniaEdit ──
+        if (isEditMode) {
+            if (AppHandler.Instance.MatchesHotkey(e, ActionHotkey.MetaE)) {
+                vm.EditorPanel.RequestClose();
+                e.Handled = true;
+            } else if (!vm.EditorPanel.IsAutoSave && AppHandler.Instance.MatchesHotkey(e, ActionHotkey.MetaS)) {
+                vm.EditorPanel.SaveFile();
+                vm.ShowCopiedMessage("Guardado");
+                e.Handled = true;
+            }
+            return; // all other keys (arrows, Tab, Enter…) pass through to AvaloniaEdit
+        }
+
         // ── Tab opens overlay ───────────────────────────────────────────────────
         if (e.Key == Key.Tab) {
             if (vm.HasOptionsMenu) vm.OpenOptionsMenu();
@@ -372,6 +424,28 @@ public partial class MainWindow : Window {
                 SelectDelta(vm, +GetVisiblePageSize());
                 e.Handled = true;
                 break;
+        }
+
+        // ── Cmd+E: open preview, or switch preview→edit ─────────────────────────
+        if (AppHandler.Instance.MatchesHotkey(e, ActionHotkey.MetaE)) {
+            if (vm.IsEditorOpen) {
+                // Edit mode case handled above; here we're always in Preview mode
+                var check = _fileEditorService.CanOpen(vm.EditorPanel.FilePath, _settings.FileEditorExtensions);
+                if (check.CanOpen) {
+                    vm.EditorPanel.SwitchToEdit(_settings.FileEditorAutoSave);
+                } else {
+                    vm.ShowCopiedMessage(check.Error ?? "Cannot edit this file");
+                }
+                e.Handled = true;
+                return;
+            }
+            if (_settings.EnableFileEditor
+                && vm.SelectedResult is ResultItemViewModel { ItemPath: { } path }
+                && _fileEditorService.IsTextContent(path)) {
+                vm.OpenPreview(path);
+                e.Handled = true;
+                return;
+            }
         }
 
         // ── Generic action hotkeys (excluding Enter, handled in OnKeyDown) ───────
@@ -429,6 +503,12 @@ public partial class MainWindow : Window {
         var vm = DataContext as MainWindowViewModel;
         if (vm is null) return;
 
+        // En modo Edit, solo Esc/Alt/Cmd+, se gestionan aquí; todo lo demás pertenece a AvaloniaEdit
+        if (vm.IsEditorOpen && vm.EditorPanel.IsEditMode
+            && e.Key is not (Key.Escape or Key.LeftAlt or Key.RightAlt or Key.OemComma)) {
+            return;
+        }
+
         switch (e.Key) {
 
             // Consume ALT+Space so macOS doesn't produce a beep for the unhandled key
@@ -442,6 +522,14 @@ public partial class MainWindow : Window {
                 break;
 
             case Key.Escape:
+                if (vm.IsEditorOpen) {
+                    if (vm.EditorPanel.ShowUnsavedDialog)
+                        vm.EditorPanel.CancelUnsavedDialog();
+                    else
+                        vm.EditorPanel.RequestClose();
+                    e.Handled = true;
+                    break;
+                }
                 if (vm.IsOptionsMenuOpen) {
                     vm.CloseOptionsMenu();
                 } else if (vm.IsSearching) {
@@ -482,8 +570,17 @@ public partial class MainWindow : Window {
                 if (!vm.IsOptionsMenuOpen) {
                     var enterAction = vm.SelectedResult?.Actions
                         .FirstOrDefault(a => a.Hotkey == ActionHotkey.Enter);
-                    if (enterAction != null)
-                        ExecuteAction(vm, enterAction);
+                    if (enterAction != null) {
+                        if (e.KeyModifiers.HasFlag(KeyModifiers.Meta)) {
+                            // Cmd+Enter: execute without closing the search window
+                            enterAction.Execute();
+                            if (vm.SelectedResult != null) vm.RecordLaunch(vm.SelectedResult);
+                            var hint = enterAction.HintProvider?.Invoke();
+                            if (hint != null) vm.ShowCopiedMessage(hint);
+                        } else {
+                            ExecuteAction(vm, enterAction);
+                        }
+                    }
                 }
                 e.Handled = true;
                 break;
@@ -604,9 +701,19 @@ public partial class MainWindow : Window {
 
     private void OnResultsTapped(object? sender, TappedEventArgs e) {
         if (DataContext is not MainWindowViewModel vm) return;
+
         var enterAction = vm.SelectedResult?.Actions.FirstOrDefault(a => a.Hotkey == ActionHotkey.Enter);
-        if (enterAction != null)
+        if (enterAction == null) return;
+
+        if (_lastClickModifiers.HasFlag(KeyModifiers.Meta)) {
+            // Cmd+Click: execute action without closing the search window
+            enterAction.Execute();
+            if (vm.SelectedResult != null) vm.RecordLaunch(vm.SelectedResult);
+            var hint = enterAction.HintProvider?.Invoke();
+            if (hint != null) vm.ShowCopiedMessage(hint);
+        } else {
             ExecuteAction(vm, enterAction);
+        }
     }
 
     private static ListBoxItem? FindListBoxItem(Control? control) {
@@ -634,6 +741,7 @@ public partial class MainWindow : Window {
     }
 
     private void OnResultsPointerPressedForDrag(object? sender, PointerPressedEventArgs e) {
+        _lastClickModifiers = e.KeyModifiers;
         if (e.GetCurrentPoint(ResultsList).Properties.PointerUpdateKind != PointerUpdateKind.LeftButtonPressed)
             return;
         var item = FindListBoxItem(e.Source as Control);

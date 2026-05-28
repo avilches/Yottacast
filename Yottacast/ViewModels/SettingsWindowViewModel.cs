@@ -20,7 +20,7 @@ using Yottacast.Services;
 namespace Yottacast.ViewModels;
 
 public enum SettingsSection {
-    General, AppSearch, WebSearch, FileSearch, Calculator, Clipboard, Emoji, Dictionary, DateSearch, History, Permissions
+    General, AppSearch, WebSearch, FileSearch, FileEditor, Calculator, Clipboard, Emoji, Dictionary, DateSearch, History, Permissions
 }
 
 /// <summary>Item shown in the currency-pair ComboBox. Code is the ISO code; Label is "EUR - Euro" (or just "EUR").</summary>
@@ -35,6 +35,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [NotifyPropertyChangedFor(nameof(IsAppSearchSelected))]
     [NotifyPropertyChangedFor(nameof(IsWebSearchSelected))]
     [NotifyPropertyChangedFor(nameof(IsFileSearchSelected))]
+    [NotifyPropertyChangedFor(nameof(IsFileEditorSelected))]
     [NotifyPropertyChangedFor(nameof(IsCalculatorSelected))]
     [NotifyPropertyChangedFor(nameof(IsClipboardSelected))]
     [NotifyPropertyChangedFor(nameof(IsEmojiSelected))]
@@ -56,6 +57,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     public bool IsAppSearchSelected => SelectedSection == SettingsSection.AppSearch;
     public bool IsWebSearchSelected => SelectedSection == SettingsSection.WebSearch;
     public bool IsFileSearchSelected => SelectedSection == SettingsSection.FileSearch;
+    public bool IsFileEditorSelected => SelectedSection == SettingsSection.FileEditor;
     public bool IsCalculatorSelected => SelectedSection == SettingsSection.Calculator;
     public bool IsClipboardSelected  => SelectedSection == SettingsSection.Clipboard;
     public bool IsEmojiSelected      => SelectedSection == SettingsSection.Emoji;
@@ -70,6 +72,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [RelayCommand] private void SelectAppSearch() => SelectedSection = SettingsSection.AppSearch;
     [RelayCommand] private void SelectWebSearch() => SelectedSection = SettingsSection.WebSearch;
     [RelayCommand] private void SelectFileSearch() => SelectedSection = SettingsSection.FileSearch;
+    [RelayCommand] private void SelectFileEditor() => SelectedSection = SettingsSection.FileEditor;
     [RelayCommand] private void SelectCalculator() => SelectedSection = SettingsSection.Calculator;
     [RelayCommand] private void SelectClipboard()  => SelectedSection = SettingsSection.Clipboard;
 
@@ -144,6 +147,8 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [ObservableProperty] private bool _enableClipboard;
     [ObservableProperty] private bool _enableEmoji;
     [ObservableProperty] private bool _enableFileSearch;
+    [ObservableProperty] private bool _enableFileEditor;
+    [ObservableProperty] private bool _fileEditorAutoSave;
     [ObservableProperty] private bool _enableWebSearch;
     [ObservableProperty] private bool _enableUrlValidation;
     [ObservableProperty] private bool _fileSearchOnlySpecificFolders;
@@ -179,6 +184,26 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     partial void OnEnableClipboardChanged(bool value)               { _settings.EnableClipboard              = value; _settings.Save(); _logger.LogInformation("Settings: EnableClipboard = {Value}", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnEnableEmojiChanged(bool value)                   { _settings.EnableEmoji                  = value; _settings.Save(); _logger.LogInformation("Settings: EnableEmoji = {Value}", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnEnableFileSearchChanged(bool value)              { _settings.EnableFileSearch             = value; _settings.Save(); _logger.LogInformation("Settings: EnableFileSearch = {Value}", value); _settings.NotifySearchSettingsChanged(); }
+    partial void OnEnableFileEditorChanged(bool value)             { _settings.EnableFileEditor             = value; _settings.Save(); _logger.LogInformation("Settings: EnableFileEditor = {Value}", value); _settings.NotifySearchSettingsChanged(); }
+    partial void OnFileEditorAutoSaveChanged(bool value)           { _settings.FileEditorAutoSave           = value; _settings.Save(); _logger.LogInformation("Settings: FileEditorAutoSave = {Value}", value); }
+
+    public List<string> FileEditorExtensions => _settings.FileEditorExtensions;
+
+    public void AddFileEditorExtension(string ext) {
+        if (string.IsNullOrWhiteSpace(ext)) return;
+        var normalized = ext.TrimStart('.').Trim().ToLowerInvariant();
+        if (string.IsNullOrEmpty(normalized)) return;
+        if (!_settings.FileEditorExtensions.Contains(normalized, StringComparer.OrdinalIgnoreCase))
+            _settings.FileEditorExtensions.Add(normalized);
+        _settings.Save();
+        OnPropertyChanged(nameof(FileEditorExtensions));
+    }
+
+    public void RemoveFileEditorExtension(string ext) {
+        _settings.FileEditorExtensions.RemoveAll(e => e.Equals(ext, StringComparison.OrdinalIgnoreCase));
+        _settings.Save();
+        OnPropertyChanged(nameof(FileEditorExtensions));
+    }
     partial void OnEnableWebSearchChanged(bool value)               { _settings.EnableWebSearch              = value; _settings.Save(); _logger.LogInformation("Settings: EnableWebSearch = {Value}", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnEnableUrlValidationChanged(bool value)           { _settings.EnableUrlValidation          = value; _settings.Save(); _logger.LogInformation("Settings: EnableUrlValidation = {Value}", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnShowDisabledWebSearchEnginesChanged(bool value) {
@@ -418,6 +443,8 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _enableClipboard                 = settings.EnableClipboard;
         _enableEmoji                     = settings.EnableEmoji;
         _enableFileSearch                = settings.EnableFileSearch;
+        _enableFileEditor                = settings.EnableFileEditor;
+        _fileEditorAutoSave              = settings.FileEditorAutoSave;
         _enableWebSearch                 = settings.EnableWebSearch;
         _enableUrlValidation             = settings.EnableUrlValidation;
         _fileSearchOnlySpecificFolders   = settings.FileSearchOnlySpecificFolders;

@@ -31,6 +31,7 @@ public partial class MainWindowViewModel(
     UrlSearch urlSearch,
     DateSearch dateSearch,
     LaunchHistory launchHistory,
+    FileEditorService fileEditorService,
     IEnumerable<IEmptyStateSource> emptySources)
     : ViewModelBase {
 
@@ -51,6 +52,8 @@ public partial class MainWindowViewModel(
     [ObservableProperty] private bool _isOptionsMenuOpen;
     [ObservableProperty] private int _optionsMenuSelectedIndex;
 
+    [ObservableProperty] private bool _isEditorOpen;
+
     [ObservableProperty] private bool _updateAvailable;
     [ObservableProperty] private string _updateBannerText = "";
     [ObservableProperty] private string? _searchHint;
@@ -62,8 +65,21 @@ public partial class MainWindowViewModel(
     public string ShiftSymbol => AppHandler.Instance.ShiftSymbol;
     public string SettingsShortcutText => $"{MetaSymbol},  settings";
 
+    public bool HasFooterHints => HasResults || IsEditorOpen;
+
     public IReadOnlyList<string> FooterHints {
         get {
+            if (IsEditorOpen) {
+                var meta = MetaSymbol;
+                if (EditorPanel.IsEditMode) {
+                    return EditorPanel.ShowSaveButton
+                        ? [$"{meta}S  Save", "Esc  Close"]
+                        : ["Esc  Close"];
+                }
+                // Preview mode (only text files reach here)
+                return [$"{meta}E  Edit", "Esc  Close"];
+            }
+
             var actions = SelectedResult?.Actions;
             if (actions is null or { Count: 0 }) return [];
 
@@ -151,7 +167,16 @@ public partial class MainWindowViewModel(
         RefreshResults();
     }
 
+    private bool _isPreviewEnabled;
+
     public void Initialize() {
+        EditorPanel.CloseRequested = () => { IsEditorOpen = false; _isPreviewEnabled = false; };
+        EditorPanel.PropertyChanged += (_, args) => {
+            if (args.PropertyName is nameof(EditorPanelViewModel.Mode)
+                or nameof(EditorPanelViewModel.ShowSaveButton)) {
+                OnPropertyChanged(nameof(FooterHints));
+            }
+        };
         _ = CheckForUpdateAsync();
         appSearch.IconLoaded += OnAppCacheChanged;
         appSearch.AppsChanged += OnAppCacheChanged;
@@ -348,6 +373,13 @@ public partial class MainWindowViewModel(
         _savedHintText = null;
     }
 
+    partial void OnIsEditorOpenChanged(bool value) {
+        OnPropertyChanged(nameof(FooterHints));
+        OnPropertyChanged(nameof(HasFooterHints));
+    }
+
+    partial void OnHasResultsChanged(bool value) => OnPropertyChanged(nameof(HasFooterHints));
+
     partial void OnSelectedResultChanged(BaseResultItemViewModel? value) {
         OnPropertyChanged(nameof(IsEmojiMode));
         OnPropertyChanged(nameof(FooterHints));
@@ -355,6 +387,20 @@ public partial class MainWindowViewModel(
         OnPropertyChanged(nameof(OptionsMenuItems));
         OnPropertyChanged(nameof(HasOptionsMenu));
         if (!HasOptionsMenu) CloseOptionsMenu();
+
+        if (!IsEditorOpen && !_isPreviewEnabled) return;
+        if (EditorPanel.IsEditMode) return; // buscador pausado: no cambiar fichero mientras se edita
+
+        if (value is ResultItemViewModel { ItemPath: { } path }) {
+            if (fileEditorService.IsTextContent(path)) {
+                EditorPanel.LoadPreview(path);
+                IsEditorOpen = true;
+            } else {
+                IsEditorOpen = false; // sin preview para este elemento; _isPreviewEnabled permanece activo
+            }
+        } else {
+            IsEditorOpen = false;
+        }
     }
 
     /// <summary>
@@ -444,6 +490,19 @@ public partial class MainWindowViewModel(
             await Task.Delay(AppDefaults.CopiedMessageDurationMs, ct);
             if (SearchHint == msg) SetSearchHint(null);
         } catch (OperationCanceledException) { }
+    }
+
+    public EditorPanelViewModel EditorPanel { get; } = new EditorPanelViewModel(fileEditorService);
+
+    public void OpenPreview(string path) {
+        EditorPanel.LoadPreview(path);
+        IsEditorOpen = true;
+        _isPreviewEnabled = true;
+    }
+
+    public void OpenEditor(string path) {
+        EditorPanel.LoadEdit(path, settings.FileEditorAutoSave);
+        IsEditorOpen = true;
     }
 
     public void RecordLaunch(BaseResultItemViewModel item) {

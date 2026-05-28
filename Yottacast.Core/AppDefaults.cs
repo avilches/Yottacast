@@ -189,4 +189,25 @@ public static class AppDefaults {
     /// Pixel distance the cursor must travel with the left button held before a drag is initiated.
     /// Below this threshold, click+release is treated as a normal click (selection).
     public const double DragStartThresholdPx = 5.0;
+
+    // ── File Editor ────────────────────────────────────────────────────────────
+    /// Width of the inline editor panel in pixels.
+    public const double EditorWidth = 680;
+    /// Height of the inline editor panel in pixels (≈ max launcher height with full results).
+    public const double EditorHeight = 640;
+    /// Maximum file size in MB the editor will open.
+    public const int EditorMaxFileSizeMb = 5;
+    /// Number of bytes read to detect binary content (null-byte heuristic).
+    public const int EditorBinaryDetectionBytes = 8_192;
+    /// Default set of file extensions the editor will open (without leading dot).
+    public static readonly string[] FileEditorDefaultExtensions = [
+        "txt", "md", "markdown", "log", "csv",
+        "cs", "fs", "vb",
+        "py", "rb", "go", "rs", "java", "kt", "swift", "c", "cpp", "h",
+        "js", "ts", "jsx", "tsx", "vue",
+        "json", "yaml", "yml", "toml", "ini", "cfg", "conf", "config", "env",
+        "xml", "html", "htm", "css", "scss", "less",
+        "sh", "bash", "zsh", "fish", "ps1",
+        "gitignore", "gitattributes", "editorconfig", "dockerfile",
+    ];
 }

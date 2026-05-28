@@ -163,6 +163,41 @@ public class UserDocumentSearch(
                         PreloadBadgeIconAsync(r.Path);
                         var path = r.Path;
                         var ext = Path.GetExtension(r.Name).ToLowerInvariant();
+                        var actions = new List<ResultAction> {
+                            new() {
+                                Label         = "Open",
+                                LabelProvider = () => {
+                                    var appName = _appNameByExtension.GetValueOrDefault(ext);
+                                    return appName != null ? $"Open in {appName}" : "Open";
+                                },
+                                Hotkey       = ActionHotkey.Enter,
+                                ShowInFooter = true,
+                                ShowInMenu   = true,
+                                ClosesMenu   = true,
+                                ClosesWindow = true,
+                                Execute      = () => {
+                                    logger.LogInformation("DocSearch: open \"{Path}\"", path);
+                                    platform.LaunchApp(path);
+                                },
+                            },
+                            new() {
+                                Label        = "Copy path",
+                                Hotkey       = ActionHotkey.MetaC,
+                                ShowInFooter = true,
+                                ShowInMenu   = true,
+                                ClosesMenu   = true,
+                                HintProvider = () => "Path copied!",
+                                Execute      = () => clipboard.CopyText(path),
+                            },
+                        };
+                        if (IsEditableExtension(path))
+                            actions.Add(new ResultAction {
+                                Label        = "Edit",
+                                Hotkey       = ActionHotkey.MetaE,
+                                ShowInFooter = true,
+                                ShowInMenu   = false,
+                                Execute      = () => { },
+                            });
                         buffer.Add(new ResultItemViewModel {
                             IconBytes = fileIconCache.Get(r.Path),
                             BadgeIconBytes = _badgeByExtension.GetValueOrDefault(ext),
@@ -175,33 +210,7 @@ public class UserDocumentSearch(
                             TitleRanges = titleRanges,
                             SubtitleRanges = subtitleRanges,
                             GetDragPayload = () => new DragPayload.File(path),
-                            Actions = [
-                                new() {
-                                    Label         = "Open",
-                                    LabelProvider = () => {
-                                        var appName = _appNameByExtension.GetValueOrDefault(ext);
-                                        return appName != null ? $"Open in {appName}" : "Open";
-                                    },
-                                    Hotkey       = ActionHotkey.Enter,
-                                    ShowInFooter = true,
-                                    ShowInMenu   = true,
-                                    ClosesMenu   = true,
-                                    ClosesWindow = true,
-                                    Execute      = () => {
-                                        logger.LogInformation("DocSearch: open \"{Path}\"", path);
-                                        platform.LaunchApp(path);
-                                    },
-                                },
-                                new() {
-                                    Label        = "Copy path",
-                                    Hotkey       = ActionHotkey.MetaC,
-                                    ShowInFooter = true,
-                                    ShowInMenu   = true,
-                                    ClosesMenu   = true,
-                                    HintProvider = () => "Path copied!",
-                                    Execute      = () => clipboard.CopyText(path),
-                                },
-                            ],
+                            Actions = actions,
                         });
 
                         var now = Environment.TickCount64;
@@ -306,5 +315,13 @@ public class UserDocumentSearch(
 
             BadgeIconLoaded?.Invoke();
         });
+    }
+
+    private bool IsEditableExtension(string filePath) {
+        if (!settings.EnableFileEditor) return false;
+        var ext = Path.GetExtension(filePath).TrimStart('.').ToLowerInvariant();
+        return !string.IsNullOrEmpty(ext)
+            && settings.FileEditorExtensions.Any(e =>
+                e.Equals(ext, StringComparison.OrdinalIgnoreCase));
     }
 }

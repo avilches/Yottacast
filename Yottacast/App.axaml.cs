@@ -98,7 +98,7 @@ public partial class App : Application {
             _mainVm = _services.GetRequiredService<MainWindowViewModel>();
             var mainWindowViewModel = _mainVm;
             mainWindowViewModel.Initialize();
-            var mainWindow = new MainWindow(userSettings, _services.GetRequiredService<ILogger<MainWindow>>()) { DataContext = mainWindowViewModel };
+            var mainWindow = new MainWindow(userSettings, _services.GetRequiredService<ILogger<MainWindow>>(), _services.GetRequiredService<FileEditorService>()) { DataContext = mainWindowViewModel };
             desktop.MainWindow = mainWindow;
             mainWindow.Topmost = userSettings.StickyWindow;
             userSettings.StickyWindowChanged += () =>
@@ -247,6 +247,7 @@ public partial class App : Application {
         services.AddSingleton<BrowserDiscovery>();
         services.AddSingleton<TerminalDiscovery>();
         services.AddSingleton<FileSearch>();
+        services.AddSingleton<FileEditorService>();
         services.AddSingleton<ClipboardService>();
         services.AddSingleton<HttpClient>();
         services.AddSingleton<ExchangeRateService>();

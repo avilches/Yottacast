@@ -500,6 +500,15 @@
                     </Button>
 
                     <Button Classes="nav-item"
+                            Classes.nav-selected="{Binding IsFileEditorSelected}"
+                            Command="{Binding SelectFileEditorCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="{StaticResource Icon.Edit}" Width="14" Height="14" VerticalAlignment="Center"/>
+                            <TextBlock Text="Editor" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button Classes="nav-item"
                             Classes.nav-selected="{Binding IsCalculatorSelected}"
                             Command="{Binding SelectCalculatorCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="8">
@@ -1062,6 +1071,55 @@
                                         Click="OnAddCommonFoldersClicked"/>
                             </StackPanel>
                         </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- File Editor -->
+                <StackPanel Spacing="16" IsVisible="{Binding IsFileEditorSelected}">
+                    <TextBlock Classes="section-heading" Text="File Editor"/>
+
+                    <ToggleSwitch IsChecked="{Binding EnableFileEditor}"
+                                  OnContent="Enabled"
+                                  OffContent="Disabled"/>
+
+                    <TextBlock Classes="description"
+                               Text="Open text and code files directly from search results with &#x2318;E."/>
+
+                    <StackPanel Spacing="12" IsVisible="{Binding EnableFileEditor}">
+                        <CheckBox Content="Auto-save on close"
+                                  IsChecked="{Binding FileEditorAutoSave}"/>
+                        <TextBlock Classes="description"
+                                   Text="If disabled, a save button (&#x2318;S) appears in the editor header."/>
+                        <TextBlock Classes="label" Text="Editable extensions"/>
+                        <ItemsControl ItemsSource="{Binding FileEditorExtensions}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="sys:String">
+                                    <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding}"
+                                                   VerticalAlignment="Center"
+                                                   FontSize="12"/>
+                                        <Button Grid.Column="1"
+                                                Content="✕"
+                                                FontSize="11"
+                                                Padding="6,2"
+                                                Click="OnRemoveExtensionClick"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                            <TextBox Grid.Column="0"
+                                     x:Name="NewExtensionBox"
+                                     Watermark="e.g. txt"
+                                     FontSize="12"/>
+                            <Button Grid.Column="1"
+                                    Content="Add"
+                                    FontSize="12"
+                                    Padding="10,4"
+                                    Margin="6,0,0,0"
+                                    Click="OnAddExtensionClick"/>
+                        </Grid>
                     </StackPanel>
                 </StackPanel>
 
