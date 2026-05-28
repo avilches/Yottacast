@@ -65,19 +65,15 @@ public partial class MainWindowViewModel(
     public string ShiftSymbol => AppHandler.Instance.ShiftSymbol;
     public string SettingsShortcutText => $"{MetaSymbol},  settings";
 
-    public bool HasFooterHints => HasResults || IsEditorOpen;
+    public bool HasFooterHints => HasResults || (IsEditorOpen && EditorPanel.IsEditMode);
 
     public IReadOnlyList<string> FooterHints {
         get {
-            if (IsEditorOpen) {
+            if (IsEditorOpen && EditorPanel.IsEditMode) {
                 var meta = MetaSymbol;
-                if (EditorPanel.IsEditMode) {
-                    return EditorPanel.ShowSaveButton
-                        ? [$"{meta}S  Save", "Esc  Close"]
-                        : ["Esc  Close"];
-                }
-                // Preview mode (only text files reach here)
-                return [$"{meta}E  Edit", "Esc  Close"];
+                return EditorPanel.ShowSaveButton
+                    ? [$"{meta}S  Save", "Esc  Close"]
+                    : ["Esc  Close"];
             }
 
             var actions = SelectedResult?.Actions;
@@ -177,11 +173,20 @@ public partial class MainWindowViewModel(
     private bool _isPreviewEnabled;
 
     public void Initialize() {
-        EditorPanel.CloseRequested = () => { IsEditorOpen = false; _isPreviewEnabled = false; };
+        EditorPanel.CloseRequested = () => {
+            if (_isPreviewEnabled && EditorPanel.IsEditMode) {
+                // El usuario abrió preview primero y luego cambió a edit → restaurar preview
+                EditorPanel.LoadPreview(EditorPanel.FilePath);
+            } else {
+                IsEditorOpen = false;
+                _isPreviewEnabled = false;
+            }
+        };
         EditorPanel.PropertyChanged += (_, args) => {
             if (args.PropertyName is nameof(EditorPanelViewModel.Mode)
                 or nameof(EditorPanelViewModel.ShowSaveButton)) {
                 OnPropertyChanged(nameof(FooterHints));
+                OnPropertyChanged(nameof(HasFooterHints));
             }
         };
         _ = CheckForUpdateAsync();

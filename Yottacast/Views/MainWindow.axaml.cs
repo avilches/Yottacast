@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -29,6 +30,12 @@ public partial class MainWindow : Window {
     private bool _screenPosKnown;
     private bool _positionDirty;
     private (Point Origin, BaseResultItemViewModel Vm)? _dragCandidate;
+    private long _dragCandidateTicks;
+    private bool _longPressActivated;
+    private CancellationTokenSource? _dragTimerCts;
+    private PointerEventArgs? _lastDragPointerArgs;
+    private Point _rightClickPos;
+    private bool _menuOpenedByKeyboard;
 
     // Required by Avalonia's XAML resource loader; the app always uses the parameterized constructor.
     public MainWindow() : this(null!, null!, null!) { }
@@ -50,12 +57,13 @@ public partial class MainWindow : Window {
         // can capture them before the TextBox moves its cursor.
         AddHandler(KeyDownEvent, OnTunnelKeyDown, RoutingStrategies.Tunnel);
         AddHandler(PointerMovedEvent, OnTunnelPointerMoved, RoutingStrategies.Tunnel);
-        ResultsList.AddHandler(PointerMovedEvent, OnResultsPointerMoved, RoutingStrategies.Bubble);
-        ResultsList.AddHandler(Gestures.TappedEvent, OnResultsTapped, RoutingStrategies.Bubble);
-        ResultsList.AddHandler(PointerPressedEvent, OnResultsPointerPressedForDrag, RoutingStrategies.Tunnel);
+        ResultsList.AddHandler(Gestures.DoubleTappedEvent, OnResultsDoubleTapped, RoutingStrategies.Bubble);
+        ResultsList.AddHandler(PointerPressedEvent, OnResultsPointerPressed, RoutingStrategies.Tunnel);
         ResultsList.AddHandler(PointerMovedEvent, OnResultsPointerMovedForDrag, RoutingStrategies.Tunnel);
         ResultsList.AddHandler(PointerReleasedEvent, OnResultsPointerReleasedForDrag, RoutingStrategies.Tunnel);
         ResultsList.AddHandler(PointerCaptureLostEvent, OnResultsPointerCaptureLostForDrag, RoutingStrategies.Tunnel);
+        OptionsMenuList.AddHandler(Gestures.TappedEvent, OnOptionsMenuItemTapped, RoutingStrategies.Bubble);
+        OptionsMenuList.AddHandler(PointerMovedEvent, OnOptionsMenuPointerMoved, RoutingStrategies.Bubble);
         PositionChanged += (_, _) => UpdatePositionInMemory();
         // Font diagnostics: log at startup and on first emoji activation. REMOVE after investigation.
         DataContextChanged += (_, _) => {
@@ -295,6 +303,23 @@ public partial class MainWindow : Window {
         var result = vm.SelectedResult;
         action.Execute();
 
+        // Editor hotkeys have no-op Execute; dispatch the real logic here
+        if (action.Hotkey == ActionHotkey.MetaP) {
+            if (!vm.IsEditorOpen && _settings.EnableFileEditor
+                && result is ResultItemViewModel { ItemPath: { } pPath }
+                && _fileEditorService.IsTextContent(pPath))
+                vm.OpenPreview(pPath);
+        } else if (action.Hotkey == ActionHotkey.MetaE) {
+            if (vm.IsEditorOpen && vm.EditorPanel.IsPreviewMode) {
+                var check = _fileEditorService.CanOpen(vm.EditorPanel.FilePath, _settings.FileEditorExtensions);
+                if (check.CanOpen) vm.EditorPanel.SwitchToEdit(_settings.FileEditorAutoSave);
+                else vm.ShowCopiedMessage(check.Error ?? "Cannot edit this file");
+            } else if (!vm.IsEditorOpen && _settings.EnableFileEditor
+                && result is ResultItemViewModel { ItemPath: { } ePath }
+                && _fileEditorService.IsTextContent(ePath))
+                vm.OpenEditor(ePath);
+        }
+
         if (action.ClosesWindow || action.ClosesMenu)
             vm.CloseOptionsMenu();
 
@@ -426,7 +451,10 @@ public partial class MainWindow : Window {
 
         // ── Tab opens overlay ───────────────────────────────────────────────────
         if (e.Key == Key.Tab) {
-            if (vm.HasOptionsMenu) vm.OpenOptionsMenu();
+            if (vm.HasOptionsMenu) {
+                _menuOpenedByKeyboard = true;
+                vm.OpenOptionsMenu();
+            }
             e.Handled = true;
             return;
         }
@@ -455,7 +483,24 @@ public partial class MainWindow : Window {
                 break;
         }
 
-        // ── Cmd+E: open preview, or switch preview→edit ─────────────────────────
+        // ── Cmd+P: toggle preview ────────────────────────────────────────────────
+        if (AppHandler.Instance.MatchesHotkey(e, ActionHotkey.MetaP)) {
+            if (vm.IsEditorOpen && vm.EditorPanel.IsPreviewMode) {
+                vm.EditorPanel.RequestClose();
+                e.Handled = true;
+                return;
+            }
+            if (!vm.IsEditorOpen
+                && _settings.EnableFileEditor
+                && vm.SelectedResult is ResultItemViewModel { ItemPath: { } previewPath }
+                && _fileEditorService.IsTextContent(previewPath)) {
+                vm.OpenPreview(previewPath);
+                e.Handled = true;
+                return;
+            }
+        }
+
+        // ── Cmd+E: open edit directly, or switch preview→edit ────────────────────
         if (AppHandler.Instance.MatchesHotkey(e, ActionHotkey.MetaE)) {
             if (vm.IsEditorOpen) {
                 // Edit mode case handled above; here we're always in Preview mode
@@ -471,7 +516,7 @@ public partial class MainWindow : Window {
             if (_settings.EnableFileEditor
                 && vm.SelectedResult is ResultItemViewModel { ItemPath: { } path }
                 && _fileEditorService.IsTextContent(path)) {
-                vm.OpenPreview(path);
+                vm.OpenEditor(path);
                 e.Handled = true;
                 return;
             }
@@ -613,37 +658,82 @@ public partial class MainWindow : Window {
         if (DataContext is not MainWindowViewModel vm || !vm.IsOptionsMenuOpen || vm.SelectedResult == null)
             return;
 
-        double? rawTop = null;
-
-        // For the emoji grid, the whole grid is a single ListBoxItem.
-        // Traverse the visual tree to find the selected-cell Border so the menu
-        // appears next to the actual emoji rather than at the top of the grid.
-        if (vm.SelectedResult is EmojiGridResultViewModel) {
-            var selectedCell = ResultsList
-                .GetVisualDescendants()
-                .OfType<Border>()
-                .FirstOrDefault(b => b.Classes.Contains("emoji-selected"));
-            if (selectedCell != null) {
-                var pos = selectedCell.TranslatePoint(new Point(0, 0), ResultsPanel);
-                if (pos.HasValue) rawTop = pos.Value.Y;
-            }
-        }
-
-        if (!rawTop.HasValue) {
-            var container = ResultsList.ContainerFromItem(vm.SelectedResult) as ListBoxItem;
-            if (container == null) return;
-            var pos = container.TranslatePoint(new Point(0, 0), ResultsPanel);
-            if (!pos.HasValue) return;
-            rawTop = pos.Value.Y;
-        }
-
-        var top    = rawTop.Value;
-        var panelH = ResultsList.Bounds.Height;
+        var panelW = ResultsPanel.Bounds.Width;
+        var panelH = ResultsPanel.Bounds.Height;
+        var menuW  = OptionsMenuOverlay.Bounds.Width > 0 ? OptionsMenuOverlay.Bounds.Width : 220.0;
         var menuH  = OptionsMenuOverlay.Bounds.Height;
-        if (panelH > 0 && menuH > 0 && top + menuH > panelH)
-            top = Math.Max(0, panelH - menuH);
 
-        OptionsMenuOverlay.Margin = new Thickness(8, top, 8, 0);
+        double x, y;
+        if (_menuOpenedByKeyboard) {
+            x = Math.Max(4, panelW - menuW - 4);
+            y = GetSelectedItemY(vm);
+        } else {
+            x = _rightClickPos.X;
+            y = _rightClickPos.Y;
+            if (panelW > 0 && x + menuW > panelW - 4)
+                x = Math.Max(4, panelW - menuW - 4);
+        }
+
+        if (panelH > 0 && menuH > 0 && y + menuH > panelH - 4)
+            y = Math.Max(0, panelH - menuH);
+        y = Math.Max(0, y);
+
+        OptionsMenuOverlay.Margin = new Thickness(x, y, 0, 0);
+    }
+
+    private double GetSelectedItemY(MainWindowViewModel vm) {
+        var idx = vm.SelectedResult == null ? -1 : vm.Results.IndexOf(vm.SelectedResult);
+        if (idx < 0) return 0;
+        if (ResultsList.ContainerFromIndex(idx) is not Control container) return 0;
+        var transform = container.TransformToVisual(ResultsPanel);
+        if (transform == null) return 0;
+        return transform.Value.Transform(new Point(0, 0)).Y;
+    }
+
+    private void OnOptionsMenuItemTapped(object? sender, TappedEventArgs e) {
+        if (DataContext is not MainWindowViewModel vm) return;
+        var lbi = FindListBoxItem(e.Source as Control);
+        if (lbi == null) return;
+
+        for (int i = 0; i < OptionsMenuList.ItemCount; i++) {
+            if (OptionsMenuList.ContainerFromIndex(i) != lbi) continue;
+            vm.OptionsMenuSelectedIndex = i;
+            if (vm.SelectedMenuAction is { } action)
+                ExecuteActionWithContext(vm, action);
+            return;
+        }
+    }
+
+    private void OnOptionsMenuPointerMoved(object? sender, PointerEventArgs e) {
+        if (DataContext is not MainWindowViewModel vm || !vm.IsOptionsMenuOpen) return;
+        var lbi = FindListBoxItem(e.Source as Control);
+        if (lbi == null) return;
+        for (int i = 0; i < OptionsMenuList.ItemCount; i++) {
+            if (OptionsMenuList.ContainerFromIndex(i) != lbi) continue;
+            vm.OptionsMenuSelectedIndex = i;
+            return;
+        }
+    }
+
+    private void CancelDragTimer() {
+        _dragTimerCts?.Cancel();
+        _dragTimerCts = null;
+        _longPressActivated = false;
+    }
+
+    private void StartDragLongPressTimer(PointerEventArgs triggerEvent, BaseResultItemViewModel candidateVm) {
+        var cts = new CancellationTokenSource();
+        _dragTimerCts = cts;
+        _ = Task.Delay(AppDefaults.DragLongPressMs, cts.Token).ContinueWith(t => {
+            if (t.IsCanceled) return;
+            Dispatcher.UIThread.Post(async () => {
+                if (_dragCandidate?.Vm != candidateVm) return;
+                var e = _lastDragPointerArgs;
+                if (e == null) return;
+                CancelDragTimer();
+                await InitiateDragAsync(e, candidateVm);
+            });
+        }, TaskScheduler.Default);
     }
 
     private int GetVisiblePageSize() {
@@ -697,25 +787,13 @@ public partial class MainWindow : Window {
         TrackOrShowCursor(e);
     }
 
-    private void OnResultsPointerMoved(object? sender, PointerEventArgs e) {
-        if (_cursorHidden) return;
-        var item = FindListBoxItem(e.Source as Control);
-        if (item?.DataContext is BaseResultItemViewModel itemVm) {
-            var vm = DataContext as MainWindowViewModel;
-            if (vm is null) return;
-            vm.NotifyUserNavigated();
-            vm.SelectedResult = itemVm;
-        }
-    }
-
-    private void OnResultsTapped(object? sender, TappedEventArgs e) {
+    private void OnResultsDoubleTapped(object? sender, TappedEventArgs e) {
         if (DataContext is not MainWindowViewModel vm) return;
 
         var enterAction = vm.SelectedResult?.Actions.FirstOrDefault(a => a.Hotkey == ActionHotkey.Enter);
         if (enterAction == null) return;
 
         if (_lastClickModifiers.HasFlag(KeyModifiers.Meta)) {
-            // Cmd+Click: execute without closing the search window
             ExecuteActionWithContext(vm, enterAction.AsKeepOpen());
         } else {
             ExecuteActionWithContext(vm, enterAction);
@@ -746,15 +824,45 @@ public partial class MainWindow : Window {
         AppHandler.Instance.ShowCursor();
     }
 
-    private void OnResultsPointerPressedForDrag(object? sender, PointerPressedEventArgs e) {
+    private void OnResultsPointerPressed(object? sender, PointerPressedEventArgs e) {
         _lastClickModifiers = e.KeyModifiers;
-        if (e.GetCurrentPoint(ResultsList).Properties.PointerUpdateKind != PointerUpdateKind.LeftButtonPressed)
-            return;
+        var props = e.GetCurrentPoint(ResultsList).Properties;
         var item = FindListBoxItem(e.Source as Control);
-        if (item?.DataContext is BaseResultItemViewModel vm && vm.GetDragPayload is not null) {
-            _dragCandidate = (e.GetPosition(ResultsList), vm);
-        } else {
-            _dragCandidate = null;
+        var vm = DataContext as MainWindowViewModel;
+
+        if (props.PointerUpdateKind == PointerUpdateKind.LeftButtonPressed) {
+            // Set up drag candidate with timestamp and long-press timer
+            CancelDragTimer();
+            if (item?.DataContext is BaseResultItemViewModel dragVm && dragVm.GetDragPayload is not null) {
+                _dragCandidate = (e.GetPosition(ResultsList), dragVm);
+                _dragCandidateTicks = Environment.TickCount64;
+                _lastDragPointerArgs = e;
+                _longPressActivated = false;
+                StartDragLongPressTimer(e, dragVm);
+            } else {
+                _dragCandidate = null;
+            }
+
+            // Select the clicked item (close any open menu)
+            if (item?.DataContext is BaseResultItemViewModel itemVm && vm != null) {
+                if (vm.IsOptionsMenuOpen) vm.CloseOptionsMenu();
+                vm.NotifyUserNavigated();
+                vm.SelectedResult = itemVm;
+            }
+        } else if (props.PointerUpdateKind == PointerUpdateKind.RightButtonPressed) {
+            // Select the item and open the options menu at cursor position
+            if (item?.DataContext is BaseResultItemViewModel itemVm && vm != null) {
+                vm.NotifyUserNavigated();
+                vm.SelectedResult = itemVm;
+                if (vm.HasOptionsMenu) {
+                    _rightClickPos = e.GetPosition(ResultsPanel);
+                    _menuOpenedByKeyboard = false;
+                    vm.OpenOptionsMenu();
+                    // Always reposition: PropertyChanged on IsOptionsMenuOpen doesn't fire if already open.
+                    Dispatcher.UIThread.Post(PositionOptionsMenu, DispatcherPriority.Background);
+                }
+                e.Handled = true;
+            }
         }
     }
 
@@ -762,21 +870,33 @@ public partial class MainWindow : Window {
         if (_dragCandidate is not { } candidate) return;
         var props = e.GetCurrentPoint(ResultsList).Properties;
         if (!props.IsLeftButtonPressed) {
+            CancelDragTimer();
             _dragCandidate = null;
             return;
         }
+        _lastDragPointerArgs = e;
         var current = e.GetPosition(ResultsList);
         var dx = current.X - candidate.Origin.X;
         var dy = current.Y - candidate.Origin.Y;
-        if (Math.Abs(dx) < AppDefaults.DragStartThresholdPx && Math.Abs(dy) < AppDefaults.DragStartThresholdPx)
+
+        bool distanceOk = Math.Abs(dx) >= AppDefaults.DragStartThresholdPx || Math.Abs(dy) >= AppDefaults.DragStartThresholdPx;
+        bool timeOk = (Environment.TickCount64 - _dragCandidateTicks) >= AppDefaults.DragMinPressDurationMs;
+
+        if (!_longPressActivated && (!distanceOk || !timeOk))
             return;
 
+        CancelDragTimer();
+        _longPressActivated = false;
+        await InitiateDragAsync(e, candidate.Vm);
+    }
+
+    private async Task InitiateDragAsync(PointerEventArgs e, BaseResultItemViewModel candidateVm) {
         // Consume the candidate before awaiting so we don't double-start a drag.
         _dragCandidate = null;
 
         var vm = DataContext as MainWindowViewModel;
         try {
-            var payload = candidate.Vm.GetDragPayload?.Invoke();
+            var payload = candidateVm.GetDragPayload?.Invoke();
             if (payload is null) return;
             var data = await DragDataFactory.BuildAsync(this, payload);
             if (data is null) {
@@ -793,10 +913,12 @@ public partial class MainWindow : Window {
     }
 
     private void OnResultsPointerReleasedForDrag(object? sender, PointerReleasedEventArgs e) {
+        CancelDragTimer();
         _dragCandidate = null;
     }
 
     private void OnResultsPointerCaptureLostForDrag(object? sender, PointerCaptureLostEventArgs e) {
+        CancelDragTimer();
         _dragCandidate = null;
     }
 

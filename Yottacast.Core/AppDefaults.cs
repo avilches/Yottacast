@@ -191,7 +191,13 @@ public static class AppDefaults {
     // ── Drag-and-drop ─────────────────────────────────────────────────────────
     /// Pixel distance the cursor must travel with the left button held before a drag is initiated.
     /// Below this threshold, click+release is treated as a normal click (selection).
-    public const double DragStartThresholdPx = 5.0;
+    public const double DragStartThresholdPx = 50.0;
+    /// Minimum time (ms) the button must be held before a movement-triggered drag is accepted.
+    /// Prevents accidental drags from fast clicks with slight cursor wobble.
+    public const int DragMinPressDurationMs = 150;
+    /// Time (ms) the button must be held without releasing to trigger a drag via long-press,
+    /// regardless of cursor movement distance.
+    public const int DragLongPressMs = 500;
 
     // ── File Editor ────────────────────────────────────────────────────────────
     /// Width of the inline editor panel in pixels.

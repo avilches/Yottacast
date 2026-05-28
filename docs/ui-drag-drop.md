@@ -9,8 +9,8 @@ Cualquier resultado de la lista principal puede arrastrarse fuera de Yottacast h
 
 ## Comportamiento esperado
 
-- El drag se inicia cuando el cursor se mueve más de `AppDefaults.DragStartThresholdPx` píxeles con el botón izquierdo presionado sobre un item arrastrable.
-- Click corto (sin movimiento) selecciona el item normalmente; nunca inicia drag.
+- El drag se inicia cuando se cumple una de dos condiciones: (a) el cursor se mueve más de `AppDefaults.DragStartThresholdPx` píxeles con el botón presionado durante al menos `AppDefaults.DragMinPressDurationMs` ms, o (b) el botón se mantiene presionado durante `AppDefaults.DragLongPressMs` ms sin soltar (long-press).
+- Click corto (sin movimiento relevante o sin tiempo de presión suficiente) selecciona el item normalmente; nunca inicia drag.
 - La ventana de Yottacast permanece visible durante todo el drag — no se oculta al iniciar ni al soltar.
 - En resultados con celdas navegables (conversion, álgebra, fechas, emoji) el drag usa el contenido de la celda **actualmente seleccionada**, no la celda bajo el cursor.
 - Si el payload no puede resolverse (fichero borrado, URI inválida) el drag se cancela silenciosamente — no hay excepción visible al usuario.

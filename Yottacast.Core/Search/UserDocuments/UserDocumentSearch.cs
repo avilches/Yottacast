@@ -190,14 +190,24 @@ public class UserDocumentSearch(
                                 Execute      = () => clipboard.CopyText(path),
                             },
                         };
-                        if (IsEditableExtension(path))
+                        if (IsEditableExtension(path)) {
+                            actions.Add(new ResultAction {
+                                Label        = "Preview",
+                                Hotkey       = ActionHotkey.MetaP,
+                                ShowInFooter = true,
+                                ShowInMenu   = true,
+                                ClosesMenu   = true,
+                                Execute      = () => { },
+                            });
                             actions.Add(new ResultAction {
                                 Label        = "Edit",
                                 Hotkey       = ActionHotkey.MetaE,
                                 ShowInFooter = true,
-                                ShowInMenu   = false,
+                                ShowInMenu   = true,
+                                ClosesMenu   = true,
                                 Execute      = () => { },
                             });
+                        }
                         buffer.Add(new ResultItemViewModel {
                             IconBytes = fileIconCache.Get(r.Path),
                             BadgeIconBytes = _badgeByExtension.GetValueOrDefault(ext),

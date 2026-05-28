@@ -129,6 +129,8 @@ El atajo nativo de "cerrar ventana" se intercepta y se redirige a ocultar la ven
 | Cmd+, (macOS) | Abre la ventana de Settings |
 | Cmd+C / Ctrl+C | Copia el valor del resultado seleccionado sin cerrar la ventana |
 | Alt+Space | Se consume sin accion para evitar el beep nativo de macOS |
+| Cmd+P | Abre el panel de preview del archivo seleccionado (solo archivos de texto) |
+| Cmd+E | Abre directamente el editor del archivo seleccionado; si el panel está en preview, cambia a modo edición |
 
 > **Verificar en:** `MainWindow.axaml.cs` -- `OnKeyDown`. `App.axaml.cs` -- `ShutdownRequested`. `MacAppHandler.cs`, `WindowsAppHandler.cs`, `LinuxAppHandler.cs` -- `CloseWindowShortcut`.
 
@@ -172,9 +174,15 @@ Mientras el usuario escribe, el cursor del raton se oculta para no distraer. Se 
 
 ## 8. Seleccion con raton
 
-Mover el raton sobre un resultado lo selecciona (hover-to-select), pero solo si el cursor no esta oculto. Hacer clic (tap) sobre un resultado ejecuta la misma logica que Enter: activacion, limpieza de texto, ocultacion de ventana y paste si corresponde.
+| Gesto | Comportamiento |
+|---|---|
+| Click izquierdo | Selecciona el elemento. Si habia un menu de opciones abierto, se cierra. |
+| Doble click izquierdo | Ejecuta la accion por defecto del elemento (equivalente a Enter). Cmd+doble click ejecuta sin cerrar la ventana. |
+| Click derecho | Selecciona el elemento y abre el menu de opciones en la posicion del cursor. Las opciones son clicables con el raton. |
 
-> **Verificar en:** `MainWindow.axaml.cs` -- `OnResultsPointerMoved`, `OnResultsTapped`.
+El movimiento del raton sobre resultados ya no selecciona el elemento bajo el cursor. La seleccion solo cambia por teclado o por click.
+
+> **Verificar en:** `MainWindow.axaml.cs` -- `OnResultsPointerPressed`, `OnResultsDoubleTapped`.
 
 ---
 
@@ -239,7 +247,7 @@ Cada tipo de resultado tiene sus propios hints:
 | Tipo | Hints mostrados |
 |---|---|
 | Apps | `↵ Launch` · `⌘C Path` |
-| Archivos | `↵ Open` · `⌘C Path` |
+| Archivos | `↵ Open` · `⌘C Path` · `⌘P Preview` · `⌘E Edit` (si extensión editable) |
 | Calculadora | `↵ Copy result` · `⌘C Copy` |
 | Conversor | `↵ Copy result` · `⌘C Copy` · `←→ Switch cell` |
 | Diccionario | `↵ Open Wiktionary` · `⌘C Definition` |

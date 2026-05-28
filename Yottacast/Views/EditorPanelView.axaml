@@ -132,7 +132,8 @@
                     <StackPanel>
                         <Button x:Name="SaveDialogButton"
                                 Classes="menu-option"
-                                Command="{Binding SaveAndCloseCommand}">
+                                Command="{Binding SaveAndCloseCommand}"
+                                PointerEntered="OnDialogButtonPointerEntered">
                             <Grid ColumnDefinitions="*,Auto">
                                 <TextBlock Grid.Column="0" Text="Save"
                                            Foreground="{DynamicResource Theme.Menu.Option.Color}"
@@ -147,14 +148,16 @@
                         </Button>
                         <Button x:Name="DiscardDialogButton"
                                 Classes="menu-option"
-                                Command="{Binding DiscardAndCloseCommand}">
+                                Command="{Binding DiscardAndCloseCommand}"
+                                PointerEntered="OnDialogButtonPointerEntered">
                             <TextBlock Text="Don't save"
                                        Foreground="{DynamicResource Theme.Menu.Option.Color}"
                                        FontSize="{DynamicResource Theme.Menu.Option.Size}"/>
                         </Button>
                         <Button x:Name="CancelDialogButton"
                                 Classes="menu-option"
-                                Command="{Binding CancelUnsavedDialogCommand}">
+                                Command="{Binding CancelUnsavedDialogCommand}"
+                                PointerEntered="OnDialogButtonPointerEntered">
                             <Grid ColumnDefinitions="*,Auto">
                                 <TextBlock Grid.Column="0" Text="Cancel"
                                            Foreground="{DynamicResource Theme.Menu.Option.Color}"

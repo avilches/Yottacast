@@ -67,6 +67,17 @@ public partial class EditorPanelView : UserControl {
         }
     }
 
+    private void OnDialogButtonPointerEntered(object? sender, PointerEventArgs e) {
+        if (_currentVm?.ShowUnsavedDialog != true || sender is not Button button) return;
+        Control[] buttons = [SaveDialogButton, DiscardDialogButton, CancelDialogButton];
+        for (int i = 0; i < buttons.Length; i++) {
+            if (buttons[i] != button) continue;
+            _dialogFocusIndex = i;
+            button.Focus();
+            return;
+        }
+    }
+
     // Trampa de foco: Tab y cursores rotan entre los botones del dialog sin salirse
     private void OnDialogTunnelKeyDown(object? sender, KeyEventArgs e) {
         if (_currentVm?.ShowUnsavedDialog != true) return;
