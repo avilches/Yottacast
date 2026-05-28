@@ -19,6 +19,7 @@ public partial class EditorPanelViewModel(FileEditorService fileEditorService) :
     [ObservableProperty] private EditorMode _mode = EditorMode.Preview;
 
     public bool IsDirty => Content != _originalContent;
+    public string TitleText => IsDirty ? $"* {FilePath}" : FilePath;
     public bool IsAutoSave { get; private set; }
     public bool ShowSaveButton => !IsAutoSave && Mode == EditorMode.Edit;
     public bool IsPreviewMode => Mode == EditorMode.Preview;
@@ -26,7 +27,12 @@ public partial class EditorPanelViewModel(FileEditorService fileEditorService) :
 
     public Action? CloseRequested { get; set; }
 
-    partial void OnContentChanged(string value) => OnPropertyChanged(nameof(IsDirty));
+    partial void OnContentChanged(string value) {
+        OnPropertyChanged(nameof(IsDirty));
+        OnPropertyChanged(nameof(TitleText));
+    }
+
+    partial void OnFilePathChanged(string value) => OnPropertyChanged(nameof(TitleText));
 
     partial void OnModeChanged(EditorMode value) {
         OnPropertyChanged(nameof(ShowSaveButton));
@@ -67,6 +73,7 @@ public partial class EditorPanelViewModel(FileEditorService fileEditorService) :
         fileEditorService.WriteFile(FilePath, Content);
         _originalContent = Content;
         OnPropertyChanged(nameof(IsDirty));
+        OnPropertyChanged(nameof(TitleText));
     }
 
     [RelayCommand]

@@ -5,6 +5,36 @@
              x:Class="Yottacast.Views.EditorPanelView"
              x:DataType="vm:EditorPanelViewModel">
 
+    <UserControl.Styles>
+        <Style Selector="Button.menu-option">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="{DynamicResource Theme.Menu.Option.Padding}"/>
+            <Setter Property="CornerRadius" Value="{DynamicResource Theme.Menu.Option.CornerRadius}"/>
+            <Setter Property="Cursor" Value="Arrow"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        </Style>
+        <Style Selector="Button.menu-option /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.menu-option:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource Theme.Menu.OptionSelected.Background}"/>
+        </Style>
+        <Style Selector="Button.menu-option:pointerover TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource Theme.Menu.OptionSelected.Color}"/>
+        </Style>
+        <Style Selector="Button.menu-option:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource Theme.Menu.OptionSelected.Background}"/>
+        </Style>
+        <Style Selector="Button.menu-option:focus /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource Theme.Menu.OptionSelected.Background}"/>
+        </Style>
+        <Style Selector="Button.menu-option:focus TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource Theme.Menu.OptionSelected.Color}"/>
+        </Style>
+    </UserControl.Styles>
+
     <Grid RowDefinitions="Auto,*,Auto"
           Background="{DynamicResource Theme.Window.Background}">
 
@@ -14,115 +44,129 @@
                 HorizontalAlignment="Left"
                 Background="{DynamicResource Theme.Divider.Color}"/>
 
-        <!-- ── Preview header: height matches search input area ── -->
+        <!-- ── Preview header ── -->
         <Border Grid.Row="0"
                 IsVisible="{Binding IsPreviewMode}"
                 Margin="{DynamicResource Theme.Search.Input.Margin}"
                 Padding="{DynamicResource Theme.Search.Input.Padding}">
             <Grid MinHeight="46">
-                <TextBlock Text="{Binding FileName}"
+                <TextBlock Text="{Binding TitleText}"
                            VerticalAlignment="Center"
                            TextTrimming="CharacterEllipsis"
                            Foreground="{DynamicResource Theme.Results.Color}"
-                           FontSize="13"/>
+                           FontSize="{DynamicResource Theme.Search.Size}"/>
             </Grid>
         </Border>
 
         <!-- ── Edit header ── -->
         <Grid Grid.Row="0"
               IsVisible="{Binding IsEditMode}"
-              ColumnDefinitions="*,Auto"
               Margin="12,0,8,0"
               MinHeight="40">
-            <TextBlock Grid.Column="0"
-                       Text="{Binding FileName}"
+            <TextBlock Text="{Binding TitleText}"
                        VerticalAlignment="Center"
                        TextTrimming="CharacterEllipsis"
                        Foreground="{DynamicResource Theme.Results.Color}"
-                       FontSize="13"/>
-            <Button Grid.Column="1"
-                    Content="Guardar"
-                    IsVisible="{Binding ShowSaveButton}"
-                    Command="{Binding SaveFileCommand}"
-                    VerticalAlignment="Center"
-                    Padding="10,4"
-                    FontSize="12"/>
+                       FontSize="{DynamicResource Theme.Search.Size}"/>
         </Grid>
 
-        <!-- ── AvaloniaEdit TextEditor (read-only in preview, editable in edit) ── -->
+        <!-- ── AvaloniaEdit TextEditor ── -->
         <aedit:TextEditor Grid.Row="1"
                           x:Name="Editor"
                           IsReadOnly="{Binding IsPreviewMode}"
-                          ShowLineNumbers="True"
+                          ShowLineNumbers="False"
                           FontFamily="Cascadia Code, Fira Code, Menlo, Consolas, monospace"
                           FontSize="13"
                           WordWrap="False"
                           Background="{DynamicResource Theme.Results.Background}"/>
 
-        <!-- ── Edit status bar ── -->
+        <!-- ── Edit footer: keyboard shortcut hints ── -->
         <Border Grid.Row="2"
                 IsVisible="{Binding IsEditMode}"
-                Background="{DynamicResource Theme.Window.Background}"
-                BorderThickness="0,1,0,0"
-                BorderBrush="{DynamicResource Theme.Divider.Color}"
-                Padding="12,0"
-                MinHeight="24">
-            <TextBlock Text="{Binding StatusText}"
-                       FontSize="11"
-                       VerticalAlignment="Center"
-                       Foreground="{DynamicResource Theme.Results.Subtitle.Color}"/>
-        </Border>
-
-        <!-- ── Preview footer: height matches search footer ── -->
-        <Border Grid.Row="2"
-                IsVisible="{Binding IsPreviewMode}"
                 Background="{DynamicResource Theme.Footer.Background}"
                 BorderBrush="{DynamicResource Theme.Footer.Border}"
                 BorderThickness="0,1,0,0"
                 CornerRadius="{DynamicResource Theme.Window.CornerRadius.Bottom}"
                 Padding="18,10">
-            <TextBlock Text="Solo lectura"
-                       FontSize="{DynamicResource Theme.Footer.Size}"
-                       VerticalAlignment="Center"
-                       Foreground="{DynamicResource Theme.Footer.Color}"/>
+            <StackPanel Orientation="Horizontal" Spacing="20">
+                <TextBlock Text="⌘S  Guardar"
+                           FontSize="{DynamicResource Theme.Footer.Size}"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource Theme.Footer.Color}"/>
+                <TextBlock Text="⌘E  Guardar y cerrar"
+                           FontSize="{DynamicResource Theme.Footer.Size}"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource Theme.Footer.Color}"/>
+                <TextBlock Text="Esc  Cerrar"
+                           FontSize="{DynamicResource Theme.Footer.Size}"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource Theme.Footer.Color}"/>
+            </StackPanel>
         </Border>
 
-        <!-- Unsaved changes overlay (edit mode only) -->
+        <!-- ── Unsaved changes dialog ── -->
         <Grid Grid.RowSpan="3"
+              x:Name="DialogOverlay"
               IsVisible="{Binding ShowUnsavedDialog}"
-              Background="#B0000000">
-            <Border CornerRadius="10"
-                    Background="{DynamicResource Theme.Window.Background}"
-                    MaxWidth="340"
+              Background="#60000000">
+            <Border Background="{DynamicResource Theme.Menu.Background}"
+                    BorderBrush="{DynamicResource Theme.Menu.Border.Color}"
+                    BorderThickness="1"
+                    CornerRadius="{DynamicResource Theme.Menu.Border.Radius}"
+                    MinWidth="220"
                     HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    Padding="28,24">
-                <StackPanel Spacing="16">
-                    <TextBlock Text="Cambios sin guardar"
-                               FontWeight="SemiBold"
-                               FontSize="14"
-                               Foreground="{DynamicResource Theme.Results.Color}"/>
-                    <TextBlock Text="{Binding FileName}"
-                               TextTrimming="CharacterEllipsis"
-                               Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
-                               FontSize="13"/>
-                    <StackPanel Spacing="8" Margin="0,4,0,0">
-                        <Button Content="Esc  —  Seguir editando"
-                                Command="{Binding CancelUnsavedDialogCommand}"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Center"
-                                Padding="0,8"/>
-                        <Button Content="No guardar"
-                                Command="{Binding DiscardAndCloseCommand}"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Center"
-                                Padding="0,8"/>
-                        <Button Content="⌘S  —  Guardar y cerrar"
-                                Command="{Binding SaveAndCloseCommand}"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Center"
-                                Padding="0,8"/>
+                    VerticalAlignment="Center">
+                <StackPanel>
+                    <!-- Header -->
+                    <Border Background="{DynamicResource Theme.Menu.Header.Background}"
+                            Padding="{DynamicResource Theme.Menu.Header.Padding}"
+                            Margin="{DynamicResource Theme.Menu.Header.Margin}">
+                        <TextBlock Text="Unsaved changes"
+                                   Foreground="{DynamicResource Theme.Menu.Header.Color}"
+                                   FontSize="{DynamicResource Theme.Menu.Header.Size}"/>
+                    </Border>
+                    <!-- Options -->
+                    <Border Padding="4,0,4,4">
+                    <StackPanel>
+                        <Button x:Name="SaveDialogButton"
+                                Classes="menu-option"
+                                Command="{Binding SaveAndCloseCommand}">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="Save"
+                                           Foreground="{DynamicResource Theme.Menu.Option.Color}"
+                                           FontSize="{DynamicResource Theme.Menu.Option.Size}"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Text="⌘E"
+                                           Foreground="{DynamicResource Theme.Menu.Header.Color}"
+                                           FontSize="{DynamicResource Theme.Menu.Option.Size}"
+                                           VerticalAlignment="Center"
+                                           Margin="20,0,0,0"/>
+                            </Grid>
+                        </Button>
+                        <Button x:Name="DiscardDialogButton"
+                                Classes="menu-option"
+                                Command="{Binding DiscardAndCloseCommand}">
+                            <TextBlock Text="Don't save"
+                                       Foreground="{DynamicResource Theme.Menu.Option.Color}"
+                                       FontSize="{DynamicResource Theme.Menu.Option.Size}"/>
+                        </Button>
+                        <Button x:Name="CancelDialogButton"
+                                Classes="menu-option"
+                                Command="{Binding CancelUnsavedDialogCommand}">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="Cancel"
+                                           Foreground="{DynamicResource Theme.Menu.Option.Color}"
+                                           FontSize="{DynamicResource Theme.Menu.Option.Size}"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Text="Esc"
+                                           Foreground="{DynamicResource Theme.Menu.Header.Color}"
+                                           FontSize="{DynamicResource Theme.Menu.Option.Size}"
+                                           VerticalAlignment="Center"
+                                           Margin="20,0,0,0"/>
+                            </Grid>
+                        </Button>
                     </StackPanel>
+                    </Border>
                 </StackPanel>
             </Border>
         </Grid>

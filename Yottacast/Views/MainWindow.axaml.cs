@@ -384,8 +384,25 @@ public partial class MainWindow : Window {
 
         // ── Editor Edit mode: only intercept editor hotkeys; let everything else reach AvaloniaEdit ──
         if (isEditMode) {
+            // Esc must be caught in tunnel phase — AvaloniaEdit would otherwise consume it
+            if (e.Key == Key.Escape) {
+                if (vm.EditorPanel.ShowUnsavedDialog)
+                    vm.EditorPanel.CancelUnsavedDialog();
+                else
+                    vm.EditorPanel.RequestClose();
+                e.Handled = true;
+                return;
+            }
+            // When the unsaved-changes modal is open, ⌘E means save-and-close
+            if (vm.EditorPanel.ShowUnsavedDialog) {
+                if (AppHandler.Instance.MatchesHotkey(e, ActionHotkey.MetaE)) {
+                    vm.EditorPanel.SaveAndClose();
+                    e.Handled = true;
+                }
+                return; // let Space/Enter/Tab reach the focused dialog button
+            }
             if (AppHandler.Instance.MatchesHotkey(e, ActionHotkey.MetaE)) {
-                vm.EditorPanel.RequestClose();
+                vm.EditorPanel.SaveAndClose(); // guarda si dirty, cierra siempre, sin popup
                 e.Handled = true;
             } else if (!vm.EditorPanel.IsAutoSave && AppHandler.Instance.MatchesHotkey(e, ActionHotkey.MetaS)) {
                 vm.EditorPanel.SaveFile();
