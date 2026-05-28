@@ -252,6 +252,14 @@ El campo `backgroundOpacity` (0.0–1.0) solo se usa en estilo `background` y co
 | `updateBanner.text.color` | `Theme.Update.Color` |
 | `updateBanner.text.size` | `Theme.Update.Size` |
 
+### Preview Panel
+
+| JSON path | Recurso Avalonia |
+|---|---|
+| `preview.width` | `Theme.Preview.Width` |
+
+Anchura en píxeles del panel lateral de preview/editor (columna derecha). Si el campo está ausente en el JSON, se usa el valor de `AppDefaults.EditorWidth` (680 px).
+
 > **Verificar en:**
 > - `ThemeService.Apply()` -- mapeo token JSON a recurso Avalonia.
 > - `ThemeService.ApplyBuiltinDefault()` -- lista canonica de todos los tokens con sus valores por defecto.

@@ -35,8 +35,7 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*,Auto"
-          Background="{DynamicResource Theme.Window.Background}">
+    <Grid RowDefinitions="Auto,*,Auto">
 
         <!-- Separator vertical izquierdo -->
         <Border Grid.RowSpan="3"
@@ -71,14 +70,17 @@
         </Grid>
 
         <!-- ── AvaloniaEdit TextEditor ── -->
-        <aedit:TextEditor Grid.Row="1"
-                          x:Name="Editor"
-                          IsReadOnly="{Binding IsPreviewMode}"
-                          ShowLineNumbers="False"
-                          FontFamily="Cascadia Code, Fira Code, Menlo, Consolas, monospace"
-                          FontSize="13"
-                          WordWrap="False"
-                          Background="{DynamicResource Theme.Results.Background}"/>
+        <Border Grid.Row="1"
+                Background="{DynamicResource Theme.Results.Background}"
+                CornerRadius="{DynamicResource Theme.Window.CornerRadius.BottomRight}">
+            <aedit:TextEditor x:Name="Editor"
+                              IsReadOnly="{Binding IsPreviewMode}"
+                              ShowLineNumbers="False"
+                              FontFamily="Cascadia Code, Fira Code, Menlo, Consolas, monospace"
+                              FontSize="13"
+                              WordWrap="False"
+                              Background="Transparent"/>
+        </Border>
 
         <!-- ── Edit footer: keyboard shortcut hints ── -->
         <Border Grid.Row="2"

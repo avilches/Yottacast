@@ -45,6 +45,33 @@ public sealed class ResultAction {
     /// </summary>
     public Func<string?>? HintProvider { get; init; }
 
+    /// <summary>
+    /// When true, the window reclaims focus after executing (with a short delay).
+    /// Use for keep-open variants of launch/open actions where the OS hands focus to the
+    /// launched app and we want to bring it back to Yottacast.
+    /// </summary>
+    public bool RegainFocusAfterExecute { get; init; }
+
     /// <summary>The action callback invoked on execution.</summary>
     public required Action Execute { get; init; }
+
+    /// <summary>
+    /// Returns a sibling action that executes the same callback but keeps the window open,
+    /// records the launch, and reclaims focus afterwards.
+    /// Intended for use as a Cmd+↵ shortcut or as the "keep open" item in the Tab menu.
+    /// </summary>
+    public ResultAction AsKeepOpen() => new() {
+        Label                  = Label,
+        LabelProvider          = LabelProvider,
+        Hotkey                 = ActionHotkey.MetaEnter,
+        ShowInFooter           = false,
+        ShowInMenu             = true,
+        ClosesMenu             = true,
+        ClosesWindow           = false,
+        PasteAfterClose        = false,
+        RequiresRefresh        = RequiresRefresh,
+        HintProvider           = HintProvider,
+        RegainFocusAfterExecute = true,
+        Execute                = Execute,
+    };
 }

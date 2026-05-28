@@ -182,10 +182,11 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
                 SetDouble(app,     "Theme.Window.Width",        window["width"]);
                 SetCornerRadius(app, "Theme.Window.CornerRadius", window["cornerRadius"]);
                 SetFontFamily(app, "Theme.Window.FontFamily",  window["fontFamily"]);
-                // Derived: bottom-only corner radius for footer
+                // Derived: corner radius variants for footer and editor panel
                 if (window["cornerRadius"] != null) {
                     var cr = window["cornerRadius"]!.GetValue<double>();
-                    app.Resources["Theme.Window.CornerRadius.Bottom"] = new CornerRadius(0, 0, cr, cr);
+                    app.Resources["Theme.Window.CornerRadius.Bottom"]      = new CornerRadius(0, 0, cr, cr);
+                    app.Resources["Theme.Window.CornerRadius.BottomRight"] = new CornerRadius(0, 0, cr, 0);
                 }
             }
 
@@ -368,6 +369,9 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
                 SetDouble(app, "Theme.Update.Size",       update["text"]?["size"]);
             }
 
+            // ── Preview Panel ──
+            app.Resources["Theme.Preview.Width"] = json["preview"]?["width"]?.GetValue<double>() ?? AppDefaults.EditorWidth;
+
             logger.LogInformation("Theme applied: {ThemeName}", json["name"]?.GetValue<string>() ?? themeName);
             WatchActiveTheme(themeName);
         } catch (Exception ex) {
@@ -388,8 +392,9 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
         // ── Window ──
         app.Resources["Theme.Window.Background"]         = B("#1C1C22");
         app.Resources["Theme.Window.Width"]               = 730.0;
-        app.Resources["Theme.Window.CornerRadius"]        = new CornerRadius(14);
-        app.Resources["Theme.Window.CornerRadius.Bottom"] = new CornerRadius(0, 0, 14, 14);
+        app.Resources["Theme.Window.CornerRadius"]             = new CornerRadius(14);
+        app.Resources["Theme.Window.CornerRadius.Bottom"]      = new CornerRadius(0, 0, 14, 14);
+        app.Resources["Theme.Window.CornerRadius.BottomRight"] = new CornerRadius(0, 0, 14, 0);
         app.Resources["Theme.Window.FontFamily"]          = new FontFamily("SF Pro Text, Lucida Grande, Segoe UI, Inter");
 
         // ── Search ──
@@ -516,6 +521,9 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
         app.Resources["Theme.Update.Background"] = B("#2C5AF0");
         app.Resources["Theme.Update.Color"]      = B("#FFFFFF");
         app.Resources["Theme.Update.Size"]       = 12.0;
+
+        // ── Preview Panel ──
+        app.Resources["Theme.Preview.Width"] = AppDefaults.EditorWidth;
     }
 
     private static void SetHintStyle(Application app, string kind, JsonNode? node) {

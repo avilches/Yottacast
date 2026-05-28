@@ -109,5 +109,9 @@
   "updateBanner": {
     "background": "#2C5AF0",
     "text": { "color": "#FFFFFF", "size": 12 }
+  },
+
+  "preview": {
+    "width": 400
   }
 }

@@ -6,6 +6,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Platform;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Microsoft.Extensions.Logging;
 using Yottacast.Core;
@@ -188,7 +189,7 @@ public partial class MainWindow : Window {
             Grid.SetColumn(EditorContainer, 1);
             Grid.SetColumnSpan(EditorContainer, 1);
             EditorWidthSpacer.IsVisible = false;
-            EditorView.Width = 680;
+            EditorView.Width = Application.Current?.Resources["Theme.Preview.Width"] is double pw ? pw : AppDefaults.EditorWidth;
             SearchBox.IsEnabled = true;
             if (IsVisible) SearchBox.Focus();
         }
@@ -307,8 +308,34 @@ public partial class MainWindow : Window {
             if (action.PasteAfterClose)
                 _ = AppHandler.Instance.SimulatePasteAsync();
         } else {
+            if (result != null && action.RegainFocusAfterExecute)
+                vm.RecordLaunch(result);
             var hint = action.HintProvider?.Invoke();
             if (hint != null) vm.ShowCopiedMessage(hint);
+            if (action.RegainFocusAfterExecute)
+                _ = Task.Delay(AppDefaults.RegainFocusDelayMs)
+                    .ContinueWith(_ => Dispatcher.UIThread.Post(() => Activate()), TaskScheduler.Default);
+        }
+    }
+
+    // Captures the emoji grid state needed to restore cursor position after a RequiresRefresh action.
+    private static (EmojiGridResultViewModel? grid, int index, string? selectedChar) CaptureEmojiContext(
+        MainWindowViewModel vm, ResultAction action)
+    {
+        if (!action.RequiresRefresh || vm.SelectedResult is not EmojiGridResultViewModel eg)
+            return (null, 0, null);
+        var prevSection = eg.SelectedEmojiIndex < eg.Cells.Count
+            ? eg.Cells[eg.SelectedEmojiIndex].Section : EmojiSection.Default;
+        var selectedChar = prevSection == EmojiSection.Default ? eg.SelectedEmoji?.Char : null;
+        return (eg, eg.SelectedEmojiIndex, selectedChar);
+    }
+
+    private void ExecuteActionWithContext(MainWindowViewModel vm, ResultAction action) {
+        var (grid, idx, chr) = CaptureEmojiContext(vm, action);
+        ExecuteAction(vm, action);
+        if (action.RequiresRefresh) {
+            vm.RefreshSearch();
+            RepositionEmojiCursor(vm, grid, idx, chr);
         }
     }
 
@@ -353,23 +380,8 @@ public partial class MainWindow : Window {
                     e.Handled = true;
                     return;
                 case Key.Return:
-                    if (vm.SelectedMenuAction is { } menuAction) {
-                        EmojiGridResultViewModel? emojiGrid = null;
-                        int previousIndex = 0;
-                        string? selectedChar = null;
-                        if (menuAction.RequiresRefresh && vm.SelectedResult is EmojiGridResultViewModel eg) {
-                            emojiGrid = eg;
-                            previousIndex = eg.SelectedEmojiIndex;
-                            var prevSection = previousIndex < eg.Cells.Count
-                                ? eg.Cells[previousIndex].Section : EmojiSection.Default;
-                            selectedChar = prevSection == EmojiSection.Default ? eg.SelectedEmoji?.Char : null;
-                        }
-                        ExecuteAction(vm, menuAction);
-                        if (menuAction.RequiresRefresh) {
-                            vm.RefreshSearch();
-                            RepositionEmojiCursor(vm, emojiGrid, previousIndex, selectedChar);
-                        }
-                    }
+                    if (vm.SelectedMenuAction is { } menuAction)
+                        ExecuteActionWithContext(vm, menuAction);
                     e.Handled = true;
                     return;
                 case Key.Escape:
@@ -475,24 +487,7 @@ public partial class MainWindow : Window {
                 && Math.Abs(SearchBox.SelectionEnd - SearchBox.SelectionStart) > 0)
                 continue;
 
-            EmojiGridResultViewModel? emojiGrid = null;
-            int previousIndex = 0;
-            string? selectedChar = null;
-            if (action.RequiresRefresh && vm.SelectedResult is EmojiGridResultViewModel eg) {
-                emojiGrid = eg;
-                previousIndex = eg.SelectedEmojiIndex;
-                var prevSection = previousIndex < eg.Cells.Count
-                    ? eg.Cells[previousIndex].Section : EmojiSection.Default;
-                selectedChar = prevSection == EmojiSection.Default ? eg.SelectedEmoji?.Char : null;
-            }
-
-            ExecuteAction(vm, action);
-
-            if (action.RequiresRefresh) {
-                vm.RefreshSearch();
-                RepositionEmojiCursor(vm, emojiGrid, previousIndex, selectedChar);
-            }
-
+            ExecuteActionWithContext(vm, action);
             e.Handled = true;
             return;
         }
@@ -590,12 +585,9 @@ public partial class MainWindow : Window {
                     if (enterAction != null) {
                         if (e.KeyModifiers.HasFlag(KeyModifiers.Meta)) {
                             // Cmd+Enter: execute without closing the search window
-                            enterAction.Execute();
-                            if (vm.SelectedResult != null) vm.RecordLaunch(vm.SelectedResult);
-                            var hint = enterAction.HintProvider?.Invoke();
-                            if (hint != null) vm.ShowCopiedMessage(hint);
+                            ExecuteActionWithContext(vm, enterAction.AsKeepOpen());
                         } else {
-                            ExecuteAction(vm, enterAction);
+                            ExecuteActionWithContext(vm, enterAction);
                         }
                     }
                 }
@@ -723,13 +715,10 @@ public partial class MainWindow : Window {
         if (enterAction == null) return;
 
         if (_lastClickModifiers.HasFlag(KeyModifiers.Meta)) {
-            // Cmd+Click: execute action without closing the search window
-            enterAction.Execute();
-            if (vm.SelectedResult != null) vm.RecordLaunch(vm.SelectedResult);
-            var hint = enterAction.HintProvider?.Invoke();
-            if (hint != null) vm.ShowCopiedMessage(hint);
+            // Cmd+Click: execute without closing the search window
+            ExecuteActionWithContext(vm, enterAction.AsKeepOpen());
         } else {
-            ExecuteAction(vm, enterAction);
+            ExecuteActionWithContext(vm, enterAction);
         }
     }
 

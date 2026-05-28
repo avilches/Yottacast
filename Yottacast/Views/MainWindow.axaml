@@ -555,7 +555,7 @@
         <!-- Spacer: mantiene el ancho de col 1 cuando el editor hace ColumnSpan en modo Edit -->
         <Border x:Name="EditorWidthSpacer"
                 Grid.Column="1"
-                Width="680" Height="1"
+                Width="{DynamicResource Theme.Preview.Width}" Height="1"
                 IsHitTestVisible="False"
                 Background="Transparent"
                 IsVisible="False"/>
@@ -563,7 +563,6 @@
         <Panel Grid.Column="1" x:Name="EditorContainer" ZIndex="1" IsVisible="{Binding IsEditorOpen}">
             <views:EditorPanelView x:Name="EditorView"
                                    DataContext="{Binding EditorPanel}"
-                                   Width="680"
                                    Height="640"/>
         </Panel>
     </Grid>

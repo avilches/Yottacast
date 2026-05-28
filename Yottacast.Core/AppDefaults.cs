@@ -80,6 +80,9 @@ public static class AppDefaults {
     // ── UI — paste simulation ─────────────────────────────────────────────────
     /// Delay before simulating Cmd+V / Ctrl+V after selecting an emoji.
     public const int PasteDelayMs = 150;
+    /// Delay before reclaiming window focus after Cmd+Enter / Cmd+Click (keep-window-open).
+    /// Needs to be long enough for the OS to hand focus to the launched app first.
+    public const int RegainFocusDelayMs = 200;
 
     // ── Search — date ────────────────────────────────────────────────────────
     /// Date search: score for recognized date/daterange results.

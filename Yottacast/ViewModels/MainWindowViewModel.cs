@@ -98,7 +98,14 @@ public partial class MainWindowViewModel(
         get {
             var actions = SelectedResult?.Actions;
             if (actions == null) return [];
-            return actions.Where(a => a.ShowInMenu).ToList();
+            var menuActions = actions.Where(a => a.ShowInMenu).ToList();
+            // Auto-add a "keep open" variant for the Enter action when it closes the window,
+            // unless the source already registered one (e.g. has MetaEnter hotkey).
+            var enterAction = actions.FirstOrDefault(a => a.Hotkey == ActionHotkey.Enter && a.ClosesWindow);
+            bool alreadyHasKeepOpen = menuActions.Any(a => a.Hotkey == ActionHotkey.MetaEnter);
+            if (enterAction != null && !alreadyHasKeepOpen)
+                menuActions.Add(enterAction.AsKeepOpen());
+            return menuActions;
         }
     }
 
