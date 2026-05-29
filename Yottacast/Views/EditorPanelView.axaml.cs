@@ -115,7 +115,11 @@ public partial class EditorPanelView : UserControl {
 
     private void ApplySyntaxHighlighting(string filePath) {
         if (string.IsNullOrEmpty(filePath)) return;
-        var ext = Path.GetExtension(filePath);
+        var ext = Path.GetExtension(filePath).ToLowerInvariant();
+        if (ext is ".md" or ".markdown") {
+            Editor.SyntaxHighlighting = null;
+            return;
+        }
         Editor.SyntaxHighlighting = HighlightingManager.Instance.GetDefinitionByExtension(ext);
     }
 }

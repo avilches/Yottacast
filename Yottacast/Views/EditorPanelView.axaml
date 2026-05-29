@@ -71,10 +71,11 @@
                                   Background="Transparent"/>
             </Border>
             <!-- Markdown renderizado: solo para .md en modo Preview -->
-            <md:MarkdownScrollViewer IsVisible="{Binding IsMarkdownPreview}"
-                                     Markdown="{Binding Content}"
-                                     Background="{DynamicResource Theme.Results.Background}"
-                                     Padding="12,8"/>
+            <Border IsVisible="{Binding IsMarkdownPreview}"
+                    Background="{DynamicResource Theme.Results.Background}"
+                    Padding="12,8">
+                <md:MarkdownScrollViewer Markdown="{Binding Content}"/>
+            </Border>
         </Panel>
 
         <!-- ── Edit footer: keyboard shortcut hints ── -->
