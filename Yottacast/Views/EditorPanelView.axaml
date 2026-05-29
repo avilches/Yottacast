@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:Yottacast.Core.ViewModels;assembly=Yottacast.Core"
              xmlns:aedit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
+             xmlns:md="clr-namespace:Markdown.Avalonia;assembly=Markdown.Avalonia"
              x:Class="Yottacast.Views.EditorPanelView"
              x:DataType="vm:EditorPanelViewModel">
 
@@ -55,18 +56,26 @@
                        FontSize="{DynamicResource Theme.Search.Size}"/>
         </Grid>
 
-        <!-- ── AvaloniaEdit TextEditor ── -->
-        <Border Grid.Row="1"
-                Background="{DynamicResource Theme.Results.Background}"
-                CornerRadius="0">
-            <aedit:TextEditor x:Name="Editor"
-                              IsReadOnly="{Binding IsPreviewMode}"
-                              ShowLineNumbers="False"
-                              FontFamily="Cascadia Code, Fira Code, Menlo, Consolas, monospace"
-                              FontSize="13"
-                              WordWrap="False"
-                              Background="Transparent"/>
-        </Border>
+        <!-- ── Editor / Markdown Preview ── -->
+        <Panel Grid.Row="1">
+            <!-- AvaloniaEdit: ficheros de código/texto y .md en modo Edit -->
+            <Border IsVisible="{Binding !IsMarkdownPreview}"
+                    Background="{DynamicResource Theme.Results.Background}"
+                    CornerRadius="0">
+                <aedit:TextEditor x:Name="Editor"
+                                  IsReadOnly="{Binding IsPreviewMode}"
+                                  ShowLineNumbers="False"
+                                  FontFamily="Cascadia Code, Fira Code, Menlo, Consolas, monospace"
+                                  FontSize="13"
+                                  WordWrap="False"
+                                  Background="Transparent"/>
+            </Border>
+            <!-- Markdown renderizado: solo para .md en modo Preview -->
+            <md:MarkdownScrollViewer IsVisible="{Binding IsMarkdownPreview}"
+                                     Markdown="{Binding Content}"
+                                     Background="{DynamicResource Theme.Results.Background}"
+                                     Padding="12,8"/>
+        </Panel>
 
         <!-- ── Edit footer: keyboard shortcut hints ── -->
         <Border Grid.Row="2"
