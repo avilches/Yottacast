@@ -53,6 +53,19 @@
       "style": "background",
       "color": "#6EFFFF",
       "backgroundOpacity": 1.22
+    },
+    "tags": {
+      "cornerRadius": 4,
+      "running": {
+        "color": "#30D158",
+        "background": "#2430D158",
+        "borderColor": "Transparent"
+      },
+      "info": {
+        "color": "#5AC8FA",
+        "background": "#1A0A84FF",
+        "borderColor": "Transparent"
+      }
     }
   },
 
