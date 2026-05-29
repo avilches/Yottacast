@@ -14,9 +14,9 @@
     "background": "Transparent",
     "input": {
       "cornerRadius": 0,
-      "margin": "0",
-      "padding": "18,0",
-      "border": { "color": "Transparent", "thickness": "0" }
+      "margin": "8,8",
+      "padding": "2,-8",
+      "border": { "color": "#FF0000", "thickness": "1" }
     },
     "text":        { "color": "#F2F2F7", "size": 17, "fontFamily": "SF Pro Text, Lucida Grande, Segoe UI, Inter" },
     "placeholder": { "color": "#636366" },

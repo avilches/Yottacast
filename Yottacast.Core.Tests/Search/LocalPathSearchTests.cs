@@ -62,9 +62,10 @@ public class LocalPathSearchTests {
             var search = BuildSearch();
             var results = search.Search(tempFile, 10);
             Assert.Single(results);
-            var r = Assert.IsType<ResultItemViewModel>(results[0]);
+            var r = Assert.IsType<FileResultItemViewModel>(results[0]);
             Assert.Equal(Path.GetFileName(tempFile), r.Title);
             Assert.Equal(tempFile, r.Subtitle);
+            Assert.Equal(tempFile, r.ItemPath);
             Assert.Equal("Files", r.Category);
             Assert.Equal(10.0, r.Score);
         } finally {
@@ -79,9 +80,10 @@ public class LocalPathSearchTests {
             var search = BuildSearch();
             var results = search.Search(tempDir, 10);
             Assert.Single(results);
-            var r = Assert.IsType<ResultItemViewModel>(results[0]);
+            var r = Assert.IsType<FileResultItemViewModel>(results[0]);
             Assert.Equal(Path.GetFileName(tempDir), r.Title);
             Assert.Equal(tempDir, r.Subtitle);
+            Assert.Equal(tempDir, r.ItemPath);
         } finally {
             Directory.Delete(tempDir);
         }
@@ -94,8 +96,9 @@ public class LocalPathSearchTests {
         var results = search.Search("~/", 10);
         if (!Directory.Exists(home)) return;
         Assert.Single(results);
-        var r = Assert.IsType<ResultItemViewModel>(results[0]);
+        var r = Assert.IsType<FileResultItemViewModel>(results[0]);
         Assert.Equal(home, r.Subtitle);
+        Assert.Equal(home, r.ItemPath);
     }
 
     [Fact]
@@ -104,7 +107,7 @@ public class LocalPathSearchTests {
         try {
             var search = BuildSearch();
             var results = search.Search(tempFile, 10);
-            var r = Assert.IsType<ResultItemViewModel>(results[0]);
+            var r = Assert.IsType<FileResultItemViewModel>(results[0]);
             var open = r.Actions.Single(a => a.Hotkey == ActionHotkey.Enter);
             Assert.NotNull(open.Execute);
             var copy = r.Actions.Single(a => a.Hotkey == ActionHotkey.MetaC);

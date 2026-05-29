@@ -208,7 +208,7 @@ public class UserDocumentSearch(
                                 Execute      = () => { },
                             });
                         }
-                        buffer.Add(new ResultItemViewModel {
+                        buffer.Add(new FileResultItemViewModel {
                             IconBytes = fileIconCache.Get(r.Path),
                             BadgeIconBytes = _badgeByExtension.GetValueOrDefault(ext),
                             Title = r.Name,

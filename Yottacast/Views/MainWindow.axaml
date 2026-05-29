@@ -151,18 +151,14 @@
             TextElement.FontFamily="{DynamicResource Theme.Window.FontFamily}"
             PointerPressed="OnRootPointerPressed">
     <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto"/>
-            <ColumnDefinition Width="Auto"/>
-        </Grid.ColumnDefinitions>
 
-        <DockPanel Grid.Column="0"
-                   Width="{DynamicResource Theme.Window.Width}">
+        <DockPanel>
 
             <!-- ── Search row + hint ── -->
             <!-- StackPanel is transparent: window.background colors this header zone -->
             <!-- ZIndex="5" allows the hint overlay to float over sibling DockPanel children -->
-            <StackPanel DockPanel.Dock="Top" ZIndex="5">
+            <StackPanel DockPanel.Dock="Top" ZIndex="5"
+                        MinWidth="{DynamicResource Theme.Window.Width}">
 
                 <!-- Input box + hint overlay (hint floats over the bottom of the input, no layout shift) -->
                 <Grid>
@@ -275,6 +271,8 @@
             <!-- ── No results ── -->
             <Border DockPanel.Dock="Top"
                     Padding="0,28,0,28"
+                    Width="{DynamicResource Theme.Window.Width}"
+                    HorizontalAlignment="Left"
                     Background="{DynamicResource Theme.Results.Background}"
                     IsVisible="{Binding ShowNoResults}">
                 <StackPanel HorizontalAlignment="Center" Spacing="8">
@@ -297,7 +295,8 @@
                     Background="{DynamicResource Theme.Update.Background}"
                     BorderThickness="0"
                     Padding="18,9"
-                    HorizontalAlignment="Stretch"
+                    Width="{DynamicResource Theme.Window.Width}"
+                    HorizontalAlignment="Left"
                     HorizontalContentAlignment="Center"
                     Cursor="Hand">
                 <TextBlock Text="{Binding UpdateBannerText}"
@@ -344,10 +343,16 @@
                 </Grid>
             </Border>
 
-            <!-- ── Results list + Options overlay ── -->
-            <Panel x:Name="ResultsPanel">
+            <!-- ── Results list + Options overlay + Preview panel ── -->
+            <Grid x:Name="ResultsPanel">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
 
                 <ListBox x:Name="ResultsList"
+                         Grid.Column="0"
+                         Width="{DynamicResource Theme.Window.Width}"
                          ItemsSource="{Binding Results}"
                          SelectedItem="{Binding SelectedResult}"
                          MaxHeight="{DynamicResource Theme.Results.MaxHeight}"
@@ -492,6 +497,7 @@
 
                 <!-- ── Options overlay (Tab / right-click) — positioned at cursor ── -->
                 <Border x:Name="OptionsMenuOverlay"
+                        Grid.Column="0"
                         IsVisible="{Binding IsOptionsMenuOpen}"
                         ZIndex="1"
                         Background="{DynamicResource Theme.Menu.Background}"
@@ -504,15 +510,6 @@
                         Margin="0">
 
                     <StackPanel>
-                        <!-- Header -->
-                        <Border Background="{DynamicResource Theme.Menu.Header.Background}"
-                                Padding="{DynamicResource Theme.Menu.Header.Padding}"
-                                Margin="{DynamicResource Theme.Menu.Header.Margin}">
-                            <TextBlock Text="Actions"
-                                       Foreground="{DynamicResource Theme.Menu.Header.Color}"
-                                       FontSize="{DynamicResource Theme.Menu.Header.Size}"/>
-                        </Border>
-
                         <!-- Options list -->
                         <ListBox x:Name="OptionsMenuList"
                                  Classes="menu-list"
@@ -550,23 +547,18 @@
                     </StackPanel>
                 </Border>
 
-            </Panel>
+                <!-- ── Preview / Edit panel (right column) ── -->
+                <Panel Grid.Column="1" x:Name="EditorContainer" ZIndex="1"
+                       IsVisible="{Binding IsEditorOpen}"
+                       MaxHeight="{DynamicResource Theme.Results.MaxHeight}">
+                    <views:EditorPanelView x:Name="EditorView"
+                                           DataContext="{Binding EditorPanel}"/>
+                </Panel>
+
+            </Grid>
 
         </DockPanel>
 
-        <!-- Spacer: mantiene el ancho de col 1 cuando el editor hace ColumnSpan en modo Edit -->
-        <Border x:Name="EditorWidthSpacer"
-                Grid.Column="1"
-                Width="{DynamicResource Theme.Preview.Width}" Height="1"
-                IsHitTestVisible="False"
-                Background="Transparent"
-                IsVisible="False"/>
-
-        <Panel Grid.Column="1" x:Name="EditorContainer" ZIndex="1" IsVisible="{Binding IsEditorOpen}">
-            <views:EditorPanelView x:Name="EditorView"
-                                   DataContext="{Binding EditorPanel}"
-                                   Height="640"/>
-        </Panel>
     </Grid>
     </Border>
 

@@ -403,7 +403,7 @@ public partial class MainWindowViewModel(
         if (!IsEditorOpen && !_isPreviewEnabled) return;
         if (EditorPanel.IsEditMode) return; // buscador pausado: no cambiar fichero mientras se edita
 
-        if (value is ResultItemViewModel { ItemPath: { } path }) {
+        if (value is FileResultItemViewModel { ItemPath: { } path }) {
             if (fileEditorService.IsTextContent(path)) {
                 EditorPanel.LoadPreview(path);
                 IsEditorOpen = true;
@@ -518,7 +518,7 @@ public partial class MainWindowViewModel(
     }
 
     public void RecordLaunch(BaseResultItemViewModel item) {
-        if (item is ResultItemViewModel r && !string.IsNullOrEmpty(r.ItemPath))
+        if (item is FileResultItemViewModel r)
             launchHistory.Record(r.ItemPath);
     }
 
@@ -581,7 +581,7 @@ public partial class MainWindowViewModel(
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (appNames.Count > 0)
             merged.RemoveAll(x =>
-                x is ResultItemViewModel { Category: "Files" } file &&
+                x is FileResultItemViewModel file &&
                 appNames.Contains(Path.GetFileNameWithoutExtension(file.Title)));
 
         var previousSelected = SelectedResult;

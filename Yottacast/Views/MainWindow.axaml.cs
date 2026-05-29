@@ -187,7 +187,7 @@ public partial class MainWindow : Window {
         if (isEdit) {
             Grid.SetColumn(EditorContainer, 0);
             Grid.SetColumnSpan(EditorContainer, 2);
-            EditorWidthSpacer.IsVisible = true;
+            EditorContainer.Width = double.NaN;
             EditorView.Width = double.NaN;
             SearchBox.IsEnabled = false;
             Avalonia.Threading.Dispatcher.UIThread.Post(
@@ -196,12 +196,15 @@ public partial class MainWindow : Window {
         } else {
             Grid.SetColumn(EditorContainer, 1);
             Grid.SetColumnSpan(EditorContainer, 1);
-            EditorWidthSpacer.IsVisible = false;
-            EditorView.Width = Application.Current?.Resources["Theme.Preview.Width"] is double pw ? pw : AppDefaults.EditorWidth;
+            EditorContainer.Width = GetPreviewWidth();
+            EditorView.Width = double.NaN;
             SearchBox.IsEnabled = true;
             if (IsVisible) SearchBox.Focus();
         }
     }
+
+    private static double GetPreviewWidth() =>
+        Application.Current?.Resources["Theme.Preview.Width"] is double w ? w : AppDefaults.EditorWidth;
 
     private void FocusCorrectControl() {
         if (DataContext is MainWindowViewModel vm && vm.IsEditorOpen && vm.EditorPanel.IsEditMode)
@@ -306,7 +309,7 @@ public partial class MainWindow : Window {
         // Editor hotkeys have no-op Execute; dispatch the real logic here
         if (action.Hotkey == ActionHotkey.MetaP) {
             if (!vm.IsEditorOpen && _settings.EnableFileEditor
-                && result is ResultItemViewModel { ItemPath: { } pPath }
+                && result is FileResultItemViewModel { ItemPath: { } pPath }
                 && _fileEditorService.IsTextContent(pPath))
                 vm.OpenPreview(pPath);
         } else if (action.Hotkey == ActionHotkey.MetaE) {
@@ -315,7 +318,7 @@ public partial class MainWindow : Window {
                 if (check.CanOpen) vm.EditorPanel.SwitchToEdit(_settings.FileEditorAutoSave);
                 else vm.ShowCopiedMessage(check.Error ?? "Cannot edit this file");
             } else if (!vm.IsEditorOpen && _settings.EnableFileEditor
-                && result is ResultItemViewModel { ItemPath: { } ePath }
+                && result is FileResultItemViewModel { ItemPath: { } ePath }
                 && _fileEditorService.IsTextContent(ePath))
                 vm.OpenEditor(ePath);
         }
@@ -492,7 +495,7 @@ public partial class MainWindow : Window {
             }
             if (!vm.IsEditorOpen
                 && _settings.EnableFileEditor
-                && vm.SelectedResult is ResultItemViewModel { ItemPath: { } previewPath }
+                && vm.SelectedResult is FileResultItemViewModel { ItemPath: { } previewPath }
                 && _fileEditorService.IsTextContent(previewPath)) {
                 vm.OpenPreview(previewPath);
                 e.Handled = true;
@@ -514,7 +517,7 @@ public partial class MainWindow : Window {
                 return;
             }
             if (_settings.EnableFileEditor
-                && vm.SelectedResult is ResultItemViewModel { ItemPath: { } path }
+                && vm.SelectedResult is FileResultItemViewModel { ItemPath: { } path }
                 && _fileEditorService.IsTextContent(path)) {
                 vm.OpenEditor(path);
                 e.Handled = true;
@@ -658,7 +661,7 @@ public partial class MainWindow : Window {
         if (DataContext is not MainWindowViewModel vm || !vm.IsOptionsMenuOpen || vm.SelectedResult == null)
             return;
 
-        var panelW = ResultsPanel.Bounds.Width;
+        var panelW = ResultsList.Bounds.Width;
         var panelH = ResultsPanel.Bounds.Height;
         var menuW  = OptionsMenuOverlay.Bounds.Width > 0 ? OptionsMenuOverlay.Bounds.Width : 220.0;
         var menuH  = OptionsMenuOverlay.Bounds.Height;

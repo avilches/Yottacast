@@ -28,10 +28,11 @@ public class LocalPathSearch(
         logger.LogDebug("LocalPathSearch: found \"{Path}\"", expanded);
 
         var capturedPath = expanded;
-        return [new ResultItemViewModel {
+        return [new FileResultItemViewModel {
             IconBytes      = fileIconCache.GetOrPreload(expanded),
             Title          = title,
             Subtitle       = expanded,
+            ItemPath       = capturedPath,
             Category       = "Files",
             Score          = 10.0,
             ScoreReason    = "Ruta local directa",

@@ -43,20 +43,6 @@
                 HorizontalAlignment="Left"
                 Background="{DynamicResource Theme.Divider.Color}"/>
 
-        <!-- ── Preview header ── -->
-        <Border Grid.Row="0"
-                IsVisible="{Binding IsPreviewMode}"
-                Margin="{DynamicResource Theme.Search.Input.Margin}"
-                Padding="{DynamicResource Theme.Search.Input.Padding}">
-            <Grid MinHeight="46">
-                <TextBlock Text="{Binding TitleText}"
-                           VerticalAlignment="Center"
-                           TextTrimming="CharacterEllipsis"
-                           Foreground="{DynamicResource Theme.Results.Color}"
-                           FontSize="{DynamicResource Theme.Search.Size}"/>
-            </Grid>
-        </Border>
-
         <!-- ── Edit header ── -->
         <Grid Grid.Row="0"
               IsVisible="{Binding IsEditMode}"
@@ -72,7 +58,7 @@
         <!-- ── AvaloniaEdit TextEditor ── -->
         <Border Grid.Row="1"
                 Background="{DynamicResource Theme.Results.Background}"
-                CornerRadius="{DynamicResource Theme.Window.CornerRadius.BottomRight}">
+                CornerRadius="0">
             <aedit:TextEditor x:Name="Editor"
                               IsReadOnly="{Binding IsPreviewMode}"
                               ShowLineNumbers="False"
@@ -88,7 +74,7 @@
                 Background="{DynamicResource Theme.Footer.Background}"
                 BorderBrush="{DynamicResource Theme.Footer.Border}"
                 BorderThickness="0,1,0,0"
-                CornerRadius="{DynamicResource Theme.Window.CornerRadius.Bottom}"
+                CornerRadius="0"
                 Padding="18,10">
             <StackPanel Orientation="Horizontal" Spacing="20">
                 <TextBlock Text="⌘S  Guardar"

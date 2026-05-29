@@ -333,13 +333,17 @@ La posicion se actualiza en memoria en cada movimiento via `PositionChanged` (si
 |---|---|
 | Decoraciones del sistema | Ninguna (`SystemDecorations="None"`) |
 | Fondo | Transparente con borde redondeado |
-| Ancho | Definido por tema (`Theme.Window.Width`) |
-| Alto | Ajustado al contenido (`SizeToContent="Height"`) |
+| Ancho | `Theme.Window.Width` en reposo; `Theme.Window.Width + Theme.Preview.Width` cuando el panel de preview está visible |
+| Alto | Ajustado al contenido (`SizeToContent="WidthAndHeight"`) |
 | Barra de tareas | No visible (`ShowInTaskbar="False"`) |
 | Redimensionable | No |
-| Altura maxima de la lista de resultados | 416 px con scroll vertical automatico, sin scroll horizontal |
+| Altura maxima de la lista de resultados | `Theme.Results.MaxHeight` px con scroll vertical automatico, sin scroll horizontal |
 
-> **Verificar en:** `MainWindow.axaml` -- atributos del `Window` y propiedades del `ListBox`.
+El panel de preview/editor se muestra a la derecha de la lista de resultados, dentro del mismo `Grid x:Name="ResultsPanel"` (columna 1). La columna 0 tiene siempre `Width=Theme.Window.Width`; la columna 1 (`Theme.Preview.Width`) solo es visible cuando `IsEditorOpen=true`. El resto de elementos (SearchBox, Divider, Footer) tienen `Width=Theme.Window.Width` y `HorizontalAlignment="Left"` para no expandirse cuando el panel de preview amplía la ventana.
+
+El panel de preview/editor (`EditorPanelView`) no tiene cabecera en modo preview. Su parte inferior tiene siempre el mismo aspecto que el footer de la lista de resultados: separador superior (`BorderThickness="0,1,0,0"`), mismo fondo (`Theme.Footer.Background`) y sin esquinas redondeadas propias (`CornerRadius="0"` — la ventana exterior ya gestiona el redondeo). En modo edición, el footer muestra además los atajos de teclado (`⌘S`, `⌘E`, `Esc`).
+
+> **Verificar en:** `MainWindow.axaml` -- atributos del `Window`, `Grid x:Name="ResultsPanel"` y `Panel x:Name="EditorContainer"`.
 
 ---
 

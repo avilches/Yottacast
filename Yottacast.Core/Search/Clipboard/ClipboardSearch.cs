@@ -131,37 +131,68 @@ public class ClipboardSearch(
         if (string.IsNullOrEmpty(title)) title = expanded;
 
         var capturedPath = expanded;
-        return new ResultItemViewModel
-        {
-            IconBytes     = fileIconCache.GetOrPreload(expanded),
-            Title         = $"{title} · from clipboard",
-            Subtitle      = expanded,
-            Category      = "Files",
-            Score         = 4.0,
-            Actions = [
-                new() {
-                    Label        = "Open",
-                    Hotkey       = ActionHotkey.Enter,
-                    ShowInFooter = true,
-                    ShowInMenu   = true,
-                    ClosesMenu   = true,
-                    ClosesWindow = true,
-                    Execute      = () =>
-                    {
-                        logger.LogInformation("ClipboardSearch: open path \"{Path}\"", capturedPath);
-                        platform.LaunchApp(capturedPath);
-                    },
+        var actions = new List<ResultAction> {
+            new() {
+                Label        = "Open",
+                Hotkey       = ActionHotkey.Enter,
+                ShowInFooter = true,
+                ShowInMenu   = true,
+                ClosesMenu   = true,
+                ClosesWindow = true,
+                Execute      = () =>
+                {
+                    logger.LogInformation("ClipboardSearch: open path \"{Path}\"", capturedPath);
+                    platform.LaunchApp(capturedPath);
                 },
-                new() {
-                    Label        = "Copy path",
-                    Hotkey       = ActionHotkey.MetaC,
-                    ShowInFooter = true,
-                    ShowInMenu   = true,
-                    ClosesMenu   = true,
-                    HintProvider = () => "Path copied!",
-                    Execute      = () => clipboardService.CopyText(capturedPath),
-                },
-            ],
+            },
+            new() {
+                Label        = "Copy path",
+                Hotkey       = ActionHotkey.MetaC,
+                ShowInFooter = true,
+                ShowInMenu   = true,
+                ClosesMenu   = true,
+                HintProvider = () => "Path copied!",
+                Execute      = () => clipboardService.CopyText(capturedPath),
+            },
         };
+
+        if (IsEditableExtension(expanded)) {
+            actions.Add(new ResultAction {
+                Label        = "Preview",
+                Hotkey       = ActionHotkey.MetaP,
+                ShowInFooter = true,
+                ShowInMenu   = true,
+                ClosesMenu   = true,
+                Execute      = () => { },
+            });
+            actions.Add(new ResultAction {
+                Label        = "Edit",
+                Hotkey       = ActionHotkey.MetaE,
+                ShowInFooter = true,
+                ShowInMenu   = true,
+                ClosesMenu   = true,
+                Execute      = () => { },
+            });
+        }
+
+        return new FileResultItemViewModel
+        {
+            IconBytes = fileIconCache.GetOrPreload(expanded),
+            Title     = $"{title} · from clipboard",
+            Subtitle  = expanded,
+            ItemPath  = capturedPath,
+            Category  = "Files",
+            Score     = 4.0,
+            Actions   = actions,
+        };
+    }
+
+    private bool IsEditableExtension(string filePath)
+    {
+        if (!settings.EnableFileEditor) return false;
+        var ext = Path.GetExtension(filePath).TrimStart('.').ToLowerInvariant();
+        return !string.IsNullOrEmpty(ext)
+            && settings.FileEditorExtensions.Any(e =>
+                e.Equals(ext, StringComparison.OrdinalIgnoreCase));
     }
 }
