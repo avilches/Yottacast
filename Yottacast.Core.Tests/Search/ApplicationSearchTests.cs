@@ -17,7 +17,10 @@ namespace Yottacast.Core.Tests.Search;
 /// </summary>
 internal sealed class FakePlatformProviderWithApps : FakePlatformProvider {
     public IReadOnlyList<string> AppPaths { get; set; }
+    public IReadOnlyList<RunningAppInfo> RunningApps { get; set; } = [];
     public string? LastLaunchedPath { get; private set; }
+    public int? LastQuitPid { get; private set; }
+    public int? LastForceQuitPid { get; private set; }
 
     public FakePlatformProviderWithApps(IReadOnlyList<string> appPaths) : base([]) {
         AppPaths = appPaths;
@@ -33,6 +36,9 @@ internal sealed class FakePlatformProviderWithApps : FakePlatformProvider {
     }
 
     public override void LaunchApp(string path) => LastLaunchedPath = path;
+    public override IReadOnlyList<RunningAppInfo> GetRunningApps() => RunningApps;
+    public override void QuitApp(int pid) => LastQuitPid = pid;
+    public override void ForceQuitApp(int pid) => LastForceQuitPid = pid;
 }
 
 public class ApplicationSearchTests {
