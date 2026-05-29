@@ -45,22 +45,25 @@
                 Background="{DynamicResource Theme.Divider.Color}"/>
 
         <!-- ── Edit header ── -->
-        <Grid Grid.Row="0"
-              IsVisible="{Binding IsEditMode}"
-              Margin="12,0,8,0"
-              MinHeight="40">
+        <Border Grid.Row="0"
+                IsVisible="{Binding IsEditMode}"
+                Background="{DynamicResource Theme.Editor.Header.Background}"
+                Padding="{DynamicResource Theme.Editor.Header.Padding}"
+                Margin="{DynamicResource Theme.Editor.Header.Margin}"
+                MinHeight="40">
             <TextBlock Text="{Binding TitleText}"
                        VerticalAlignment="Center"
                        TextTrimming="CharacterEllipsis"
-                       Foreground="{DynamicResource Theme.Results.Color}"
-                       FontSize="{DynamicResource Theme.Search.Size}"/>
-        </Grid>
+                       Foreground="{DynamicResource Theme.Editor.Header.Color}"
+                       FontSize="{DynamicResource Theme.Editor.Header.Size}"
+                       FontFamily="{DynamicResource Theme.Editor.Header.FontFamily}"/>
+        </Border>
 
         <!-- ── Editor / Markdown Preview ── -->
         <Panel Grid.Row="1">
             <!-- AvaloniaEdit: ficheros de código/texto y .md en modo Edit -->
             <Border IsVisible="{Binding !IsMarkdownPreview}"
-                    Background="{DynamicResource Theme.Results.Background}"
+                    Background="{DynamicResource Theme.Editor.Body.Background}"
                     CornerRadius="0">
                 <aedit:TextEditor x:Name="Editor"
                                   IsReadOnly="{Binding IsPreviewMode}"
@@ -72,33 +75,28 @@
             </Border>
             <!-- Markdown renderizado: solo para .md en modo Preview -->
             <Border IsVisible="{Binding IsMarkdownPreview}"
-                    Background="{DynamicResource Theme.Results.Background}"
+                    Background="{DynamicResource Theme.Editor.Body.Background}"
                     Padding="12,8">
                 <md:MarkdownScrollViewer Markdown="{Binding Content}"/>
             </Border>
         </Panel>
 
-        <!-- ── Edit footer: keyboard shortcut hints ── -->
+        <!-- ── Edit footer: fila/col y estadísticas del documento ── -->
         <Border Grid.Row="2"
                 IsVisible="{Binding IsEditMode}"
-                Background="{DynamicResource Theme.Footer.Background}"
-                BorderBrush="{DynamicResource Theme.Footer.Border}"
+                Background="{DynamicResource Theme.Editor.Footer.Background}"
+                BorderBrush="{DynamicResource Theme.Editor.Footer.Border}"
                 BorderThickness="0,1,0,0"
-                CornerRadius="0"
-                Padding="18,10">
-            <StackPanel Orientation="Horizontal" Spacing="20">
-                <TextBlock Text="⌘S  Guardar"
-                           FontSize="{DynamicResource Theme.Footer.Size}"
+                Padding="{DynamicResource Theme.Editor.Footer.Padding}">
+            <StackPanel Orientation="Horizontal" Spacing="16">
+                <TextBlock Text="{Binding StatusText}"
+                           FontSize="{DynamicResource Theme.Editor.Footer.Size}"
                            VerticalAlignment="Center"
-                           Foreground="{DynamicResource Theme.Footer.Color}"/>
-                <TextBlock Text="⌘E  Guardar y cerrar"
-                           FontSize="{DynamicResource Theme.Footer.Size}"
+                           Foreground="{DynamicResource Theme.Editor.Footer.Color}"/>
+                <TextBlock Text="{Binding CharCountText}"
+                           FontSize="{DynamicResource Theme.Editor.Footer.Size}"
                            VerticalAlignment="Center"
-                           Foreground="{DynamicResource Theme.Footer.Color}"/>
-                <TextBlock Text="Esc  Cerrar"
-                           FontSize="{DynamicResource Theme.Footer.Size}"
-                           VerticalAlignment="Center"
-                           Foreground="{DynamicResource Theme.Footer.Color}"/>
+                           Foreground="{DynamicResource Theme.Editor.Footer.Color}"/>
             </StackPanel>
         </Border>
 

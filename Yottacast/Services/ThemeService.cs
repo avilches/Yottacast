@@ -372,6 +372,31 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
             // ── Preview Panel ──
             app.Resources["Theme.Preview.Width"] = json["preview"]?["width"]?.GetValue<double>() ?? AppDefaults.EditorWidth;
 
+            // ── Editor ──
+            var editorNode = json["editor"];
+            if (editorNode != null) {
+                var edHeader = editorNode["header"];
+                if (edHeader != null) {
+                    SetBrush(app,      "Theme.Editor.Header.Background", edHeader["background"]);
+                    SetBrush(app,      "Theme.Editor.Header.Color",      edHeader["color"]);
+                    SetDouble(app,     "Theme.Editor.Header.Size",       edHeader["size"]);
+                    SetThickness(app,  "Theme.Editor.Header.Padding",    edHeader["padding"]);
+                    SetThickness(app,  "Theme.Editor.Header.Margin",     edHeader["margin"]);
+                    SetFontFamily(app, "Theme.Editor.Header.FontFamily", edHeader["fontFamily"]);
+                }
+                var edBody = editorNode["body"];
+                if (edBody != null)
+                    SetBrush(app, "Theme.Editor.Body.Background", edBody["background"]);
+                var edFooter = editorNode["footer"];
+                if (edFooter != null) {
+                    SetBrush(app,     "Theme.Editor.Footer.Background", edFooter["background"]);
+                    SetBrush(app,     "Theme.Editor.Footer.Border",     edFooter["border"]);
+                    SetBrush(app,     "Theme.Editor.Footer.Color",      edFooter["color"]);
+                    SetDouble(app,    "Theme.Editor.Footer.Size",       edFooter["size"]);
+                    SetThickness(app, "Theme.Editor.Footer.Padding",    edFooter["padding"]);
+                }
+            }
+
             logger.LogInformation("Theme applied: {ThemeName}", json["name"]?.GetValue<string>() ?? themeName);
             WatchActiveTheme(themeName);
         } catch (Exception ex) {
@@ -524,6 +549,20 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
 
         // ── Preview Panel ──
         app.Resources["Theme.Preview.Width"] = AppDefaults.EditorWidth;
+
+        // ── Editor ──
+        app.Resources["Theme.Editor.Header.Background"] = B("#0D0D12");
+        app.Resources["Theme.Editor.Header.Color"]      = B("#606068");
+        app.Resources["Theme.Editor.Header.Size"]       = 12.0;
+        app.Resources["Theme.Editor.Header.Padding"]    = new Thickness(12, 8);
+        app.Resources["Theme.Editor.Header.Margin"]     = new Thickness(0);
+        app.Resources["Theme.Editor.Header.FontFamily"] = new FontFamily("SF Pro Text, Lucida Grande, Segoe UI, Inter");
+        app.Resources["Theme.Editor.Body.Background"]   = B("#0D0D12");
+        app.Resources["Theme.Editor.Footer.Background"] = B("#1C1C22");
+        app.Resources["Theme.Editor.Footer.Border"]     = B("#2A2A30");
+        app.Resources["Theme.Editor.Footer.Color"]      = B("#606068");
+        app.Resources["Theme.Editor.Footer.Size"]       = 11.0;
+        app.Resources["Theme.Editor.Footer.Padding"]    = new Thickness(12, 6);
     }
 
     private static void SetHintStyle(Application app, string kind, JsonNode? node) {

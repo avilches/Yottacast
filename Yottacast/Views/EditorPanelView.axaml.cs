@@ -37,6 +37,11 @@ public partial class EditorPanelView : UserControl {
             Editor.Text = _currentVm.Content;
             _settingContent = false;
             ApplySyntaxHighlighting(_currentVm.FilePath);
+            _currentVm.UpdateStatus(
+                Editor.TextArea.Caret.Line,
+                Editor.TextArea.Caret.Column,
+                Editor.Document.TextLength,
+                Editor.Document.LineCount);
         }
     }
 
@@ -105,12 +110,21 @@ public partial class EditorPanelView : UserControl {
             _settingContent = true;
             vm.Content = Editor.Text;
             _settingContent = false;
+            vm.UpdateStatus(
+                Editor.TextArea.Caret.Line,
+                Editor.TextArea.Caret.Column,
+                Editor.Document.TextLength,
+                Editor.Document.LineCount);
         }
     }
 
     private void OnCaretPositionChanged(object? sender, EventArgs e) {
         if (DataContext is EditorPanelViewModel vm)
-            vm.UpdateStatus(Editor.TextArea.Caret.Line, Editor.TextArea.Caret.Column);
+            vm.UpdateStatus(
+                Editor.TextArea.Caret.Line,
+                Editor.TextArea.Caret.Column,
+                Editor.Document.TextLength,
+                Editor.Document.LineCount);
     }
 
     private void ApplySyntaxHighlighting(string filePath) {

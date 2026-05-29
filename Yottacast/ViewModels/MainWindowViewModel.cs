@@ -67,13 +67,17 @@ public partial class MainWindowViewModel(
 
     public bool HasFooterHints => HasResults || (IsEditorOpen && EditorPanel.IsEditMode);
 
+    public bool IsPreviewEnabled => _isPreviewEnabled;
+
     public IReadOnlyList<string> FooterHints {
         get {
             if (IsEditorOpen && EditorPanel.IsEditMode) {
                 var meta = MetaSymbol;
-                return EditorPanel.ShowSaveButton
-                    ? [$"{meta}S  Save", "Esc  Close"]
-                    : ["Esc  Close"];
+                var hints = new List<string>();
+                if (EditorPanel.ShowSaveButton) hints.Add($"{meta}S  Save");
+                hints.Add($"{meta}P  Preview");
+                hints.Add("Esc  Close");
+                return hints;
             }
 
             var actions = SelectedResult?.Actions;
