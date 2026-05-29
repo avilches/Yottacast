@@ -25,6 +25,11 @@ public partial class EditorPanelViewModel(FileEditorService fileEditorService) :
     public bool IsPreviewMode => Mode == EditorMode.Preview;
     public bool IsEditMode => Mode == EditorMode.Edit;
 
+    private static readonly HashSet<string> MarkdownExtensions = [".md", ".markdown"];
+    public bool IsMarkdownFile =>
+        MarkdownExtensions.Contains(Path.GetExtension(FilePath).ToLowerInvariant());
+    public bool IsMarkdownPreview => IsPreviewMode && IsMarkdownFile;
+
     public Action? CloseRequested { get; set; }
 
     partial void OnContentChanged(string value) {
@@ -32,12 +37,17 @@ public partial class EditorPanelViewModel(FileEditorService fileEditorService) :
         OnPropertyChanged(nameof(TitleText));
     }
 
-    partial void OnFilePathChanged(string value) => OnPropertyChanged(nameof(TitleText));
+    partial void OnFilePathChanged(string value) {
+        OnPropertyChanged(nameof(TitleText));
+        OnPropertyChanged(nameof(IsMarkdownFile));
+        OnPropertyChanged(nameof(IsMarkdownPreview));
+    }
 
     partial void OnModeChanged(EditorMode value) {
         OnPropertyChanged(nameof(ShowSaveButton));
         OnPropertyChanged(nameof(IsPreviewMode));
         OnPropertyChanged(nameof(IsEditMode));
+        OnPropertyChanged(nameof(IsMarkdownPreview));
     }
 
     public void LoadPreview(string path) {
