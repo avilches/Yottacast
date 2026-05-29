@@ -99,7 +99,8 @@ public class ClipboardSearch(
         return new ResultItemViewModel
         {
             IconBytes  = iconBytes,
-            Title      = $"{(url.Length > 80 ? url[..77] + "…" : url)} · from clipboard",
+            Title      = url.Length > 80 ? url[..77] + "…" : url,
+            InfoTag    = "from clipboard",
             Subtitle   = $"Open in {browserLabel}",
             Category   = "Web",
             Score      = 4.0,
@@ -178,7 +179,8 @@ public class ClipboardSearch(
         return new FileResultItemViewModel
         {
             IconBytes = fileIconCache.GetOrPreload(expanded),
-            Title     = $"{title} · from clipboard",
+            Title     = title,
+            InfoTag   = "from clipboard",
             Subtitle  = expanded,
             ItemPath  = capturedPath,
             Category  = "Files",
