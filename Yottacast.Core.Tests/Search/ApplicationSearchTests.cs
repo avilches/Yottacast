@@ -17,7 +17,10 @@ namespace Yottacast.Core.Tests.Search;
 /// </summary>
 internal sealed class FakePlatformProviderWithApps : FakePlatformProvider {
     public IReadOnlyList<string> AppPaths { get; set; }
+    public IReadOnlyList<RunningAppInfo> RunningApps { get; set; } = [];
     public string? LastLaunchedPath { get; private set; }
+    public int? LastQuitPid { get; private set; }
+    public int? LastForceQuitPid { get; private set; }
 
     public FakePlatformProviderWithApps(IReadOnlyList<string> appPaths) : base([]) {
         AppPaths = appPaths;
@@ -33,6 +36,9 @@ internal sealed class FakePlatformProviderWithApps : FakePlatformProvider {
     }
 
     public override void LaunchApp(string path) => LastLaunchedPath = path;
+    public override IReadOnlyList<RunningAppInfo> GetRunningApps() => RunningApps;
+    public override void QuitApp(int pid) => LastQuitPid = pid;
+    public override void ForceQuitApp(int pid) => LastForceQuitPid = pid;
 }
 
 public class ApplicationSearchTests {
@@ -477,5 +483,71 @@ public class ApplicationSearchTests {
 
         Assert.Empty(addedNames);
         Assert.True(appsChangedCount > 0, "AppsChanged should fire even with no diff");
+    }
+
+    // ── Running apps ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Search_RunningApp_HasRunningTagAndBringToFrontLabel() {
+        var (search, _, platform) = BuildSearchWithSettings("/Applications/Safari.app");
+        platform.RunningApps = [new RunningAppInfo("/Applications/Safari.app", 1234)];
+        await StartAndWaitAsync(search);
+        var results = SearchAll(search, "Safari");
+        Assert.Single(results);
+        Assert.Equal("Running", results[0].RunningTag);
+        Assert.Equal("Bring to Front", results[0].Actions[0].Label);
+    }
+
+    [Fact]
+    public async Task Search_NotRunningApp_HasNullRunningTagAndOpenLabel() {
+        var (search, _, platform) = BuildSearchWithSettings("/Applications/Safari.app");
+        platform.RunningApps = [];
+        await StartAndWaitAsync(search);
+        var results = SearchAll(search, "Safari");
+        Assert.Single(results);
+        Assert.Null(results[0].RunningTag);
+        Assert.Equal("Open", results[0].Actions[0].Label);
+    }
+
+    [Fact]
+    public async Task Search_RunningApp_HasQuitAndForceQuitInActions() {
+        var (search, _, platform) = BuildSearchWithSettings("/Applications/Safari.app");
+        platform.RunningApps = [new RunningAppInfo("/Applications/Safari.app", 1234)];
+        await StartAndWaitAsync(search);
+        var results = SearchAll(search, "Safari");
+        var labels = results[0].Actions.Select(a => a.Label).ToList();
+        Assert.Contains("Quit", labels);
+        Assert.Contains("Force Quit", labels);
+    }
+
+    [Fact]
+    public async Task Search_RunningApp_QuitActionCallsQuitAppWithCorrectPid() {
+        var (search, _, platform) = BuildSearchWithSettings("/Applications/Safari.app");
+        platform.RunningApps = [new RunningAppInfo("/Applications/Safari.app", 5678)];
+        await StartAndWaitAsync(search);
+        var results = SearchAll(search, "Safari");
+        var quitAction = results[0].Actions.First(a => a.Label == "Quit");
+        quitAction.Execute?.Invoke();
+        Assert.Equal(5678, platform.LastQuitPid);
+    }
+
+    [Fact]
+    public async Task Search_RunningApp_ForceQuitActionCallsForceQuitAppWithCorrectPid() {
+        var (search, _, platform) = BuildSearchWithSettings("/Applications/Safari.app");
+        platform.RunningApps = [new RunningAppInfo("/Applications/Safari.app", 5678)];
+        await StartAndWaitAsync(search);
+        var results = SearchAll(search, "Safari");
+        var forceQuit = results[0].Actions.First(a => a.Label == "Force Quit");
+        forceQuit.Execute?.Invoke();
+        Assert.Equal(5678, platform.LastForceQuitPid);
+    }
+
+    [Fact]
+    public async Task Search_RunningAppPathCaseInsensitive_DetectedAsRunning() {
+        var (search, _, platform) = BuildSearchWithSettings("/Applications/Safari.app");
+        platform.RunningApps = [new RunningAppInfo("/Applications/SAFARI.APP", 999)];
+        await StartAndWaitAsync(search);
+        var results = SearchAll(search, "Safari");
+        Assert.Equal("Running", results[0].RunningTag);
     }
 }

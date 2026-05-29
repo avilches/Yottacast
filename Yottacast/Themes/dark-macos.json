@@ -54,6 +54,19 @@
       "style": "foreground",
       "color": "#0A84FF",
       "backgroundOpacity": 0.22
+    },
+    "tags": {
+      "cornerRadius": 4,
+      "running": {
+        "color": "#30D158",
+        "background": "Transparent",
+        "borderColor": "#B330D158"
+      },
+      "info": {
+        "color": "#0A84FF",
+        "background": "Transparent",
+        "borderColor": "#B30A84FF"
+      }
     }
   },
 

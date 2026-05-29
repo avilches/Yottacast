@@ -2,6 +2,8 @@ using Yottacast.Core.Search.UserDocuments;
 
 namespace Yottacast.Core.Platform;
 
+public record RunningAppInfo(string Path, int Pid);
+
 public abstract class PlatformProvider {
     public abstract bool? IsSystemDarkMode();
 
@@ -57,6 +59,15 @@ public abstract class PlatformProvider {
 
     /// <summary>Returns the names of currently active (Connected) VPN connections.</summary>
     public virtual IReadOnlyList<string> GetActiveVpnNames() => [];
+
+    /// <summary>Returns the list of currently running applications with their process IDs.</summary>
+    public virtual IReadOnlyList<RunningAppInfo> GetRunningApps() => [];
+
+    /// <summary>Requests the application with the given PID to quit gracefully (SIGTERM / CloseMainWindow).</summary>
+    public virtual void QuitApp(int pid) { }
+
+    /// <summary>Forcefully terminates the application with the given PID (SIGKILL / Kill).</summary>
+    public virtual void ForceQuitApp(int pid) { }
 
     public static string ExpandPath(string path) {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);

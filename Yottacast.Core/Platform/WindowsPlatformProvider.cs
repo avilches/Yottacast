@@ -93,6 +93,34 @@ public sealed class WindowsPlatformProvider(ProcessRunner runner, ILogger<Window
         } catch { }
     }
 
+    // ── Running apps ──────────────────────────────────────────────────────────
+
+    public override IReadOnlyList<RunningAppInfo> GetRunningApps() {
+        try {
+            return Process.GetProcesses()
+                .Select(p => {
+                    try {
+                        var path = p.MainModule?.FileName;
+                        return path is null ? null : new RunningAppInfo(path, p.Id);
+                    } catch {
+                        return null;
+                    }
+                })
+                .OfType<RunningAppInfo>()
+                .ToList();
+        } catch {
+            return [];
+        }
+    }
+
+    public override void QuitApp(int pid) {
+        try { Process.GetProcessById(pid).CloseMainWindow(); } catch { }
+    }
+
+    public override void ForceQuitApp(int pid) {
+        try { Process.GetProcessById(pid).Kill(); } catch { }
+    }
+
     // ── File search ───────────────────────────────────────────────────────────
 
     public override Task SearchFilesAsync(

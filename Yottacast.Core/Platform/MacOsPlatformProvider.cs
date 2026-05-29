@@ -525,6 +525,45 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
         EntryPoint = "CFRelease")]
     private static extern void CfRelease(IntPtr cf);
 
+    // ── Running apps ──────────────────────────────────────────────────────────
+
+    public override IReadOnlyList<RunningAppInfo> GetRunningApps() {
+        try {
+            var workspace   = RaMsgSend(RaObjcGetClass("NSWorkspace"), RaSel("sharedWorkspace"));
+            var appsArray   = RaMsgSend(workspace, RaSel("runningApplications"));
+            var count       = (int)RaMsgSendCount(appsArray, RaSel("count"));
+            var selAtIndex  = RaSel("objectAtIndex:");
+            var selBundlePath = RaSel("bundlePath");
+            var selUtf8     = RaSel("UTF8String");
+            var selPid      = RaSel("processIdentifier");
+
+            var result = new List<RunningAppInfo>(count);
+            for (nuint i = 0; i < (nuint)count; i++) {
+                var app = RaMsgSendAtIndex(appsArray, selAtIndex, i);
+                if (app == IntPtr.Zero) continue;
+                var nsPath = RaMsgSend(app, selBundlePath);
+                if (nsPath == IntPtr.Zero) continue;
+                var utf8Ptr = RaMsgSendUtf8(nsPath, selUtf8);
+                if (utf8Ptr == IntPtr.Zero) continue;
+                var path = Marshal.PtrToStringUTF8(utf8Ptr);
+                if (string.IsNullOrEmpty(path)) continue;
+                var pid = RaMsgSendPid(app, selPid);
+                result.Add(new RunningAppInfo(path, pid));
+            }
+            return result;
+        } catch {
+            return [];
+        }
+    }
+
+    public override void QuitApp(int pid) {
+        try { RaKill(pid, 15); } catch { }  // SIGTERM
+    }
+
+    public override void ForceQuitApp(int pid) {
+        try { RaKill(pid, 9); } catch { }   // SIGKILL
+    }
+
     // ── Dynamic settings ──────────────────────────────────────────────────────
 
     public override string? GetCurrentWifiNetworkName() {
@@ -589,4 +628,30 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
 
     private static string EscapeAppleScript(string s) =>
         s.Replace("\\", "\\\\").Replace("\"", "\\\"");
+
+    // ── Running apps P/Invokes ────────────────────────────────────────────────
+
+    [DllImport("libobjc.dylib", EntryPoint = "objc_getClass")]
+    private static extern IntPtr RaObjcGetClass(string name);
+
+    [DllImport("libobjc.dylib", EntryPoint = "sel_registerName")]
+    private static extern IntPtr RaSel(string name);
+
+    [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
+    private static extern IntPtr RaMsgSend(IntPtr receiver, IntPtr selector);
+
+    [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
+    private static extern nuint RaMsgSendCount(IntPtr receiver, IntPtr selector);
+
+    [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
+    private static extern IntPtr RaMsgSendAtIndex(IntPtr receiver, IntPtr selector, nuint index);
+
+    [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
+    private static extern IntPtr RaMsgSendUtf8(IntPtr receiver, IntPtr selector);
+
+    [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
+    private static extern int RaMsgSendPid(IntPtr receiver, IntPtr selector);
+
+    [DllImport("libc", EntryPoint = "kill")]
+    private static extern int RaKill(int pid, int sig);
 }

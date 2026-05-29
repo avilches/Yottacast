@@ -9,6 +9,12 @@ public class ResultItemViewModel : BaseResultItemViewModel {
     public string Shortcut { get; init; } = "";
     /// <summary>Filesystem or system path identifying this item for launch history tracking. Null for items without a stable path.</summary>
     public string? ItemPath { get; init; }
+
+    /// <summary>When non-null, renders a green "Running" pill after the title. Text is the pill label.</summary>
+    public string? RunningTag { get; init; }
+
+    /// <summary>When non-null, renders a blue "Info" pill after the title. Text is the pill label.</summary>
+    public string? InfoTag { get; init; }
 }
 
 /// <summary>

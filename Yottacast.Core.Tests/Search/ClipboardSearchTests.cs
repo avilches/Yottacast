@@ -102,7 +102,8 @@ public class ClipboardSearchTests {
         var results = search.GetResults();
         Assert.Single(results);
         var r = Assert.IsType<ResultItemViewModel>(results[0]);
-        Assert.Contains("from clipboard", r.Title);
+        Assert.DoesNotContain("from clipboard", r.Title);
+        Assert.Equal("from clipboard", r.InfoTag);
         Assert.Equal("Web", r.Category);
         Assert.Equal(4.0, r.Score);
     }
@@ -118,10 +119,11 @@ public class ClipboardSearchTests {
             var results = search.GetResults();
             Assert.Single(results);
             var r = Assert.IsType<FileResultItemViewModel>(results[0]);
-            Assert.Contains("from clipboard", r.Title);
+            Assert.DoesNotContain("from clipboard", r.Title);
+            Assert.Equal("from clipboard", r.InfoTag);
             Assert.Equal("Files", r.Category);
             Assert.Equal(4.0, r.Score);
-            Assert.Equal($"{Path.GetFileName(tempFile)} · from clipboard", r.Title);
+            Assert.Equal(Path.GetFileName(tempFile), r.Title);
             Assert.Equal(tempFile, r.ItemPath);
             var open = r.Actions.Single(a => a.Hotkey == ActionHotkey.Enter);
             Assert.NotNull(open.Execute);

@@ -78,55 +78,88 @@ public sealed class ApplicationSearch(
 
     public ResultItemViewModel CreateResultItem(AppInfo app, double score = 4.0,
         string? scoreReason = null,
-        IReadOnlyList<(int Start, int Length)>? titleRanges = null) {
+        IReadOnlyList<(int Start, int Length)>? titleRanges = null,
+        int? runningPid = null) {
         var path = app.Path;
+        var isRunning = runningPid.HasValue;
+
+        var actions = new List<ResultAction> {
+            new() {
+                Label        = isRunning ? "Bring to Front" : "Open",
+                Hotkey       = ActionHotkey.Enter,
+                ShowInFooter = true,
+                ShowInMenu   = true,
+                ClosesMenu   = true,
+                ClosesWindow = true,
+                Execute      = () => platform.LaunchApp(path),
+            },
+            new() {
+                Label        = "Copy path",
+                Hotkey       = ActionHotkey.MetaC,
+                ShowInFooter = true,
+                ShowInMenu   = true,
+                ClosesMenu   = true,
+                HintProvider = () => "Path copied!",
+                Execute      = () => clipboard.CopyText(path),
+            },
+        };
+
+        if (isRunning) {
+            var capturedPid = runningPid!.Value;
+            actions.Add(new ResultAction {
+                Label        = "Quit",
+                ShowInMenu   = true,
+                ClosesMenu   = true,
+                ClosesWindow = true,
+                Execute      = () => platform.QuitApp(capturedPid),
+            });
+            actions.Add(new ResultAction {
+                Label        = "Force Quit",
+                ShowInMenu   = true,
+                ClosesMenu   = true,
+                ClosesWindow = true,
+                Execute      = () => platform.ForceQuitApp(capturedPid),
+            });
+        }
+
         return new() {
-            Icon = "📱",
-            IconBytes = iconCache.Get(path),
-            Title = app.Name,
-            Subtitle = path,
-            ItemPath = path,
-            Category = "Application",
-            Score = score,
-            ScoreReason = scoreReason,
-            TitleRanges = titleRanges,
+            Icon          = "📱",
+            IconBytes     = iconCache.Get(path),
+            Title         = app.Name,
+            Subtitle      = path,
+            ItemPath      = path,
+            Category      = "Application",
+            Score         = score,
+            ScoreReason   = scoreReason,
+            TitleRanges   = titleRanges,
             GetDragPayload = () => new DragPayload.File(path),
-            Actions = [
-                new() {
-                    Label        = "Open",
-                    Hotkey       = ActionHotkey.Enter,
-                    ShowInFooter = true,
-                    ShowInMenu   = true,
-                    ClosesMenu   = true,
-                    ClosesWindow = true,
-                    Execute      = () => platform.LaunchApp(path),
-                },
-                new() {
-                    Label        = "Copy path",
-                    Hotkey       = ActionHotkey.MetaC,
-                    ShowInFooter = true,
-                    ShowInMenu   = true,
-                    ClosesMenu   = true,
-                    HintProvider = () => "Path copied!",
-                    Execute      = () => clipboard.CopyText(path),
-                },
-            ],
+            RunningTag    = isRunning ? "Running" : null,
+            Actions       = actions,
         };
     }
 
     public IReadOnlyList<BaseResultItemViewModel> Search(string query, int limit) {
         if (!settings.EnableAppSearch) return [];
+
+        var runningByPath = platform.GetRunningApps()
+            .ToDictionary(x => x.Path, x => x.Pid, StringComparer.OrdinalIgnoreCase);
+
         var results = _apps.Values
             .Select(a => (app: a, match: NameMatcher.Match(a.Name, query)))
             .Where(x => x.match.Score > 0)
             .OrderByDescending(x => x.match.Score)
             .Take(limit)
-            .Select(x => CreateResultItem(
-                x.app,
-                Math.Max(x.match.Score * 4, AppDefaults.AppMinScore),
-                x.match.Reason != null ? $"{x.match.Reason} (×4)" : null,
-                x.match.Ranges))
+            .Select(x => {
+                var isRunning = runningByPath.TryGetValue(x.app.Path, out var pid);
+                return CreateResultItem(
+                    x.app,
+                    Math.Max(x.match.Score * 4, AppDefaults.AppMinScore),
+                    x.match.Reason != null ? $"{x.match.Reason} (×4)" : null,
+                    x.match.Ranges,
+                    isRunning ? pid : null);
+            })
             .ToList();
+
         logger.LogDebug("AppSearch query=\"{Query}\" cache={CacheCount} results={ResultCount} ready={Ready}",
             query, _apps.Count, results.Count, _readyTcs.Task.IsCompleted);
         return results;

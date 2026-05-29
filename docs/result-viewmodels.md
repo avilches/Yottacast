@@ -99,6 +99,8 @@ Extiende `BaseResultItemViewModel`. Es el tipo mas comun, usado por apps, ficher
 | `Subtitle` | `string` | Texto secundario (ruta del fichero, URL de busqueda, etc.) |
 | `Category` | `string` | Etiqueta de categoria ("App", "File", "Web"). En modo debug (Alt pulsado), se reemplaza por el score numerico |
 | `Shortcut` | `string` | Atajo de teclado asociado (solo para emojis: muestra Copy y Favorite shortcuts) |
+| `RunningTag` | `string?` | Cuando no es null, muestra una pill verde con este texto después del título. Asignado por `ApplicationSearch` cuando la app está en la lista de procesos activos. |
+| `InfoTag` | `string?` | Cuando no es null, muestra una pill azul con este texto después del título. Asignado por `ClipboardSearch` con el valor `"from clipboard"`. |
 
 ### Carga asincrona de iconos
 

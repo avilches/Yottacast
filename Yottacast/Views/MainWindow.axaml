@@ -439,12 +439,42 @@
                                             Orientation="Vertical"
                                             VerticalAlignment="Center"
                                             Spacing="2">
-                                    <controls:HighlightTextBlock x:CompileBindings="False"
-                                                                 Text="{Binding Title}"
-                                                                 Ranges="{Binding TitleRanges}"
-                                                                 Foreground="{DynamicResource Theme.Results.Title.Color}"
-                                                                 FontSize="{DynamicResource Theme.Results.Title.Size}"
-                                                                 FontWeight="Medium"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <controls:HighlightTextBlock x:CompileBindings="False"
+                                                                     Text="{Binding Title}"
+                                                                     Ranges="{Binding TitleRanges}"
+                                                                     Foreground="{DynamicResource Theme.Results.Title.Color}"
+                                                                     FontSize="{DynamicResource Theme.Results.Title.Size}"
+                                                                     FontWeight="Medium"/>
+                                        <Border x:CompileBindings="False"
+                                                IsVisible="{Binding RunningTag, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                                Background="{DynamicResource Theme.Results.Tag.Running.Background}"
+                                                BorderBrush="{DynamicResource Theme.Results.Tag.Running.BorderColor}"
+                                                BorderThickness="1"
+                                                CornerRadius="{DynamicResource Theme.Results.Tag.CornerRadius}"
+                                                Padding="5,1"
+                                                VerticalAlignment="Center">
+                                            <TextBlock x:CompileBindings="False"
+                                                       Text="{Binding RunningTag}"
+                                                       Foreground="{DynamicResource Theme.Results.Tag.Running.Color}"
+                                                       FontSize="10"
+                                                       FontWeight="Medium"/>
+                                        </Border>
+                                        <Border x:CompileBindings="False"
+                                                IsVisible="{Binding InfoTag, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                                Background="{DynamicResource Theme.Results.Tag.Info.Background}"
+                                                BorderBrush="{DynamicResource Theme.Results.Tag.Info.BorderColor}"
+                                                BorderThickness="1"
+                                                CornerRadius="{DynamicResource Theme.Results.Tag.CornerRadius}"
+                                                Padding="5,1"
+                                                VerticalAlignment="Center">
+                                            <TextBlock x:CompileBindings="False"
+                                                       Text="{Binding InfoTag}"
+                                                       Foreground="{DynamicResource Theme.Results.Tag.Info.Color}"
+                                                       FontSize="10"
+                                                       FontWeight="Medium"/>
+                                        </Border>
+                                    </StackPanel>
                                     <controls:HighlightTextBlock x:CompileBindings="False"
                                                                  Text="{Binding Subtitle}"
                                                                  Ranges="{Binding SubtitleRanges}"

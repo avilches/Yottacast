@@ -261,6 +261,17 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
                     SetDouble(app, "Theme.Results.MatchHighlight.BackgroundOpacity", mh["backgroundOpacity"]);
                 }
 
+                var tags = results["tags"];
+                if (tags != null) {
+                    SetCornerRadius(app, "Theme.Results.Tag.CornerRadius",          tags["cornerRadius"]);
+                    SetBrush(app,  "Theme.Results.Tag.Running.Color",               tags["running"]?["color"]);
+                    SetBrush(app,  "Theme.Results.Tag.Running.Background",          tags["running"]?["background"]);
+                    SetBrush(app,  "Theme.Results.Tag.Running.BorderColor",         tags["running"]?["borderColor"]);
+                    SetBrush(app,  "Theme.Results.Tag.Info.Color",                  tags["info"]?["color"]);
+                    SetBrush(app,  "Theme.Results.Tag.Info.Background",             tags["info"]?["background"]);
+                    SetBrush(app,  "Theme.Results.Tag.Info.BorderColor",            tags["info"]?["borderColor"]);
+                }
+
             }
 
             // ── Calculator ──
@@ -441,6 +452,15 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
         app.Resources["Theme.Results.MatchHighlight.Style"]            = "foreground";
         app.Resources["Theme.Results.MatchHighlight.Color"]            = B("#5E8FFF");
         app.Resources["Theme.Results.MatchHighlight.BackgroundOpacity"] = 0.22;
+
+        // ── Result Tags (pills) ──
+        app.Resources["Theme.Results.Tag.CornerRadius"]          = new CornerRadius(4);
+        app.Resources["Theme.Results.Tag.Running.Color"]         = B("#30D158");
+        app.Resources["Theme.Results.Tag.Running.Background"]    = B("#2430D158");  // green ~14% opacity (ARGB)
+        app.Resources["Theme.Results.Tag.Running.BorderColor"]   = new SolidColorBrush(Colors.Transparent);
+        app.Resources["Theme.Results.Tag.Info.Color"]            = B("#5AC8FA");
+        app.Resources["Theme.Results.Tag.Info.Background"]       = B("#1A0A84FF");  // blue ~10% opacity (ARGB)
+        app.Resources["Theme.Results.Tag.Info.BorderColor"]      = new SolidColorBrush(Colors.Transparent);
 
         // ── Calculator ──
         app.Resources["Theme.Calc.FontFamily"]        = new FontFamily("SF Pro Text, Segoe UI, Inter");

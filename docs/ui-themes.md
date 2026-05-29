@@ -165,6 +165,20 @@ El campo `backgroundOpacity` (0.0–1.0) solo se usa en estilo `background` y co
 
 **Nota:** El highlight es parte del contrato de tema, permitiendo que autores de temas personalizados creen estilos visuales coherentes con su diseno.
 
+#### Tags (pills inline en el título)
+
+| JSON path | Recurso Avalonia |
+|---|---|
+| `results.tags.cornerRadius` | `Theme.Results.Tag.CornerRadius` |
+| `results.tags.running.color` | `Theme.Results.Tag.Running.Color` |
+| `results.tags.running.background` | `Theme.Results.Tag.Running.Background` |
+| `results.tags.running.borderColor` | `Theme.Results.Tag.Running.BorderColor` |
+| `results.tags.info.color` | `Theme.Results.Tag.Info.Color` |
+| `results.tags.info.background` | `Theme.Results.Tag.Info.Background` |
+| `results.tags.info.borderColor` | `Theme.Results.Tag.Info.BorderColor` |
+
+El estilo filled (fondo tintado, borde transparente) u outline (fondo transparente, borde con color) se controla combinando `background` y `borderColor`: filled pone `background` con alpha y `borderColor: "Transparent"`; outline hace lo contrario. `dark-default` usa filled; `dark-macos` usa outline.
+
 ### Calculator
 
 | JSON path | Recurso Avalonia |
