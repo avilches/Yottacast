@@ -109,6 +109,13 @@
         <Style Selector="ListBoxItem:selected TextBlock.dict-pill">
             <Setter Property="Foreground" Value="{DynamicResource Theme.Results.Category.Color}"/>
         </Style>
+        <!-- Tag pills keep their own color when selected -->
+        <Style Selector="ListBoxItem:selected TextBlock.running-tag-text">
+            <Setter Property="Foreground" Value="{DynamicResource Theme.Results.Tag.Running.Color}"/>
+        </Style>
+        <Style Selector="ListBoxItem:selected TextBlock.info-tag-text">
+            <Setter Property="Foreground" Value="{DynamicResource Theme.Results.Tag.Info.Color}"/>
+        </Style>
         <!-- Emoji ListBoxItem: no selection background (only the individual cell gets highlighted) -->
         <Style Selector="ListBoxItem.emoji-item:selected /template/ ContentPresenter">
             <Setter Property="Background" Value="Transparent"/>
@@ -446,30 +453,28 @@
                                                                      Foreground="{DynamicResource Theme.Results.Title.Color}"
                                                                      FontSize="{DynamicResource Theme.Results.Title.Size}"
                                                                      FontWeight="Medium"/>
-                                        <Border x:CompileBindings="False"
-                                                IsVisible="{Binding RunningTag, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                        <Border IsVisible="{Binding RunningTag, Converter={x:Static ObjectConverters.IsNotNull}}"
                                                 Background="{DynamicResource Theme.Results.Tag.Running.Background}"
                                                 BorderBrush="{DynamicResource Theme.Results.Tag.Running.BorderColor}"
                                                 BorderThickness="1"
                                                 CornerRadius="{DynamicResource Theme.Results.Tag.CornerRadius}"
                                                 Padding="5,1"
                                                 VerticalAlignment="Center">
-                                            <TextBlock x:CompileBindings="False"
-                                                       Text="{Binding RunningTag}"
+                                            <TextBlock Text="{Binding RunningTag}"
+                                                       Classes="running-tag-text"
                                                        Foreground="{DynamicResource Theme.Results.Tag.Running.Color}"
                                                        FontSize="10"
                                                        FontWeight="Medium"/>
                                         </Border>
-                                        <Border x:CompileBindings="False"
-                                                IsVisible="{Binding InfoTag, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                        <Border IsVisible="{Binding InfoTag, Converter={x:Static ObjectConverters.IsNotNull}}"
                                                 Background="{DynamicResource Theme.Results.Tag.Info.Background}"
                                                 BorderBrush="{DynamicResource Theme.Results.Tag.Info.BorderColor}"
                                                 BorderThickness="1"
                                                 CornerRadius="{DynamicResource Theme.Results.Tag.CornerRadius}"
                                                 Padding="5,1"
                                                 VerticalAlignment="Center">
-                                            <TextBlock x:CompileBindings="False"
-                                                       Text="{Binding InfoTag}"
+                                            <TextBlock Text="{Binding InfoTag}"
+                                                       Classes="info-tag-text"
                                                        Foreground="{DynamicResource Theme.Results.Tag.Info.Color}"
                                                        FontSize="10"
                                                        FontWeight="Medium"/>

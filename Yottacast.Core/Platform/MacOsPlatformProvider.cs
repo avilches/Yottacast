@@ -534,7 +534,7 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
                 logger.LogWarning("GetRunningApps: NSWorkspace.sharedWorkspace returned zero");
                 return [];
             }
-            var appsArray     = RaMsgSend(workspace, RaSel("runningApplications"));
+            var appsArray = RaMsgSend(workspace, RaSel("runningApplications"));
             if (appsArray == IntPtr.Zero) return [];
 
             // runningApplications returns an autoreleased array. Retain it so the
@@ -544,28 +544,34 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
             // ObjC exception that C# try/catch cannot intercept.
             RaMsgSend(appsArray, RaSel("retain"));
             try {
-                var count         = (int)RaMsgSendCount(appsArray, RaSel("count"));
-                var selAtIndex    = RaSel("objectAtIndex:");
-                var selBundlePath = RaSel("bundlePath");
-                var selResponds   = RaSel("respondsToSelector:");
-                var selUtf8       = RaSel("UTF8String");
-                var selPid        = RaSel("processIdentifier");
+                var count      = (int)RaMsgSendCount(appsArray, RaSel("count"));
+                var nsraClass  = RaObjcGetClass("NSRunningApplication");
+                var selIsKind  = RaSel("isKindOfClass:");
+                var selAtIndex = RaSel("objectAtIndex:");
+                var selPid     = RaSel("processIdentifier");
 
-                var result = new List<RunningAppInfo>(count);
+                // proc_pidpath gives us the executable's real path (e.g.
+                // /Applications/Safari.app/Contents/MacOS/Safari). We walk up the
+                // path to find the .app bundle. This bypasses bundleURL/bundlePath
+                // which silently return nil on the private NSRunningApplication
+                // subclasses used in macOS 16 (Darwin 25).
+                const uint maxPathLen = 4096;
+                var seenPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var result    = new List<RunningAppInfo>(count);
                 for (nuint i = 0; i < (nuint)count; i++) {
                     var app = RaMsgSendAtIndex(appsArray, selAtIndex, i);
                     if (app == IntPtr.Zero) continue;
-                    // Guard against private NSRunningApplication subclasses or
-                    // partially-initialized entries that don't implement bundlePath.
-                    if (ObjcMsgSendArgByte(app, selResponds, selBundlePath) == 0) continue;
-                    var nsPath = RaMsgSend(app, selBundlePath);
-                    if (nsPath == IntPtr.Zero) continue;
-                    var utf8Ptr = RaMsgSendUtf8(nsPath, selUtf8);
-                    if (utf8Ptr == IntPtr.Zero) continue;
-                    var path = Marshal.PtrToStringUTF8(utf8Ptr);
-                    if (string.IsNullOrEmpty(path)) continue;
+                    if (RaMsgSendBoolSel(app, selIsKind, nsraClass) == IntPtr.Zero) continue;
                     var pid = RaMsgSendPid(app, selPid);
-                    result.Add(new RunningAppInfo(path, pid));
+                    var buf = new byte[maxPathLen];
+                    var len = RaProcPidPath(pid, buf, maxPathLen);
+                    if (len <= 0) continue;
+                    var exePath    = Encoding.UTF8.GetString(buf, 0, len);
+                    var bundlePath = FindAppBundlePath(exePath);
+                    if (bundlePath == null) continue;
+                    bundlePath = NormalizeCryptexPath(bundlePath);
+                    if (!seenPaths.Add(bundlePath)) continue;
+                    result.Add(new RunningAppInfo(bundlePath, pid));
                 }
                 logger.LogDebug("GetRunningApps: found {Count} running apps, first 3: {Paths}",
                     result.Count,
@@ -578,6 +584,31 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
             logger.LogWarning(ex, "GetRunningApps failed");
             return [];
         }
+    }
+
+    private static string? FindAppBundlePath(string execPath) {
+        // Search from the end to handle nested bundles (e.g. Simulator.app inside Xcode.app)
+        var parts = execPath.Split('/');
+        for (var i = parts.Length - 1; i >= 0; i--) {
+            if (parts[i].EndsWith(".app", StringComparison.OrdinalIgnoreCase))
+                return string.Join("/", parts.Take(i + 1));
+        }
+        return null;
+    }
+
+    // On macOS 16 (Darwin 25), some Apple apps live in the Cryptex volume.
+    // proc_pidpath returns the real path (e.g. /System/Volumes/Preboot/Cryptexes/App/…/Safari.app)
+    // while Spotlight returns the logical symlinked path (e.g. /Applications/Safari.app).
+    // Translate the real Cryptex path back to the logical path so it matches the app cache.
+    private static string NormalizeCryptexPath(string bundlePath) {
+        const string cryptexPrefix = "/System/Volumes/Preboot/Cryptexes/App";
+        if (!bundlePath.StartsWith(cryptexPrefix, StringComparison.Ordinal)) return bundlePath;
+        var appName = Path.GetFileName(bundlePath);
+        foreach (var dir in new[] { "/Applications", "/System/Applications", "/System/Applications/Utilities" }) {
+            var candidate = $"{dir}/{appName}";
+            if (Directory.Exists(candidate)) return candidate;
+        }
+        return bundlePath;
     }
 
     public override void QuitApp(int pid) {
@@ -671,10 +702,14 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
     private static extern IntPtr RaMsgSendAtIndex(IntPtr receiver, IntPtr selector, nuint index);
 
     [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
-    private static extern IntPtr RaMsgSendUtf8(IntPtr receiver, IntPtr selector);
-
-    [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
     private static extern int RaMsgSendPid(IntPtr receiver, IntPtr selector);
+
+    [DllImport("libproc", EntryPoint = "proc_pidpath")]
+    private static extern int RaProcPidPath(int pid, byte[] buffer, uint bufferSize);
+
+    // BOOL return on arm64: value lives in x0 as 0 or 1 — IntPtr reads it safely.
+    [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
+    private static extern IntPtr RaMsgSendBoolSel(IntPtr receiver, IntPtr selector, IntPtr arg);
 
     [DllImport("libc", EntryPoint = "kill")]
     private static extern int RaKill(int pid, int sig);
