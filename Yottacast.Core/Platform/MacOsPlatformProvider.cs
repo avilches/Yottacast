@@ -529,29 +529,53 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
 
     public override IReadOnlyList<RunningAppInfo> GetRunningApps() {
         try {
-            var workspace   = RaMsgSend(RaObjcGetClass("NSWorkspace"), RaSel("sharedWorkspace"));
-            var appsArray   = RaMsgSend(workspace, RaSel("runningApplications"));
-            var count       = (int)RaMsgSendCount(appsArray, RaSel("count"));
-            var selAtIndex  = RaSel("objectAtIndex:");
-            var selBundlePath = RaSel("bundlePath");
-            var selUtf8     = RaSel("UTF8String");
-            var selPid      = RaSel("processIdentifier");
-
-            var result = new List<RunningAppInfo>(count);
-            for (nuint i = 0; i < (nuint)count; i++) {
-                var app = RaMsgSendAtIndex(appsArray, selAtIndex, i);
-                if (app == IntPtr.Zero) continue;
-                var nsPath = RaMsgSend(app, selBundlePath);
-                if (nsPath == IntPtr.Zero) continue;
-                var utf8Ptr = RaMsgSendUtf8(nsPath, selUtf8);
-                if (utf8Ptr == IntPtr.Zero) continue;
-                var path = Marshal.PtrToStringUTF8(utf8Ptr);
-                if (string.IsNullOrEmpty(path)) continue;
-                var pid = RaMsgSendPid(app, selPid);
-                result.Add(new RunningAppInfo(path, pid));
+            var workspace = RaMsgSend(RaObjcGetClass("NSWorkspace"), RaSel("sharedWorkspace"));
+            if (workspace == IntPtr.Zero) {
+                logger.LogWarning("GetRunningApps: NSWorkspace.sharedWorkspace returned zero");
+                return [];
             }
-            return result;
-        } catch {
+            var appsArray     = RaMsgSend(workspace, RaSel("runningApplications"));
+            if (appsArray == IntPtr.Zero) return [];
+
+            // runningApplications returns an autoreleased array. Retain it so the
+            // autorelease pool drain during AppKit text-input callbacks cannot
+            // collect the array (and its NSRunningApplication entries) while we
+            // iterate, which would produce a use-after-free "unrecognized selector"
+            // ObjC exception that C# try/catch cannot intercept.
+            RaMsgSend(appsArray, RaSel("retain"));
+            try {
+                var count         = (int)RaMsgSendCount(appsArray, RaSel("count"));
+                var selAtIndex    = RaSel("objectAtIndex:");
+                var selBundlePath = RaSel("bundlePath");
+                var selResponds   = RaSel("respondsToSelector:");
+                var selUtf8       = RaSel("UTF8String");
+                var selPid        = RaSel("processIdentifier");
+
+                var result = new List<RunningAppInfo>(count);
+                for (nuint i = 0; i < (nuint)count; i++) {
+                    var app = RaMsgSendAtIndex(appsArray, selAtIndex, i);
+                    if (app == IntPtr.Zero) continue;
+                    // Guard against private NSRunningApplication subclasses or
+                    // partially-initialized entries that don't implement bundlePath.
+                    if (ObjcMsgSendArgByte(app, selResponds, selBundlePath) == 0) continue;
+                    var nsPath = RaMsgSend(app, selBundlePath);
+                    if (nsPath == IntPtr.Zero) continue;
+                    var utf8Ptr = RaMsgSendUtf8(nsPath, selUtf8);
+                    if (utf8Ptr == IntPtr.Zero) continue;
+                    var path = Marshal.PtrToStringUTF8(utf8Ptr);
+                    if (string.IsNullOrEmpty(path)) continue;
+                    var pid = RaMsgSendPid(app, selPid);
+                    result.Add(new RunningAppInfo(path, pid));
+                }
+                logger.LogDebug("GetRunningApps: found {Count} running apps, first 3: {Paths}",
+                    result.Count,
+                    string.Join(", ", result.Take(3).Select(r => r.Path)));
+                return result;
+            } finally {
+                RaMsgSend(appsArray, RaSel("release"));
+            }
+        } catch (Exception ex) {
+            logger.LogWarning(ex, "GetRunningApps failed");
             return [];
         }
     }

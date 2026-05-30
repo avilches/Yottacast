@@ -172,6 +172,10 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
 
             var app = Application.Current;
 
+            // Apply defaults first so all tokens always have a value,
+            // even if the theme JSON omits some sections.
+            ApplyBuiltinDefault();
+
             var variant = json["variant"]?.GetValue<string>();
             app.RequestedThemeVariant = variant == "light" ? ThemeVariant.Light : ThemeVariant.Dark;
 

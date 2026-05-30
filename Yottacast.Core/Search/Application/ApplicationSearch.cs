@@ -141,8 +141,11 @@ public sealed class ApplicationSearch(
     public IReadOnlyList<BaseResultItemViewModel> Search(string query, int limit) {
         if (!settings.EnableAppSearch) return [];
 
-        var runningByPath = platform.GetRunningApps()
-            .ToDictionary(x => x.Path, x => x.Pid, StringComparer.OrdinalIgnoreCase);
+        var runningApps = platform.GetRunningApps();
+        var runningByPath = runningApps.ToDictionary(x => x.Path, x => x.Pid, StringComparer.OrdinalIgnoreCase);
+        if (runningByPath.Count > 0)
+            logger.LogDebug("AppSearch running={RunningCount} sample={Sample}",
+                runningByPath.Count, string.Join(", ", runningByPath.Keys.Take(3)));
 
         var results = _apps.Values
             .Select(a => (app: a, match: NameMatcher.Match(a.Name, query)))
