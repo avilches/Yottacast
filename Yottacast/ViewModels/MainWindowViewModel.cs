@@ -83,14 +83,14 @@ public partial class MainWindowViewModel(
             var actions = SelectedResult?.Actions;
             if (actions is null or { Count: 0 }) return [];
 
-            var hints = new List<string>();
+            var actionHints = new List<string>();
             foreach (var a in actions.Where(a => a.ShowInFooter && a.Hotkey != null))
-                hints.Add($"{AppHandler.Instance.FormatHotkey(a.Hotkey!)}  {a.LabelProvider?.Invoke() ?? a.Label}");
+                actionHints.Add($"{AppHandler.Instance.FormatHotkey(a.Hotkey!)}  {a.LabelProvider?.Invoke() ?? a.Label}");
 
             if (actions.Any(a => a.ShowInMenu))
-                hints.Add("Tab  Options");
+                actionHints.Add("Tab  Options");
 
-            return hints;
+            return actionHints;
         }
     }
 
