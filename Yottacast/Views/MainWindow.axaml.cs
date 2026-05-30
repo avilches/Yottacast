@@ -36,6 +36,8 @@ public partial class MainWindow : Window {
     private PointerEventArgs? _lastDragPointerArgs;
     private Point _rightClickPos;
     private bool _menuOpenedByKeyboard;
+    private bool _isEditorPreviewSplit;
+    private bool _wasInEditMode;
 
     // Required by Avalonia's XAML resource loader; the app always uses the parameterized constructor.
     public MainWindow() : this(null!, null!, null!) { }
@@ -185,15 +187,20 @@ public partial class MainWindow : Window {
         if (DataContext is not MainWindowViewModel vm) return;
         bool isEdit = vm.IsEditorOpen && vm.EditorPanel.IsEditMode;
         if (isEdit) {
+            if (!_wasInEditMode)
+                _isEditorPreviewSplit = vm.IsPreviewEnabled;
+            _wasInEditMode = true;
+
             Grid.SetColumn(EditorContainer, 0);
             Grid.SetColumnSpan(EditorContainer, 2);
-            EditorContainer.Width = double.NaN;
+            EditorContainer.Width = GetWindowWidth() + (_isEditorPreviewSplit ? GetPreviewWidth() : 0.0);
             EditorView.Width = double.NaN;
             SearchBox.IsEnabled = false;
             Avalonia.Threading.Dispatcher.UIThread.Post(
                 () => { if (DataContext is MainWindowViewModel v && v.IsEditorOpen && v.EditorPanel.IsEditMode) EditorView.FocusEditor(); },
                 Avalonia.Threading.DispatcherPriority.Loaded);
         } else {
+            _wasInEditMode = false;
             Grid.SetColumn(EditorContainer, 1);
             Grid.SetColumnSpan(EditorContainer, 1);
             EditorContainer.Width = GetPreviewWidth();
@@ -202,6 +209,14 @@ public partial class MainWindow : Window {
             if (IsVisible) SearchBox.Focus();
         }
     }
+
+    private void ToggleEditorPreviewSplit() {
+        _isEditorPreviewSplit = !_isEditorPreviewSplit;
+        UpdateEditorLayout();
+    }
+
+    private static double GetWindowWidth() =>
+        Application.Current?.Resources["Theme.Window.Width"] is double w ? w : 730.0;
 
     private static double GetPreviewWidth() =>
         Application.Current?.Resources["Theme.Preview.Width"] is double w ? w : AppDefaults.EditorWidth;
@@ -447,6 +462,9 @@ public partial class MainWindow : Window {
             } else if (!vm.EditorPanel.IsAutoSave && AppHandler.Instance.MatchesHotkey(e, ActionHotkey.MetaS)) {
                 vm.EditorPanel.SaveFile();
                 vm.ShowCopiedMessage("Guardado");
+                e.Handled = true;
+            } else if (AppHandler.Instance.MatchesHotkey(e, ActionHotkey.MetaP)) {
+                ToggleEditorPreviewSplit();
                 e.Handled = true;
             }
             return; // all other keys (arrows, Tab, Enter…) pass through to AvaloniaEdit

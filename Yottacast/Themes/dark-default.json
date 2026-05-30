@@ -126,5 +126,26 @@
 
   "preview": {
     "width": 400
+  },
+
+  "editor": {
+    "header": {
+      "background": "#0D0D12",
+      "color": "#606068",
+      "size": 12,
+      "padding": "12,8",
+      "margin": "0",
+      "fontFamily": "SF Pro Text, Lucida Grande, Segoe UI, Inter"
+    },
+    "body": {
+      "background": "#0D0D12"
+    },
+    "footer": {
+      "background": "#1C1C22",
+      "border": "#2A2A30",
+      "color": "#606068",
+      "size": 11,
+      "padding": "12,6"
+    }
   }
 }

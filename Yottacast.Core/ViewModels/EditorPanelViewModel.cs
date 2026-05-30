@@ -16,6 +16,7 @@ public partial class EditorPanelViewModel(FileEditorService fileEditorService) :
     [ObservableProperty] private string _content = "";
     [ObservableProperty] private bool _showUnsavedDialog;
     [ObservableProperty] private string _statusText = "Ln 1, Col 1";
+    [ObservableProperty] private string _charCountText = "";
     [ObservableProperty] private EditorMode _mode = EditorMode.Preview;
 
     public bool IsDirty => Content != _originalContent;
@@ -116,6 +117,10 @@ public partial class EditorPanelViewModel(FileEditorService fileEditorService) :
         }
     }
 
-    public void UpdateStatus(int line, int col) => StatusText = $"Ln {line}, Col {col}";
+    public void UpdateStatus(int line, int col, int charCount, int lineCount) {
+        StatusText = $"Ln {line}, Col {col}";
+        var lineLabel = lineCount == 1 ? "line" : "lines";
+        CharCountText = $"{charCount} chars · {lineCount} {lineLabel}";
+    }
 
 }

@@ -67,26 +67,30 @@ public partial class MainWindowViewModel(
 
     public bool HasFooterHints => HasResults || (IsEditorOpen && EditorPanel.IsEditMode);
 
+    public bool IsPreviewEnabled => _isPreviewEnabled;
+
     public IReadOnlyList<string> FooterHints {
         get {
             if (IsEditorOpen && EditorPanel.IsEditMode) {
                 var meta = MetaSymbol;
-                return EditorPanel.ShowSaveButton
-                    ? [$"{meta}S  Save", "Esc  Close"]
-                    : ["Esc  Close"];
+                var hints = new List<string>();
+                if (EditorPanel.ShowSaveButton) hints.Add($"{meta}S  Save");
+                hints.Add($"{meta}P  Preview");
+                hints.Add("Esc  Close");
+                return hints;
             }
 
             var actions = SelectedResult?.Actions;
             if (actions is null or { Count: 0 }) return [];
 
-            var hints = new List<string>();
+            var actionHints = new List<string>();
             foreach (var a in actions.Where(a => a.ShowInFooter && a.Hotkey != null))
-                hints.Add($"{AppHandler.Instance.FormatHotkey(a.Hotkey!)}  {a.LabelProvider?.Invoke() ?? a.Label}");
+                actionHints.Add($"{AppHandler.Instance.FormatHotkey(a.Hotkey!)}  {a.LabelProvider?.Invoke() ?? a.Label}");
 
             if (actions.Any(a => a.ShowInMenu))
-                hints.Add("Tab  Options");
+                actionHints.Add("Tab  Options");
 
-            return hints;
+            return actionHints;
         }
     }
 
