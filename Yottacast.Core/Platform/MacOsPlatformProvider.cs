@@ -96,6 +96,13 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
         }
     }
 
+    public override void LaunchAppInBackground(string path) {
+        try {
+            Process.Start(new ProcessStartInfo("open", $"-g \"{path}\"") { UseShellExecute = false });
+        } catch {
+        }
+    }
+
     public override void RevealInFileManager(string directoryPath) {
         try {
             Process.Start(new ProcessStartInfo("open", $"\"{directoryPath}\"") { UseShellExecute = false });
@@ -177,6 +184,17 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
             Process.Start(new ProcessStartInfo {
                 FileName = "open",
                 ArgumentList = { "-a", browserName, url },
+                UseShellExecute = false,
+            });
+        } catch {
+        }
+    }
+
+    public override void OpenUrlInBackground(string url, string browserName) {
+        try {
+            Process.Start(new ProcessStartInfo {
+                FileName = "open",
+                ArgumentList = { "-g", "-a", browserName, url },
                 UseShellExecute = false,
             });
         } catch {

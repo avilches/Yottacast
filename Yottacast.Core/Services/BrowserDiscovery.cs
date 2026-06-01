@@ -40,6 +40,9 @@ public class BrowserDiscovery(UserSettings settings, PlatformProvider platform, 
     public void OpenUrl(string url, BrowserInfo browser) =>
         platform.OpenUrl(url, browser.Name);
 
+    public void OpenUrlInBackground(string url, BrowserInfo browser) =>
+        platform.OpenUrlInBackground(url, browser.Name);
+
     /// <summary>
     /// Returns the preferred browser if it exists on disk, otherwise the first known browser found on disk.
     /// Checks user-configured app directories, platform defaults, and platform-specific known paths.

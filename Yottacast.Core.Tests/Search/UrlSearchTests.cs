@@ -193,4 +193,18 @@ public class UrlSearchTests {
         var results = search.Search("https://example.com", 10);
         Assert.Single(results); // Pending de nuevo
     }
+
+    [Fact]
+    public async Task Search_AfterDnsResolved_HasOpenActionAndNoErrorTag() {
+        var search = BuildSearch();
+        var waitTask = WaitForResultChangedAsync(search);
+        _ = search.Search("https://example.com", 10);
+        await waitTask;
+
+        var results = search.Search("https://example.com", 10);
+        var r = Assert.IsType<ResultItemViewModel>(results[0]);
+        Assert.NotEmpty(r.Actions);
+        Assert.StartsWith("Open in", r.Subtitle);
+        Assert.Null(r.ErrorTag);
+    }
 }

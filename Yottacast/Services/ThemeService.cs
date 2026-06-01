@@ -274,6 +274,9 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
                     SetBrush(app,  "Theme.Results.Tag.Info.Color",                  tags["info"]?["color"]);
                     SetBrush(app,  "Theme.Results.Tag.Info.Background",             tags["info"]?["background"]);
                     SetBrush(app,  "Theme.Results.Tag.Info.BorderColor",            tags["info"]?["borderColor"]);
+                    SetBrush(app,  "Theme.Results.Tag.Error.Color",                 tags["error"]?["color"]);
+                    SetBrush(app,  "Theme.Results.Tag.Error.Background",            tags["error"]?["background"]);
+                    SetBrush(app,  "Theme.Results.Tag.Error.BorderColor",           tags["error"]?["borderColor"]);
                 }
 
             }
@@ -490,6 +493,9 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
         app.Resources["Theme.Results.Tag.Info.Color"]            = B("#5AC8FA");
         app.Resources["Theme.Results.Tag.Info.Background"]       = B("#1A0A84FF");  // blue ~10% opacity (ARGB)
         app.Resources["Theme.Results.Tag.Info.BorderColor"]      = new SolidColorBrush(Colors.Transparent);
+        app.Resources["Theme.Results.Tag.Error.Color"]           = B("#FF453A");
+        app.Resources["Theme.Results.Tag.Error.Background"]      = B("#24FF453A");  // red ~14% opacity (ARGB)
+        app.Resources["Theme.Results.Tag.Error.BorderColor"]     = new SolidColorBrush(Colors.Transparent);
 
         // ── Calculator ──
         app.Resources["Theme.Calc.FontFamily"]        = new FontFamily("SF Pro Text, Segoe UI, Inter");

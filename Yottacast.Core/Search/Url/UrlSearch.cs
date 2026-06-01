@@ -69,12 +69,12 @@ public class UrlSearch(
     private ResultItemViewModel BuildResult(string url, byte[]? iconBytes, string? errorHint) {
         var browser = settings.ActiveBrowser;
         var browserLabel = browser?.Name ?? "browser";
-        var subtitle = errorHint is null ? $"Open in {browserLabel}" : $"Open in {browserLabel} ({errorHint})";
         var capturedUrl = url;
         return new ResultItemViewModel {
             IconBytes   = iconBytes,
             Title       = url.Length > 80 ? url[..77] + "…" : url,
-            Subtitle    = subtitle,
+            Subtitle    = $"Open in {browserLabel}",
+            ErrorTag    = errorHint,
             Category    = "Web",
             Score       = 10.0,
             ScoreReason = "URL directa",
@@ -83,6 +83,7 @@ public class UrlSearch(
                     Label        = "Open",
                     Hotkey       = ActionHotkey.Enter,
                     ShowInFooter = true,
+                    ShowInMenu   = true,
                     ClosesMenu   = true,
                     ClosesWindow = true,
                     Execute      = () => {
@@ -91,6 +92,23 @@ public class UrlSearch(
                             return;
                         }
                         logger.LogInformation("UrlSearch: open \"{Url}\" in {Browser}", capturedUrl, browser.Name);
+                        browserDiscovery.OpenUrl(capturedUrl, browser);
+                    },
+                },
+                new() {
+                    Label                   = "Open (background)",
+                    Hotkey                  = ActionHotkey.MetaEnter,
+                    ShowInFooter            = true,
+                    ShowInMenu              = true,
+                    ClosesMenu              = true,
+                    ClosesWindow            = false,
+                    RegainFocusAfterExecute = true,
+                    Execute                 = () => {
+                        if (browser is null) {
+                            logger.LogWarning("UrlSearch: cannot open \"{Url}\" in background — no browser configured", capturedUrl);
+                            return;
+                        }
+                        logger.LogInformation("UrlSearch: open \"{Url}\" in background via {Browser}", capturedUrl, browser.Name);
                         browserDiscovery.OpenUrl(capturedUrl, browser);
                     },
                 },

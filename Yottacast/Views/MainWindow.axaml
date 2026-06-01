@@ -116,6 +116,9 @@
         <Style Selector="ListBoxItem:selected TextBlock.info-tag-text">
             <Setter Property="Foreground" Value="{DynamicResource Theme.Results.Tag.Info.Color}"/>
         </Style>
+        <Style Selector="ListBoxItem:selected TextBlock.error-tag-text">
+            <Setter Property="Foreground" Value="{DynamicResource Theme.Results.Tag.Error.Color}"/>
+        </Style>
         <!-- Emoji ListBoxItem: no selection background (only the individual cell gets highlighted) -->
         <Style Selector="ListBoxItem.emoji-item:selected /template/ ContentPresenter">
             <Setter Property="Background" Value="Transparent"/>
@@ -479,6 +482,19 @@
                                                        FontSize="10"
                                                        FontWeight="Medium"/>
                                         </Border>
+                                        <Border IsVisible="{Binding ErrorTag, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                                Background="{DynamicResource Theme.Results.Tag.Error.Background}"
+                                                BorderBrush="{DynamicResource Theme.Results.Tag.Error.BorderColor}"
+                                                BorderThickness="1"
+                                                CornerRadius="{DynamicResource Theme.Results.Tag.CornerRadius}"
+                                                Padding="5,1"
+                                                VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding ErrorTag}"
+                                                       Classes="error-tag-text"
+                                                       Foreground="{DynamicResource Theme.Results.Tag.Error.Color}"
+                                                       FontSize="10"
+                                                       FontWeight="Medium"/>
+                                        </Border>
                                     </StackPanel>
                                     <controls:HighlightTextBlock x:CompileBindings="False"
                                                                  Text="{Binding Subtitle}"
@@ -552,7 +568,7 @@
                                  SelectedIndex="{Binding OptionsMenuSelectedIndex, Mode=OneWay}"
                                  Background="Transparent"
                                  BorderThickness="0"
-                                 Padding="4,0,4,4">
+                                 Padding="4">
                             <!-- Override global selection-bar style: menu items must not shift on selection -->
                             <ListBox.Styles>
                                 <Style Selector="ListBoxItem:selected">

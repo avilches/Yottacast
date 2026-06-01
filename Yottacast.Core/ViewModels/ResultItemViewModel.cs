@@ -15,6 +15,9 @@ public class ResultItemViewModel : BaseResultItemViewModel {
 
     /// <summary>When non-null, renders a blue "Info" pill after the title. Text is the pill label.</summary>
     public string? InfoTag { get; init; }
+
+    /// <summary>When non-null, renders a red "Error" pill after the title. Text is the pill label.</summary>
+    public string? ErrorTag { get; init; }
 }
 
 /// <summary>

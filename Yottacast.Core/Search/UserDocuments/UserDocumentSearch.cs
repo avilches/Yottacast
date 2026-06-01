@@ -181,6 +181,23 @@ public class UserDocumentSearch(
                                 },
                             },
                             new() {
+                                Label         = "Open (background)",
+                                LabelProvider = () => {
+                                    var appName = _appNameByExtension.GetValueOrDefault(ext);
+                                    return appName != null ? $"Open in {appName} (background)" : "Open (background)";
+                                },
+                                Hotkey                  = ActionHotkey.MetaEnter,
+                                ShowInFooter            = true,
+                                ShowInMenu              = true,
+                                ClosesMenu              = true,
+                                ClosesWindow            = false,
+                                RegainFocusAfterExecute = true,
+                                Execute                 = () => {
+                                    logger.LogInformation("DocSearch: open \"{Path}\" in background", path);
+                                    platform.LaunchApp(path);
+                                },
+                            },
+                            new() {
                                 Label        = "Copy path",
                                 Hotkey       = ActionHotkey.MetaC,
                                 ShowInFooter = true,

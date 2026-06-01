@@ -94,6 +94,16 @@ public sealed class ApplicationSearch(
                 Execute      = () => platform.LaunchApp(path),
             },
             new() {
+                Label                   = isRunning ? "Bring to Front (background)" : "Open (background)",
+                Hotkey                  = ActionHotkey.MetaEnter,
+                ShowInFooter            = true,
+                ShowInMenu              = true,
+                ClosesMenu              = true,
+                ClosesWindow            = false,
+                RegainFocusAfterExecute = true,
+                Execute                 = () => platform.LaunchApp(path),
+            },
+            new() {
                 Label        = "Copy path",
                 Hotkey       = ActionHotkey.MetaC,
                 ShowInFooter = true,

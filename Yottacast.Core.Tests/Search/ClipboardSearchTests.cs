@@ -166,6 +166,66 @@ public class ClipboardSearchTests {
         Assert.Empty(search.GetResults());
     }
 
+    // ── DNS validation when EnableUrlValidation = true ────────────────────────
+
+    [Fact]
+    public async Task OnWindowShown_NonExistentDomain_RemovesOpenActionAfterDnsFails() {
+        // Uses a real DNS lookup against a guaranteed-nonexistent domain.
+        // The test waits up to 3 seconds for the DNS timeout (configured at 2 s).
+        var platform = new FakePlatformProvider([]);
+        var settings = UserSettings.Load(platform);
+        settings.EnableUrlValidation = true;
+        var browserDiscovery = new BrowserDiscovery(settings, platform, NullLogger<BrowserDiscovery>.Instance);
+        var faviconHandler = new FakeHttpMessageHandler(HttpStatusCode.OK, [0x89, 0x50]);
+        var faviconCache = new FaviconCache(new HttpClient(faviconHandler), NullLogger<FaviconCache>.Instance,
+            Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()));
+        var fileIconCache = new FileIconCache(platform, NullLogger<FileIconCache>.Instance);
+        var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
+        var search = new ClipboardSearch(settings, browserDiscovery, faviconCache, fileIconCache,
+            platform, clipboard, NullLogger<ClipboardSearch>.Instance);
+
+        var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        search.ResultsChanged += () => tcs.TrySetResult();
+
+        // Use a domain that cannot possibly resolve
+        const string fakeUrl = "https://this-domain-does-not-exist-yottacast-xyzxyz.invalid";
+        search.OnWindowShown(fakeUrl);
+
+        // Initially shown with Open action (optimistic)
+        var initialResults = search.GetResults();
+        Assert.Single(initialResults);
+        var initial = Assert.IsType<ResultItemViewModel>(initialResults[0]);
+        Assert.Contains(initial.Actions, a => a.Label == "Open");
+
+        // Wait for DNS check to complete (should fail quickly for .invalid TLD)
+        await tcs.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        // After DNS failure: result is hidden entirely
+        var updatedResults = search.GetResults();
+        Assert.Empty(updatedResults);
+    }
+
+    [Fact]
+    public void OnWindowShown_ValidationDisabled_AlwaysShowsOpenAction() {
+        var platform = new FakePlatformProvider([]);
+        var settings = UserSettings.Load(platform);
+        settings.EnableUrlValidation = false;
+        var browserDiscovery = new BrowserDiscovery(settings, platform, NullLogger<BrowserDiscovery>.Instance);
+        var faviconHandler = new FakeHttpMessageHandler(HttpStatusCode.OK, [0x89, 0x50]);
+        var faviconCache = new FaviconCache(new HttpClient(faviconHandler), NullLogger<FaviconCache>.Instance,
+            Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()));
+        var fileIconCache = new FileIconCache(platform, NullLogger<FileIconCache>.Instance);
+        var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
+        var search = new ClipboardSearch(settings, browserDiscovery, faviconCache, fileIconCache,
+            platform, clipboard, NullLogger<ClipboardSearch>.Instance);
+
+        search.OnWindowShown("https://this-domain-does-not-exist-yottacast-xyzxyz.invalid");
+        var results = search.GetResults();
+        Assert.Single(results);
+        var r = Assert.IsType<ResultItemViewModel>(results[0]);
+        Assert.Contains(r.Actions, a => a.Label == "Open"); // no DNS check, Open always present
+    }
+
     // ── Start/Stop lifecycle ──────────────────────────────────────────────────
 
     [Fact]

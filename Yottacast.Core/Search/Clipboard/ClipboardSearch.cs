@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Sockets;
 using Microsoft.Extensions.Logging;
 using Yottacast.Core.Platform;
 using Yottacast.Core.Search.LocalPath;
@@ -51,12 +53,27 @@ public class ClipboardSearch(
 
     public void OnWindowShown(string? clipboardText)
     {
+        ResultItemViewModel? urlResult = null;
+        string? urlToValidate = null;
+
         lock (_cacheLock)
         {
             _cached = Build(clipboardText);
             if (_cached is not null)
                 logger.LogDebug("ClipboardSearch: clipboard hit for \"{Text}\"", clipboardText);
+
+            if (settings.EnableUrlValidation
+                && _cached is ResultItemViewModel vm
+                && clipboardText is not null
+                && UrlSearch.TryNormalizeUrl(clipboardText, out var normalizedUrl))
+            {
+                urlResult = vm;
+                urlToValidate = normalizedUrl;
+            }
         }
+
+        if (urlResult is not null && urlToValidate is not null)
+            _ = CheckUrlReachabilityAsync(urlToValidate, urlResult);
     }
 
     public void OnSearchStarted()
@@ -72,6 +89,26 @@ public class ClipboardSearch(
         lock (_cacheLock)
         {
             return _cached is null ? [] : [_cached];
+        }
+    }
+
+    private async Task CheckUrlReachabilityAsync(string url, ResultItemViewModel original)
+    {
+        var host = new Uri(url).Host;
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            await Dns.GetHostAddressesAsync(host, cts.Token).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is SocketException or TaskCanceledException or OperationCanceledException)
+        {
+            logger.LogDebug("ClipboardSearch: DNS {Host} failed: {Message}", host, ex.Message);
+            lock (_cacheLock)
+            {
+                if (!ReferenceEquals(_cached, original)) return;
+                _cached = null;
+            }
+            ResultsChanged?.Invoke();
         }
     }
 
@@ -119,6 +156,21 @@ public class ClipboardSearch(
                         browserDiscovery.OpenUrl(capturedUrl, browser);
                     },
                 },
+                new() {
+                    Label                   = "Open (background)",
+                    Hotkey                  = ActionHotkey.MetaEnter,
+                    ShowInFooter            = true,
+                    ShowInMenu              = true,
+                    ClosesMenu              = true,
+                    ClosesWindow            = false,
+                    RegainFocusAfterExecute = true,
+                    Execute                 = () =>
+                    {
+                        if (browser is null) return;
+                        logger.LogInformation("ClipboardSearch: open URL \"{Url}\" in background", capturedUrl);
+                        browserDiscovery.OpenUrl(capturedUrl, browser);
+                    },
+                },
             ],
         };
     }
@@ -143,6 +195,20 @@ public class ClipboardSearch(
                 Execute      = () =>
                 {
                     logger.LogInformation("ClipboardSearch: open path \"{Path}\"", capturedPath);
+                    platform.LaunchApp(capturedPath);
+                },
+            },
+            new() {
+                Label                   = "Open (background)",
+                Hotkey                  = ActionHotkey.MetaEnter,
+                ShowInFooter            = true,
+                ShowInMenu              = true,
+                ClosesMenu              = true,
+                ClosesWindow            = false,
+                RegainFocusAfterExecute = true,
+                Execute                 = () =>
+                {
+                    logger.LogInformation("ClipboardSearch: open path \"{Path}\" in background", capturedPath);
                     platform.LaunchApp(capturedPath);
                 },
             },

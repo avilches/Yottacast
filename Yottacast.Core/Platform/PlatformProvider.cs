@@ -24,6 +24,9 @@ public abstract class PlatformProvider {
 
     public abstract void LaunchApp(string path);
 
+    /// <summary>Launches the app/file without bringing it to the foreground. Falls back to LaunchApp on platforms that don't support background opening.</summary>
+    public virtual void LaunchAppInBackground(string path) => LaunchApp(path);
+
     public abstract Task SearchFilesAsync(
         string query, Action<FileResult> onResult, int maxResults,
         IReadOnlyList<string>? folders, CancellationToken ct);
@@ -38,6 +41,9 @@ public abstract class PlatformProvider {
     public virtual IReadOnlyDictionary<string, string[]> BrowserKnownPaths =>
         new Dictionary<string, string[]>();
     public abstract void OpenUrl(string url, string browserName);
+
+    /// <summary>Opens the URL in the given browser without bringing it to the foreground. Falls back to OpenUrl on platforms that don't support it.</summary>
+    public virtual void OpenUrlInBackground(string url, string browserName) => OpenUrl(url, browserName);
     public abstract string[] KnownTerminalNames { get; }
     public virtual IReadOnlyDictionary<string, string[]> TerminalKnownPaths =>
         new Dictionary<string, string[]>();

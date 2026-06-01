@@ -46,7 +46,20 @@ public class LocalPathSearch(
                     ClosesWindow = true,
                     Execute      = () => {
                         logger.LogInformation("LocalPath: open \"{Path}\"", capturedPath);
-                        platform.LaunchApp(capturedPath); // same as UserDocumentSearch: LaunchApp opens arbitrary files/dirs with their default app
+                        platform.LaunchApp(capturedPath);
+                    },
+                },
+                new() {
+                    Label                   = "Open (background)",
+                    Hotkey                  = ActionHotkey.MetaEnter,
+                    ShowInFooter            = true,
+                    ShowInMenu              = true,
+                    ClosesMenu              = true,
+                    ClosesWindow            = false,
+                    RegainFocusAfterExecute = true,
+                    Execute                 = () => {
+                        logger.LogInformation("LocalPath: open \"{Path}\" in background", capturedPath);
+                        platform.LaunchApp(capturedPath);
                     },
                 },
                 new() {

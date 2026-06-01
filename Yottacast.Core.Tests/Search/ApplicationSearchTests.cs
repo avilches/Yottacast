@@ -427,7 +427,7 @@ public class ApplicationSearchTests {
 
         var item = search.CreateResultItem(new AppInfo("Safari", "/Applications/Safari.app"));
 
-        Assert.Equal(2, item.Actions.Count);
+        Assert.Equal(3, item.Actions.Count);
 
         var open = item.Actions[0];
         Assert.Equal("Open", open.Label);
@@ -439,7 +439,15 @@ public class ApplicationSearchTests {
         open.Execute();
         Assert.Equal("/Applications/Safari.app", platform.LastLaunchedPath);
 
-        var copy = item.Actions[1];
+        var openBg = item.Actions[1];
+        Assert.Equal("Open (background)", openBg.Label);
+        Assert.Equal(ActionHotkey.MetaEnter, openBg.Hotkey);
+        Assert.True(openBg.ShowInFooter);
+        Assert.True(openBg.ShowInMenu);
+        Assert.False(openBg.ClosesWindow);
+        Assert.True(openBg.RegainFocusAfterExecute);
+
+        var copy = item.Actions[2];
         Assert.Equal("Copy path", copy.Label);
         Assert.Equal(ActionHotkey.MetaC, copy.Hotkey);
         Assert.True(copy.ShowInFooter);
