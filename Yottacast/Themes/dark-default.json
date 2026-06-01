@@ -59,11 +59,13 @@
       "running": {
         "color": "#30D158",
         "background": "#2430D158",
+        "backgroundSelected": "#8030D158",
         "borderColor": "Transparent"
       },
       "info": {
         "color": "#5AC8FA",
         "background": "#1A0A84FF",
+        "backgroundSelected": "#805AC8FA",
         "borderColor": "Transparent"
       }
     }

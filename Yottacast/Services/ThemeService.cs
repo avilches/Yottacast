@@ -268,15 +268,18 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
                 var tags = results["tags"];
                 if (tags != null) {
                     SetCornerRadius(app, "Theme.Results.Tag.CornerRadius",          tags["cornerRadius"]);
-                    SetBrush(app,  "Theme.Results.Tag.Running.Color",               tags["running"]?["color"]);
-                    SetBrush(app,  "Theme.Results.Tag.Running.Background",          tags["running"]?["background"]);
-                    SetBrush(app,  "Theme.Results.Tag.Running.BorderColor",         tags["running"]?["borderColor"]);
-                    SetBrush(app,  "Theme.Results.Tag.Info.Color",                  tags["info"]?["color"]);
-                    SetBrush(app,  "Theme.Results.Tag.Info.Background",             tags["info"]?["background"]);
-                    SetBrush(app,  "Theme.Results.Tag.Info.BorderColor",            tags["info"]?["borderColor"]);
-                    SetBrush(app,  "Theme.Results.Tag.Error.Color",                 tags["error"]?["color"]);
-                    SetBrush(app,  "Theme.Results.Tag.Error.Background",            tags["error"]?["background"]);
-                    SetBrush(app,  "Theme.Results.Tag.Error.BorderColor",           tags["error"]?["borderColor"]);
+                    SetBrush(app,  "Theme.Results.Tag.Running.Color",                    tags["running"]?["color"]);
+                    SetBrush(app,  "Theme.Results.Tag.Running.Background",           tags["running"]?["background"]);
+                    SetBrush(app,  "Theme.Results.Tag.Running.Background.Selected",  tags["running"]?["backgroundSelected"]);
+                    SetBrush(app,  "Theme.Results.Tag.Running.BorderColor",          tags["running"]?["borderColor"]);
+                    SetBrush(app,  "Theme.Results.Tag.Info.Color",                   tags["info"]?["color"]);
+                    SetBrush(app,  "Theme.Results.Tag.Info.Background",              tags["info"]?["background"]);
+                    SetBrush(app,  "Theme.Results.Tag.Info.Background.Selected",     tags["info"]?["backgroundSelected"]);
+                    SetBrush(app,  "Theme.Results.Tag.Info.BorderColor",             tags["info"]?["borderColor"]);
+                    SetBrush(app,  "Theme.Results.Tag.Error.Color",                  tags["error"]?["color"]);
+                    SetBrush(app,  "Theme.Results.Tag.Error.Background",             tags["error"]?["background"]);
+                    SetBrush(app,  "Theme.Results.Tag.Error.Background.Selected",    tags["error"]?["backgroundSelected"]);
+                    SetBrush(app,  "Theme.Results.Tag.Error.BorderColor",            tags["error"]?["borderColor"]);
                 }
 
             }
@@ -487,15 +490,18 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
 
         // ── Result Tags (pills) ──
         app.Resources["Theme.Results.Tag.CornerRadius"]          = new CornerRadius(4);
-        app.Resources["Theme.Results.Tag.Running.Color"]         = B("#30D158");
-        app.Resources["Theme.Results.Tag.Running.Background"]    = B("#2430D158");  // green ~14% opacity (ARGB)
-        app.Resources["Theme.Results.Tag.Running.BorderColor"]   = new SolidColorBrush(Colors.Transparent);
-        app.Resources["Theme.Results.Tag.Info.Color"]            = B("#5AC8FA");
-        app.Resources["Theme.Results.Tag.Info.Background"]       = B("#1A0A84FF");  // blue ~10% opacity (ARGB)
-        app.Resources["Theme.Results.Tag.Info.BorderColor"]      = new SolidColorBrush(Colors.Transparent);
-        app.Resources["Theme.Results.Tag.Error.Color"]           = B("#FF453A");
-        app.Resources["Theme.Results.Tag.Error.Background"]      = B("#24FF453A");  // red ~14% opacity (ARGB)
-        app.Resources["Theme.Results.Tag.Error.BorderColor"]     = new SolidColorBrush(Colors.Transparent);
+        app.Resources["Theme.Results.Tag.Running.Color"]                    = B("#30D158");
+        app.Resources["Theme.Results.Tag.Running.Background"]           = B("#2430D158");  // green ~14% opacity (ARGB)
+        app.Resources["Theme.Results.Tag.Running.Background.Selected"]  = B("#8030D158");  // green ~50% opacity
+        app.Resources["Theme.Results.Tag.Running.BorderColor"]          = new SolidColorBrush(Colors.Transparent);
+        app.Resources["Theme.Results.Tag.Info.Color"]                   = B("#5AC8FA");
+        app.Resources["Theme.Results.Tag.Info.Background"]              = B("#1A0A84FF");  // blue ~10% opacity (ARGB)
+        app.Resources["Theme.Results.Tag.Info.Background.Selected"]     = B("#805AC8FA");  // info blue ~50% opacity
+        app.Resources["Theme.Results.Tag.Info.BorderColor"]             = new SolidColorBrush(Colors.Transparent);
+        app.Resources["Theme.Results.Tag.Error.Color"]                  = B("#FF453A");
+        app.Resources["Theme.Results.Tag.Error.Background"]             = B("#24FF453A");  // red ~14% opacity (ARGB)
+        app.Resources["Theme.Results.Tag.Error.Background.Selected"]    = B("#80FF453A");  // red ~50% opacity
+        app.Resources["Theme.Results.Tag.Error.BorderColor"]            = new SolidColorBrush(Colors.Transparent);
 
         // ── Calculator ──
         app.Resources["Theme.Calc.FontFamily"]        = new FontFamily("SF Pro Text, Segoe UI, Inter");

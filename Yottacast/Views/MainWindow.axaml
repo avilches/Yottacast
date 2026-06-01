@@ -119,6 +119,16 @@
         <Style Selector="ListBoxItem:selected TextBlock.error-tag-text">
             <Setter Property="Foreground" Value="{DynamicResource Theme.Results.Tag.Error.Color}"/>
         </Style>
+        <!-- Tag pill borders use a more opaque background when selected so they remain readable over the selection color -->
+        <Style Selector="ListBoxItem:selected Border.running-tag-border">
+            <Setter Property="Background" Value="{DynamicResource Theme.Results.Tag.Running.Background.Selected}"/>
+        </Style>
+        <Style Selector="ListBoxItem:selected Border.info-tag-border">
+            <Setter Property="Background" Value="{DynamicResource Theme.Results.Tag.Info.Background.Selected}"/>
+        </Style>
+        <Style Selector="ListBoxItem:selected Border.error-tag-border">
+            <Setter Property="Background" Value="{DynamicResource Theme.Results.Tag.Error.Background.Selected}"/>
+        </Style>
         <!-- Emoji ListBoxItem: no selection background (only the individual cell gets highlighted) -->
         <Style Selector="ListBoxItem.emoji-item:selected /template/ ContentPresenter">
             <Setter Property="Background" Value="Transparent"/>
@@ -456,7 +466,8 @@
                                                                      Foreground="{DynamicResource Theme.Results.Title.Color}"
                                                                      FontSize="{DynamicResource Theme.Results.Title.Size}"
                                                                      FontWeight="Medium"/>
-                                        <Border IsVisible="{Binding RunningTag, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                        <Border Classes="running-tag-border"
+                                                IsVisible="{Binding RunningTag, Converter={x:Static ObjectConverters.IsNotNull}}"
                                                 Background="{DynamicResource Theme.Results.Tag.Running.Background}"
                                                 BorderBrush="{DynamicResource Theme.Results.Tag.Running.BorderColor}"
                                                 BorderThickness="1"
@@ -469,7 +480,8 @@
                                                        FontSize="10"
                                                        FontWeight="Medium"/>
                                         </Border>
-                                        <Border IsVisible="{Binding InfoTag, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                        <Border Classes="info-tag-border"
+                                                IsVisible="{Binding InfoTag, Converter={x:Static ObjectConverters.IsNotNull}}"
                                                 Background="{DynamicResource Theme.Results.Tag.Info.Background}"
                                                 BorderBrush="{DynamicResource Theme.Results.Tag.Info.BorderColor}"
                                                 BorderThickness="1"
@@ -482,7 +494,8 @@
                                                        FontSize="10"
                                                        FontWeight="Medium"/>
                                         </Border>
-                                        <Border IsVisible="{Binding ErrorTag, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                        <Border Classes="error-tag-border"
+                                                IsVisible="{Binding ErrorTag, Converter={x:Static ObjectConverters.IsNotNull}}"
                                                 Background="{DynamicResource Theme.Results.Tag.Error.Background}"
                                                 BorderBrush="{DynamicResource Theme.Results.Tag.Error.BorderColor}"
                                                 BorderThickness="1"

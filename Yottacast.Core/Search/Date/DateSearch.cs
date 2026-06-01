@@ -43,6 +43,7 @@ public class DateSearch(UserSettings settings, ClipboardService clipboard, ILogg
     {
         if (!settings.DateSearchEnabled) return [];
         if (string.IsNullOrWhiteSpace(query)) return [];
+        if (query.Length == 4 && query.All(char.IsDigit)) return [];
 
         lock (_lock) {
             if (_currentQuery == query) return _currentResult;
