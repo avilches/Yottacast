@@ -442,7 +442,7 @@ public class ApplicationSearchTests {
         var openBg = item.Actions[1];
         Assert.Equal("Open (background)", openBg.Label);
         Assert.Equal(ActionHotkey.MetaEnter, openBg.Hotkey);
-        Assert.True(openBg.ShowInFooter);
+        Assert.False(openBg.ShowInFooter);
         Assert.True(openBg.ShowInMenu);
         Assert.False(openBg.ClosesWindow);
         Assert.True(openBg.RegainFocusAfterExecute);

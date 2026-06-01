@@ -109,18 +109,20 @@ public class WebSearchSource(
         var capturedQuery = searchQuery;
         var capturedQueryUrl = string.IsNullOrEmpty(userConfig.QueryUrl) ? defaultQueryUrl : userConfig.QueryUrl;
         var browserName = settings.ActiveBrowser?.Name ?? "browser";
+        var openLabel = $"Open search in {browserName}";
         return new ResultItemViewModel {
             IconBytes   = iconBytes,
             Title       = $"{name}: \"{capturedQuery}\"",
-            Subtitle    = $"Open search in {browserName}",
+            Subtitle    = openLabel,
             Category    = "Web",
             Score       = score,
             ScoreReason = scoreReason,
             Actions = [
                 new() {
-                    Label        = "Open in browser",
+                    Label        = openLabel,
                     Hotkey       = ActionHotkey.Enter,
                     ShowInFooter = true,
+                    ShowInMenu   = true,
                     ClosesMenu   = true,
                     ClosesWindow = true,
                     Execute = () => {
@@ -128,6 +130,22 @@ public class WebSearchSource(
                         if (browser is null) return;
                         var url = string.Format(capturedQueryUrl, Uri.EscapeDataString(capturedQuery));
                         logger.LogInformation("WebSearch: open engine={Engine} query=\"{Query}\" browser={Browser}", name, capturedQuery, browser.Name);
+                        browserDiscovery.OpenUrl(url, browser);
+                    },
+                },
+                new() {
+                    Label                   = $"Open search in {browserName} (background)",
+                    Hotkey                  = ActionHotkey.MetaEnter,
+                    ShowInFooter            = false,
+                    ShowInMenu              = true,
+                    ClosesMenu              = true,
+                    ClosesWindow            = false,
+                    RegainFocusAfterExecute = true,
+                    Execute = () => {
+                        var browser = settings.ActiveBrowser;
+                        if (browser is null) return;
+                        var url = string.Format(capturedQueryUrl, Uri.EscapeDataString(capturedQuery));
+                        logger.LogInformation("WebSearch: open engine={Engine} query=\"{Query}\" browser={Browser} (background)", name, capturedQuery, browser.Name);
                         browserDiscovery.OpenUrl(url, browser);
                     },
                 },

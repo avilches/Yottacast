@@ -159,7 +159,7 @@ public class ClipboardSearch(
                 new() {
                     Label                   = "Open (background)",
                     Hotkey                  = ActionHotkey.MetaEnter,
-                    ShowInFooter            = true,
+                    ShowInFooter            = false,
                     ShowInMenu              = true,
                     ClosesMenu              = true,
                     ClosesWindow            = false,
