@@ -23,10 +23,12 @@ La busqueda de ficheros no se ejecuta si la query tiene menos de 2 caracteres (`
 | Valor | Comportamiento |
 |---|---|
 | `Disabled` | GlobalSearch nunca invoca esta fuente, independientemente del modo activo |
-| `Always` | La fuente esta activa en el modo All (comportamiento por defecto) |
+| `Always` | La fuente esta activa en el modo All. En modos especificos (Files, Clipboard) esta fuente no participa, aunque este configurada como `Always` |
 | `ModeOnly` | La fuente solo esta activa cuando el modo Files esta seleccionado |
 
 El valor por defecto es `Always`. GlobalSearch consulta `IsActiveIn(mode)` en cada busqueda y omite la fuente si devuelve `false`.
+
+---
 
 ## 3. Carpetas de busqueda
 
@@ -48,7 +50,7 @@ Si ninguna de las carpetas configuradas existe en disco:
 
 **Invariantes:**
 - Si `FileSearchVisibility` es `Disabled`, GlobalSearch nunca llama a esta fuente.
-- Si `FileSearchVisibility` es `Always`, la fuente participa en el modo All.
+- Si `FileSearchVisibility` es `Always`, la fuente participa en el modo All pero no en modos especificos (Files, Clipboard).
 - Si `FileSearchVisibility` es `ModeOnly`, la fuente solo participa cuando el modo Files esta activo.
 - Si `FileSearchOnlySpecificFolders` es `false`, se busca en toda la home (comportamiento amplio por defecto).
 - Un cambio en las carpetas de settings se aplica automaticamente en la siguiente busqueda, sin reiniciar.
