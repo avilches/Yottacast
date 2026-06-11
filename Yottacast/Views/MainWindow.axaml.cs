@@ -504,6 +504,13 @@ public partial class MainWindow : Window {
                 break;
         }
 
+        // ── Cmd+F: ciclar modo de búsqueda ──────────────────────────────────────
+        if (AppHandler.Instance.MatchesHotkey(e, ActionHotkey.MetaF)) {
+            vm.CycleMode();
+            e.Handled = true;
+            return;
+        }
+
         // ── Cmd+P: toggle preview ────────────────────────────────────────────────
         if (AppHandler.Instance.MatchesHotkey(e, ActionHotkey.MetaP)) {
             if (vm.IsEditorOpen && vm.EditorPanel.IsPreviewMode) {
@@ -613,6 +620,8 @@ public partial class MainWindow : Window {
                 } else if (vm.IsSearching) {
                     vm.CancelDeferredSearch();
                     vm.CleanAndSaveHistory(null);
+                } else if (vm.ShowModePill) {
+                    vm.ResetMode();
                 } else if (!string.IsNullOrEmpty(vm.SearchText)) {
                     vm.CleanAndSaveHistory(null);
                 } else {
