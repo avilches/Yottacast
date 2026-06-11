@@ -165,6 +165,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         OnPropertyChanged(nameof(FileSearchModeOnly));
         OnPropertyChanged(nameof(FileSearchNotDisabled));
     }
+
     [ObservableProperty] private bool _enableFileEditor;
     [ObservableProperty] private bool _fileEditorAutoSave;
     [ObservableProperty] private bool _enableWebSearch;
