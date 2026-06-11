@@ -99,6 +99,7 @@ public sealed class SystemSettingsSearch(
             IconBytes   = iconCache.Get(AppPaths.SystemSettingsAppPath),
             Title       = panel.Name,
             Subtitle    = subtitle,
+            ItemPath    = identifier,
             Category    = "System Settings",
             Score       = score,
             ScoreReason = scoreReason,

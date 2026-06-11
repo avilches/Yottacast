@@ -522,7 +522,7 @@ public partial class MainWindowViewModel(
     }
 
     public void RecordLaunch(BaseResultItemViewModel item) {
-        if (item is FileResultItemViewModel r)
+        if (item is ResultItemViewModel r && !string.IsNullOrEmpty(r.ItemPath))
             launchHistory.Record(r.ItemPath);
     }
 
