@@ -12,6 +12,7 @@ public sealed record ActionHotkey(string Key, ActionModifiers Modifiers = Action
     public static readonly ActionHotkey MetaEnter  = new("Return", ActionModifiers.Meta);
     public static readonly ActionHotkey MetaC      = new("C", ActionModifiers.Meta);
     public static readonly ActionHotkey MetaShiftF = new("F", ActionModifiers.MetaShift);
+    public static readonly ActionHotkey MetaF      = new("F", ActionModifiers.Meta);
     public static readonly ActionHotkey MetaE      = new("E", ActionModifiers.Meta);
     public static readonly ActionHotkey MetaP      = new("P", ActionModifiers.Meta);
     public static readonly ActionHotkey MetaS      = new("S", ActionModifiers.Meta);
