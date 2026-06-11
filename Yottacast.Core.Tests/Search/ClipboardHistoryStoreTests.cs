@@ -74,12 +74,22 @@ public class ClipboardHistoryStoreTests
     [Fact]
     public void Add_EntryOlderThanMaxDays_IsDiscarded()
     {
-        var store = BuildStore();
+        var baseTime = DateTimeOffset.UtcNow;
+        var callCount = 0;
+        DateTimeOffset[] times = [
+            baseTime.AddDays(-35), // primera entrada, ya "vieja"
+            baseTime,              // segunda entrada, nueva — trigger de limpieza
+        ];
+        var store = new ClipboardHistoryStore(
+            Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json"),
+            NullLogger<ClipboardHistoryStore>.Instance,
+            clock: () => times[Math.Min(callCount++, times.Length - 1)]);
         store.MaxDays = 30;
-        store.Add("old");
+        store.Add("old");   // CopiedAt = 35 días atrás
+        store.Add("new");   // CopiedAt = ahora, trigger ApplyLimits
         var entries = store.GetAll();
         Assert.Single(entries);
-        Assert.Equal("old", entries[0].Text);
+        Assert.Equal("new", entries[0].Text);
     }
 
     [Fact]
@@ -172,5 +182,25 @@ public class ClipboardHistoryStoreTests
         Assert.Equal("world", entries[0].Text);
         Assert.Equal("hello", entries[1].Text);
         Assert.Equal(1, entries[1].UsageCount);
+    }
+
+    [Fact]
+    public void EntriesChanged_NotFiredAfterRemoveNonExisting()
+    {
+        var store = BuildStore();
+        var fired = false;
+        store.EntriesChanged += () => fired = true;
+        store.Remove("ghost");
+        Assert.False(fired);
+    }
+
+    [Fact]
+    public void EntriesChanged_NotFiredAfterRecordUsageNonExisting()
+    {
+        var store = BuildStore();
+        var fired = false;
+        store.EntriesChanged += () => fired = true;
+        store.RecordUsage("ghost");
+        Assert.False(fired);
     }
 }

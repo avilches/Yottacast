@@ -4,11 +4,13 @@ using Microsoft.Extensions.Logging;
 
 namespace Yottacast.Core.Search.Clipboard;
 
-public class ClipboardHistoryStore(string filePath, ILogger<ClipboardHistoryStore> logger)
+public class ClipboardHistoryStore(string filePath, ILogger<ClipboardHistoryStore> logger, Func<DateTimeOffset>? clock = null)
 {
     private readonly Lock _lock = new();
     private List<ClipboardHistoryEntry> _entries = [];
     private CancellationTokenSource? _debounceCts;
+
+    private DateTimeOffset Now => clock?.Invoke() ?? DateTimeOffset.UtcNow;
 
     public event Action? EntriesChanged;
 
@@ -30,11 +32,11 @@ public class ClipboardHistoryStore(string filePath, ILogger<ClipboardHistoryStor
             {
                 var existing = _entries[idx];
                 _entries.RemoveAt(idx);
-                _entries.Insert(0, existing with { CopiedAt = DateTimeOffset.UtcNow });
+                _entries.Insert(0, existing with { CopiedAt = Now });
             }
             else
             {
-                var now = DateTimeOffset.UtcNow;
+                var now = Now;
                 _entries.Insert(0, new ClipboardHistoryEntry(text, now, 0, now));
             }
             ApplyLimits();
@@ -56,7 +58,7 @@ public class ClipboardHistoryStore(string filePath, ILogger<ClipboardHistoryStor
         if (removed)
         {
             EntriesChanged?.Invoke();
-            ScheduleSave();
+            _ = FlushAsync();
         }
     }
 
@@ -69,7 +71,7 @@ public class ClipboardHistoryStore(string filePath, ILogger<ClipboardHistoryStor
             if (idx >= 0)
             {
                 var e = _entries[idx];
-                _entries[idx] = e with { UsageCount = e.UsageCount + 1, LastUsedAt = DateTimeOffset.UtcNow };
+                _entries[idx] = e with { UsageCount = e.UsageCount + 1, LastUsedAt = Now };
                 found = true;
             }
         }
@@ -113,7 +115,7 @@ public class ClipboardHistoryStore(string filePath, ILogger<ClipboardHistoryStor
 
     private void ApplyLimits()
     {
-        var cutoff = DateTimeOffset.UtcNow.AddDays(-MaxDays);
+        var cutoff = Now.AddDays(-MaxDays);
         _entries.RemoveAll(e => e.CopiedAt < cutoff);
         if (_entries.Count > MaxEntries)
             _entries.RemoveRange(MaxEntries, _entries.Count - MaxEntries);
@@ -121,10 +123,11 @@ public class ClipboardHistoryStore(string filePath, ILogger<ClipboardHistoryStor
 
     private void ScheduleSave()
     {
-        _debounceCts?.Cancel();
-        _debounceCts = new CancellationTokenSource();
-        var ct = _debounceCts.Token;
-        _ = Task.Delay(AppDefaults.ClipboardHistoryDebounceMs, ct)
+        var cts = new CancellationTokenSource();
+        var prev = Interlocked.Exchange(ref _debounceCts, cts);
+        prev?.Cancel();
+        prev?.Dispose();
+        _ = Task.Delay(AppDefaults.ClipboardHistoryDebounceMs, cts.Token)
             .ContinueWith(async t =>
             {
                 if (t.IsCanceled) return;
