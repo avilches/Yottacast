@@ -147,7 +147,24 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     [ObservableProperty] private bool _enableCalculator;
     [ObservableProperty] private bool _enableClipboard;
     [ObservableProperty] private bool _enableEmoji;
-    [ObservableProperty] private bool _enableFileSearch;
+    private SearchSourceVisibility _fileSearchVisibility;
+
+    public bool FileSearchDisabled  { get => _fileSearchVisibility == SearchSourceVisibility.Disabled;  set { if (value) UpdateFileSearchVisibility(SearchSourceVisibility.Disabled);  } }
+    public bool FileSearchAlways    { get => _fileSearchVisibility == SearchSourceVisibility.Always;     set { if (value) UpdateFileSearchVisibility(SearchSourceVisibility.Always);     } }
+    public bool FileSearchModeOnly  { get => _fileSearchVisibility == SearchSourceVisibility.ModeOnly;   set { if (value) UpdateFileSearchVisibility(SearchSourceVisibility.ModeOnly);   } }
+    public bool FileSearchNotDisabled => _fileSearchVisibility != SearchSourceVisibility.Disabled;
+
+    private void UpdateFileSearchVisibility(SearchSourceVisibility v) {
+        _fileSearchVisibility = v;
+        _settings.FileSearchVisibility = v;
+        _settings.Save();
+        _settings.NotifySearchSettingsChanged();
+        _logger.LogInformation("Settings: FileSearchVisibility = {Value}", v);
+        OnPropertyChanged(nameof(FileSearchDisabled));
+        OnPropertyChanged(nameof(FileSearchAlways));
+        OnPropertyChanged(nameof(FileSearchModeOnly));
+        OnPropertyChanged(nameof(FileSearchNotDisabled));
+    }
     [ObservableProperty] private bool _enableFileEditor;
     [ObservableProperty] private bool _fileEditorAutoSave;
     [ObservableProperty] private bool _enableWebSearch;
@@ -184,7 +201,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     partial void OnEnableCalculatorChanged(bool value)              { _settings.EnableCalculator             = value; _settings.Save(); _logger.LogInformation("Settings: EnableCalculator = {Value}", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnEnableClipboardChanged(bool value)               { _settings.EnableClipboard              = value; _settings.Save(); _logger.LogInformation("Settings: EnableClipboard = {Value}", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnEnableEmojiChanged(bool value)                   { _settings.EnableEmoji                  = value; _settings.Save(); _logger.LogInformation("Settings: EnableEmoji = {Value}", value); _settings.NotifySearchSettingsChanged(); }
-    partial void OnEnableFileSearchChanged(bool value)              { _settings.FileSearchVisibility = value ? SearchSourceVisibility.Always : SearchSourceVisibility.Disabled; _settings.Save(); _logger.LogInformation("Settings: FileSearchVisibility = {Value}", _settings.FileSearchVisibility); _settings.NotifySearchSettingsChanged(); }
+
     partial void OnEnableFileEditorChanged(bool value)             { _settings.EnableFileEditor             = value; _settings.Save(); _logger.LogInformation("Settings: EnableFileEditor = {Value}", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnFileEditorAutoSaveChanged(bool value)           { _settings.FileEditorAutoSave           = value; _settings.Save(); _logger.LogInformation("Settings: FileEditorAutoSave = {Value}", value); }
 
@@ -443,7 +460,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _enableCalculator                = settings.EnableCalculator;
         _enableClipboard                 = settings.EnableClipboard;
         _enableEmoji                     = settings.EnableEmoji;
-        _enableFileSearch                = settings.FileSearchVisibility != SearchSourceVisibility.Disabled;
+        _fileSearchVisibility            = settings.FileSearchVisibility;
         _enableFileEditor                = settings.EnableFileEditor;
         _fileEditorAutoSave              = settings.FileEditorAutoSave;
         _enableWebSearch                 = settings.EnableWebSearch;

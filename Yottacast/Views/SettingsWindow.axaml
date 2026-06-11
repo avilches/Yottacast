@@ -573,6 +573,7 @@
                                      Width="8" Height="8"
                                      Fill="#FF3B30"
                                      VerticalAlignment="Center"
+                                     Margin="6,0,0,0"
                                      IsVisible="{Binding HasPermissionIssue}"/>
                         </Grid>
                     </Button>
@@ -1007,14 +1008,22 @@
                 <StackPanel Spacing="16" IsVisible="{Binding IsFileSearchSelected}">
                     <TextBlock Classes="section-heading" Text="File Search"/>
 
-                    <ToggleSwitch IsChecked="{Binding EnableFileSearch}"
-                                  OnContent="Enabled"
-                                  OffContent="Disabled"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <RadioButton Content="Off"
+                                     GroupName="FileSearchVisibility"
+                                     IsChecked="{Binding FileSearchDisabled}"/>
+                        <RadioButton Content="Always"
+                                     GroupName="FileSearchVisibility"
+                                     IsChecked="{Binding FileSearchAlways}"/>
+                        <RadioButton Content="⌘F only"
+                                     GroupName="FileSearchVisibility"
+                                     IsChecked="{Binding FileSearchModeOnly}"/>
+                    </StackPanel>
 
                     <TextBlock Classes="description"
                                Text="Search for documents and files on your system."/>
 
-                    <StackPanel Spacing="12" IsVisible="{Binding EnableFileSearch}">
+                    <StackPanel Spacing="12" IsVisible="{Binding FileSearchNotDisabled}">
 
                         <CheckBox Content="Only in specific folders"
                                   IsChecked="{Binding FileSearchOnlySpecificFolders}"/>
