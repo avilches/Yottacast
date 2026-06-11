@@ -439,6 +439,33 @@ public partial class App : Application {
             }
         };
 
+        // Hotkey global para abrir directamente en modo Clipboard
+        var clipboardHotkey = HotkeyConfig.Parse(settings.ClipboardHotkey);
+        if (clipboardHotkey != null && settings.ClipboardSearchVisibility == SearchSourceVisibility.ModeOnly) {
+            _globalHook.KeyPressed += (_, e) => {
+                var mask = e.RawEvent.Mask;
+                var hasAlt  = mask.HasFlag(EventMask.LeftAlt)  || mask.HasFlag(EventMask.RightAlt);
+                var hasCtrl = mask.HasFlag(EventMask.LeftCtrl) || mask.HasFlag(EventMask.RightCtrl);
+                var hasShift= mask.HasFlag(EventMask.LeftShift)|| mask.HasFlag(EventMask.RightShift);
+                var hasMeta = mask.HasFlag(EventMask.LeftMeta) || mask.HasFlag(EventMask.RightMeta);
+
+                if (e.Data.KeyCode == KeyNameToKeyCode(clipboardHotkey.KeyName)
+                    && hasAlt == clipboardHotkey.Alt && hasCtrl == clipboardHotkey.Ctrl
+                    && hasShift == clipboardHotkey.Shift && hasMeta == clipboardHotkey.Meta) {
+
+                    e.SuppressEvent = true;
+
+                    Dispatcher.UIThread.InvokeAsync(() => {
+                        var window = desktop.MainWindow;
+                        if (window is null) return;
+                        if (!window.IsVisible) AppHandler.Instance.ShowWindow(window);
+                        if (window.DataContext is MainWindowViewModel vm)
+                            vm.ActivateMode(SearchMode.Clipboard);
+                    });
+                }
+            };
+        }
+
         _ = _globalHook.RunAsync();
     }
 
