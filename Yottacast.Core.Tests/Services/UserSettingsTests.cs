@@ -831,6 +831,24 @@ public class UserSettingsTests : IDisposable {
     }
 
     [Fact]
+    public void FileSearchVisibility_ExplicitFieldWinsOverMigrationField() {
+        // Si el JSON tiene ambos, fileSearchVisibility tiene prioridad sobre enableFileSearch
+        WriteSettingsJson("""{"enableFileSearch":false,"fileSearchVisibility":"ModeOnly"}""");
+        var settings = Load();
+        Assert.Equal(SearchSourceVisibility.ModeOnly, settings.FileSearchVisibility);
+    }
+
+    [Fact]
+    public void FileSearchVisibility_WrittenToJson_UsesCorrectKey() {
+        var settings = Load();
+        settings.FileSearchVisibility = SearchSourceVisibility.ModeOnly;
+        settings.Save();
+        var json = File.ReadAllText(_settingsFile);
+        Assert.Contains("\"fileSearchVisibility\"", json);
+        Assert.Contains("ModeOnly", json);
+    }
+
+    [Fact]
     public void ClipboardSearchVisibility_DefaultsToDisabled() {
         var settings = Load();
         Assert.Equal(SearchSourceVisibility.Disabled, settings.ClipboardSearchVisibility);
