@@ -326,7 +326,7 @@ public class GlobalSearchTests {
 
         var count = 0;
         await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => {
-            await foreach (var _ in global.SearchDeferredAsync("q", 10, cts.Token))
+            await foreach (var _ in global.SearchDeferredAsync("q", 10, ct: cts.Token))
                 count++;
         });
 
@@ -343,7 +343,7 @@ public class GlobalSearchTests {
 
         var count = 0;
         await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => {
-            await foreach (var _ in global.SearchDeferredAsync("q", 10, cts.Token))
+            await foreach (var _ in global.SearchDeferredAsync("q", 10, ct: cts.Token))
                 count++;
         });
 
@@ -422,5 +422,67 @@ public class GlobalSearchTests {
 
         Assert.Single(deferredResult);
         Assert.Equal("Deferred", ResultItem.TitleOf(deferredResult[0]));
+    }
+}
+
+// ── Filtrado por modo ────────────────────────────────────────────────────────
+
+file sealed class ModeInstantSource(SearchMode mode, SearchSourceVisibility visibility)
+    : IInstantSearchSource, ISearchModeSource {
+    public bool WasSearched { get; private set; }
+    public int Limit => 100;
+    public void Start() { }
+    public Task WhenReady() => Task.CompletedTask;
+    public Task Stop() => Task.CompletedTask;
+    public IReadOnlyList<BaseResultItemViewModel> Search(string query, int _) {
+        WasSearched = true;
+        return [new ResultItemViewModel { Title = $"result-{mode}", Score = 1.0 }];
+    }
+    public bool IsActiveIn(SearchMode m) => m switch {
+        SearchMode.All   => visibility == SearchSourceVisibility.Always,
+        var x when x == mode => visibility == SearchSourceVisibility.ModeOnly,
+        _ => false,
+    };
+}
+
+public class GlobalSearchModeTests {
+
+    [Fact]
+    public void SearchInstant_AllMode_ExcludesModeOnlySources() {
+        var always = new StubInstantSource([new ResultItemViewModel { Title = "always", Score = 1.0 }]);
+        var modeOnly = new ModeInstantSource(SearchMode.Files, SearchSourceVisibility.ModeOnly);
+        var gs = new GlobalSearch([always, modeOnly], []);
+
+        var (items, _, _) = gs.SearchInstant("q", 10, SearchMode.All);
+
+        Assert.Single(items);
+        Assert.Equal("always", ((ResultItemViewModel)items[0]).Title);
+        Assert.True(always.WasSearched);
+        Assert.False(modeOnly.WasSearched);
+    }
+
+    [Fact]
+    public void SearchInstant_FilesMode_OnlyIncludesModeOnlyFilesSource() {
+        var always = new StubInstantSource([new ResultItemViewModel { Title = "always", Score = 1.0 }]);
+        var modeOnly = new ModeInstantSource(SearchMode.Files, SearchSourceVisibility.ModeOnly);
+        var gs = new GlobalSearch([always, modeOnly], []);
+
+        var (items, _, _) = gs.SearchInstant("q", 10, SearchMode.Files);
+
+        Assert.Single(items);
+        Assert.Equal("result-Files", ((ResultItemViewModel)items[0]).Title);
+        Assert.False(always.WasSearched);
+        Assert.True(modeOnly.WasSearched);
+    }
+
+    [Fact]
+    public void SearchInstant_AllMode_AlwaysSourceActive() {
+        var always = new ModeInstantSource(SearchMode.Files, SearchSourceVisibility.Always);
+        var gs = new GlobalSearch([always], []);
+
+        var (items, _, _) = gs.SearchInstant("q", 10, SearchMode.All);
+
+        Assert.Single(items);
+        Assert.True(always.WasSearched);
     }
 }

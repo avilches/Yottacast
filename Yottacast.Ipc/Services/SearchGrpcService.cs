@@ -70,7 +70,7 @@ public class SearchGrpcService(
         var ct = context.CancellationToken;
         try {
             await foreach (var snapshot in globalSearch
-                .SearchDeferredAsync(request.Query, request.Limit, ct)
+                .SearchDeferredAsync(request.Query, request.Limit, ct: ct)
                 .WithCancellation(ct)) {
 
                 var response = BuildResponse(snapshot, hint: null, isSearching: true);

@@ -10,7 +10,6 @@ public class GlobalSearch(IEnumerable<IInstantSearchSource> instantSources, IEnu
     private readonly IReadOnlyList<IDeferredSearchSource> _deferredSources = deferredSources.ToList();
 
     public void Start() {
-        // Fire and forget. Every search source could do itw own stuff in the Start. To know if they are finished, use WhenReady()
         foreach (var s in _instantSources) s.Start();
         foreach (var s in _deferredSources) s.Start();
     }
@@ -25,8 +24,11 @@ public class GlobalSearch(IEnumerable<IInstantSearchSource> instantSources, IEnu
         _instantSources.Select(s => s.Stop())
         .Concat(_deferredSources.Select(s => s.Stop())));
 
-    public (IReadOnlyList<BaseResultItemViewModel> Items, string? Hint, SearchHintKind HintKind) SearchInstant(string query, int limit) {
-        var items = _instantSources
+    public (IReadOnlyList<BaseResultItemViewModel> Items, string? Hint, SearchHintKind HintKind)
+        SearchInstant(string query, int limit, SearchMode mode = SearchMode.All) {
+
+        var activeSources = GetActiveInstantSources(mode);
+        var items = activeSources
             .SelectMany(s => {
                 var sourceLimit = s.Limit;
                 return s.Search(query, sourceLimit < 0 ? limit : sourceLimit);
@@ -34,15 +36,39 @@ public class GlobalSearch(IEnumerable<IInstantSearchSource> instantSources, IEnu
             .OrderByDescending(x => x.Score)
             .ToList();
 
-        var hintProvider = _instantSources.OfType<ISearchHintProvider>().FirstOrDefault(s => s.LastHint != null);
+        var hintProvider = activeSources.OfType<ISearchHintProvider>().FirstOrDefault(s => s.LastHint != null);
         var hint = hintProvider?.LastHint;
         var hintKind = hintProvider?.LastHintKind ?? SearchHintKind.Info;
         return (items, hint, hintKind);
     }
 
     public IAsyncEnumerable<IReadOnlyList<BaseResultItemViewModel>> SearchDeferredAsync(
-        string query, int limit, CancellationToken ct = default)
-        => SearchSourcesAsync(_deferredSources, query, limit, ct);
+        string query, int limit, SearchMode mode = SearchMode.All, CancellationToken ct = default)
+        => SearchSourcesAsync(GetActiveDeferredSources(mode), query, limit, ct);
+
+    private IReadOnlyList<IInstantSearchSource> GetActiveInstantSources(SearchMode mode) {
+        if (mode == SearchMode.All)
+            return _instantSources
+                .Where(s => s is not ISearchModeSource ms || ms.IsActiveIn(SearchMode.All))
+                .ToList();
+        return _instantSources
+            .OfType<ISearchModeSource>()
+            .Where(s => s.IsActiveIn(mode))
+            .Cast<IInstantSearchSource>()
+            .ToList();
+    }
+
+    private IReadOnlyList<IDeferredSearchSource> GetActiveDeferredSources(SearchMode mode) {
+        if (mode == SearchMode.All)
+            return _deferredSources
+                .Where(s => s is not ISearchModeSource ms || ms.IsActiveIn(SearchMode.All))
+                .ToList();
+        return _deferredSources
+            .OfType<ISearchModeSource>()
+            .Where(s => s.IsActiveIn(mode))
+            .Cast<IDeferredSearchSource>()
+            .ToList();
+    }
 
     /// <summary>
     /// Merges snapshots from all sources. Each source owns a slot; when it emits a new
