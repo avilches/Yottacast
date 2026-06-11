@@ -22,7 +22,7 @@ public class UserDocumentSearch(
     PlatformProvider platform,
     ILogger<UserDocumentSearch> logger,
     ClipboardService clipboard,
-    int timeoutMs = AppDefaults.FileSearchTimeoutMs) : IDeferredSearchSource {
+    int timeoutMs = AppDefaults.FileSearchTimeoutMs) : IDeferredSearchSource, ISearchModeSource {
 
     // Badge icon cache: keyed by lowercase extension; null means "no default app found"
     private readonly ConcurrentDictionary<string, byte[]?> _badgeByExtension = new();
@@ -76,11 +76,16 @@ public class UserDocumentSearch(
     public Task WhenReady() => Task.CompletedTask;
     public Task Stop() => Task.CompletedTask;
 
+    public bool IsActiveIn(SearchMode mode) => mode switch {
+        SearchMode.All   => settings.FileSearchVisibility == SearchSourceVisibility.Always,
+        SearchMode.Files => settings.FileSearchVisibility == SearchSourceVisibility.ModeOnly,
+        _                => false,
+    };
+
     public async IAsyncEnumerable<IReadOnlyList<BaseResultItemViewModel>> SearchAsync(
         string query, int limit, [EnumeratorCancellation] CancellationToken ct = default) {
 
         if (query.Length < AppDefaults.FileSearchMinQueryLength) yield break;
-        if (settings.FileSearchVisibility == SearchSourceVisibility.Disabled) yield break;
 
         const int SnapshotIntervalMs = AppDefaults.FileSearchSnapshotIntervalMs;
 
@@ -98,7 +103,7 @@ public class UserDocumentSearch(
             var folders = settings.FileSearchOnlySpecificFolders
                 ? settings.ExpandedSearchFolders
                 : (IReadOnlyList<string>?)null;
-            logger.LogDebug("DocSearch start query=\"{Query}\" timeout={TimeoutMs}ms fileSearchVisibility={Visibility} onlySpecificFolders={OnlySpecific} folders=[{Folders}]",
+            logger.LogDebug("DocSearch start query=\"{Query}\" timeout={TimeoutMs}ms visibility={Visibility} onlySpecificFolders={OnlySpecific} folders=[{Folders}]",
                 query, timeoutMs, settings.FileSearchVisibility, settings.FileSearchOnlySpecificFolders,
                 folders is null ? "(all)" : string.Join(", ", folders));
 

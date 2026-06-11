@@ -129,4 +129,49 @@ public class UserDocumentSearchTests {
         Assert.Equal(r1[0].Title, r2[0].Title);
         Assert.Equal(r1[0].Score, r2[0].Score);
     }
+
+    // ── ISearchModeSource ────────────────────────────────────────────────────────
+
+    [Fact]
+    public void IsActiveIn_All_WhenAlways() {
+        var platform = new FakePlatformProvider([]);
+        var settings = UserSettings.Load(platform);
+        settings.FileSearchVisibility = SearchSourceVisibility.Always;
+        var search = new UserDocumentSearch(settings, new FileSearch(platform),
+            new FileIconCache(platform, NullLogger<FileIconCache>.Instance),
+            platform, NullLogger<UserDocumentSearch>.Instance,
+            new ClipboardService(NullLogger<ClipboardService>.Instance));
+
+        Assert.True(((ISearchModeSource)search).IsActiveIn(SearchMode.All));
+        Assert.False(((ISearchModeSource)search).IsActiveIn(SearchMode.Files));
+    }
+
+    [Fact]
+    public void IsActiveIn_Files_WhenModeOnly() {
+        var platform = new FakePlatformProvider([]);
+        var settings = UserSettings.Load(platform);
+        settings.FileSearchVisibility = SearchSourceVisibility.ModeOnly;
+        var search = new UserDocumentSearch(settings, new FileSearch(platform),
+            new FileIconCache(platform, NullLogger<FileIconCache>.Instance),
+            platform, NullLogger<UserDocumentSearch>.Instance,
+            new ClipboardService(NullLogger<ClipboardService>.Instance));
+
+        Assert.False(((ISearchModeSource)search).IsActiveIn(SearchMode.All));
+        Assert.True(((ISearchModeSource)search).IsActiveIn(SearchMode.Files));
+        Assert.False(((ISearchModeSource)search).IsActiveIn(SearchMode.Clipboard));
+    }
+
+    [Fact]
+    public void IsActiveIn_NeverActive_WhenDisabled() {
+        var platform = new FakePlatformProvider([]);
+        var settings = UserSettings.Load(platform);
+        settings.FileSearchVisibility = SearchSourceVisibility.Disabled;
+        var search = new UserDocumentSearch(settings, new FileSearch(platform),
+            new FileIconCache(platform, NullLogger<FileIconCache>.Instance),
+            platform, NullLogger<UserDocumentSearch>.Instance,
+            new ClipboardService(NullLogger<ClipboardService>.Instance));
+
+        Assert.False(((ISearchModeSource)search).IsActiveIn(SearchMode.All));
+        Assert.False(((ISearchModeSource)search).IsActiveIn(SearchMode.Files));
+    }
 }
