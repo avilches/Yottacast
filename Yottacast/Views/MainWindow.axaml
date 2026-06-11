@@ -291,7 +291,7 @@
                             CornerRadius="12"
                             Padding="10,4">
                         <TextBlock Text="{Binding ActiveModeName}"
-                                   Foreground="{DynamicResource Theme.Window.Background}"
+                                   Foreground="White"
                                    FontSize="12"
                                    FontWeight="Medium"/>
                     </Border>
