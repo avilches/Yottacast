@@ -38,9 +38,11 @@ El fichero de preferencias se crea automaticamente en la primera ejecucion y se 
 | AppDirectories | Directorios por defecto de la plataforma | Directorios donde buscar aplicaciones |
 | EnableAppSearch | `true` | Activa/desactiva la busqueda de aplicaciones |
 | EnableCalculator | `true` | Toggle de la fuente calculadora: controla aritmética, ecuaciones, conversiones de unidades y divisas |
-| EnableClipboard | `true` | Toggle de la fuente clipboard |
+| EnableClipboard | `true` | Toggle de la fuente clipboard (sin efecto funcional; ver nota) |
 | EnableEmoji | `true` | Toggle de la fuente emoji |
-| EnableFileSearch | `true` | Activa/desactiva la busqueda de ficheros |
+| FileSearchVisibility | `Always` | Visibilidad de la busqueda de ficheros: `Disabled` (nunca activa), `Always` (activa en modo All), `ModeOnly` (solo en modo Files) |
+| ClipboardSearchVisibility | `Disabled` | Visibilidad de la busqueda de clipboard: mismos valores que `FileSearchVisibility`; `Disabled` por defecto hasta que la fuente exista |
+| ClipboardHotkey | `null` | Hotkey dedicada para activar el modo Clipboard (p.ej. `"Alt+Space"`, `"Meta+V"`); `null` = sin hotkey dedicada |
 | EnableWebSearch | `true` | Activa/desactiva la busqueda web; si `false`, `WebSearchSource.Search()` devuelve siempre lista vacia |
 | FileSearchOnlySpecificFolders | `false` | Si `true`, solo busca en las carpetas configuradas en `SearchFolders`; si `false`, busca en toda la home |
 | LastLaunchedVersion | `""` | Version del ultimo arranque (para migraciones) |
@@ -65,9 +67,11 @@ El fichero de preferencias se crea automaticamente en la primera ejecucion y se 
 | KeepValueWhenHide | `true` | Si el texto se preserva al ocultar la ventana; `false` lo limpia inmediatamente |
 | KeepValueWhenHideDuration | `60` | Segundos antes de borrar el texto tras ocultar; `0` = nunca (Siempre) |
 
-**Nota sobre `EnableClipboard`**: se expone en Settings y se persiste en JSON, pero no tiene efecto funcional porque no existe una fuente de búsqueda de clipboard todavía.
+**Nota sobre `EnableClipboard`**: se expone en Settings y se persiste en JSON, pero no tiene efecto funcional porque `ClipboardSearchVisibility` controla la visibilidad real de la fuente; `EnableClipboard` se mantiene por compatibilidad con settings antiguos.
 
 **Nota sobre `EnableAppSearch`**: cuando es `false`, `ApplicationSearch.Start()` marca la fuente como ready inmediatamente (sin escanear) y `Search()` devuelve siempre una lista vacia.
+
+**Nota sobre migracion de `enableFileSearch`**: el campo JSON `enableFileSearch` (clave antigua) se lee al cargar para migrar automaticamente al nuevo `fileSearchVisibility`. Si `enableFileSearch` era `false`, se asigna `Disabled`; si era `true` o no existia, se usa `Always`. El campo `enableFileSearch` nunca se escribe en ficheros nuevos.
 
 > **Verificar en:** campos de `UserSettings` y `UserSettingsData` en `Yottacast.Core/Services/UserSettings.cs`. Registro incondicional de fuentes en `App.BuildServices()` -- en `Yottacast/App.axaml.cs`.
 
@@ -261,8 +265,8 @@ La seccion AppSearch tiene checkboxes adicionales:
 
 La seccion AppSearch tambien tiene el boton **"Add common folders"**, que solo es visible cuando hay carpetas por defecto de la plataforma que existen en disco pero no estan aun en la lista. Al pulsarlo, se anaden todas esas carpetas de una vez.
 
-La seccion FileSearch tiene dos checkboxes adicionales:
-- **Enable file search**: si se desactiva, oculta el resto de opciones y la busqueda no devuelve resultados.
+La seccion FileSearch tiene un selector de visibilidad y un checkbox adicional:
+- **File search visibility**: selector de tres valores (`Disabled`, `Always`, `ModeOnly`) que controla cuando participa la fuente de ficheros. Si es `Disabled`, oculta el resto de opciones.
 - **Only in specific folders**: si se activa, muestra la lista de carpetas y la busqueda se acota a ellas; si esta desactivado, la busqueda usa toda la home.
 
 Las carpetas configuradas que ya no existen en disco se muestran atenuadas (opacidad reducida) en la lista, para que el usuario las identifique. Siguen guardadas en settings y vuelven a estar activas si el directorio se recrea. El boton "Add common folders" en FileSearch anade las carpetas por defecto de la plataforma que existen en disco en ese momento, sin duplicar las que ya esten en la lista.
@@ -300,7 +304,7 @@ Internamente se usa un record privado `UserSettingsData` como DTO de serializaci
 Cuando el usuario modifica un setting que afecta a los resultados de busqueda, la busqueda activa se re-ejecuta automaticamente sin que el usuario tenga que reescribir la query. Si no hay query activa (barra vacia), no ocurre nada.
 
 **Settings que disparan refresco:**
-- Toggles de fuentes: `EnableAppSearch`, `EnableCalculator`, `EnableClipboard`, `EnableEmoji`, `EnableFileSearch`, `EnableWebSearch`, `EnableDictionary`
+- Toggles de fuentes: `EnableAppSearch`, `EnableCalculator`, `EnableClipboard`, `EnableEmoji`, `FileSearchVisibility`, `ClipboardSearchVisibility`, `EnableWebSearch`, `EnableDictionary`
 - Configuracion de file search: `FileSearchOnlySpecificFolders`, cambios en `SearchFolders`
 - Configuracion de diccionario: `DictionaryPrefix`, `DictionaryShowAlways`, `DictionaryLanguages`
 - Configuracion de calculadora: `CalculatorCurrencyA`, `CalculatorCurrencyB`, `CalculatorDecimalPlaces`

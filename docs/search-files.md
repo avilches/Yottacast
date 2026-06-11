@@ -16,9 +16,19 @@ La busqueda de ficheros no se ejecuta si la query tiene menos de 2 caracteres (`
 
 ---
 
-## 2. Carpetas de busqueda
+## 2. Visibilidad y modos de busqueda
 
-La busqueda solo se ejecuta si `EnableFileSearch` es `true`. Si esta desactivado, `SearchAsync` hace early return sin contactar al sistema operativo.
+`UserDocumentSearch` implementa `ISearchModeSource`. La visibilidad se controla mediante `FileSearchVisibility: SearchSourceVisibility` con tres valores posibles:
+
+| Valor | Comportamiento |
+|---|---|
+| `Disabled` | GlobalSearch nunca invoca esta fuente, independientemente del modo activo |
+| `Always` | La fuente esta activa en el modo All (comportamiento por defecto) |
+| `ModeOnly` | La fuente solo esta activa cuando el modo Files esta seleccionado |
+
+El valor por defecto es `Always`. GlobalSearch consulta `IsActiveIn(mode)` en cada busqueda y omite la fuente si devuelve `false`.
+
+## 3. Carpetas de busqueda
 
 Cuando `FileSearchOnlySpecificFolders` es `false` (por defecto), la busqueda usa `null` como parametro de carpetas, lo que hace que cada plataforma busque en toda la home del usuario (Spotlight sin filtro de carpeta en macOS). Cuando es `true`, se usa `ExpandedSearchFolders` como scope explicito.
 
@@ -37,15 +47,17 @@ Si ninguna de las carpetas configuradas existe en disco:
 - **Windows/Linux**: la busqueda se ejecuta sin filtro de carpetas explicito.
 
 **Invariantes:**
-- Si `EnableFileSearch` es `false`, no se ejecuta ninguna busqueda de ficheros.
+- Si `FileSearchVisibility` es `Disabled`, GlobalSearch nunca llama a esta fuente.
+- Si `FileSearchVisibility` es `Always`, la fuente participa en el modo All.
+- Si `FileSearchVisibility` es `ModeOnly`, la fuente solo participa cuando el modo Files esta activo.
 - Si `FileSearchOnlySpecificFolders` es `false`, se busca en toda la home (comportamiento amplio por defecto).
 - Un cambio en las carpetas de settings se aplica automaticamente en la siguiente busqueda, sin reiniciar.
 
-> **Verificar en:** `UserDocumentSearch.SearchAsync` (guards `EnableFileSearch` y logica de `folders`), `MacOsPlatformProvider.SearchFilesAsync` (fallback a `home`), `MacOsPlatformProvider.DefaultSearchFolders`, `WindowsPlatformProvider.DefaultSearchFolders`, `LinuxPlatformProvider.DefaultSearchFolders`.
+> **Verificar en:** `UserDocumentSearch.IsActiveIn` (logica de visibilidad por modo), `UserDocumentSearch.SearchAsync` (logica de `folders`), `MacOsPlatformProvider.SearchFilesAsync` (fallback a `home`), `MacOsPlatformProvider.DefaultSearchFolders`, `WindowsPlatformProvider.DefaultSearchFolders`, `LinuxPlatformProvider.DefaultSearchFolders`, `UserSettings.FileSearchVisibility`.
 
 ---
 
-## 3. Entrega progresiva de resultados (snapshots)
+## 4. Entrega progresiva de resultados (snapshots)
 
 Los resultados se entregan a la UI en snapshots parciales para que el usuario vea resultados tan pronto como estan disponibles, sin esperar a que termine la busqueda completa.
 
@@ -59,7 +71,7 @@ Los resultados se entregan a la UI en snapshots parciales para que el usuario ve
 
 ---
 
-## 4. Timeout y cancelacion
+## 5. Timeout y cancelacion
 
 La busqueda tiene un timeout configurable (por defecto 20 segundos, `FileSearchTimeoutMs`). Hay dos vias de cancelacion:
 
@@ -78,15 +90,15 @@ La tarea background se lanza con `CancellationToken.None` para garantizar que si
 
 ---
 
-## 5. Scoring y ordenacion
+## 6. Scoring y ordenacion
 
 El scoring se aplica client-side sobre el nombre del fichero. El sistema operativo prefiltra, pero la puntuacion final la calcula Yottacast.
 
-### 5.1. Queries con wildcard (`*`)
+### 6.1. Queries con wildcard (`*`)
 
 Todos los resultados reciben un score base de 0.5. No se aplica scoring diferenciado.
 
-### 5.2. Query de un solo token
+### 6.2. Query de un solo token
 
 Se compara contra el nombre completo y contra el stem (nombre sin extension):
 
@@ -101,7 +113,7 @@ Se compara contra el nombre completo y contra el stem (nombre sin extension):
 
 La comparacion de extension construye el punto implicitamente: `extension == $".{queryLower}"`.
 
-### 5.3. Query multi-token
+### 6.3. Query multi-token
 
 Ejemplo: `"xls calc mis"`.
 
@@ -117,7 +129,7 @@ Ejemplo: `"xls calc mis"` contra `"mis calculos.xls"` -- segmentos `["mis","calc
 
 ---
 
-## 6. Construccion del resultado visible
+## 7. Construccion del resultado visible
 
 Cada resultado se presenta como un `ResultItemViewModel` con:
 
@@ -141,7 +153,7 @@ El nombre de la app se cachea por extension en `_appNameByExtension` (memoria, p
 
 ---
 
-## 7. Iconos de fichero
+## 8. Iconos de fichero
 
 Los iconos se cargan mediante `FileIconCache`, que mantiene una cache en dos niveles (memoria y disco) indexada por extension de fichero. En el momento de emitir un snapshot, se intenta obtener el icono sincrona e instantaneamente desde cache; si no esta disponible, se encola una carga asincrona via NSWorkspace. Cuando la carga termina, `FileIconCache` dispara `IconLoaded` y la UI se actualiza sola.
 
@@ -151,7 +163,7 @@ Los iconos se cargan mediante `FileIconCache`, que mantiene una cache en dos niv
 
 ---
 
-## 8. Badge de aplicacion predeterminada
+## 9. Badge de aplicacion predeterminada
 
 Cada resultado de fichero puede mostrar un badge (icono pequeno) en la esquina del icono principal, indicando que app lo abrira. El badge se cachea por extension (e.g. `.pdf`) y se precarga una sola vez por extension.
 
@@ -173,7 +185,7 @@ La deteccion de "icono propio" en macOS se hace leyendo `Info.plist` del bundle 
 
 ---
 
-## 9. Backend de busqueda por plataforma
+## 10. Backend de busqueda por plataforma
 
 Cada plataforma usa el indice nativo del SO. `FileSearch` es solo un intermediario que delega en `PlatformProvider.SearchFilesAsync`.
 
@@ -211,7 +223,7 @@ Cada plataforma usa el indice nativo del SO. `FileSearch` es solo un intermediar
 
 ---
 
-## 10. Ejecucion de procesos externos (ProcessRunner)
+## 11. Ejecucion de procesos externos (ProcessRunner)
 
 `ProcessRunner` gestiona la ejecucion de procesos (PowerShell, plocate/locate) con lectura asincrona de stdout y stderr linea a linea.
 
@@ -226,7 +238,7 @@ Cada plataforma usa el indice nativo del SO. `FileSearch` es solo un intermediar
 
 ---
 
-## 11. Constantes configurables
+## 12. Constantes configurables
 
 | Constante | Valor | Proposito |
 |---|---|---|
@@ -239,7 +251,7 @@ Cada plataforma usa el indice nativo del SO. `FileSearch` es solo un intermediar
 
 ---
 
-## 12. Tests
+## 13. Tests
 
 Los tests de `UserDocumentSearch` usan un `FakePlatformProvider` que emite todos los `FileResult` de su constructor ignorando la query y las carpetas. Esto aisla la verificacion del scoring y filtrado client-side del comportamiento del SO.
 
