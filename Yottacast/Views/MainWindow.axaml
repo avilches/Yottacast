@@ -285,7 +285,8 @@
             <!-- ── Mode pill (visible solo cuando ActiveMode != All) ── -->
             <Border DockPanel.Dock="Top"
                     IsVisible="{Binding ShowModePill}"
-                    Padding="12,0,12,6">
+                    Padding="12,0,12,6"
+                    Tapped="OnModePillTapped">
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <Border Background="{DynamicResource Theme.Results.SelectionBar.Color}"
                             CornerRadius="12"

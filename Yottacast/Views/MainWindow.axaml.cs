@@ -817,6 +817,12 @@ public partial class MainWindow : Window {
         TrackOrShowCursor(e);
     }
 
+    private void OnModePillTapped(object? sender, TappedEventArgs e) {
+        if (DataContext is MainWindowViewModel vm)
+            vm.ResetMode();
+        e.Handled = true;
+    }
+
     private void OnResultsDoubleTapped(object? sender, TappedEventArgs e) {
         if (DataContext is not MainWindowViewModel vm) return;
 

@@ -273,14 +273,15 @@ public partial class MainWindowViewModel(
 
     private void OnSearchSettingsChanged() {
         Dispatcher.UIThread.Post(() => {
+            // Siempre refrescar AvailableModes y resetear modo si ya no está disponible
+            OnPropertyChanged(nameof(AvailableModes));
+            if (_activeMode != SearchMode.All && !AvailableModes.Contains(_activeMode))
+                ResetMode();
+
             if (string.IsNullOrEmpty(SearchText)) return;
             _cts?.Cancel();
             _cts = new CancellationTokenSource();
             _userNavigated = false;
-            // Si el modo activo ya no está disponible (el usuario cambió su configuración), volver a All
-            OnPropertyChanged(nameof(AvailableModes));
-            if (_activeMode != SearchMode.All && !AvailableModes.Contains(_activeMode))
-                ResetMode();
             _ = SearchAsync(SearchText.Trim(), _cts.Token);
         });
     }
