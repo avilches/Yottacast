@@ -202,10 +202,13 @@ public partial class MainWindowViewModel(
         if (modes.Count == 0) return;
         if (_activeMode == SearchMode.All) {
             ActiveMode = modes[0];
-        } else {
-            var idx = modes.ToList().IndexOf(_activeMode);
-            ActiveMode = idx >= modes.Count - 1 ? SearchMode.All : modes[idx + 1];
+            return;
         }
+        var idx = -1;
+        for (var i = 0; i < modes.Count; i++) {
+            if (modes[i] == _activeMode) { idx = i; break; }
+        }
+        ActiveMode = idx >= modes.Count - 1 ? SearchMode.All : modes[idx + 1];
     }
 
     public void ResetMode() => ActiveMode = SearchMode.All;
