@@ -173,5 +173,6 @@ public class UserDocumentSearchTests {
 
         Assert.False(((ISearchModeSource)search).IsActiveIn(SearchMode.All));
         Assert.False(((ISearchModeSource)search).IsActiveIn(SearchMode.Files));
+        Assert.False(((ISearchModeSource)search).IsActiveIn(SearchMode.Clipboard));
     }
 }
