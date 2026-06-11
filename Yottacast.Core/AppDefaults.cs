@@ -219,4 +219,18 @@ public static class AppDefaults {
         "sh", "bash", "zsh", "fish", "ps1",
         "gitignore", "gitattributes", "editorconfig", "dockerfile",
     ];
+
+    // ── Clipboard history ─────────────────────────────────────────────────────
+    /// Maximum number of clipboard history entries to keep.
+    public const int ClipboardHistoryMaxEntries = 200;
+    /// Maximum age in days for clipboard history entries.
+    public const int ClipboardHistoryMaxDays = 30;
+    /// Half-life in days for clipboard history usage decay score.
+    public const double ClipboardHistoryHalfLifeDays = 30.0;
+    /// Score cap for clipboard history usage bonus.
+    public const double ClipboardHistoryMaxBonus = 0.5;
+    /// Debounce in ms before writing clipboard history to disk.
+    public const int ClipboardHistoryDebounceMs = 1_000;
+    /// Polling interval in ms for the clipboard monitor.
+    public const int ClipboardMonitorIntervalMs = 500;
 }

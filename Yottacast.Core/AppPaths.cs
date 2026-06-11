@@ -69,6 +69,9 @@ public static class AppPaths {
     /// <summary>Search history JSON file.</summary>
     public static readonly string HistoryFile = Path.Combine(ConfigDir, "history.json");
 
+    /// <summary>Clipboard history JSON file.</summary>
+    public static readonly string ClipboardHistoryFile = Path.Combine(ConfigDir, "clipboard-history.json");
+
     /// <summary>Exchange rates cache JSON file.</summary>
     public static readonly string ExchangeRatesCache = Path.Combine(CacheDir, "exchange-rates.json");
 
