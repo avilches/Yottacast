@@ -44,6 +44,7 @@ public partial class App : Application {
     private IServiceProvider _services = null!;
     private volatile bool _isToggling = false;
     private volatile bool _hotkeyDown = false;
+    private bool _clipboardHotkeyDown;
     private bool _settingsClosing = false;
 
     public override void Initialize() {
@@ -454,6 +455,8 @@ public partial class App : Application {
                     && hasShift == clipboardHotkey.Shift && hasMeta == clipboardHotkey.Meta) {
 
                     e.SuppressEvent = true;
+                    if (_clipboardHotkeyDown) return;
+                    _clipboardHotkeyDown = true;
 
                     Dispatcher.UIThread.InvokeAsync(() => {
                         var window = desktop.MainWindow;
@@ -462,6 +465,13 @@ public partial class App : Application {
                         if (window.DataContext is MainWindowViewModel vm)
                             vm.ActivateMode(SearchMode.Clipboard);
                     });
+                }
+            };
+
+            _globalHook.KeyReleased += (_, e) => {
+                if (e.Data.KeyCode == KeyNameToKeyCode(clipboardHotkey.KeyName)) {
+                    e.SuppressEvent = true;
+                    _clipboardHotkeyDown = false;
                 }
             };
         }
