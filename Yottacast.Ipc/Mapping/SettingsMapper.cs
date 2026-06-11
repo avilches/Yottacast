@@ -1,3 +1,4 @@
+using Yottacast.Core.Search;
 using Yottacast.Core.Search.WebSearch;
 using Yottacast.Core.Services;
 using Yottacast.Ipc.Proto;
@@ -15,7 +16,7 @@ public static class SettingsMapper {
             EnableCalculator = s.EnableCalculator,
             EnableClipboard = s.EnableClipboard,
             EnableEmoji = s.EnableEmoji,
-            EnableFileSearch = s.EnableFileSearch,
+            EnableFileSearch = s.FileSearchVisibility != SearchSourceVisibility.Disabled,
             EnableWebSearch = s.EnableWebSearch,
             ShowDisabledWebSearchEngines = s.ShowDisabledWebSearchEngines,
             FileSearchOnlySpecificFolders = s.FileSearchOnlySpecificFolders,
@@ -60,7 +61,7 @@ public static class SettingsMapper {
         s.EnableCalculator = msg.EnableCalculator;
         s.EnableClipboard = msg.EnableClipboard;
         s.EnableEmoji = msg.EnableEmoji;
-        s.EnableFileSearch = msg.EnableFileSearch;
+        s.FileSearchVisibility = msg.EnableFileSearch ? SearchSourceVisibility.Always : SearchSourceVisibility.Disabled;
         s.EnableWebSearch = msg.EnableWebSearch;
         s.ShowDisabledWebSearchEngines = msg.ShowDisabledWebSearchEngines;
         s.FileSearchOnlySpecificFolders = msg.FileSearchOnlySpecificFolders;

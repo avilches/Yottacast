@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Threading;
 using Xunit;
 using Yottacast.Core.Platform;
+using Yottacast.Core.Search;
 using Yottacast.Core.Search.UserDocuments;
 using Yottacast.Core.Services;
 
@@ -794,14 +795,45 @@ public class UserSettingsTests : IDisposable {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    // EnableFileSearch / FileSearchOnlySpecificFolders
+    // FileSearchVisibility / ClipboardSearchVisibility
     // ══════════════════════════════════════════════════════════════════════════
 
     [Fact]
-    public void EnableFileSearch_DefaultsToTrue() {
+    public void FileSearchVisibility_DefaultsToAlways() {
         var settings = Load();
+        Assert.Equal(SearchSourceVisibility.Always, settings.FileSearchVisibility);
+    }
 
-        Assert.True(settings.EnableFileSearch);
+    [Fact]
+    public void FileSearchVisibility_SaveAndLoad_RoundTrips() {
+        var settings = Load();
+        settings.FileSearchVisibility = SearchSourceVisibility.ModeOnly;
+        settings.Save();
+
+        WaitForSettingsFile("fileSearchVisibility");
+        var reloaded = Load();
+        Assert.Equal(SearchSourceVisibility.ModeOnly, reloaded.FileSearchVisibility);
+    }
+
+    [Fact]
+    public void FileSearchVisibility_Migration_TrueBecomesAlways() {
+        // JSON antiguo con enableFileSearch=true (sin fileSearchVisibility)
+        WriteSettingsJson("""{"enableFileSearch":true}""");
+        var settings = Load();
+        Assert.Equal(SearchSourceVisibility.Always, settings.FileSearchVisibility);
+    }
+
+    [Fact]
+    public void FileSearchVisibility_Migration_FalseBecomesDisabled() {
+        WriteSettingsJson("""{"enableFileSearch":false}""");
+        var settings = Load();
+        Assert.Equal(SearchSourceVisibility.Disabled, settings.FileSearchVisibility);
+    }
+
+    [Fact]
+    public void ClipboardSearchVisibility_DefaultsToDisabled() {
+        var settings = Load();
+        Assert.Equal(SearchSourceVisibility.Disabled, settings.ClipboardSearchVisibility);
     }
 
     [Fact]
@@ -809,18 +841,6 @@ public class UserSettingsTests : IDisposable {
         var settings = Load();
 
         Assert.False(settings.FileSearchOnlySpecificFolders);
-    }
-
-    [Fact]
-    public void EnableFileSearch_SaveAndLoad_RoundTrips() {
-        var settings = Load();
-        settings.EnableFileSearch = false;
-        settings.Save();
-
-        WaitForSettingsFile("enableFileSearch");
-        var reloaded = Load();
-
-        Assert.False(reloaded.EnableFileSearch);
     }
 
     [Fact]
@@ -833,17 +853,6 @@ public class UserSettingsTests : IDisposable {
         var reloaded = Load();
 
         Assert.True(reloaded.FileSearchOnlySpecificFolders);
-    }
-
-    [Fact]
-    public void EnableFileSearch_WrittenToJson() {
-        var settings = Load();
-        settings.EnableFileSearch = false;
-        settings.Save();
-
-        var raw = WaitForSettingsFile("enableFileSearch");
-        using var doc = JsonDocument.Parse(raw);
-        Assert.False(doc.RootElement.GetProperty("enableFileSearch").GetBoolean());
     }
 
     [Fact]

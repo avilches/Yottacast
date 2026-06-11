@@ -80,7 +80,7 @@ public class UserDocumentSearch(
         string query, int limit, [EnumeratorCancellation] CancellationToken ct = default) {
 
         if (query.Length < AppDefaults.FileSearchMinQueryLength) yield break;
-        if (!settings.EnableFileSearch) yield break;
+        if (settings.FileSearchVisibility == SearchSourceVisibility.Disabled) yield break;
 
         const int SnapshotIntervalMs = AppDefaults.FileSearchSnapshotIntervalMs;
 
@@ -98,8 +98,8 @@ public class UserDocumentSearch(
             var folders = settings.FileSearchOnlySpecificFolders
                 ? settings.ExpandedSearchFolders
                 : (IReadOnlyList<string>?)null;
-            logger.LogDebug("DocSearch start query=\"{Query}\" timeout={TimeoutMs}ms enableFileSearch={Enable} onlySpecificFolders={OnlySpecific} folders=[{Folders}]",
-                query, timeoutMs, settings.EnableFileSearch, settings.FileSearchOnlySpecificFolders,
+            logger.LogDebug("DocSearch start query=\"{Query}\" timeout={TimeoutMs}ms fileSearchVisibility={Visibility} onlySpecificFolders={OnlySpecific} folders=[{Folders}]",
+                query, timeoutMs, settings.FileSearchVisibility, settings.FileSearchOnlySpecificFolders,
                 folders is null ? "(all)" : string.Join(", ", folders));
 
             try {

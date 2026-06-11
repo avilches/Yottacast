@@ -12,6 +12,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using Yottacast.Core;
 using Yottacast.Core.Platform;
+using Yottacast.Core.Search;
 using Yottacast.Core.Search.Calculator;
 using Yottacast.Core.Search.WebSearch;
 using Yottacast.Core.Services;
@@ -183,7 +184,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     partial void OnEnableCalculatorChanged(bool value)              { _settings.EnableCalculator             = value; _settings.Save(); _logger.LogInformation("Settings: EnableCalculator = {Value}", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnEnableClipboardChanged(bool value)               { _settings.EnableClipboard              = value; _settings.Save(); _logger.LogInformation("Settings: EnableClipboard = {Value}", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnEnableEmojiChanged(bool value)                   { _settings.EnableEmoji                  = value; _settings.Save(); _logger.LogInformation("Settings: EnableEmoji = {Value}", value); _settings.NotifySearchSettingsChanged(); }
-    partial void OnEnableFileSearchChanged(bool value)              { _settings.EnableFileSearch             = value; _settings.Save(); _logger.LogInformation("Settings: EnableFileSearch = {Value}", value); _settings.NotifySearchSettingsChanged(); }
+    partial void OnEnableFileSearchChanged(bool value)              { _settings.FileSearchVisibility = value ? SearchSourceVisibility.Always : SearchSourceVisibility.Disabled; _settings.Save(); _logger.LogInformation("Settings: FileSearchVisibility = {Value}", _settings.FileSearchVisibility); _settings.NotifySearchSettingsChanged(); }
     partial void OnEnableFileEditorChanged(bool value)             { _settings.EnableFileEditor             = value; _settings.Save(); _logger.LogInformation("Settings: EnableFileEditor = {Value}", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnFileEditorAutoSaveChanged(bool value)           { _settings.FileEditorAutoSave           = value; _settings.Save(); _logger.LogInformation("Settings: FileEditorAutoSave = {Value}", value); }
 
@@ -442,7 +443,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _enableCalculator                = settings.EnableCalculator;
         _enableClipboard                 = settings.EnableClipboard;
         _enableEmoji                     = settings.EnableEmoji;
-        _enableFileSearch                = settings.EnableFileSearch;
+        _enableFileSearch                = settings.FileSearchVisibility != SearchSourceVisibility.Disabled;
         _enableFileEditor                = settings.EnableFileEditor;
         _fileEditorAutoSave              = settings.FileEditorAutoSave;
         _enableWebSearch                 = settings.EnableWebSearch;

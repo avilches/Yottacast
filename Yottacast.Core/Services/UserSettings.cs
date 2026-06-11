@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using Yottacast.Core.Platform;
+using Yottacast.Core.Search;
 using Yottacast.Core.Search.WebSearch;
 
 namespace Yottacast.Core.Services;
@@ -35,7 +36,9 @@ public class UserSettings {
     public bool EnableCalculator { get; set; } = true;
     public bool EnableClipboard { get; set; } = true;
     public bool EnableEmoji { get; set; } = true;
-    public bool EnableFileSearch { get; set; } = true;
+    public SearchSourceVisibility FileSearchVisibility { get; set; } = SearchSourceVisibility.Always;
+    public SearchSourceVisibility ClipboardSearchVisibility { get; set; } = SearchSourceVisibility.Disabled;
+    public string? ClipboardHotkey { get; set; }
     public bool EnableWebSearch { get; set; } = true;
     public bool EnableUrlValidation { get; set; } = true;
     public bool ShowDisabledWebSearchEngines { get; set; } = true;
@@ -156,7 +159,18 @@ public class UserSettings {
         [JsonPropertyName("enableConverter")] public bool EnableConverter { get; init; } = false;
         [JsonPropertyName("enableClipboard")] public bool EnableClipboard { get; init; } = true;
         [JsonPropertyName("enableEmoji")] public bool EnableEmoji { get; init; } = true;
-        [JsonPropertyName("enableFileSearch")] public bool EnableFileSearch { get; init; } = true;
+        [JsonPropertyName("enableFileSearch")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public bool? EnableFileSearch { get; init; }  // solo para migración; null en ficheros nuevos
+        [JsonPropertyName("fileSearchVisibility")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? FileSearchVisibility { get; init; }
+        [JsonPropertyName("clipboardSearchVisibility")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? ClipboardSearchVisibility { get; init; }
+        [JsonPropertyName("clipboardHotkey")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? ClipboardHotkey { get; init; }
         [JsonPropertyName("enableWebSearch")] public bool EnableWebSearch { get; init; } = true;
         [JsonPropertyName("enableUrlValidation")] public bool EnableUrlValidation { get; init; } = true;
         [JsonPropertyName("showDisabledWebSearchEngines")] public bool ShowDisabledWebSearchEngines { get; init; } = true;
@@ -211,7 +225,17 @@ public class UserSettings {
                     Theme = string.IsNullOrEmpty(data.Theme) ? platform.DefaultTheme() : data.Theme,
                     Hotkey = string.IsNullOrEmpty(data.Hotkey) ? "Alt+Space" : data.Hotkey,
                     EnableAppSearch = data.EnableAppSearch,
-                    EnableFileSearch = data.EnableFileSearch,
+                    FileSearchVisibility = data.FileSearchVisibility != null
+                        ? Enum.TryParse<SearchSourceVisibility>(data.FileSearchVisibility, ignoreCase: true, out var fsv)
+                            ? fsv : SearchSourceVisibility.Always
+                        : data.EnableFileSearch == false
+                            ? SearchSourceVisibility.Disabled
+                            : SearchSourceVisibility.Always,
+                    ClipboardSearchVisibility = data.ClipboardSearchVisibility != null
+                        ? Enum.TryParse<SearchSourceVisibility>(data.ClipboardSearchVisibility, ignoreCase: true, out var csv)
+                            ? csv : SearchSourceVisibility.Disabled
+                        : SearchSourceVisibility.Disabled,
+                    ClipboardHotkey = data.ClipboardHotkey,
                     EnableWebSearch = data.EnableWebSearch,
                     EnableUrlValidation = data.EnableUrlValidation,
                     ShowDisabledWebSearchEngines = data.ShowDisabledWebSearchEngines,
@@ -352,7 +376,9 @@ public class UserSettings {
                 EnableCalculator = EnableCalculator,
                 EnableClipboard = EnableClipboard,
                 EnableEmoji = EnableEmoji,
-                EnableFileSearch = EnableFileSearch,
+                FileSearchVisibility = FileSearchVisibility.ToString(),
+                ClipboardSearchVisibility = ClipboardSearchVisibility.ToString(),
+                ClipboardHotkey = ClipboardHotkey,
                 EnableWebSearch = EnableWebSearch,
                 EnableUrlValidation = EnableUrlValidation,
                 ShowDisabledWebSearchEngines = ShowDisabledWebSearchEngines,
