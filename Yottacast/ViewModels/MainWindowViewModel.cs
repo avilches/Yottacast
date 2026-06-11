@@ -159,6 +159,62 @@ public partial class MainWindowViewModel(
     private bool _navigatingHistory;
     private bool _textIsFromHistory;
 
+    private SearchMode _activeMode = SearchMode.All;
+
+    public SearchMode ActiveMode {
+        get => _activeMode;
+        private set {
+            if (_activeMode == value) return;
+            _activeMode = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(ShowModePill));
+            OnPropertyChanged(nameof(ActiveModeName));
+            if (!string.IsNullOrWhiteSpace(SearchText)) {
+                _cts?.Cancel();
+                _cts = new CancellationTokenSource();
+                _userNavigated = false;
+                _ = SearchAsync(SearchText.Trim(), _cts.Token);
+            }
+        }
+    }
+
+    public bool ShowModePill => _activeMode != SearchMode.All;
+
+    public string ActiveModeName => _activeMode switch {
+        SearchMode.Files     => "Files",
+        SearchMode.Clipboard => "Clipboard",
+        _                    => "",
+    };
+
+    public IReadOnlyList<SearchMode> AvailableModes {
+        get {
+            var modes = new List<SearchMode>();
+            if (settings.FileSearchVisibility == SearchSourceVisibility.ModeOnly)
+                modes.Add(SearchMode.Files);
+            if (settings.ClipboardSearchVisibility == SearchSourceVisibility.ModeOnly)
+                modes.Add(SearchMode.Clipboard);
+            return modes;
+        }
+    }
+
+    public void CycleMode() {
+        var modes = AvailableModes;
+        if (modes.Count == 0) return;
+        if (_activeMode == SearchMode.All) {
+            ActiveMode = modes[0];
+        } else {
+            var idx = modes.ToList().IndexOf(_activeMode);
+            ActiveMode = idx >= modes.Count - 1 ? SearchMode.All : modes[idx + 1];
+        }
+    }
+
+    public void ResetMode() => ActiveMode = SearchMode.All;
+
+    public void ActivateMode(SearchMode mode) {
+        if (AvailableModes.Contains(mode))
+            ActiveMode = mode;
+    }
+
     public bool UserNavigated => _userNavigated;
 
     private bool _appCacheRefreshPending;
@@ -168,7 +224,7 @@ public partial class MainWindowViewModel(
 
     public void RefreshSearch() {
         if (string.IsNullOrWhiteSpace(SearchText)) return;
-        var (items, hint, hintKind) = globalSearch.SearchInstant(SearchText.Trim(), limit: SearchSourceLimit);
+        var (items, hint, hintKind) = globalSearch.SearchInstant(SearchText.Trim(), limit: SearchSourceLimit, _activeMode);
         _instantSnapshot = items;
         SetSearchHint(hint, hintKind);
         RefreshResults();
@@ -218,6 +274,10 @@ public partial class MainWindowViewModel(
             _cts?.Cancel();
             _cts = new CancellationTokenSource();
             _userNavigated = false;
+            // Si el modo activo ya no está disponible (el usuario cambió su configuración), volver a All
+            OnPropertyChanged(nameof(AvailableModes));
+            if (_activeMode != SearchMode.All && !AvailableModes.Contains(_activeMode))
+                ResetMode();
             _ = SearchAsync(SearchText.Trim(), _cts.Token);
         });
     }
@@ -231,7 +291,7 @@ public partial class MainWindowViewModel(
                 RefreshEmptyState();
                 return;
             }
-            var (items, hint, hintKind) = globalSearch.SearchInstant(SearchText.Trim(), limit: SearchSourceLimit);
+            var (items, hint, hintKind) = globalSearch.SearchInstant(SearchText.Trim(), limit: SearchSourceLimit, _activeMode);
             _instantSnapshot = items;
             SetSearchHint(hint, hintKind);
             RefreshResults();
@@ -312,7 +372,7 @@ public partial class MainWindowViewModel(
 
         // Phase 1: instant sources (in-memory cache) — no delay
         if (ct.IsCancellationRequested) return;
-        var (instantItems, hint, hintKind) = globalSearch.SearchInstant(query, limit: SearchSourceLimit);
+        var (instantItems, hint, hintKind) = globalSearch.SearchInstant(query, limit: SearchSourceLimit, _activeMode);
         _instantSnapshot = instantItems;
         SetSearchHint(null);
         RefreshResults();
@@ -338,7 +398,7 @@ public partial class MainWindowViewModel(
         IsSearching = true;
         bool completed = false;
         try {
-            await foreach (var snapshot in globalSearch.SearchDeferredAsync(query, limit: SearchSourceLimit, _deferredCts.Token)) {
+            await foreach (var snapshot in globalSearch.SearchDeferredAsync(query, limit: SearchSourceLimit, _activeMode, _deferredCts.Token)) {
                 _deferredSnapshot = snapshot;
                 RefreshResults();
             }
