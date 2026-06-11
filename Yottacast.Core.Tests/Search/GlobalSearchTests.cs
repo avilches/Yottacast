@@ -445,6 +445,25 @@ file sealed class ModeInstantSource(SearchMode mode, SearchSourceVisibility visi
     };
 }
 
+file sealed class ModeDeferred(SearchMode mode, SearchSourceVisibility visibility, IReadOnlyList<ResultItemViewModel> results)
+    : IDeferredSearchSource, ISearchModeSource {
+    public bool WasSearched { get; private set; }
+    public void Start() { }
+    public Task WhenReady() => Task.CompletedTask;
+    public Task Stop() => Task.CompletedTask;
+    public bool IsActiveIn(SearchMode m) => m switch {
+        SearchMode.All   => visibility == SearchSourceVisibility.Always,
+        var x when x == mode => visibility == SearchSourceVisibility.ModeOnly,
+        _ => false,
+    };
+    public async IAsyncEnumerable<IReadOnlyList<BaseResultItemViewModel>> SearchAsync(
+        string query, int limit, [EnumeratorCancellation] CancellationToken ct = default) {
+        WasSearched = true;
+        await Task.Yield();
+        yield return results;
+    }
+}
+
 public class GlobalSearchModeTests {
 
     [Fact]
@@ -484,5 +503,35 @@ public class GlobalSearchModeTests {
 
         Assert.Single(items);
         Assert.True(always.WasSearched);
+    }
+
+    [Fact]
+    public async Task SearchDeferred_FilesMode_OnlyIncludesModeOnlyFilesSource() {
+        var alwaysDeferred = new StubDeferredSource([new ResultItemViewModel { Title = "always-deferred", Score = 1.0 }]);
+        var modeOnlyDeferred = new ModeDeferred(SearchMode.Files, SearchSourceVisibility.ModeOnly,
+            [new ResultItemViewModel { Title = "files-deferred", Score = 1.0 }]);
+        var gs = new GlobalSearch([], [alwaysDeferred, modeOnlyDeferred]);
+
+        var results = new List<IReadOnlyList<BaseResultItemViewModel>>();
+        await foreach (var snap in gs.SearchDeferredAsync("q", 10, SearchMode.Files))
+            results.Add(snap);
+
+        Assert.False(alwaysDeferred.WasSearched);
+        Assert.True(modeOnlyDeferred.WasSearched);
+        Assert.Single(results.Last());
+        Assert.Equal("files-deferred", ((ResultItemViewModel)results.Last()[0]).Title);
+    }
+
+    [Fact]
+    public void SearchInstant_FilesMode_ExcludesAlwaysSource() {
+        var alwaysSource = new ModeInstantSource(SearchMode.Files, SearchSourceVisibility.Always);
+        var modeOnlySource = new ModeInstantSource(SearchMode.Files, SearchSourceVisibility.ModeOnly);
+        var gs = new GlobalSearch([alwaysSource, modeOnlySource], []);
+
+        var (items, _, _) = gs.SearchInstant("q", 10, SearchMode.Files);
+
+        Assert.False(alwaysSource.WasSearched);
+        Assert.True(modeOnlySource.WasSearched);
+        Assert.Single(items);
     }
 }

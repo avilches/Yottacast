@@ -46,27 +46,22 @@ public class GlobalSearch(IEnumerable<IInstantSearchSource> instantSources, IEnu
         string query, int limit, SearchMode mode = SearchMode.All, CancellationToken ct = default)
         => SearchSourcesAsync(GetActiveDeferredSources(mode), query, limit, ct);
 
-    private IReadOnlyList<IInstantSearchSource> GetActiveInstantSources(SearchMode mode) {
-        if (mode == SearchMode.All)
-            return _instantSources
-                .Where(s => s is not ISearchModeSource ms || ms.IsActiveIn(SearchMode.All))
-                .ToList();
-        return _instantSources
-            .OfType<ISearchModeSource>()
-            .Where(s => s.IsActiveIn(mode))
-            .Cast<IInstantSearchSource>()
-            .ToList();
-    }
+    private IReadOnlyList<IInstantSearchSource> GetActiveInstantSources(SearchMode mode)
+        => GetActiveSources(_instantSources, mode);
 
-    private IReadOnlyList<IDeferredSearchSource> GetActiveDeferredSources(SearchMode mode) {
+    private IReadOnlyList<IDeferredSearchSource> GetActiveDeferredSources(SearchMode mode)
+        => GetActiveSources(_deferredSources, mode);
+
+    private static IReadOnlyList<T> GetActiveSources<T>(IReadOnlyList<T> sources, SearchMode mode)
+        where T : class {
         if (mode == SearchMode.All)
-            return _deferredSources
+            return sources
                 .Where(s => s is not ISearchModeSource ms || ms.IsActiveIn(SearchMode.All))
                 .ToList();
-        return _deferredSources
+        return sources
             .OfType<ISearchModeSource>()
             .Where(s => s.IsActiveIn(mode))
-            .Cast<IDeferredSearchSource>()
+            .Cast<T>()
             .ToList();
     }
 
