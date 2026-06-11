@@ -1,4 +1,3 @@
-// Yottacast.Core/Search/ISearchModeSource.cs
 namespace Yottacast.Core.Search;
 
 /// <summary>
@@ -7,6 +6,5 @@ namespace Yottacast.Core.Search;
 /// </summary>
 public interface ISearchModeSource
 {
-    SearchMode Mode { get; }
     bool IsActiveIn(SearchMode mode);
 }
