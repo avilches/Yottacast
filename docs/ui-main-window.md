@@ -91,13 +91,17 @@ Los motores web no aparecen en modo emoji (queries que empiezan con `:`).
 
 ## 5. Atajos de teclado
 
-### Tecla Escape -- jerarquia de tres niveles
+### Tecla Escape -- jerarquia de cinco niveles
 
 El handler de ESC aplica esta logica en cascada:
 
-1. Si hay una busqueda diferida en curso (`IsSearching == true`): cancela la fase diferida **y limpia el texto de busqueda**.
-2. Si el texto no esta vacio (y no habia busqueda diferida): limpia el texto.
-3. Si el texto ya esta vacio: oculta la ventana.
+1. Si hay un editor abierto (`IsEditorOpen == true`): cierra el editor. Si hay cambios sin guardar, se muestra un dialogo de confirmacion; ESC lo cancela sin guardar.
+2. Si hay un menu de opciones abierto (`IsOptionsMenuOpen == true`): cierra el menu.
+3. Si hay una busqueda diferida en curso (`IsSearching == true`): cancela la fase diferida **y limpia el texto de busqueda**.
+4. Si el texto no esta vacio: limpia el texto.
+5. Si el texto ya esta vacio: oculta la ventana.
+
+**Persistencia del modo activo**: El modo de busqueda activo (All / Files / Clipboard) no cambia al pulsar Escape. El modo persiste hasta que el usuario lo cambie explicitamente via `Cmd+F` o click en el pill de modo.
 
 ### Tecla Enter -- activacion y paste
 
@@ -234,9 +238,12 @@ Cuando hay una version nueva disponible, se muestra una franja clicable al pie d
 
 El footer de la ventana principal es siempre visible, independientemente de si hay resultados o no.
 
-### Lado izquierdo: botón Settings
+### Lado izquierdo: botón Settings y hint de ciclo
 
-El botón de Settings ocupa la parte izquierda del footer. Muestra un icono de engranaje y el atajo de teclado `⌘,` (macOS). Al pulsarlo, abre la ventana de preferencias (equivalente a `Cmd+,`).
+El lado izquierdo del footer tiene dos elementos:
+
+- **Siempre visible**: El atajo de teclado `⌘, (⌘,  settings)` para abrir la ventana de preferencias.
+- **Condicional**: El hint de ciclo `⌘F (⌘F  cycle)` aparece solo cuando hay modos disponibles (`ShowModePill == true`, es decir, cuando `AvailableModes.Count > 0`). Este hint permite al usuario cambiar rapidamente entre modos de busqueda (All / Files / Clipboard).
 
 ### Lado derecho: hints dinámicos por tipo de resultado
 
