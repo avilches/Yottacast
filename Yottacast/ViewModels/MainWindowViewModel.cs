@@ -171,6 +171,9 @@ public partial class MainWindowViewModel(
             OnPropertyChanged();
             OnPropertyChanged(nameof(ShowModePill));
             OnPropertyChanged(nameof(ActiveModeName));
+            OnPropertyChanged(nameof(AllModeActive));
+            OnPropertyChanged(nameof(FilesModeActive));
+            OnPropertyChanged(nameof(ClipboardModeActive));
             if (!string.IsNullOrWhiteSpace(SearchText)) {
                 _cts?.Cancel();
                 _cts = new CancellationTokenSource();
@@ -180,7 +183,15 @@ public partial class MainWindowViewModel(
         }
     }
 
-    public bool ShowModePill => _activeMode != SearchMode.All;
+    public bool ShowModePill => AvailableModes.Count > 0;
+
+    public bool HasFilesMode      => AvailableModes.Contains(SearchMode.Files);
+    public bool HasClipboardMode  => AvailableModes.Contains(SearchMode.Clipboard);
+    public bool AllModeActive       => _activeMode == SearchMode.All;
+    public bool FilesModeActive     => _activeMode == SearchMode.Files;
+    public bool ClipboardModeActive => _activeMode == SearchMode.Clipboard;
+
+    public string CycleShortcutText => $"{MetaSymbol}F  cycle";
 
     public string ActiveModeName => _activeMode switch {
         SearchMode.Files     => "Files",
@@ -278,6 +289,9 @@ public partial class MainWindowViewModel(
         Dispatcher.UIThread.Post(() => {
             // Siempre refrescar AvailableModes y resetear modo si ya no está disponible
             OnPropertyChanged(nameof(AvailableModes));
+            OnPropertyChanged(nameof(ShowModePill));
+            OnPropertyChanged(nameof(HasFilesMode));
+            OnPropertyChanged(nameof(HasClipboardMode));
             if (_activeMode != SearchMode.All && !AvailableModes.Contains(_activeMode))
                 ResetMode();
 
