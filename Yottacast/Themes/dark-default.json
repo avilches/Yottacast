@@ -17,7 +17,7 @@
       "margin": "0",
       "padding": "18,12",
       "border": { "color": "#5E8FFF", "thickness": "0,0,0,1" }
-    },
+    },                          
     "text":        { "color": "#FFFFFF", "size": 18, "fontFamily": "SF Pro Text, Lucida Grande, Segoe UI, Inter" },
     "placeholder": { "color": "#505055" },
     "caret":       { "color": "#5E8FFF" },
