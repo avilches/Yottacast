@@ -166,6 +166,42 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         OnPropertyChanged(nameof(FileSearchNotDisabled));
     }
 
+    private SearchSourceVisibility _clipboardSearchVisibility;
+
+    public bool ClipboardSearchDisabled  { get => _clipboardSearchVisibility == SearchSourceVisibility.Disabled;  set { if (value) UpdateClipboardSearchVisibility(SearchSourceVisibility.Disabled);  } }
+    public bool ClipboardSearchAlways    { get => _clipboardSearchVisibility == SearchSourceVisibility.Always;     set { if (value) UpdateClipboardSearchVisibility(SearchSourceVisibility.Always);     } }
+    public bool ClipboardSearchModeOnly  { get => _clipboardSearchVisibility == SearchSourceVisibility.ModeOnly;   set { if (value) UpdateClipboardSearchVisibility(SearchSourceVisibility.ModeOnly);   } }
+    public bool ClipboardSearchNotDisabled => _clipboardSearchVisibility != SearchSourceVisibility.Disabled;
+    public bool ClipboardSearchModeOnlySelected => _clipboardSearchVisibility == SearchSourceVisibility.ModeOnly;
+
+    private void UpdateClipboardSearchVisibility(SearchSourceVisibility v) {
+        _clipboardSearchVisibility = v;
+        _settings.ClipboardSearchVisibility = v;
+        _settings.Save();
+        _settings.NotifySearchSettingsChanged();
+        _logger.LogInformation("Settings: ClipboardSearchVisibility = {Value}", v);
+        OnPropertyChanged(nameof(ClipboardSearchDisabled));
+        OnPropertyChanged(nameof(ClipboardSearchAlways));
+        OnPropertyChanged(nameof(ClipboardSearchModeOnly));
+        OnPropertyChanged(nameof(ClipboardSearchNotDisabled));
+        OnPropertyChanged(nameof(ClipboardSearchModeOnlySelected));
+    }
+
+    [ObservableProperty] private int _clipboardHistoryMaxEntries;
+    [ObservableProperty] private int _clipboardHistoryMaxDays;
+
+    partial void OnClipboardHistoryMaxEntriesChanged(int value) {
+        if (value < 1) return;
+        _settings.ClipboardHistoryMaxEntries = value;
+        _settings.Save();
+    }
+
+    partial void OnClipboardHistoryMaxDaysChanged(int value) {
+        if (value < 1) return;
+        _settings.ClipboardHistoryMaxDays = value;
+        _settings.Save();
+    }
+
     [ObservableProperty] private bool _enableFileEditor;
     [ObservableProperty] private bool _fileEditorAutoSave;
     [ObservableProperty] private bool _enableWebSearch;
@@ -460,6 +496,9 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _enableAppSearch                 = settings.EnableAppSearch;
         _enableCalculator                = settings.EnableCalculator;
         _clipboardHistoryEnabled         = settings.ClipboardHistoryEnabled;
+        _clipboardSearchVisibility       = settings.ClipboardSearchVisibility;
+        _clipboardHistoryMaxEntries      = settings.ClipboardHistoryMaxEntries;
+        _clipboardHistoryMaxDays         = settings.ClipboardHistoryMaxDays;
         _enableEmoji                     = settings.EnableEmoji;
         _fileSearchVisibility            = settings.FileSearchVisibility;
         _enableFileEditor                = settings.EnableFileEditor;
@@ -769,6 +808,69 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         OnPropertyChanged(nameof(BadgeShiftActive));
         OnPropertyChanged(nameof(BadgeMetaActive));
         OnPropertyChanged(nameof(HotkeyKeyText));
+    }
+
+    // ── Clipboard Hotkey capture ──────────────────────────────────────────────
+
+    [ObservableProperty] private bool _isCapturingClipboardHotkey;
+    private KeyModifiers _capturingClipboardModifiers = KeyModifiers.None;
+
+    public bool ClipboardBadgeCtrlActive  => IsCapturingClipboardHotkey ? _capturingClipboardModifiers.HasFlag(KeyModifiers.Control) : _settings.ParsedClipboardHotkey?.Ctrl  ?? false;
+    public bool ClipboardBadgeAltActive   => IsCapturingClipboardHotkey ? _capturingClipboardModifiers.HasFlag(KeyModifiers.Alt)     : _settings.ParsedClipboardHotkey?.Alt   ?? false;
+    public bool ClipboardBadgeShiftActive => IsCapturingClipboardHotkey ? _capturingClipboardModifiers.HasFlag(KeyModifiers.Shift)   : _settings.ParsedClipboardHotkey?.Shift ?? false;
+    public bool ClipboardBadgeMetaActive  => IsCapturingClipboardHotkey ? _capturingClipboardModifiers.HasFlag(KeyModifiers.Meta)    : _settings.ParsedClipboardHotkey?.Meta  ?? false;
+
+    public string ClipboardHotkeyKeyText {
+        get {
+            if (!IsCapturingClipboardHotkey) return _settings.ParsedClipboardHotkey?.KeyName ?? "—";
+            return _capturingClipboardModifiers != KeyModifiers.None ? "Press a key…" : "Press a modifier…";
+        }
+    }
+
+    public void StartClipboardHotkeyCapture() {
+        _capturingClipboardModifiers = KeyModifiers.None;
+        IsCapturingClipboardHotkey   = true;
+        NotifyClipboardBadgesAndKey();
+    }
+
+    public void CancelClipboardHotkeyCapture() {
+        _capturingClipboardModifiers = KeyModifiers.None;
+        IsCapturingClipboardHotkey   = false;
+        NotifyClipboardBadgesAndKey();
+    }
+
+    public void UpdateCapturingClipboardModifiers(KeyModifiers mods) {
+        _capturingClipboardModifiers = mods;
+        NotifyClipboardBadgesAndKey();
+    }
+
+    public void ProcessClipboardKeyCapture(Key key, KeyModifiers mods) {
+        if (key == Key.Escape) { CancelClipboardHotkeyCapture(); return; }
+        if (mods == KeyModifiers.None) return;
+
+        var config = new HotkeyConfig(
+            Alt:     mods.HasFlag(KeyModifiers.Alt),
+            Ctrl:    mods.HasFlag(KeyModifiers.Control),
+            Shift:   mods.HasFlag(KeyModifiers.Shift),
+            Meta:    mods.HasFlag(KeyModifiers.Meta),
+            KeyName: AvaloniaKeyToName(key));
+
+        if (AppHandler.Instance.IsForbidden(config)) return;
+
+        _settings.ClipboardHotkey = config.ToString();
+        _settings.Save();
+        _logger.LogInformation("Settings: ClipboardHotkey = \"{Value}\"", config);
+        _capturingClipboardModifiers = KeyModifiers.None;
+        IsCapturingClipboardHotkey   = false;
+        NotifyClipboardBadgesAndKey();
+    }
+
+    private void NotifyClipboardBadgesAndKey() {
+        OnPropertyChanged(nameof(ClipboardBadgeCtrlActive));
+        OnPropertyChanged(nameof(ClipboardBadgeAltActive));
+        OnPropertyChanged(nameof(ClipboardBadgeShiftActive));
+        OnPropertyChanged(nameof(ClipboardBadgeMetaActive));
+        OnPropertyChanged(nameof(ClipboardHotkeyKeyText));
     }
 
     private static string AvaloniaKeyToName(Key k) => k switch {

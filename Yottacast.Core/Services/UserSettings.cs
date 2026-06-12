@@ -37,7 +37,21 @@ public class UserSettings {
     public bool EnableEmoji { get; set; } = true;
     public SearchSourceVisibility FileSearchVisibility { get; set; } = SearchSourceVisibility.Always;
     public SearchSourceVisibility ClipboardSearchVisibility { get; set; } = SearchSourceVisibility.Disabled;
-    public string? ClipboardHotkey { get; set; }
+
+    private string? _clipboardHotkey;
+    private HotkeyConfig? _parsedClipboardHotkey;
+
+    public string? ClipboardHotkey {
+        get => _clipboardHotkey;
+        set { _clipboardHotkey = value; _parsedClipboardHotkey = null; }
+    }
+
+    public HotkeyConfig? ParsedClipboardHotkey {
+        get {
+            if (_clipboardHotkey is null) return null;
+            return _parsedClipboardHotkey ??= HotkeyConfig.Parse(_clipboardHotkey);
+        }
+    }
     public bool EnableWebSearch { get; set; } = true;
     public bool EnableUrlValidation { get; set; } = true;
     public bool ShowDisabledWebSearchEngines { get; set; } = true;
