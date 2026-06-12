@@ -376,12 +376,19 @@
                     BorderThickness="0,1,0,0"
                     CornerRadius="{DynamicResource Theme.Window.CornerRadius.Bottom}">
                 <Grid ColumnDefinitions="Auto,*">
-                    <!-- Left: Settings shortcut hint -->
-                    <TextBlock Grid.Column="0"
-                               Text="{Binding SettingsShortcutText}"
-                               Foreground="{DynamicResource Theme.Footer.Color}"
-                               FontSize="{DynamicResource Theme.Footer.Size}"
-                               VerticalAlignment="Center"/>
+                    <!-- Left: Settings + optional cycle hint -->
+                    <StackPanel Grid.Column="0"
+                                Orientation="Horizontal"
+                                Spacing="16"
+                                VerticalAlignment="Center">
+                        <TextBlock Text="{Binding SettingsShortcutText}"
+                                   Foreground="{DynamicResource Theme.Footer.Color}"
+                                   FontSize="{DynamicResource Theme.Footer.Size}"/>
+                        <TextBlock Text="{Binding CycleShortcutText}"
+                                   Foreground="{DynamicResource Theme.Footer.Color}"
+                                   FontSize="{DynamicResource Theme.Footer.Size}"
+                                   IsVisible="{Binding ShowModePill}"/>
+                    </StackPanel>
 
                     <!-- Right: dynamic hints -->
                     <ItemsControl Grid.Column="1"
