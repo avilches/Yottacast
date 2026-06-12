@@ -302,9 +302,11 @@ public partial class MainWindow : Window {
         }
     }
 
-    private static bool IsOverInteractiveElement(Visual? visual) {
+    private bool IsOverInteractiveElement(Visual? visual) {
         while (visual != null) {
             if (visual is TextBox or ListBox or ListBoxItem or Button or ScrollViewer)
+                return true;
+            if (visual == ModePillsContainer)
                 return true;
             visual = visual.GetVisualParent();
         }
