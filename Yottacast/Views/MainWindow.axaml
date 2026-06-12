@@ -54,14 +54,15 @@
         <Style Selector="Border.mode-chip">
             <Setter Property="CornerRadius" Value="12"/>
             <Setter Property="Padding" Value="10,4"/>
-            <Setter Property="Opacity" Value="0.4"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Opacity" Value="0.35"/>
         </Style>
         <Style Selector="Border.mode-chip.active">
-            <Setter Property="Background" Value="{DynamicResource Theme.Results.SelectionBar.Color}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Theme.Search.Color}"/>
+            <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Opacity" Value="1"/>
         </Style>
         <Style Selector="Border.mode-chip.active TextBlock">
-            <Setter Property="Foreground" Value="White"/>
             <Setter Property="FontWeight" Value="Medium"/>
         </Style>
         <!-- Spinner pulse animation -->
