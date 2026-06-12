@@ -64,6 +64,9 @@ public class UserSettings {
     public string DateLongFormat { get; set; } = AppDefaults.DateLongFormat;
     public bool EnableHistory { get; set; } = true;
     public int HistoryMaxItems { get; set; } = AppDefaults.HistoryMaxItems;
+    public bool ClipboardHistoryEnabled { get; set; } = false;
+    public int ClipboardHistoryMaxEntries { get; set; } = AppDefaults.ClipboardHistoryMaxEntries;
+    public int ClipboardHistoryMaxDays { get; set; } = AppDefaults.ClipboardHistoryMaxDays;
     public bool EnableFileEditor { get; set; } = true;
     public bool FileEditorAutoSave { get; set; } = false;
     public List<string> FileEditorExtensions { get; set; } = [..AppDefaults.FileEditorDefaultExtensions];
