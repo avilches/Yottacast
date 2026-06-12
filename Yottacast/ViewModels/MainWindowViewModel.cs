@@ -11,6 +11,7 @@ using CommunityToolkit.Mvvm.Input;
 using Yottacast.Core;
 using Yottacast.Core.Search;
 using Yottacast.Core.Search.Application;
+using Yottacast.Core.Search.Clipboard;
 using Yottacast.Core.Search.Date;
 using Yottacast.Core.Search.Url;
 using Yottacast.Core.Search.UserDocuments;
@@ -30,6 +31,7 @@ public partial class MainWindowViewModel(
     HistoryService historyService,
     UrlSearch urlSearch,
     DateSearch dateSearch,
+    ClipboardHistorySearch clipboardHistorySearch,
     LaunchHistory launchHistory,
     FileEditorService fileEditorService,
     IEnumerable<IEmptyStateSource> emptySources)
@@ -262,6 +264,7 @@ public partial class MainWindowViewModel(
         settings.SearchSettingsChanged += OnSearchSettingsChanged;
         urlSearch.ResultChanged += OnUrlResultChanged;
         dateSearch.ResultChanged += OnDateResultChanged;
+        clipboardHistorySearch.ResultChanged += OnClipboardHistoryResultChanged;
         foreach (var source in _emptySources)
         {
             source.Start();
@@ -330,6 +333,10 @@ public partial class MainWindowViewModel(
     }
 
     private void OnDateResultChanged() {
+        Dispatcher.UIThread.Post(RefreshSearch);
+    }
+
+    private void OnClipboardHistoryResultChanged() {
         Dispatcher.UIThread.Post(RefreshSearch);
     }
 
