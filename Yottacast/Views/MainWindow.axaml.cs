@@ -11,6 +11,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Microsoft.Extensions.Logging;
 using Yottacast.Core;
+using Yottacast.Core.Search;
 using Yottacast.Core.Services;
 using Yottacast.Core.ViewModels;
 using Yottacast.Services;
@@ -816,8 +817,14 @@ public partial class MainWindow : Window {
     }
 
     private void OnModePillTapped(object? sender, TappedEventArgs e) {
-        if (DataContext is MainWindowViewModel vm)
-            vm.ResetMode();
+        if (DataContext is not MainWindowViewModel vm) return;
+        var source = e.Source as Visual;
+        while (source != null) {
+            if (source == AllModePill)       { vm.ResetMode();                        break; }
+            if (source == FilesModePill)     { vm.ActivateMode(SearchMode.Files);     break; }
+            if (source == ClipboardModePill) { vm.ActivateMode(SearchMode.Clipboard); break; }
+            source = source.GetVisualParent();
+        }
         e.Handled = true;
     }
 

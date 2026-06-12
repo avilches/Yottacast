@@ -50,6 +50,20 @@
         <Style Selector="TextBox /template/ TextBlock[Name=PART_Watermark]">
             <Setter Property="Foreground" Value="{DynamicResource Theme.Search.Placeholder}"/>
         </Style>
+        <!-- Mode chip styles -->
+        <Style Selector="Border.mode-chip">
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="Opacity" Value="0.4"/>
+        </Style>
+        <Style Selector="Border.mode-chip.active">
+            <Setter Property="Background" Value="{DynamicResource Theme.Results.SelectionBar.Color}"/>
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="Border.mode-chip.active TextBlock">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+        </Style>
         <!-- Spinner pulse animation -->
         <Style Selector="Ellipse.spinner">
             <Style.Animations>
@@ -282,25 +296,29 @@
                 </Grid>
             </StackPanel>
 
-            <!-- ── Mode pill (visible solo cuando ActiveMode != All) ── -->
+            <!-- ── Mode chips (visibles cuando hay modos disponibles) ── -->
             <Border DockPanel.Dock="Top"
                     IsVisible="{Binding ShowModePill}"
                     Padding="12,0,12,6"
                     Tapped="OnModePillTapped">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Border Background="{DynamicResource Theme.Results.SelectionBar.Color}"
-                            CornerRadius="12"
-                            Padding="10,4">
-                        <TextBlock Text="{Binding ActiveModeName}"
-                                   Foreground="White"
-                                   FontSize="12"
-                                   FontWeight="Medium"/>
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Border x:Name="AllModePill"
+                            Classes="mode-chip"
+                            Classes.active="{Binding AllModeActive}">
+                        <TextBlock Text="All" FontSize="12"/>
                     </Border>
-                    <TextBlock Text="⌘F to cycle · Esc to exit"
-                               Foreground="{DynamicResource Theme.Search.Color}"
-                               Opacity="0.5"
-                               FontSize="11"
-                               VerticalAlignment="Center"/>
+                    <Border x:Name="FilesModePill"
+                            Classes="mode-chip"
+                            Classes.active="{Binding FilesModeActive}"
+                            IsVisible="{Binding HasFilesMode}">
+                        <TextBlock Text="Files" FontSize="12"/>
+                    </Border>
+                    <Border x:Name="ClipboardModePill"
+                            Classes="mode-chip"
+                            Classes.active="{Binding ClipboardModeActive}"
+                            IsVisible="{Binding HasClipboardMode}">
+                        <TextBlock Text="Clipboard" FontSize="12"/>
+                    </Border>
                 </StackPanel>
             </Border>
 
