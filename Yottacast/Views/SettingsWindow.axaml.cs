@@ -51,6 +51,14 @@ public partial class SettingsWindow : Window {
     }
 
     protected override void OnKeyDown(KeyEventArgs e) {
+        if (DataContext is SettingsWindowViewModel vm2 && vm2.IsCapturingClipboardHotkey) {
+            vm2.UpdateCapturingClipboardModifiers(e.KeyModifiers);
+            if (e.Key is not (Key.LeftAlt or Key.RightAlt or Key.LeftCtrl or Key.RightCtrl
+                              or Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin))
+                vm2.ProcessClipboardKeyCapture(e.Key, e.KeyModifiers);
+            e.Handled = true;
+            return;
+        }
         if (DataContext is SettingsWindowViewModel { IsCapturingHotkey: true } vm) {
             vm.UpdateCapturingModifiers(e.KeyModifiers);
             if (!IsModifierKey(e.Key))
@@ -68,6 +76,11 @@ public partial class SettingsWindow : Window {
     }
 
     protected override void OnKeyUp(KeyEventArgs e) {
+        if (DataContext is SettingsWindowViewModel vm3 && vm3.IsCapturingClipboardHotkey && IsModifierKey(e.Key)) {
+            vm3.UpdateCapturingClipboardModifiers(e.KeyModifiers);
+            e.Handled = true;
+            return;
+        }
         if (DataContext is SettingsWindowViewModel { IsCapturingHotkey: true } vm && IsModifierKey(e.Key)) {
             vm.UpdateCapturingModifiers(e.KeyModifiers);
             e.Handled = true;
@@ -95,10 +108,20 @@ public partial class SettingsWindow : Window {
         (DataContext as SettingsWindowViewModel)?.CancelHotkeyCapture();
     }
 
+    private void OnClipboardHotkeyPointerPressed(object? sender, PointerPressedEventArgs e) {
+        if (DataContext is SettingsWindowViewModel vm) {
+            FocusManager?.ClearFocus();
+            vm.StartClipboardHotkeyCapture();
+        }
+        e.Handled = true;
+    }
+
     // Click anywhere else in the window → cancel capture
     protected override void OnPointerPressed(PointerPressedEventArgs e) {
         if (DataContext is SettingsWindowViewModel { IsCapturingHotkey: true } vm)
             vm.CancelHotkeyCapture();
+        if (DataContext is SettingsWindowViewModel { IsCapturingClipboardHotkey: true } vm2)
+            vm2.CancelClipboardHotkeyCapture();
         base.OnPointerPressed(e);
     }
 

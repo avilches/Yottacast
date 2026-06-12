@@ -1399,12 +1399,70 @@
 
                 <!-- Clipboard -->
                 <StackPanel Spacing="16" IsVisible="{Binding IsClipboardSelected}">
-                    <TextBlock Classes="section-heading" Text="Clipboard"/>
+                    <TextBlock Classes="section-heading" Text="Clipboard History"/>
                     <ToggleSwitch IsChecked="{Binding ClipboardHistoryEnabled}"
                                   OnContent="Enabled"
                                   OffContent="Disabled"/>
                     <TextBlock Classes="description"
-                               Text="Access your clipboard history from the search bar."/>
+                               Text="Capture everything you copy and search it from Clipboard mode."/>
+
+                    <StackPanel Spacing="16" IsVisible="{Binding ClipboardHistoryEnabled}">
+
+                        <StackPanel Spacing="4">
+                            <TextBlock Classes="label" Text="Show in search"/>
+                            <RadioButton Content="Off"
+                                         GroupName="ClipboardSearchVisibility"
+                                         IsChecked="{Binding ClipboardSearchDisabled}"/>
+                            <RadioButton Content="Always (in all search)"
+                                         GroupName="ClipboardSearchVisibility"
+                                         IsChecked="{Binding ClipboardSearchAlways}"/>
+                            <RadioButton Content="⌘F only (dedicated Clipboard mode)"
+                                         GroupName="ClipboardSearchVisibility"
+                                         IsChecked="{Binding ClipboardSearchModeOnly}"/>
+                        </StackPanel>
+
+                        <StackPanel Spacing="8" IsVisible="{Binding ClipboardSearchModeOnlySelected}">
+                            <TextBlock Classes="label" Text="Clipboard mode hotkey"/>
+                            <TextBlock Classes="description"
+                                       Text="Press this key combination to open directly in Clipboard mode."/>
+                            <Border Classes="hotkey-field"
+                                    Classes.capturing="{Binding IsCapturingClipboardHotkey}"
+                                    PointerPressed="OnClipboardHotkeyPointerPressed">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="0">
+                                    <Border Classes="modifier-badge" Classes.active="{Binding ClipboardBadgeCtrlActive}">
+                                        <TextBlock Text="{Binding CtrlSymbol}"/>
+                                    </Border>
+                                    <Border Classes="modifier-badge" Classes.active="{Binding ClipboardBadgeAltActive}">
+                                        <TextBlock Text="{Binding AltSymbol}"/>
+                                    </Border>
+                                    <Border Classes="modifier-badge" Classes.active="{Binding ClipboardBadgeShiftActive}">
+                                        <TextBlock Text="{Binding ShiftSymbol}"/>
+                                    </Border>
+                                    <Border Classes="modifier-badge" Classes.active="{Binding ClipboardBadgeMetaActive}">
+                                        <TextBlock Text="{Binding MetaSymbol}"/>
+                                    </Border>
+                                    <TextBlock Classes="hotkey-key" Text="{Binding ClipboardHotkeyKeyText}"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <Separator/>
+
+                        <StackPanel Spacing="8">
+                            <TextBlock Classes="label" Text="Max entries"/>
+                            <NumericUpDown Value="{Binding ClipboardHistoryMaxEntries}"
+                                           Minimum="1" Maximum="1000"
+                                           HorizontalAlignment="Left" Width="120"/>
+                        </StackPanel>
+
+                        <StackPanel Spacing="8">
+                            <TextBlock Classes="label" Text="Keep for (days)"/>
+                            <NumericUpDown Value="{Binding ClipboardHistoryMaxDays}"
+                                           Minimum="1" Maximum="365"
+                                           HorizontalAlignment="Left" Width="120"/>
+                        </StackPanel>
+
+                    </StackPanel>
                 </StackPanel>
 
                 <!-- Emoji -->
