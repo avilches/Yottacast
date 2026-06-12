@@ -17,19 +17,31 @@ public sealed class MacClipboardMonitor(ILogger<MacClipboardMonitor> logger) : I
     private CancellationTokenSource? _cts;
     private int _lastChangeCount = -1;
 
+    private static readonly IntPtr SelGeneralPasteboard  = SelRegisterName("generalPasteboard");
+    private static readonly IntPtr SelChangeCount        = SelRegisterName("changeCount");
+    private static readonly IntPtr SelAlloc              = SelRegisterName("alloc");
+    private static readonly IntPtr SelInitWithUtf8String = SelRegisterName("initWithUTF8String:");
+    private static readonly IntPtr SelStringForType      = SelRegisterName("stringForType:");
+    private static readonly IntPtr SelUtf8String         = SelRegisterName("UTF8String");
+    private static readonly IntPtr ClsNSPasteboard       = ObjcGetClass("NSPasteboard");
+    private static readonly IntPtr ClsNSString           = ObjcGetClass("NSString");
+
     public event Action<string>? TextCopied;
 
     public void Start()
     {
-        _cts?.Cancel();
-        _cts = new CancellationTokenSource();
-        _ = PollAsync(_cts.Token);
+        var cts = new CancellationTokenSource();
+        var prev = Interlocked.Exchange(ref _cts, cts);
+        prev?.Cancel();
+        prev?.Dispose();
+        _ = PollAsync(cts.Token);
     }
 
     public Task Stop()
     {
-        _cts?.Cancel();
-        _cts = null;
+        var prev = Interlocked.Exchange(ref _cts, null);
+        prev?.Cancel();
+        prev?.Dispose();
         return Task.CompletedTask;
     }
 
@@ -58,21 +70,21 @@ public sealed class MacClipboardMonitor(ILogger<MacClipboardMonitor> logger) : I
     {
         try
         {
-            var pb = ObjcMsgSend(ObjcGetClass("NSPasteboard"), SelRegisterName("generalPasteboard"));
+            var pb = ObjcMsgSend(ClsNSPasteboard, SelGeneralPasteboard);
             if (pb == IntPtr.Zero) return null;
 
-            var count = ObjcMsgSendInt(pb, SelRegisterName("changeCount"));
+            var count = ObjcMsgSendInt(pb, SelChangeCount);
             if (count == _lastChangeCount) return null;
             _lastChangeCount = count;
 
-            var nsStringAlloc = ObjcMsgSend(ObjcGetClass("NSString"), SelRegisterName("alloc"));
-            var typeStr = ObjcMsgSendInitString(nsStringAlloc, SelRegisterName("initWithUTF8String:"),
+            var nsStringAlloc = ObjcMsgSend(ClsNSString, SelAlloc);
+            var typeStr = ObjcMsgSendInitString(nsStringAlloc, SelInitWithUtf8String,
                 "public.utf8-plain-text");
-            var strObj = ObjcMsgSendArg(pb, SelRegisterName("stringForType:"), typeStr);
+            var strObj = ObjcMsgSendArg(pb, SelStringForType, typeStr);
             ObjcRelease(typeStr);
             if (strObj == IntPtr.Zero) return null;
 
-            var utf8Ptr = ObjcMsgSend(strObj, SelRegisterName("UTF8String"));
+            var utf8Ptr = ObjcMsgSend(strObj, SelUtf8String);
             if (utf8Ptr == IntPtr.Zero) return null;
 
             return Marshal.PtrToStringUTF8(utf8Ptr);
