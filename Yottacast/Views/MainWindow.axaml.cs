@@ -620,8 +620,6 @@ public partial class MainWindow : Window {
                 } else if (vm.IsSearching) {
                     vm.CancelDeferredSearch();
                     vm.CleanAndSaveHistory(null);
-                } else if (vm.ShowModePill) {
-                    vm.ResetMode();
                 } else if (!string.IsNullOrEmpty(vm.SearchText)) {
                     vm.CleanAndSaveHistory(null);
                 } else {
