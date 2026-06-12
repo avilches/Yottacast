@@ -1400,7 +1400,7 @@
                 <!-- Clipboard -->
                 <StackPanel Spacing="16" IsVisible="{Binding IsClipboardSelected}">
                     <TextBlock Classes="section-heading" Text="Clipboard"/>
-                    <ToggleSwitch IsChecked="{Binding EnableClipboard}"
+                    <ToggleSwitch IsChecked="{Binding ClipboardHistoryEnabled}"
                                   OnContent="Enabled"
                                   OffContent="Disabled"/>
                     <TextBlock Classes="description"

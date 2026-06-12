@@ -20,7 +20,7 @@ message SettingsMessage {
   repeated string app_directories = 6;
   bool enable_app_search = 7;
   bool enable_calculator = 8;
-  bool enable_clipboard = 9;
+  bool clipboard_history_enabled = 9;
   bool enable_emoji = 10;
   bool enable_file_search = 11;
   bool enable_web_search = 12;

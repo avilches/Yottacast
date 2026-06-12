@@ -145,7 +145,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     // ── Feature toggles ──────────────────────────────────────────────────────
     [ObservableProperty] private bool _enableAppSearch;
     [ObservableProperty] private bool _enableCalculator;
-    [ObservableProperty] private bool _enableClipboard;
+    [ObservableProperty] private bool _clipboardHistoryEnabled;
     [ObservableProperty] private bool _enableEmoji;
     private SearchSourceVisibility _fileSearchVisibility;
 
@@ -200,7 +200,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
 
     partial void OnEnableAppSearchChanged(bool value)               { _settings.EnableAppSearch              = value; _settings.Save(); _logger.LogInformation("Settings: EnableAppSearch = {Value}", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnEnableCalculatorChanged(bool value)              { _settings.EnableCalculator             = value; _settings.Save(); _logger.LogInformation("Settings: EnableCalculator = {Value}", value); _settings.NotifySearchSettingsChanged(); }
-    partial void OnEnableClipboardChanged(bool value)               { _settings.EnableClipboard              = value; _settings.Save(); _logger.LogInformation("Settings: EnableClipboard = {Value}", value); _settings.NotifySearchSettingsChanged(); }
+    partial void OnClipboardHistoryEnabledChanged(bool value)       { _settings.ClipboardHistoryEnabled      = value; _settings.Save(); _logger.LogInformation("Settings: ClipboardHistoryEnabled = {Value}", value); _settings.NotifySearchSettingsChanged(); }
     partial void OnEnableEmojiChanged(bool value)                   { _settings.EnableEmoji                  = value; _settings.Save(); _logger.LogInformation("Settings: EnableEmoji = {Value}", value); _settings.NotifySearchSettingsChanged(); }
 
     partial void OnEnableFileEditorChanged(bool value)             { _settings.EnableFileEditor             = value; _settings.Save(); _logger.LogInformation("Settings: EnableFileEditor = {Value}", value); _settings.NotifySearchSettingsChanged(); }
@@ -459,7 +459,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
 
         _enableAppSearch                 = settings.EnableAppSearch;
         _enableCalculator                = settings.EnableCalculator;
-        _enableClipboard                 = settings.EnableClipboard;
+        _clipboardHistoryEnabled         = settings.ClipboardHistoryEnabled;
         _enableEmoji                     = settings.EnableEmoji;
         _fileSearchVisibility            = settings.FileSearchVisibility;
         _enableFileEditor                = settings.EnableFileEditor;

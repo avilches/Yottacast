@@ -34,7 +34,6 @@ public class UserSettings {
     public void NotifyStickyWindowChanged() => StickyWindowChanged?.Invoke();
     public bool EnableAppSearch { get; set; } = true;
     public bool EnableCalculator { get; set; } = true;
-    public bool EnableClipboard { get; set; } = true;
     public bool EnableEmoji { get; set; } = true;
     public SearchSourceVisibility FileSearchVisibility { get; set; } = SearchSourceVisibility.Always;
     public SearchSourceVisibility ClipboardSearchVisibility { get; set; } = SearchSourceVisibility.Disabled;
@@ -160,7 +159,9 @@ public class UserSettings {
         [JsonPropertyName("enableAppSearch")] public bool EnableAppSearch { get; init; } = true;
         [JsonPropertyName("enableCalculator")] public bool EnableCalculator { get; init; } = true;
         [JsonPropertyName("enableConverter")] public bool EnableConverter { get; init; } = false;
-        [JsonPropertyName("enableClipboard")] public bool EnableClipboard { get; init; } = true;
+        [JsonPropertyName("enableClipboard")] public bool ClipboardHistoryEnabled { get; init; } = false;
+        [JsonPropertyName("clipboardHistoryMaxEntries")] public int ClipboardHistoryMaxEntries { get; init; } = AppDefaults.ClipboardHistoryMaxEntries;
+        [JsonPropertyName("clipboardHistoryMaxDays")] public int ClipboardHistoryMaxDays { get; init; } = AppDefaults.ClipboardHistoryMaxDays;
         [JsonPropertyName("enableEmoji")] public bool EnableEmoji { get; init; } = true;
         [JsonPropertyName("enableFileSearch")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -258,7 +259,9 @@ public class UserSettings {
                         .Distinct(StringComparer.OrdinalIgnoreCase)
                         .ToList(),
                     EnableCalculator = data.EnableCalculator || data.EnableConverter,
-                    EnableClipboard = data.EnableClipboard,
+                    ClipboardHistoryEnabled = data.ClipboardHistoryEnabled,
+                    ClipboardHistoryMaxEntries = data.ClipboardHistoryMaxEntries,
+                    ClipboardHistoryMaxDays = data.ClipboardHistoryMaxDays,
                     EnableEmoji = data.EnableEmoji,
                     LastLaunchedVersion = data.LastLaunchedVersion,
                     WebSearchEngines = MergeWebSearchEngines(data.WebSearchEngines),
@@ -377,7 +380,9 @@ public class UserSettings {
                 AppDirectories = AppDirectories,
                 EnableAppSearch = EnableAppSearch,
                 EnableCalculator = EnableCalculator,
-                EnableClipboard = EnableClipboard,
+                ClipboardHistoryEnabled = ClipboardHistoryEnabled,
+                ClipboardHistoryMaxEntries = ClipboardHistoryMaxEntries,
+                ClipboardHistoryMaxDays = ClipboardHistoryMaxDays,
                 EnableEmoji = EnableEmoji,
                 FileSearchVisibility = FileSearchVisibility.ToString(),
                 ClipboardSearchVisibility = ClipboardSearchVisibility.ToString(),

@@ -14,7 +14,7 @@ public static class SettingsMapper {
             Hotkey = s.Hotkey,
             EnableAppSearch = s.EnableAppSearch,
             EnableCalculator = s.EnableCalculator,
-            EnableClipboard = s.EnableClipboard,
+            ClipboardHistoryEnabled = s.ClipboardHistoryEnabled,
             EnableEmoji = s.EnableEmoji,
             EnableFileSearch = s.FileSearchVisibility != SearchSourceVisibility.Disabled,
             EnableWebSearch = s.EnableWebSearch,
@@ -59,7 +59,7 @@ public static class SettingsMapper {
         s.Hotkey = msg.Hotkey;
         s.EnableAppSearch = msg.EnableAppSearch;
         s.EnableCalculator = msg.EnableCalculator;
-        s.EnableClipboard = msg.EnableClipboard;
+        s.ClipboardHistoryEnabled = msg.ClipboardHistoryEnabled;
         s.EnableEmoji = msg.EnableEmoji;
         s.FileSearchVisibility = msg.EnableFileSearch ? SearchSourceVisibility.Always : SearchSourceVisibility.Disabled;
         s.EnableWebSearch = msg.EnableWebSearch;
