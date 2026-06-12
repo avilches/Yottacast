@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -38,6 +39,7 @@ namespace Yottacast;
 
 public partial class App : Application {
     private IGlobalHook? _globalHook;
+    private IClipboardMonitor? _clipboardMonitor;
     private SettingsWindow? _settingsWindow;
     private SettingsWindowViewModel? _settingsVm;
     private MainWindowViewModel? _mainVm;
@@ -155,6 +157,9 @@ public partial class App : Application {
             _ = pluginService.StartAsync();
 
             globalSearch.Start();
+            var clipboardStore = _services.GetRequiredService<ClipboardHistoryStore>();
+            _ = clipboardStore.LoadAsync();
+            SetupClipboardMonitor(_services);
             _ = ShowWhenInstantReadyAsync(globalSearch, desktop);
             return;
         }
@@ -310,6 +315,11 @@ public partial class App : Application {
         services.AddSingleton<LaunchHistory>(sp => new LaunchHistory(
             AppPaths.LaunchHistoryFile,
             sp.GetRequiredService<ILogger<LaunchHistory>>()));
+        services.AddSingleton<ClipboardHistoryStore>(sp => new ClipboardHistoryStore(
+            AppPaths.ClipboardHistoryFile,
+            sp.GetRequiredService<ILogger<ClipboardHistoryStore>>()));
+        services.AddSingleton<ClipboardHistorySearch>();
+        services.AddSingleton<IInstantSearchSource>(sp => sp.GetRequiredService<ClipboardHistorySearch>());
 
         services.AddTransient<MainWindowViewModel>();
         services.AddTransient<SettingsWindowViewModel>();
@@ -361,6 +371,47 @@ public partial class App : Application {
 
     private static KeyCode KeyNameToKeyCode(string name) =>
         KeyNameMap.TryGetValue(name, out var code) ? code : KeyCode.VcUndefined;
+
+    private void SetupClipboardMonitor(IServiceProvider services)
+    {
+        var settings = services.GetRequiredService<UserSettings>();
+        var store    = services.GetRequiredService<ClipboardHistoryStore>();
+
+        void StartMonitor()
+        {
+            if (!settings.ClipboardHistoryEnabled) return;
+            var prev = Interlocked.Exchange(ref _clipboardMonitor, null);
+            prev?.Stop();
+            IClipboardMonitor monitor;
+            if (OperatingSystem.IsMacOS())
+                monitor = new MacClipboardMonitor(
+                    services.GetRequiredService<ILogger<MacClipboardMonitor>>());
+            else if (OperatingSystem.IsWindows())
+                monitor = new WindowsClipboardMonitor(
+                    services.GetRequiredService<ILogger<WindowsClipboardMonitor>>());
+            else return;
+
+            monitor.TextCopied += text => store.Add(text);
+            monitor.Start();
+            _clipboardMonitor = monitor;
+        }
+
+        void StopMonitor()
+        {
+            var prev = Interlocked.Exchange(ref _clipboardMonitor, null);
+            prev?.Stop();
+        }
+
+        StartMonitor();
+
+        settings.SearchSettingsChanged += () =>
+        {
+            if (settings.ClipboardHistoryEnabled)
+                StartMonitor();
+            else
+                StopMonitor();
+        };
+    }
 
     private void RegisterGlobalHotKey(IClassicDesktopStyleApplicationLifetime desktop) {
         // SimpleGlobalHook runs handlers synchronously on the hook thread, which is required
