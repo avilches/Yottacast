@@ -57,7 +57,10 @@ public class ClipboardHistoryStoreTests
         System.Threading.Thread.Sleep(10);
         store.Add("hello");
         var secondCopied = store.GetAll()[0].CopiedAt;
-        Assert.True(secondCopied >= firstCopied);
+        // Regression: re-adding a duplicate must refresh CopiedAt to a strictly newer instant.
+        // With >= the assert can't tell an actual update apart from an untouched timestamp.
+        Assert.True(secondCopied > firstCopied,
+            $"CopiedAt should be refreshed on duplicate Add: {firstCopied:o} → {secondCopied:o}");
     }
 
     [Fact]
@@ -124,7 +127,10 @@ public class ClipboardHistoryStoreTests
         store.RecordUsage("hello");
         var entry = store.GetAll()[0];
         Assert.Equal(1, entry.UsageCount);
-        Assert.True(entry.LastUsedAt >= before);
+        // Regression: RecordUsage must update LastUsedAt to a strictly newer instant.
+        // With >= the assert can't distinguish a real update from an untouched timestamp.
+        Assert.True(entry.LastUsedAt > before,
+            $"LastUsedAt should advance after RecordUsage: {before:o} → {entry.LastUsedAt:o}");
     }
 
     [Fact]

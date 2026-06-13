@@ -22,6 +22,19 @@ internal sealed class FakePlatformProviderWithApps : FakePlatformProvider {
     public int? LastQuitPid { get; private set; }
     public int? LastForceQuitPid { get; private set; }
 
+    /// <summary>
+    /// Optional gate to control exactly when ScanAppsAsync completes. When set, the scan
+    /// awaits this TCS before returning, letting a test interleave Stop() between the start
+    /// of the scan and its successful completion. When null, the scan completes synchronously.
+    /// </summary>
+    public TaskCompletionSource? ScanGate { get; set; }
+
+    /// <summary>Signals that ScanAppsAsync has been entered (after the addApp loop, before the gate await).</summary>
+    public TaskCompletionSource ScanEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    /// <summary>Counts how many times CreateAppWatchers was invoked — proves whether watchers were created.</summary>
+    public int CreateAppWatchersCallCount { get; private set; }
+
     public FakePlatformProviderWithApps(IReadOnlyList<string> appPaths) : base([]) {
         AppPaths = appPaths;
     }
@@ -32,7 +45,15 @@ internal sealed class FakePlatformProviderWithApps : FakePlatformProvider {
             ct.ThrowIfCancellationRequested();
             addApp(path);
         }
-        await Task.CompletedTask;
+        ScanEntered.TrySetResult();
+        if (ScanGate is not null)
+            await ScanGate.Task;
+    }
+
+    public override IReadOnlyList<FileSystemWatcher> CreateAppWatchers(
+        IReadOnlyList<string> dirs, Action<string> onAdded, Action<string> onRemoved) {
+        CreateAppWatchersCallCount++;
+        return [];
     }
 
     public override void LaunchApp(string path) => LastLaunchedPath = path;
@@ -259,6 +280,45 @@ public class ApplicationSearchTests {
         var results = SearchAll(search, "Safari");
         Assert.Single(results);
         Assert.Equal("Safari", results[0].Title);
+    }
+
+    [Fact]
+    public async Task ScanCompletingAfterStop_DoesNotCreateWatchersOrAnnounce() {
+        // Regression: race where platform.ScanAppsAsync completes SUCCESSFULLY just after Stop().
+        // Without the fix, ScanAndWatchAsync would fall through to AppsChanged?.Invoke() and
+        // CreateWatchers() on an already-stopped source (watcher leak + stale announce).
+        // The fix captures _liveCts.Token before the scan and bails out if it was cancelled
+        // (by Stop) after the await, before touching watchers/AppsChanged.
+        var (search, _, platform) = BuildSearchWithSettings("/Applications/Safari.app");
+        platform.ScanGate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var appsChangedCount = 0;
+        search.AppsChanged += () => appsChangedCount++;
+
+        // 1. Start — fires the scan, which blocks on the gate.
+        search.Start();
+        // 2. Wait until the scan is actually in-flight (deterministic, no arbitrary sleep).
+        await platform.ScanEntered.Task;
+
+        // 3. Stop() while the scan is mid-flight — cancels the captured token.
+        await search.Stop();
+
+        // 4. Release the gate so ScanAppsAsync completes successfully AFTER Stop().
+        platform.ScanGate.SetResult();
+
+        // 5. Wait deterministically for the scan task to observe the cancelled token and bail.
+        //    Poll on the post-await state rather than sleeping; WhenReady is no help here because
+        //    Stop() already cancelled this scan's TCS.
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(2);
+        while (platform.CreateAppWatchersCallCount == 0 && appsChangedCount == 0
+               && DateTime.UtcNow < deadline) {
+            await Task.Yield();
+            await Task.Delay(1);
+        }
+
+        // 6. Asserts: a scan that finishes after Stop must NOT create watchers nor announce.
+        Assert.Equal(0, platform.CreateAppWatchersCallCount);
+        Assert.Equal(0, appsChangedCount);
     }
 
     [Fact]

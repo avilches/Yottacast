@@ -191,10 +191,14 @@ public sealed class ApplicationSearch(
         // must still complete OUR tcs (Stop already cancelled it, so TrySetResult is a no-op),
         // never the fresh one Stop installed.
         var tcs = _readyTcs;
+        // Capture the token this scan owns. Stop()/Rescan swap _liveCts for a fresh (uncancelled)
+        // instance, so reading _liveCts.Token after the await would see the new token and miss the
+        // cancellation. Holding the captured token lets us bail out before touching shared state.
+        var ct = _liveCts.Token;
         var scanOk = false;
         try {
             logger.LogInformation("AppSearch scan start dirs=[{Dirs}]", string.Join(", ", settings.ExpandedAppDirectories));
-            await platform.ScanAppsAsync(AddApp, settings.ExpandedAppDirectories, _liveCts.Token);
+            await platform.ScanAppsAsync(AddApp, settings.ExpandedAppDirectories, ct);
             logger.LogInformation("AppSearch scan done apps={Count}", _apps.Count);
             scanOk = true;
         } catch (OperationCanceledException) {
@@ -208,8 +212,10 @@ public sealed class ApplicationSearch(
             tcs.TrySetResult();
         }
 
-        // Only watch and announce results if the scan actually completed.
-        if (!scanOk) return;
+        // Only watch and announce results if the scan actually completed and we weren't stopped
+        // mid-scan. Without the cancellation check a scan that finishes just after Stop() would
+        // create FileSystemWatchers on a stopped source (watcher leak) and announce stale results.
+        if (!scanOk || ct.IsCancellationRequested) return;
         AppsChanged?.Invoke();
         CreateWatchers(settings.ExpandedAppDirectories);
     }

@@ -98,13 +98,19 @@ public class ProcessRunnerTests {
     public async Task Cancellation_ViaTokenInsideOnLine() {
         using var cts = new CancellationTokenSource();
         var lines = new List<string>();
-        await Runner.RunAsync("/bin/sh", ["-c", "echo start; sleep 30"], Cwd,
+        var result = await Runner.RunAsync("/bin/sh", ["-c", "echo start; sleep 30"], Cwd,
             line => {
                 lines.Add(line);
                 cts.Cancel();
                 return true;
             }, cts.Token);
+        // El callback recibio la primera linea y cancelo el token; el proceso (sleep 30) seguia vivo.
         Assert.Contains("start", lines);
+        // Cancelar via el token debe marcar el resultado como cancelado (no como parada voluntaria
+        // por callback), y por tanto no es un exito funcional.
+        Assert.True(result.Cancelled, "Cancellation via token should set Cancelled=true");
+        Assert.False(result.StoppedByCallback, "Token cancellation is not a voluntary callback stop");
+        Assert.False(result.IsSuccess, "A cancelled run must not report success");
     }
 
     [Fact]

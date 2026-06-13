@@ -74,22 +74,32 @@ public class LaunchHistoryTests : IDisposable {
     }
 
     [Fact]
-    public void BonusFor_OlderRecord_LowerBonus() {
+    public async Task BonusFor_OlderRecord_LowerBonus() {
         var past = DateTime.UtcNow.AddDays(-60);
         var present = DateTime.UtcNow;
 
+        // Record the launch 60 days in the past (writes it to _historyFile).
         var hOld = Build(clock: () => past);
         hOld.Record("/Applications/Chrome.app");
-        // now query with present clock
+
+        // Reload that same record with a present-day clock so the decay (60 days of age)
+        // is actually applied. Without LoadAsync the store would be empty and the bonus 0,
+        // making the comparison vacuous.
         var hOldPresent = new LaunchHistory(_historyFile, NullLogger<LaunchHistory>.Instance, () => present);
+        await hOldPresent.LoadAsync();
         var oldBonus = hOldPresent.BonusFor(ItemWith("/Applications/Chrome.app"));
 
-        // record fresh in a new file
+        // Record fresh in a new file with the same present clock (age ≈ 0, no decay).
         var freshFile = Path.Combine(_tempDir, "launch-history-fresh.json");
         var hFresh = new LaunchHistory(freshFile, NullLogger<LaunchHistory>.Instance, () => present);
         hFresh.Record("/Applications/Chrome.app");
         var freshBonus = hFresh.BonusFor(ItemWith("/Applications/Chrome.app"));
 
+        // Both have exactly one launch, so the only difference is the recency decay:
+        // the 60-day-old record must score strictly lower than the just-recorded one,
+        // and the old bonus must still be positive (the entry was loaded, not missing).
+        Assert.True(oldBonus > 0,
+            $"Expected old record to be loaded with a positive (decayed) bonus but got {oldBonus}");
         Assert.True(oldBonus < freshBonus,
             $"Expected old record to have lower bonus ({oldBonus}) than fresh ({freshBonus})");
     }
