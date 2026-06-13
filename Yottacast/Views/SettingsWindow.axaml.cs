@@ -200,12 +200,6 @@ public partial class SettingsWindow : Window {
             vm.AddSearchFolder(path);
     }
 
-    private async void OnAddAppDirectoryClicked(object? sender, RoutedEventArgs e) {
-        var path = await PickFolderAsync();
-        if (path != null && DataContext is SettingsWindowViewModel vm)
-            vm.AddAppDirectory(path);
-    }
-
     private void OnRemoveSearchFolderClicked(object? sender, RoutedEventArgs e) {
         if (sender is Button { Tag: SearchFolderItem item } && DataContext is SettingsWindowViewModel vm)
             vm.RemoveSearchFolder(item);
@@ -214,16 +208,6 @@ public partial class SettingsWindow : Window {
     private void OnAddCommonFoldersClicked(object? sender, RoutedEventArgs e) {
         if (DataContext is SettingsWindowViewModel vm)
             vm.AddCommonFolders();
-    }
-
-    private void OnRemoveAppDirectoryClicked(object? sender, RoutedEventArgs e) {
-        if (sender is Button { Tag: string path } && DataContext is SettingsWindowViewModel vm)
-            vm.RemoveAppDirectory(path);
-    }
-
-    private void OnAddCommonAppDirectoriesClicked(object? sender, RoutedEventArgs e) {
-        if (DataContext is SettingsWindowViewModel vm)
-            vm.AddCommonAppDirectories();
     }
 
     private void OnDecimalPlacesTextInputting(object? sender, TextInputEventArgs e) {

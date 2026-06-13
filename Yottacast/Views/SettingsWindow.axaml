@@ -594,74 +594,7 @@
                 <settings:SettingsGeneralView IsVisible="{Binding IsGeneralSelected}"/>
 
                 <!-- App Search -->
-                <StackPanel Spacing="16" IsVisible="{Binding IsAppSearchSelected}">
-                    <TextBlock Classes="section-heading" Text="App Search"/>
-
-                    <ToggleSwitch IsChecked="{Binding EnableAppSearch}"
-                                  OnContent="Enabled"
-                                  OffContent="Disabled"/>
-
-                    <TextBlock Classes="description"
-                               Text="Yottacast searches and launches applications installed on your system."/>
-
-                    <StackPanel Spacing="12" IsVisible="{Binding EnableAppSearch}">
-
-                        <Border BorderThickness="1"
-                                BorderBrush="{DynamicResource Theme.Divider.Color}"
-                                CornerRadius="4"
-                                Padding="0"
-                                IsVisible="{Binding HasAppDirectories}">
-                            <ItemsControl ItemsSource="{Binding AppDirectories}">
-                                <ItemsControl.Styles>
-                                    <Style Selector="ContentPresenter:last-child Border">
-                                        <Setter Property="BorderThickness" Value="0"/>
-                                    </Style>
-                                </ItemsControl.Styles>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="sys:String">
-                                        <Border BorderThickness="0,0,0,1"
-                                                BorderBrush="{DynamicResource Theme.Divider.Color}"
-                                                Padding="10,7">
-                                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6">
-                                                <PathIcon Grid.Column="0"
-                                                          Data="{StaticResource Icon.FileSearch}"
-                                                          Width="13" Height="13"
-                                                          Foreground="{DynamicResource Theme.Results.Title.Color}"
-                                                          VerticalAlignment="Center"/>
-                                                <TextBlock Grid.Column="1"
-                                                           Text="{Binding}"
-                                                           Foreground="{DynamicResource Theme.Results.Title.Color}"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           VerticalAlignment="Center"/>
-                                                <Button Grid.Column="2"
-                                                        Classes="remove-btn"
-                                                        Content="✕"
-                                                        Tag="{Binding}"
-                                                        Click="OnRemoveAppDirectoryClicked"/>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </Border>
-
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Button Classes="add-btn"
-                                    Content="+ Add Directory"
-                                    Click="OnAddAppDirectoryClicked"/>
-                            <Button Classes="add-btn"
-                                    Content="Add common folders"
-                                    IsVisible="{Binding HasMissingCommonAppDirectories}"
-                                    Click="OnAddCommonAppDirectoriesClicked"/>
-                        </StackPanel>
-
-                        <StackPanel Spacing="4" IsVisible="{Binding IsSystemSettingsSectionVisible}">
-                            <ToggleSwitch IsChecked="{Binding EnableSystemSettings}"
-                                          OnContent="Include system settings panels"
-                                          OffContent="Include system settings panels"/>
-                        </StackPanel>
-                    </StackPanel>
-                </StackPanel>
+                <settings:SettingsAppSearchView IsVisible="{Binding IsAppSearchSelected}"/>
 
                 <!-- Web Search -->
                 <StackPanel Spacing="16" IsVisible="{Binding IsWebSearchSelected}">
