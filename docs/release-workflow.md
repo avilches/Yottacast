@@ -157,13 +157,22 @@ arranquen.
 
 ### Contrato
 
-Al arrancar, la app comprueba una vez si existe una version mas reciente. Si la hay, muestra un banner en la ventana
-principal. Si la comprobacion falla (sin red, endpoint no disponible, etc.), no se muestra nada y se registra un
-warning.
+La comprobacion de actualizaciones esta **DESACTIVADA por defecto** y queda **PENDIENTE** de un endpoint real. El
+diseno previsto: al arrancar, la app comprueba una vez si existe una version mas reciente. Si la hay, muestra un banner
+en la ventana principal. Si la comprobacion falla (sin red, endpoint no disponible, etc.), no se muestra nada y se
+registra un warning.
 
-> **Estado: incompleto** - la comprobacion de actualizaciones NO es funcional hoy. `UpdateChecker.UpdateApiUrl` apunta a un placeholder (`https://example.com/yottacast/latest.json`) que no devuelve datos validos, asi que `CheckAsync` siempre falla o no encuentra version y `UpdateAvailable` nunca pasa a `true`. El banner no llega a mostrarse, y aunque se mostrara, su comando `UpdateBannerClick` es un placeholder sin accion. Para activar la feature hay que reemplazar la URL y conectar la descarga. Verificar en `Yottacast.Core/Services/UpdateChecker.cs` (`UpdateApiUrl`, `CheckAsync`) y `Yottacast/ViewModels/MainWindowViewModel.cs` (`CheckForUpdateAsync`, `UpdateBannerClick`).
+> **Estado: PENDIENTE (desactivado)** - la comprobacion de actualizaciones esta apagada con el flag
+> `UpdateChecker.UpdateCheckEnabled = false`. `CheckAsync` hace early-return inmediato, por lo que **no realiza ninguna
+> peticion de red ni loguea warnings en cada arranque**. El motivo es que `UpdateChecker.UpdateApiUrl` apunta a un
+> placeholder (`https://example.com/yottacast/latest.json`) que no devuelve datos validos. Aunque se activara, el
+> comando `UpdateBannerClick` es un placeholder sin accion. Para reactivar la feature hay que: (1) configurar un endpoint
+> real en `UpdateApiUrl`, (2) poner `UpdateCheckEnabled = true`, y (3) conectar la descarga en `UpdateBannerClick`.
+> Verificar en `Yottacast.Core/Services/UpdateChecker.cs` (`UpdateCheckEnabled`, `UpdateApiUrl`, `CheckAsync`) y
+> `Yottacast/ViewModels/MainWindowViewModel.cs` (`CheckForUpdateAsync`, `UpdateBannerClick`).
 
-> **Bug conocido** - `UpdateChecker` crea su propio `HttpClient` en un campo de instancia pero no implementa `IDisposable` ni libera ese cliente. Como el servicio es singleton durante toda la vida del proceso el impacto practico es bajo, pero el recurso queda sin liberar. Verificar en `Yottacast.Core/Services/UpdateChecker.cs` (campo `_http`).
+**Invariante**: `CheckAsync` sigue siendo llamable por `CheckForUpdateAsync` sin lanzar excepcion; con el flag
+desactivado simplemente retorna de inmediato sin efecto.
 
 **Invariante**: el usuario nunca ve un error ni una interrupcion si la comprobacion falla.
 
@@ -173,6 +182,7 @@ warning.
 
 | Parametro                     | Valor actual                                              | Donde se define                                        |
 |-------------------------------|-----------------------------------------------------------|--------------------------------------------------------|
+| Feature activada              | `false` (PENDIENTE de endpoint real)                      | Constante `UpdateCheckEnabled` en `UpdateChecker`      |
 | URL del endpoint              | `https://example.com/yottacast/latest.json` (placeholder) | Constante `UpdateApiUrl` en `UpdateChecker`            |
 | Timeout HTTP                  | 10 segundos                                               | Constante `UpdateCheckTimeoutSeconds` en `AppDefaults` |
 | Formato de respuesta esperado | `{ "version": "1.2.0" }`                                  | --                                                     |
@@ -191,9 +201,13 @@ Cuando `UpdateAvailable` es `true`, `MainWindowViewModel` muestra un banner con 
 `"Yottacast {v} available -- click to download"` y expone el comando `UpdateBannerClick`. El comando es actualmente un
 placeholder sin accion: la conexion a la URL de descarga esta pendiente.
 
-**Estado**: el endpoint de actualizaciones es un placeholder. Hay que reemplazar la URL antes de que esta funcionalidad
-sea operativa.
+**Estado**: PENDIENTE. La feature esta desactivada (`UpdateCheckEnabled = false`) y el endpoint de actualizaciones es un
+placeholder (`example.com`). Hay que configurar un endpoint real, reactivar el flag y conectar la descarga antes de que
+esta funcionalidad sea operativa.
 
-> **Verificar en:** `Yottacast.Core/Services/UpdateChecker.cs` -- constante `UpdateApiUrl`, metodo `CheckAsync`,
-> propiedades. `Yottacast/ViewModels/MainWindowViewModel.cs` -- metodo `CheckForUpdateAsync`, comando `UpdateBannerClick`.
+**Gestion de recursos**: `UpdateChecker` implementa `IDisposable` y libera su `HttpClient` (`_http`) en `Dispose()`. El
+servicio se registra como singleton, por lo que el contenedor DI lo libera al cerrar el proceso.
+
+> **Verificar en:** `Yottacast.Core/Services/UpdateChecker.cs` -- constantes `UpdateCheckEnabled` y `UpdateApiUrl`,
+> metodo `CheckAsync`, `Dispose`, propiedades. `Yottacast/ViewModels/MainWindowViewModel.cs` -- metodo `CheckForUpdateAsync`, comando `UpdateBannerClick`.
 `Yottacast.Core/AppDefaults.cs` -- constante `UpdateCheckTimeoutSeconds`.

@@ -8,6 +8,12 @@ namespace Yottacast.Services;
 internal sealed class LinuxAppHandler : AppHandler {
     public override void OnFrameworkInitializationCompleted() { }
     public override void OnHide() { }
+
+    public override System.Threading.Tasks.Task SimulatePasteAsync() {
+        Serilog.Log.ForContext<LinuxAppHandler>().Warning("Simulacion de paste no soportada en Linux (pendiente: integracion xdotool/wtype).");
+        return System.Threading.Tasks.Task.CompletedTask;
+    }
+
     public override (KeyModifiers Modifiers, Key Key) CloseWindowShortcut => (KeyModifiers.Control, Key.W);
 
     public override IReadOnlyList<(KeyModifiers, Key)> ForbiddenHotkeys =>

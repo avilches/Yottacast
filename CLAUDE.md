@@ -48,9 +48,8 @@ Yottacast busca en varias fuentes simultaneamente. Cada source tiene un proposit
 - **Busqueda de documentos**: busca archivos en las carpetas configuradas del usuario usando indexacion nativa del
   sistema operativo. Los resultados llegan progresivamente (deferred source).
 - **Busqueda web**: permite abrir una busqueda web en el navegador configurado con el motor seleccionado por el
-  usuario (Google, DuckDuckGo, etc.). En modo normal, siempre esta presente usando la query completa. En modo emoji (
-  query empieza por `:`), usa el texto tras `:` como termino de busqueda; si la query es solo `:`, el item no se
-  muestra.
+  usuario (Google, DuckDuckGo, etc.). En modo normal usa la query del usuario (segun el modo de cada motor: presente
+  siempre, o activado por un prefijo). En modo emoji (query empieza por `:`) la busqueda web no se muestra.
 
 ## Acciones
 

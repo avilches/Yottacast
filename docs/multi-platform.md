@@ -186,7 +186,7 @@ El discovery busca en tres fuentes por orden de prioridad: carpetas de apps del 
 | Windows | Google Chrome, Mozilla Firefox, Microsoft Edge, Brave Browser, Opera, Vivaldi | Windows Terminal, PowerShell, Command Prompt, Git Bash | Carpetas del usuario + `BrowserKnownPaths`/`TerminalKnownPaths` con rutas absolutas a ejecutables (las que llevan glob se expanden) |
 | Linux | (ninguno) | (ninguno) | No soportado |
 
-> **Estado: incompleto (Linux)** - `LinuxPlatformProvider.KnownBrowserNames` y `KnownTerminalNames` estan vacios, y `OpenUrl()`/`ExecuteCommand()` tienen cuerpo vacio (no-op silencioso). Como consecuencia, el descubrimiento devuelve siempre lista vacia y la auto-reparacion de navegador/terminal no puede operar en Linux: `ActiveBrowser`/`ActiveTerminal` siempre resuelven a `null`. Abrir busquedas web y ejecutar comandos en terminal no hace nada en Linux. Ver `Yottacast.Core/Platform/LinuxPlatformProvider.cs`.
+> **Estado: incompleto (Linux)** - `LinuxPlatformProvider.KnownBrowserNames` y `KnownTerminalNames` estan vacios. Como consecuencia, el descubrimiento devuelve siempre lista vacia y la auto-reparacion de navegador/terminal no puede operar en Linux: `ActiveBrowser`/`ActiveTerminal` siempre resuelven a `null`. `OpenUrl()` y `ExecuteCommand()` ya NO son no-op silenciosos: loguean un warning ("no soportado en Linux") via el `logger` inyectado y no abren ni ejecutan nada. La integracion real de navegador/terminal sigue PENDIENTE. Ver `Yottacast.Core/Platform/LinuxPlatformProvider.cs`.
 
 **Resolucion de rutas conocidas**: cada entrada de `TerminalKnownPaths`/`BrowserKnownPaths` se resuelve via `PlatformProvider.ResolveKnownPath`. Una ruta literal se acepta si existe en disco; una ruta con glob `*` (solo en un segmento de directorio) se expande a la primera coincidencia existente. La implementacion base trata cualquier glob como no resoluble; Windows la sobrescribe para expandirlos.
 
@@ -308,7 +308,7 @@ Se invoca cuando el usuario activa un resultado con `PasteAfterActivate = true`.
 |------------|-----------------------------------------------------------------------------------------------------------------------------|--------------|
 | macOS      | CoreGraphics: `CGEventCreateKeyboardEvent` (key 0x09 = 'v') con flag `kCGEventFlagMaskCommand`, publicado con `CGEventPost` | 150 ms       |
 | Windows    | `keybd_event` de `user32.dll`: VK_CONTROL down, VK_V down, VK_V up, VK_CONTROL up                                           | 150 ms       |
-| Linux      | No-op (usa la implementacion base que no hace nada)                                                                         | --           |
+| Linux      | Loguea un warning ("paste no soportado en Linux") y no pega nada. Integracion real PENDIENTE (xdotool/wtype)               | --           |
 
 **Invariante**: el delay de 150 ms (`AppDefaults.PasteDelayMs`) existe para que la app destino recupere el foco antes de
 recibir el evento de teclado.

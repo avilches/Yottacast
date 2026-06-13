@@ -229,6 +229,10 @@ public partial class App : Application {
                 outputTemplate: "{Timestamp:HH:mm:ss.fff} [{Level:u5}] [{SourceContext}] {Message:lj}{NewLine}{Exception}")
             .CreateLogger();
 
+        // Logger estatico global de Serilog (usado por componentes sin DI, p.ej. LinuxAppHandler).
+        // Comparte la misma instancia que AddSerilog; asignacion idempotente.
+        Serilog.Log.Logger = serilogLogger;
+
         var services = new ServiceCollection();
         services.AddLogging(b => b.AddSerilog(serilogLogger, dispose: true));
 

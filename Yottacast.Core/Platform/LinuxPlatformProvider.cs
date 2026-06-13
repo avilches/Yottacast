@@ -124,13 +124,21 @@ public sealed class LinuxPlatformProvider(ProcessRunner runner, ILogger<LinuxPla
 
     // ── Browser ───────────────────────────────────────────────────────────────
 
+    // PENDIENTE (Linux): descubrimiento de navegadores/terminales no implementado.
     public override string[] KnownBrowserNames => [];
-    public override void OpenUrl(string url, string browserName) { }
+    public override void OpenUrl(string url, string browserName) {
+        logger.LogWarning("OpenUrl no soportado en Linux (sin integracion de navegador). url={Url}", url);
+        // PENDIENTE (Linux): integracion de navegador no implementada; no se abre nada.
+    }
 
     // ── Terminal ──────────────────────────────────────────────────────────────
 
+    // PENDIENTE (Linux): descubrimiento de navegadores/terminales no implementado.
     public override string[] KnownTerminalNames => [];
-    public override void ExecuteCommand(string command, string terminalName) { }
+    public override void ExecuteCommand(string command, string terminalName) {
+        logger.LogWarning("ExecuteCommand no soportado en Linux (sin integracion de terminal). terminal={Terminal}", terminalName);
+        // PENDIENTE (Linux): integracion de terminal no implementada; no se ejecuta nada.
+    }
 
     // ── Icon ──────────────────────────────────────────────────────────────────
 

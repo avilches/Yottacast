@@ -70,8 +70,6 @@ El score bajo de `ShowAlways` (0.4) es intencionado: la busqueda web actua como 
 
 El formato es `{NombreMotor}: "{queryBusqueda}"` (con la query entre comillas), p. ej. `Google: "hola"`. El subtitulo es `"Open search in {NombreNavegador}"` (p. ej. "Open search in Safari"), usando el navegador activo.
 
-> **Estado: incompleto** - `CLAUDE.md` indica que en modo emoji (query empieza por `:`) la busqueda web deberia usar el texto tras `:` como termino. El codigo no lo hace: `WebSearchSource.Search` devuelve `[]` para toda query que empiece por `:`. Gap pendiente.
-
 ### Motores disponibles por defecto
 
 Los motores predefinidos cubren categorias generales (Google, Bing, DuckDuckGo), shopping (Amazon), video (YouTube, Twitch), social (Reddit, X, LinkedIn, Pinterest, TikTok), conocimiento (Wikipedia, Wolfram Alpha), desarrollo (GitHub, Stack Overflow, npm, PyPI, MDN), entretenimiento (IMDb, Spotify) y mapas (Google Maps). Cada uno tiene un prefijo por defecto y puede estar habilitado o deshabilitado de fabrica.
