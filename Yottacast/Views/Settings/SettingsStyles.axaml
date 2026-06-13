@@ -1,0 +1,231 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Section heading -->
+    <Style Selector="TextBlock.section-heading">
+        <Setter Property="Foreground"  Value="{DynamicResource Theme.Results.Title.Color}"/>
+        <Setter Property="FontSize"    Value="{DynamicResource Theme.NoResults.Title.Size}"/>
+        <Setter Property="FontWeight"  Value="SemiBold"/>
+        <Setter Property="Margin"      Value="0,0,0,20"/>
+    </Style>
+
+    <!-- Field label -->
+    <Style Selector="TextBlock.label">
+        <Setter Property="Foreground" Value="{DynamicResource Theme.Results.Category.Color}"/>
+        <Setter Property="FontSize"   Value="{DynamicResource Theme.Results.Category.Size}"/>
+        <Setter Property="Margin"     Value="0,0,0,6"/>
+    </Style>
+
+    <!-- ComboBox: stretch + borde coherente con flyout-input -->
+    <Style Selector="ComboBox">
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="Padding"             Value="10,8"/>
+        <Setter Property="Background"          Value="{DynamicResource Theme.Window.Background}"/>
+        <Setter Property="BorderBrush"         Value="#868686"/>
+        <Setter Property="BorderThickness"     Value="1"/>
+        <Setter Property="CornerRadius"        Value="4"/>
+    </Style>
+    <Style Selector="ComboBox /template/ Border#Background">
+        <Setter Property="Background"      Value="{DynamicResource Theme.Window.Background}"/>
+        <Setter Property="BorderBrush"     Value="#868686"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius"    Value="4"/>
+    </Style>
+    <Style Selector="ComboBox:pointerover /template/ Border#Background">
+        <Setter Property="Background"  Value="{DynamicResource Theme.Window.Background}"/>
+        <Setter Property="BorderBrush" Value="#868686"/>
+    </Style>
+    <Style Selector="ComboBox:focus /template/ Border#Background,
+                     ComboBox:focus-within /template/ Border#Background">
+        <Setter Property="Background"  Value="{DynamicResource Theme.Window.Background}"/>
+        <Setter Property="BorderBrush" Value="#868686"/>
+    </Style>
+
+    <!-- numeric-field: Border wrapper para NumericUpDown.
+         Delegamos el borde al Border exterior para evitar que el ControlTheme
+         interno de ButtonSpinner sobreescriba el color en el estado :focus-within. -->
+    <Style Selector="Border.numeric-field">
+        <Setter Property="BorderBrush"     Value="#868686"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius"    Value="4"/>
+        <Setter Property="Background"      Value="{DynamicResource Theme.Window.Background}"/>
+    </Style>
+    <!-- El NumericUpDown interior no tiene borde propio.
+         Todos los fondos interiores son Transparent: el Border exterior aporta el color.
+         Usar Theme.Window.Background causaría que el fondo interior tape los píxeles
+         de las esquinas redondeadas del Border exterior al cambiar de color en focus. -->
+    <Style Selector="NumericUpDown">
+        <Setter Property="Background"      Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    <Style Selector="NumericUpDown /template/ ButtonSpinner#PART_Spinner /template/ Border#PART_BorderElement">
+        <Setter Property="Background"      Value="Transparent"/>
+        <Setter Property="BorderBrush"     Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    <Style Selector="NumericUpDown:focus-within /template/ ButtonSpinner#PART_Spinner /template/ Border#PART_BorderElement">
+        <Setter Property="Background"      Value="Transparent"/>
+        <Setter Property="BorderBrush"     Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    <!-- TextBox interior: padding y altura iguales a flyout-input, sin borde propio -->
+    <Style Selector="NumericUpDown TextBox">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="MinHeight"  Value="0"/>
+        <Setter Property="Padding"    Value="8,5,8,5"/>
+        <Setter Property="FontSize"   Value="12"/>
+    </Style>
+    <Style Selector="NumericUpDown TextBox /template/ Border#PART_BorderElement">
+        <Setter Property="Background"      Value="Transparent"/>
+        <Setter Property="BorderBrush"     Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    <Style Selector="NumericUpDown TextBox:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="Background"      Value="Transparent"/>
+        <Setter Property="BorderBrush"     Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    <Style Selector="NumericUpDown TextBox:focus-within /template/ Border#PART_BorderElement">
+        <Setter Property="Background"      Value="Transparent"/>
+        <Setter Property="BorderBrush"     Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    <!-- Suprimir el mensaje de error de validación con un template vacío -->
+    <Style Selector="NumericUpDown /template/ DataValidationErrors">
+        <Setter Property="ErrorTemplate">
+            <Setter.Value>
+                <DataTemplate>
+                    <Panel/>
+                </DataTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Hotkey field -->
+    <Style Selector="Border.hotkey-field">
+        <Setter Property="Padding"         Value="10,8"/>
+        <Setter Property="CornerRadius"    Value="4"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush"     Value="#868686"/>
+        <Setter Property="Background"      Value="{DynamicResource Theme.Window.Background}"/>
+    </Style>
+    <Style Selector="Border.hotkey-field.capturing">
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush"     Value="#FF3B30"/>
+    </Style>
+
+
+    <!-- Modifier badge inside hotkey field -->
+    <Style Selector="Border.modifier-badge">
+        <Setter Property="CornerRadius" Value="3"/>
+        <Setter Property="Padding"      Value="3,1"/>
+        <Setter Property="Background"   Value="Transparent"/>
+        <Setter Property="Margin"       Value="0"/>
+        <Setter Property="Width"        Value="22"/>
+    </Style>
+    <Style Selector="Border.modifier-badge TextBlock">
+        <Setter Property="FontFamily"          Value="SF Pro Text, Lucida Grande, Segoe UI, Inter"/>
+        <Setter Property="FontSize"           Value="13"/>
+        <Setter Property="Foreground"         Value="#565656"/>
+        <Setter Property="FontWeight"         Value="Bold"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Border.modifier-badge.active TextBlock">
+        <Setter Property="Foreground" Value="White"/>
+    </Style>
+
+    <!-- Hotkey key text (single TextBlock, style changes with capturing state) -->
+    <Style Selector="TextBlock.hotkey-key">
+        <Setter Property="Foreground"        Value="{DynamicResource Theme.Results.Title.Color}"/>
+        <Setter Property="FontWeight"         Value="Bold"/>
+        <Setter Property="FontSize"           Value="13"/>
+        <Setter Property="VerticalAlignment"  Value="Center"/>
+    </Style>
+    <Style Selector="Border.hotkey-field.capturing TextBlock.hotkey-key">
+        <Setter Property="Foreground" Value="{DynamicResource Theme.Results.Subtitle.Color}"/>
+        <Setter Property="FontWeight" Value="Normal"/>
+    </Style>
+    <!-- Remove button -->
+    <Style Selector="Button.remove-btn">
+        <Setter Property="Background"      Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding"         Value="4,2"/>
+        <Setter Property="Cursor"          Value="Hand"/>
+        <Setter Property="Foreground"      Value="{DynamicResource Theme.Results.Subtitle.Color}"/>
+    </Style>
+    <Style Selector="Button.remove-btn:pointerover">
+        <Setter Property="Foreground" Value="{DynamicResource Theme.Results.Title.Color}"/>
+    </Style>
+
+    <!-- Add button -->
+    <Style Selector="Button.add-btn">
+        <Setter Property="Background"      Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush"     Value="{DynamicResource Theme.Divider.Color}"/>
+        <Setter Property="Padding"         Value="10,6"/>
+        <Setter Property="CornerRadius"    Value="4"/>
+        <Setter Property="Cursor"          Value="Hand"/>
+        <Setter Property="Foreground"      Value="{DynamicResource Theme.Results.Subtitle.Color}"/>
+        <Setter Property="Margin"          Value="0,10,0,0"/>
+    </Style>
+    <Style Selector="Button.add-btn:pointerover">
+        <Setter Property="Foreground" Value="{DynamicResource Theme.Results.Title.Color}"/>
+    </Style>
+
+    <!-- Folder missing indicator -->
+    <Style Selector="TextBlock.folder-missing">
+        <Setter Property="Opacity" Value="0.4"/>
+    </Style>
+    <Style Selector="PathIcon.folder-missing">
+        <Setter Property="Opacity" Value="0.4"/>
+    </Style>
+
+    <!-- Description text -->
+    <Style Selector="TextBlock.description">
+        <Setter Property="Foreground"   Value="{DynamicResource Theme.Results.Subtitle.Color}"/>
+        <Setter Property="FontSize"     Value="{DynamicResource Theme.Results.Title.Size}"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="Margin"       Value="0,0,0,20"/>
+    </Style>
+
+    <!-- Icon-only button — sin borde, sin reborde cuadrado de hover -->
+    <Style Selector="Button.icon-btn">
+        <Setter Property="Background"      Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding"         Value="6"/>
+        <Setter Property="CornerRadius"    Value="4"/>
+        <Setter Property="Cursor"          Value="Hand"/>
+        <Setter Property="Foreground"      Value="{DynamicResource Theme.Results.Subtitle.Color}"/>
+    </Style>
+    <Style Selector="Button.icon-btn /template/ ContentPresenter">
+        <Setter Property="Background"    Value="Transparent"/>
+        <Setter Property="CornerRadius"  Value="4"/>
+    </Style>
+    <Style Selector="Button.icon-btn:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource Theme.Results.Hover.Background}"/>
+    </Style>
+    <Style Selector="Button.icon-btn:pointerover">
+        <Setter Property="Foreground" Value="{DynamicResource Theme.Results.Title.Color}"/>
+    </Style>
+
+    <!-- Checkboxes más compactos -->
+    <Style Selector="CheckBox">
+        <Setter Property="MinHeight" Value="0"/>
+        <Setter Property="Padding"   Value="6,2,0,2"/>
+        <Setter Property="FontSize"  Value="13"/>
+    </Style>
+    <Style Selector="CheckBox /template/ Border#NormalRectangle">
+        <Setter Property="Width"        Value="14"/>
+        <Setter Property="Height"       Value="14"/>
+        <Setter Property="CornerRadius" Value="3"/>
+    </Style>
+
+    <!-- Subsection heading within a settings section -->
+    <Style Selector="TextBlock.subsection-heading">
+        <Setter Property="Foreground"  Value="{DynamicResource Theme.Results.Title.Color}"/>
+        <Setter Property="FontSize"    Value="{DynamicResource Theme.Results.Title.Size}"/>
+        <Setter Property="FontWeight"  Value="SemiBold"/>
+        <Setter Property="Margin"      Value="0,8,0,0"/>
+    </Style>
+
+</Styles>
