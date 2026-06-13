@@ -298,3 +298,9 @@ Si un fichero de doc empieza a ser demasiado grande, sugiere dividirlo en dos.
   de `ErrorTemplate` en un estilo sobre `NumericUpDown /template/ DataValidationErrors`. Para bloquear letras, usar
   `AddHandler(InputElement.TextInputEvent, handler, RoutingStrategies.Tunnel)` en code-behind (el evento
   `TextInputting` no se puede declarar en AXAML sobre `NumericUpDown`).
+- **`.axaml` standalone (`ResourceDictionary`/`Styles`) sin `x:Class` no se auto-incluye** — El csproj de
+  `Yottacast` no tiene glob `**/*.axaml`. Avalonia solo auto-incluye en el build los `.axaml` con `x:Class` (via
+  compilacion XAML: ventanas, UserControls). Un fichero de recursos o estilos compartido (sin `x:Class`, como
+  `Views/Settings/SettingsResources.axaml` o `SettingsStyles.axaml`) hay que declararlo a mano con
+  `<AvaloniaResource Include="ruta.axaml" />` en el `.csproj`, o el `ResourceInclude`/`StyleInclude` que lo referencie
+  fallara en runtime (recurso no encontrado).
