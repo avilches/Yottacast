@@ -108,17 +108,6 @@ public partial class SettingsWindow : Window {
         (DataContext as SettingsWindowViewModel)?.CancelHotkeyCapture();
     }
 
-    // Click on the clipboard hotkey border → start capture only if not already capturing
-    // (prevents restarting when the cancel button inside is clicked)
-    private void OnClipboardHotkeyPointerPressed(object? sender, PointerPressedEventArgs e) {
-        if (DataContext is SettingsWindowViewModel { IsCapturingClipboardHotkey: false } vm) {
-            // Clear focus from any control so it doesn't intercept keys during capture
-            FocusManager?.ClearFocus();
-            vm.StartClipboardHotkeyCapture();
-        }
-        e.Handled = true;
-    }
-
     // Click anywhere else in the window → cancel capture
     protected override void OnPointerPressed(PointerPressedEventArgs e) {
         if (DataContext is SettingsWindowViewModel { IsCapturingHotkey: true } vm)
