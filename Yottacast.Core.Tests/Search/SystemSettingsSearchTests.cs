@@ -11,7 +11,7 @@ public class SystemSettingsSearchTests {
     private static (SystemSettingsSearch search, UserSettings settings, TrackingPlatformProvider platform)
         Build(IReadOnlyList<string>? thirdPartyDirs = null) {
         var platform = new TrackingPlatformProvider();
-        var settings = UserSettings.Load(platform);
+        var settings = TestSettings.LoadIsolated(platform);
         var iconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
         var search = new SystemSettingsSearch(
             settings, platform, iconCache,
@@ -146,7 +146,7 @@ public class SystemSettingsSearchTests {
 
     private static (SystemSettingsSearch search, UserSettings settings)
         BuildWithPlatform(FakePlatformProvider platform, IReadOnlyList<string>? thirdPartyDirs = null) {
-        var settings = UserSettings.Load(platform);
+        var settings = TestSettings.LoadIsolated(platform);
         var iconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
         var search = new SystemSettingsSearch(
             settings, platform, iconCache,
@@ -200,7 +200,7 @@ public class SystemSettingsSearchTests {
         // El refresco dinámico ocurre en background durante Start(); las llamadas a
         // Search() solo leen del cache. Con TTL<=0 el bucle de refresco queda deshabilitado.
         var platform = new CountingDynamicProvider { WifiNetwork = "TestNet" };
-        var settings = UserSettings.Load(platform);
+        var settings = TestSettings.LoadIsolated(platform);
         var iconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
         var search = new SystemSettingsSearch(
             settings, platform, iconCache,
@@ -221,7 +221,7 @@ public class SystemSettingsSearchTests {
         // Con un TTL pequeño, el bucle background refresca el cache periódicamente
         // sin que las llamadas a Search() disparen subprocess.
         var platform = new CountingDynamicProvider { WifiNetwork = "TestNet" };
-        var settings = UserSettings.Load(platform);
+        var settings = TestSettings.LoadIsolated(platform);
         var iconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
         var search = new SystemSettingsSearch(
             settings, platform, iconCache,

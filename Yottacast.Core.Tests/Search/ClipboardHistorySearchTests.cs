@@ -15,7 +15,7 @@ public class ClipboardHistorySearchTests
         SearchSourceVisibility visibility = SearchSourceVisibility.ModeOnly)
     {
         var platform = new FakePlatformProvider([]);
-        var settings = UserSettings.Load(platform);
+        var settings = TestSettings.LoadIsolated(platform);
         settings.ClipboardSearchVisibility = visibility;
         var filePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json");
         var store = new ClipboardHistoryStore(filePath, NullLogger<ClipboardHistoryStore>.Instance);

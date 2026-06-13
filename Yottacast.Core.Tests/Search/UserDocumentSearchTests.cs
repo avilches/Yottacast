@@ -14,7 +14,7 @@ public class UserDocumentSearchTests {
 
     private static UserDocumentSearch BuildSearch(params FileResult[] files) {
         var platform = new FakePlatformProvider(files);
-        var settings = UserSettings.Load(platform);
+        var settings = TestSettings.LoadIsolated(platform);
         var fileSearch = new FileSearch(platform);
         var fileIconCache = new FileIconCache(platform, NullLogger<FileIconCache>.Instance);
         return new UserDocumentSearch(settings, fileSearch, fileIconCache, platform, NullLogger<UserDocumentSearch>.Instance, new ClipboardService(NullLogger<ClipboardService>.Instance));
@@ -22,7 +22,7 @@ public class UserDocumentSearchTests {
 
     private static UserDocumentSearch BuildSearch(ClipboardService clipboard, params FileResult[] files) {
         var platform = new FakePlatformProvider(files);
-        var settings = UserSettings.Load(platform);
+        var settings = TestSettings.LoadIsolated(platform);
         var fileSearch = new FileSearch(platform);
         var fileIconCache = new FileIconCache(platform, NullLogger<FileIconCache>.Instance);
         return new UserDocumentSearch(settings, fileSearch, fileIconCache, platform, NullLogger<UserDocumentSearch>.Instance, clipboard);
@@ -146,7 +146,7 @@ public class UserDocumentSearchTests {
     [Fact]
     public async Task SearchAsync_BackendThrows_StreamCompletesWithPartialResults() {
         var platform = new ThrowingPlatformProvider([new FileResult("report.pdf", "/docs/report.pdf")]);
-        var settings = UserSettings.Load(platform);
+        var settings = TestSettings.LoadIsolated(platform);
         var search = new UserDocumentSearch(settings, new FileSearch(platform),
             new FileIconCache(platform, NullLogger<FileIconCache>.Instance),
             platform, NullLogger<UserDocumentSearch>.Instance,
@@ -167,7 +167,7 @@ public class UserDocumentSearchTests {
     [Fact]
     public void IsActiveIn_All_WhenAlways() {
         var platform = new FakePlatformProvider([]);
-        var settings = UserSettings.Load(platform);
+        var settings = TestSettings.LoadIsolated(platform);
         settings.FileSearchVisibility = SearchSourceVisibility.Always;
         var search = new UserDocumentSearch(settings, new FileSearch(platform),
             new FileIconCache(platform, NullLogger<FileIconCache>.Instance),
@@ -181,7 +181,7 @@ public class UserDocumentSearchTests {
     [Fact]
     public void IsActiveIn_Files_WhenModeOnly() {
         var platform = new FakePlatformProvider([]);
-        var settings = UserSettings.Load(platform);
+        var settings = TestSettings.LoadIsolated(platform);
         settings.FileSearchVisibility = SearchSourceVisibility.ModeOnly;
         var search = new UserDocumentSearch(settings, new FileSearch(platform),
             new FileIconCache(platform, NullLogger<FileIconCache>.Instance),
@@ -196,7 +196,7 @@ public class UserDocumentSearchTests {
     [Fact]
     public void IsActiveIn_NeverActive_WhenDisabled() {
         var platform = new FakePlatformProvider([]);
-        var settings = UserSettings.Load(platform);
+        var settings = TestSettings.LoadIsolated(platform);
         settings.FileSearchVisibility = SearchSourceVisibility.Disabled;
         var search = new UserDocumentSearch(settings, new FileSearch(platform),
             new FileIconCache(platform, NullLogger<FileIconCache>.Instance),

@@ -72,7 +72,7 @@ public class EquationSolverTests(NerdamerEngineFixture fixture) {
     private CalculatorSearch MakeCalcSearch() {
         var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
         clipboard.Initialize(copy: _ => { }, read: () => Task.FromResult<string?>(null));
-        var settings = UserSettings.Load(new FakePlatformProvider([]));
+        var settings = TestSettings.LoadIsolated(new FakePlatformProvider([]));
         // math.js engine is null (not needed — equations bypass it entirely)
         var provider = new MathJsEngineProvider();
         var exchangeRateService = new ExchangeRateService(new HttpClient(), settings, NullLogger<ExchangeRateService>.Instance);
@@ -95,7 +95,7 @@ public class EquationSolverTests(NerdamerEngineFixture fixture) {
         string? copied = null;
         var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
         clipboard.Initialize(copy: text => copied = text, read: () => Task.FromResult<string?>(null));
-        var settings = UserSettings.Load(new FakePlatformProvider([]));
+        var settings = TestSettings.LoadIsolated(new FakePlatformProvider([]));
         var provider = new MathJsEngineProvider();
         var exchangeRateService = new ExchangeRateService(new HttpClient(), settings, NullLogger<ExchangeRateService>.Instance);
         var search = new CalculatorSearch(provider, exchangeRateService, clipboard, settings,

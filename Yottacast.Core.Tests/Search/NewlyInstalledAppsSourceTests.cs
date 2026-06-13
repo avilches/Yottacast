@@ -12,7 +12,7 @@ public class NewlyInstalledAppsSourceTests
         params string[] appPaths)
     {
         var platform = new FakePlatformProviderWithApps(appPaths);
-        var settings = UserSettings.Load(platform);
+        var settings = TestSettings.LoadIsolated(platform);
         var iconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
         var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
         var appSearch = new ApplicationSearch(settings, platform, iconCache, clipboard,

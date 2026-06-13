@@ -49,7 +49,7 @@ public class ClipboardSearchTests {
 
     private static ClipboardSearch BuildSearch() {
         var platform = new FakePlatformProvider([]);
-        var settings = UserSettings.Load(platform);
+        var settings = TestSettings.LoadIsolated(platform);
         var browserDiscovery = new BrowserDiscovery(settings, platform, NullLogger<BrowserDiscovery>.Instance);
         var faviconHandler = new FakeHttpMessageHandler(HttpStatusCode.OK, [0x89, 0x50]);
         var faviconCache = new FaviconCache(new HttpClient(faviconHandler), NullLogger<FaviconCache>.Instance,
@@ -177,7 +177,7 @@ public class ClipboardSearchTests {
         // Uses a real DNS lookup against a guaranteed-nonexistent domain.
         // The test waits up to 3 seconds for the DNS timeout (configured at 2 s).
         var platform = new FakePlatformProvider([]);
-        var settings = UserSettings.Load(platform);
+        var settings = TestSettings.LoadIsolated(platform);
         settings.EnableUrlValidation = true;
         var browserDiscovery = new BrowserDiscovery(settings, platform, NullLogger<BrowserDiscovery>.Instance);
         var faviconHandler = new FakeHttpMessageHandler(HttpStatusCode.OK, [0x89, 0x50]);
@@ -212,7 +212,7 @@ public class ClipboardSearchTests {
     [Fact]
     public void OnWindowShown_ValidationDisabled_AlwaysShowsOpenAction() {
         var platform = new FakePlatformProvider([]);
-        var settings = UserSettings.Load(platform);
+        var settings = TestSettings.LoadIsolated(platform);
         settings.EnableUrlValidation = false;
         var browserDiscovery = new BrowserDiscovery(settings, platform, NullLogger<BrowserDiscovery>.Instance);
         var faviconHandler = new FakeHttpMessageHandler(HttpStatusCode.OK, [0x89, 0x50]);
@@ -235,7 +235,7 @@ public class ClipboardSearchTests {
     [Fact]
     public void Start_RegistersFaviconLoadedHandler_AndStop_Unregisters() {
         var platform = new FakePlatformProvider([]);
-        var settings = UserSettings.Load(platform);
+        var settings = TestSettings.LoadIsolated(platform);
         var browserDiscovery = new BrowserDiscovery(settings, platform, NullLogger<BrowserDiscovery>.Instance);
         var faviconHandler = new FakeHttpMessageHandler(HttpStatusCode.OK, [0x89, 0x50]);
         var faviconCache = new FaviconCache(new HttpClient(faviconHandler), NullLogger<FaviconCache>.Instance,

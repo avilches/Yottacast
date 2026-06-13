@@ -41,7 +41,7 @@ public class FileResultContractTests {
         var tempFile = Path.GetTempFileName();
         try {
             var platform = new FakePlatformProvider([]);
-            var settings = UserSettings.Load(platform);
+            var settings = TestSettings.LoadIsolated(platform);
             var browserDiscovery = new BrowserDiscovery(settings, platform, NullLogger<BrowserDiscovery>.Instance);
             var faviconHandler = new FakeHttpMessageHandler(HttpStatusCode.OK, [0x89, 0x50]);
             var faviconCache = new FaviconCache(new HttpClient(faviconHandler), NullLogger<FaviconCache>.Instance,

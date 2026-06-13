@@ -599,9 +599,12 @@ public partial class MainWindow : Window {
             return;
         }
 
-        // On macOS, Cmd+Q quits the app entirely.
+        // On macOS, Cmd+Q quits the app entirely. Persist any pending window position and
+        // flush buffered logs before exiting, since Environment.Exit skips disposals/finalizers.
         var quitShortcut = AppHandler.Instance.QuitShortcut;
         if (quitShortcut is { } qs && e.Key == qs.Key && e.KeyModifiers == qs.Modifiers) {
+            SavePosition();
+            Serilog.Log.CloseAndFlush();
             Environment.Exit(0);
             e.Handled = true;
             return;

@@ -117,7 +117,7 @@ public class AlgebraSearchTests(NerdamerEngineFixture fixture, MathJsEngineFixtu
     private CalculatorSearch MakeCalcSearch() {
         var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
         clipboard.Initialize(copy: _ => { }, read: () => Task.FromResult<string?>(null));
-        var settings = UserSettings.Load(new FakePlatformProvider([]));
+        var settings = TestSettings.LoadIsolated(new FakePlatformProvider([]));
         var provider = MathJsEngineProvider.ForTesting(mathJsFixture.Engine);
         var exchangeRateService = new ExchangeRateService(new HttpClient(), settings,
             NullLogger<ExchangeRateService>.Instance);
@@ -146,7 +146,7 @@ public class AlgebraSearchTests(NerdamerEngineFixture fixture, MathJsEngineFixtu
         string? copied = null;
         var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
         clipboard.Initialize(copy: text => copied = text, read: () => Task.FromResult<string?>(null));
-        var settings = UserSettings.Load(new FakePlatformProvider([]));
+        var settings = TestSettings.LoadIsolated(new FakePlatformProvider([]));
         var provider = MathJsEngineProvider.ForTesting(mathJsFixture.Engine);
         var exchangeRateService = new ExchangeRateService(new HttpClient(), settings,
             NullLogger<ExchangeRateService>.Instance);

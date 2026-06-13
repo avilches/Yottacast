@@ -1,8 +1,26 @@
 using System.Threading;
+using Microsoft.Extensions.Logging;
 using Yottacast.Core.Platform;
 using Yottacast.Core.Search.UserDocuments;
+using Yottacast.Core.Services;
 
 namespace Yottacast.Core.Tests;
+
+/// <summary>
+/// Test helpers for loading settings without touching the developer's real settings.json.
+/// </summary>
+internal static class TestSettings {
+    /// <summary>
+    /// Loads UserSettings into a throwaway temp file. <see cref="UserSettings.Load"/> always
+    /// writes defaults back to disk, so calling it without an explicit path would overwrite the
+    /// real ~/Library/Application Support/Yottacast/settings.json on every test run. Tests must
+    /// always go through this helper (or pass their own temp path) instead of Load(platform).
+    /// </summary>
+    internal static UserSettings LoadIsolated(PlatformProvider platform, ILogger<UserSettings>? logger = null) {
+        var path = Path.Combine(Path.GetTempPath(), $"yottacast-test-settings-{Guid.NewGuid():N}.json");
+        return UserSettings.Load(platform, logger, path);
+    }
+}
 
 /// <summary>Minimal PlatformProvider stub for use across test classes.</summary>
 internal sealed class MinimalPlatform : PlatformProvider {

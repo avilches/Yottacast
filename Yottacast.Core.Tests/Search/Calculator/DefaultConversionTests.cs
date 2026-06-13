@@ -21,7 +21,7 @@ public class DefaultConversionTests(MathJsEngineFixture fixture, NerdamerEngineF
 
     private (ConversionResultItemViewModel Item, CalculatorSearch Search) GetConversionItemWithSearch(string query) {
         var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
-        var settings = UserSettings.Load(new FakePlatformProvider([]));
+        var settings = TestSettings.LoadIsolated(new FakePlatformProvider([]));
         var provider = MathJsEngineProvider.ForTesting(fixture.Engine);
         var exchangeRateService = new ExchangeRateService(new HttpClient(), settings, NullLogger<ExchangeRateService>.Instance);
         var search = new CalculatorSearch(provider, exchangeRateService, clipboard, settings, NullLogger<CalculatorSearch>.Instance, nerdamerFixture.Engine);

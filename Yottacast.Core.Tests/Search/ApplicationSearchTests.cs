@@ -80,7 +80,7 @@ public class ApplicationSearchTests {
 
     private static (ApplicationSearch search, UserSettings settings, FakePlatformProviderWithApps platform) BuildSearchWithSettings(params string[] appPaths) {
         var platform = new FakePlatformProviderWithApps(appPaths);
-        var settings = UserSettings.Load(platform);
+        var settings = TestSettings.LoadIsolated(platform);
         var iconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
         var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
         var search = new ApplicationSearch(settings, platform, iconCache, clipboard, NullLogger<ApplicationSearch>.Instance);
@@ -439,7 +439,7 @@ public class ApplicationSearchTests {
     [Fact]
     public async Task WhenReady_CompletesEvenIfInitialScanThrows() {
         var platform = new FakePlatformProviderScanThrows();
-        var settings = UserSettings.Load(platform);
+        var settings = TestSettings.LoadIsolated(platform);
         var iconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
         var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
         var search = new ApplicationSearch(settings, platform, iconCache, clipboard, NullLogger<ApplicationSearch>.Instance);
@@ -454,7 +454,7 @@ public class ApplicationSearchTests {
     [Fact]
     public async Task FailedInitialScan_SearchReturnsEmpty_NoCrash() {
         var platform = new FakePlatformProviderScanThrows();
-        var settings = UserSettings.Load(platform);
+        var settings = TestSettings.LoadIsolated(platform);
         var iconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
         var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
         var search = new ApplicationSearch(settings, platform, iconCache, clipboard, NullLogger<ApplicationSearch>.Instance);
@@ -515,7 +515,7 @@ public class ApplicationSearchTests {
     private static async Task<(ApplicationSearch search, ClipboardService clipboard, FakePlatformProviderWithApps platform)> CreateSearchAsync() {
         var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
         var platform = new FakePlatformProviderWithApps(["/Applications/Safari.app"]);
-        var settings = UserSettings.Load(platform);
+        var settings = TestSettings.LoadIsolated(platform);
         var iconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
         var search = new ApplicationSearch(settings, platform, iconCache, clipboard, NullLogger<ApplicationSearch>.Instance);
         await StartAndWaitAsync(search);

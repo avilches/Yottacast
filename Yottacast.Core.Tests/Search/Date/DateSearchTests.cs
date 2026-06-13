@@ -13,7 +13,7 @@ public class DateSearchTests
     private DateSearch BuildSearch(out ClipboardService clipboard, Action<UserSettings>? configure = null)
     {
         clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
-        var settings = UserSettings.Load(new FakePlatformProvider([]));
+        var settings = TestSettings.LoadIsolated(new FakePlatformProvider([]));
         configure?.Invoke(settings);
         return new DateSearch(settings, clipboard, NullLogger<DateSearch>.Instance);
     }

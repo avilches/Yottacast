@@ -13,7 +13,7 @@ public class UnitConverterSearchTests(MathJsEngineFixture fixture, NerdamerEngin
 
     private CalculatorSearch BuildSearch(out ClipboardService clipboard) {
         clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
-        var settings = UserSettings.Load(new FakePlatformProvider([]));
+        var settings = TestSettings.LoadIsolated(new FakePlatformProvider([]));
         var provider = MathJsEngineProvider.ForTesting(fixture.Engine);
         var exchangeRateService = new ExchangeRateService(new HttpClient(), settings, NullLogger<ExchangeRateService>.Instance);
         return new CalculatorSearch(provider, exchangeRateService, clipboard, settings, NullLogger<CalculatorSearch>.Instance, nerdamerFixture.Engine);

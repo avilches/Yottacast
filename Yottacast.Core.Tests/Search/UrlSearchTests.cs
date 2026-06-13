@@ -50,7 +50,7 @@ public class UrlSearchTests {
 
     private static UrlSearch BuildSearch(HttpStatusCode headStatusCode = HttpStatusCode.OK) {
         var platform = new FakePlatformProvider([]);
-        var settings = UserSettings.Load(platform);
+        var settings = TestSettings.LoadIsolated(platform);
         settings.EnableWebSearch = true;
         settings.EnableUrlValidation = true;
         var appIconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
@@ -74,7 +74,7 @@ public class UrlSearchTests {
     [Fact]
     public void Search_WebSearchDisabled_ReturnsEmpty() {
         var platform = new FakePlatformProvider([]);
-        var settings = UserSettings.Load(platform);
+        var settings = TestSettings.LoadIsolated(platform);
         settings.EnableWebSearch = false;
         var appIconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
         var browserDiscovery = new BrowserDiscovery(settings, platform, NullLogger<BrowserDiscovery>.Instance);
@@ -139,7 +139,7 @@ public class UrlSearchTests {
         // EnableUrlValidation = false: URL result shown immediately without DNS/HEAD checks
         var handler = new FakeHttpMessageHandler(HttpStatusCode.OK);
         var platform = new FakePlatformProvider([]);
-        var settings = UserSettings.Load(platform);
+        var settings = TestSettings.LoadIsolated(platform);
         settings.EnableWebSearch = true;
         settings.EnableUrlValidation = false;
         var appIconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
@@ -164,7 +164,7 @@ public class UrlSearchTests {
     public void Search_SameUrlTwice_DoesNotStartTwoBackgroundChecks() {
         var handler = new FakeHttpMessageHandler(HttpStatusCode.OK);
         var platform = new FakePlatformProvider([]);
-        var settings = UserSettings.Load(platform);
+        var settings = TestSettings.LoadIsolated(platform);
         settings.EnableWebSearch = true;
         settings.EnableUrlValidation = true;
         var appIconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);

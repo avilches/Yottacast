@@ -14,7 +14,7 @@ public class CalculatorSearchTests(MathJsEngineFixture fixture, NerdamerEngineFi
 
     private CalculatorSearch BuildSearch(out ClipboardService clipboard) {
         clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
-        var settings = UserSettings.Load(new FakePlatformProvider([]));
+        var settings = TestSettings.LoadIsolated(new FakePlatformProvider([]));
         var provider = MathJsEngineProvider.ForTesting(fixture.Engine);
         var exchangeRateService = new ExchangeRateService(new HttpClient(), settings, NullLogger<ExchangeRateService>.Instance);
         return new CalculatorSearch(provider, exchangeRateService, clipboard, settings, NullLogger<CalculatorSearch>.Instance, nerdamerFixture.Engine);
@@ -536,7 +536,7 @@ public class CalculatorSearchEnableCalculatorTests(MathJsEngineFixture fixture, 
     private CalculatorSearch Build(bool enableCalculator) {
         var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
         clipboard.Initialize(copy: _ => { }, read: () => Task.FromResult<string?>(null));
-        var settings = UserSettings.Load(new FakePlatformProvider([]));
+        var settings = TestSettings.LoadIsolated(new FakePlatformProvider([]));
         settings.EnableCalculator = enableCalculator;
         var provider = MathJsEngineProvider.ForTesting(fixture.Engine);
         var er = new ExchangeRateService(new HttpClient(), settings, NullLogger<ExchangeRateService>.Instance);

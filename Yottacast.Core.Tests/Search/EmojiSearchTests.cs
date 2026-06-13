@@ -15,7 +15,7 @@ public class EmojiSearchTests {
         Directory.CreateDirectory(dir);
         var cachePath = Path.Combine(dir, "emoji-cache.json");
         await File.WriteAllTextAsync(cachePath, compactJson);
-        var settings = UserSettings.Load(new FakePlatformProvider([]));
+        var settings = TestSettings.LoadIsolated(new FakePlatformProvider([]));
         usageStore ??= new EmojiUsageStore(Path.Combine(dir, "emoji-usage.json"), NullLogger<EmojiUsageStore>.Instance);
         var search = new EmojiSearch(new ClipboardService(NullLogger<ClipboardService>.Instance), cachePath, new EmojiDataLoader(NullLogger<EmojiDataLoader>.Instance), usageStore, new EmojiLayoutConfig(), NullLogger<EmojiSearch>.Instance, settings);
         search.Start();
@@ -29,7 +29,7 @@ public class EmojiSearchTests {
         Directory.CreateDirectory(dir);
         var cachePath = Path.Combine(dir, "emoji-cache.json");
         await File.WriteAllTextAsync(cachePath, json);
-        var settings = UserSettings.Load(new FakePlatformProvider([]));
+        var settings = TestSettings.LoadIsolated(new FakePlatformProvider([]));
         var usageStore = new EmojiUsageStore(Path.Combine(dir, "emoji-usage.json"), NullLogger<EmojiUsageStore>.Instance);
         var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
         string copied = "";
@@ -777,7 +777,7 @@ public class RealEmojiDataFixture : IAsyncLifetime, IDisposable {
         // First call: loads from embedded resource and writes the cache.
         await loader.LoadAsync(cachePath);
         // EmojiSearch then reads the cache on Start(), so data loads quickly.
-        var settings = UserSettings.Load(new FakePlatformProvider([]));
+        var settings = TestSettings.LoadIsolated(new FakePlatformProvider([]));
         var usageStore = new EmojiUsageStore(Path.Combine(_tempDir, "emoji-usage.json"), NullLogger<EmojiUsageStore>.Instance);
         Search = new EmojiSearch(
             new ClipboardService(NullLogger<ClipboardService>.Instance), cachePath, loader,
