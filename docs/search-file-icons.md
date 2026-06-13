@@ -170,6 +170,13 @@ disco de iconos grandes y badges respectivamente. Ambos se recargan lazy en la s
 La invalidacion es **total** (no por extension): cualquier cambio en una app limpia toda la cache. Esto es aceptable
 porque los cambios de apps son infrecuentes y la recarga es transparente para el usuario.
 
+> **Bug conocido** - tanto `FileIconCache.InvalidateAll` como `UserDocumentSearch.InvalidateAll` limpian toda la memoria
+> pero en disco solo borran los PNG de la version de cache ACTUAL (`*_{CacheVersion}.png` y `*_{BadgeCacheVersion}.png`
+> respectivamente). Si en algun momento se subio la version de cache, los ficheros de versiones anteriores quedan
+> huerfanos en `AppPaths.FileIconCacheDir` / `AppPaths.BadgeIconCacheDir` y no se eliminan. No afecta a la correccion
+> (las versiones viejas nunca se leen porque el path de disco usa la version actual), pero la limpieza no es realmente
+> total en disco pese a lo que sugiere el docstring "full rebuild".
+
 La invalidacion solo se dispara desde los callbacks del `FileSystemWatcher` (cambios en caliente), nunca durante el scan
 inicial de arranque. De este modo, reiniciar la aplicacion aprovecha la cache de disco.
 

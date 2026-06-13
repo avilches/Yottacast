@@ -60,6 +60,8 @@ Linux el escaneo es sincrono y devuelve `Task.CompletedTask`.
 
 **Invariante**: si `UserSettings.EnableAppSearch` es `false`, `ApplicationSearch.Start()` marca la fuente como ready inmediatamente sin lanzar el escaneo, y `Search()` devuelve siempre una lista vacia.
 
+> **Bug conocido (Windows)** - el escaneo recorre cada `<carpeta>/<subcarpeta>` con profundidad 1: busca `<subcarpeta>/<subcarpeta>.exe` y, si no, el primer `.exe` de esa subcarpeta. Las apps con su ejecutable anidado mas profundo (p. ej. Chrome en `Application/chrome.exe`) no se encuentran. El watcher, en cambio, es recursivo (`IncludeSubdirectories = true`), lo que crea una inconsistencia: una app anidada que se instale en caliente puede dispararse via watcher pero no aparece en el escaneo inicial. Ver `WindowsPlatformProvider.ScanAppsAsync()` y `CreateAppWatchers()`.
+
 ### 3.2 Vigilancia de cambios (watchers)
 
 | Plataforma | Filtro del watcher | Eventos observados                                                          | Subdirectorios |
@@ -113,6 +115,8 @@ La aplicacion permite buscar archivos del usuario mediante un motor de busqueda 
 - **Windows**: el script se pasa como `-EncodedCommand` (Base64 Unicode) para evitar problemas de escaping en shell.
 - **Linux**: el post-filtrado de carpetas y tokens adicionales ocurre despues del limite nativo de `plocate`/`locate`,
   por lo que el numero de resultados entregados puede ser menor que `maxResults`.
+
+> **Bug conocido (Linux)** - a diferencia de macOS y Windows, `LinuxPlatformProvider.SearchFilesAsync()` no descarta el caso de query sin tokens utiles antes de acceder a `tokens[0]`. Una query compuesta solo de comillas o espacios produce un array de tokens vacio y lanza `IndexOutOfRangeException`. macOS y Windows si protegen ese caso (Windows hace un early-return con `string.IsNullOrEmpty(safeQuery)`).
 
 > **Verificar en:** `MacOsPlatformProvider.SearchFilesAsync()`, `WindowsPlatformProvider.SearchFilesAsync()`,
 `LinuxPlatformProvider.SearchFilesAsync()`, `SpotlightInterop.Query()`.
@@ -172,9 +176,15 @@ El discovery busca en tres fuentes por orden de prioridad: carpetas de apps del 
 
 | Plataforma | Navegadores conocidos | Terminales conocidos | Estrategia de busqueda |
 |---|---|---|---|
-| macOS | Safari, Chrome, Firefox, Brave, Edge, Opera, Arc, Vivaldi, Chromium, Tor, DuckDuckGo, Orion | Terminal, iTerm, Warp, Alacritty, Kitty, Hyper, WezTerm, Tabby | Via `AppPathInDirectory` en carpetas del usuario + por defecto. Sin rutas conocidas adicionales |
-| Windows | Chrome, Firefox, Edge, Brave, Opera, Vivaldi | Windows Terminal, PowerShell, Command Prompt, Git Bash | Carpetas del usuario + `BrowserKnownPaths`/`TerminalKnownPaths` con rutas absolutas a ejecutables |
+| macOS | Safari, Google Chrome, Firefox, Brave Browser, Microsoft Edge, Opera, Arc, Vivaldi, Chromium, Tor Browser, DuckDuckGo, Orion | Terminal, iTerm, Warp, Alacritty, Kitty, Hyper, WezTerm, Tabby | Via `AppPathInDirectory` en carpetas del usuario + por defecto. Sin rutas conocidas adicionales |
+| Windows | Google Chrome, Mozilla Firefox, Microsoft Edge, Brave Browser, Opera, Vivaldi | Windows Terminal, PowerShell, Command Prompt, Git Bash | Carpetas del usuario + `BrowserKnownPaths`/`TerminalKnownPaths` con rutas absolutas a ejecutables |
 | Linux | (ninguno) | (ninguno) | No soportado |
+
+> **Estado: incompleto (Linux)** - `LinuxPlatformProvider.KnownBrowserNames` y `KnownTerminalNames` estan vacios, y `OpenUrl()`/`ExecuteCommand()` tienen cuerpo vacio (no-op silencioso). Como consecuencia, el descubrimiento devuelve siempre lista vacia y la auto-reparacion de navegador/terminal no puede operar en Linux: `ActiveBrowser`/`ActiveTerminal` siempre resuelven a `null`. Abrir busquedas web y ejecutar comandos en terminal no hace nada en Linux. Ver `Yottacast.Core/Platform/LinuxPlatformProvider.cs`.
+
+> **Bug conocido (Windows)** - la entrada "Windows Terminal" de `TerminalKnownPaths` solo contiene una ruta con glob (`Microsoft.WindowsTerminal*\wt.exe`). Tanto el descubrimiento (`FindTerminal`) como la ejecucion (`ExecuteCommand`) descartan las rutas que contienen `*`, por lo que "Windows Terminal" nunca resuelve a una ruta valida: es codigo muerto, nunca aparece en el selector ni se puede ejecutar.
+
+> **Bug conocido (Windows)** - "Git Bash" se descubre correctamente (su `.exe` existe), pero `ExecuteCommand` cae en el caso `default` y pasa el comando como argumento crudo a `bash.exe` sin `-c`. `bash.exe <comando>` interpreta el comando como un nombre de script a ejecutar, no como una orden inline, asi que el comando nunca se ejecuta como se espera. Ver `WindowsPlatformProvider.ExecuteCommand()`.
 
 ### 8.3 Ejecucion de comandos en terminal (macOS)
 

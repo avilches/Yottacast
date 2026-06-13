@@ -11,6 +11,8 @@ Yottacast soporta plugins de usuario que extienden las fuentes de busqueda y los
 | WebSearch | `websearch.*.json` | Motor de busqueda web adicional |
 | Theme | `theme.*.json` | Tema visual personalizado |
 
+Estos son los **unicos** tipos de plugin. No existen plugins de codigo ni un mecanismo de ejecucion de scripts: un plugin es siempre un JSON declarativo (un motor de busqueda o un tema). El tipo se determina por el patron del nombre de fichero, no por un campo `type` dentro del JSON.
+
 Ambos tipos se descubren automaticamente al arrancar y se recargan en caliente cuando cambian.
 
 ---
@@ -25,6 +27,10 @@ Servicio singleton que vigila el directorio de plugins y gestiona la recarga.
 2. El watcher monitoriza `*.json` en `AppPaths.PluginsDir` (Created, Changed, Deleted, Renamed).
 3. Cada cambio dispara `ReloadAsync` con un debounce de 300 ms (los editores suelen escribir en multiples pasos).
 4. `ReloadAsync` re-lee todos los ficheros `websearch.*.json`, descarga iconos faltantes y emite `PluginsChanged`.
+
+> **Bug conocido** - el handler del watcher (`OnDirectoryChanged`) es `async void` sin `try/catch`. Cualquier excepcion no capturada durante `ReloadAsync` (o, en particular, lanzada por un suscriptor de `PluginsChanged`) escapa al ThreadPool en un contexto `async void` y puede tumbar el proceso. Verificar en `Yottacast.Core/Services/PluginService.cs` -> `OnDirectoryChanged`.
+
+> **Bug conocido** - acceso no sincronizado al diccionario de iconos. `ReloadAsync` muta `_icons` bajo `lock (_icons)`, pero `GetIcon(id)` lee con `_icons.GetValueOrDefault(id)` sin tomar ese lock. Una lectura concurrente con la recarga puede lanzar o devolver un estado inconsistente. Verificar en `Yottacast.Core/Services/PluginService.cs` -> `GetIcon` frente a `ReloadAsync`.
 
 ### Evento PluginsChanged
 
@@ -91,7 +97,7 @@ Los temas de usuario siguen el mismo formato JSON que los temas built-in (ver `d
 
 ## 5. Invariantes
 
-- Los plugins nunca bloquean el arranque: si un fichero es invalido o un icono no se puede descargar, se omite con un log de warning.
+- Los plugins nunca bloquean el arranque: si un fichero es invalido o un icono no se puede descargar, se omite con un log de warning. (Excepcion: ver los bugs conocidos de `OnDirectoryChanged` y `GetIcon` mas arriba; una excepcion no capturada en la recarga puede afectar a la estabilidad del proceso.)
 - El debounce de 300 ms en el watcher protege contra escrituras parciales de editores de texto.
 - Los IDs duplicados se rechazan: solo el primero encontrado se carga.
 - Los campos requeridos (`id`, `name`, `queryUrl`) se validan; si falta alguno, el plugin se omite.

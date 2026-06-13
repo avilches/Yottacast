@@ -139,7 +139,7 @@ arranquen.
 
 3. Ejecutar la app. En los logs aparecera:
    ```
-   Version changed: '1.0.0' → '1.1.0' — running migrations
+   Version changed: '1.0.0' → '1.1.0' - running migrations
    ```
    En sucesivos arranques el mensaje no vuelve a aparecer.
 
@@ -160,6 +160,10 @@ arranquen.
 Al arrancar, la app comprueba una vez si existe una version mas reciente. Si la hay, muestra un banner en la ventana
 principal. Si la comprobacion falla (sin red, endpoint no disponible, etc.), no se muestra nada y se registra un
 warning.
+
+> **Estado: incompleto** - la comprobacion de actualizaciones NO es funcional hoy. `UpdateChecker.UpdateApiUrl` apunta a un placeholder (`https://example.com/yottacast/latest.json`) que no devuelve datos validos, asi que `CheckAsync` siempre falla o no encuentra version y `UpdateAvailable` nunca pasa a `true`. El banner no llega a mostrarse, y aunque se mostrara, su comando `UpdateBannerClick` es un placeholder sin accion. Para activar la feature hay que reemplazar la URL y conectar la descarga. Verificar en `Yottacast.Core/Services/UpdateChecker.cs` (`UpdateApiUrl`, `CheckAsync`) y `Yottacast/ViewModels/MainWindowViewModel.cs` (`CheckForUpdateAsync`, `UpdateBannerClick`).
+
+> **Bug conocido** - `UpdateChecker` crea su propio `HttpClient` en un campo de instancia pero no implementa `IDisposable` ni libera ese cliente. Como el servicio es singleton durante toda la vida del proceso el impacto practico es bajo, pero el recurso queda sin liberar. Verificar en `Yottacast.Core/Services/UpdateChecker.cs` (campo `_http`).
 
 **Invariante**: el usuario nunca ve un error ni una interrupcion si la comprobacion falla.
 

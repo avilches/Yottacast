@@ -15,18 +15,16 @@ Accesible en este repo via `user-data/config/plugins/`.
 
 ### Carga al arrancar
 
-1. Crea `user-data/config/plugins/test.json` con:
+1. Crea `user-data/config/plugins/websearch.test.json` con:
    ```json
    {
-     "type": "WebSearch",
      "id": "hackernews",
      "name": "Hacker News",
      "queryUrl": "https://hn.algolia.com/?q={0}",
-     "defaultPrefix": "hn",
-     "defaultEnabled": true,
-     "defaultMode": "PrefixOnly"
+     "defaultPrefix": "hn"
    }
    ```
+   > **Nota**: el tipo de plugin se decide por el nombre de fichero (`websearch.*.json`), no por un campo `type` dentro del JSON. `PluginService` solo deserializa `id`, `name`, `queryUrl`, `iconUrl`, `defaultPrefix` y `showAlwaysPattern`; cualquier otro campo (`type`, `defaultEnabled`, `defaultMode`) se ignora. El `Enabled`/`Mode`/`Prefix` por defecto los crea `UserSettings.EnsurePluginSettings` (Enabled=true, PrefixOnly, prefijo = `defaultPrefix`).
 2. Arranca la app.
 3. Abre Settings > Web Search.
 4. **Verificar**: aparece sección "Plugins" con "Hacker News" en la tabla.
@@ -37,7 +35,7 @@ Accesible en este repo via `user-data/config/plugins/`.
 
 ### Recarga en caliente (FileSystemWatcher)
 
-1. Con la app en marcha, edita `user-data/config/plugins/test.json` y cambia `"name"` a `"HN"`.
+1. Con la app en marcha, edita `user-data/config/plugins/websearch.test.json` y cambia `"name"` a `"HN"`.
 2. Espera ~1 segundo.
 3. Abre Settings > Web Search.
 4. **Verificar**: la sección Plugins muestra "HN" sin reiniciar.
@@ -83,13 +81,13 @@ Accesible en este repo via `user-data/config/plugins/`.
 
 ### Plugin con patrón (solo URLs)
 
-1. Crea un plugin con `"defaultMode": "ShowAlways"` y `"showAlwaysPattern": "^https?://"`.
-2. Escribe `hello` — **verificar**: el plugin NO aparece.
-3. Escribe `https://example.com` — **verificar**: el plugin SÍ aparece.
+1. Crea un plugin con `"showAlwaysPattern": "^https?://"` y, en Settings > Web Search, pon su modo en "Always" (el campo `defaultMode` del JSON se ignora; el modo se ajusta desde Settings o cambiando `Mode` en settings.json).
+2. Escribe `hello` - **verificar**: el plugin NO aparece.
+3. Escribe `https://example.com` - **verificar**: el plugin SÍ aparece.
 
 ### Plugin con patrón inválido (regex rota)
 
-1. Crea un plugin con `"showAlwaysPattern": "["` (regex inválida).
+1. Crea un plugin con `"showAlwaysPattern": "["` (regex inválida) y modo "Always".
 2. **Verificar**: el plugin aparece en ShowAlways (el sistema ignora el patrón inválido, no crashea).
 
 ---
@@ -122,7 +120,7 @@ Accesible en este repo via `user-data/config/plugins/`.
 2. Desmarca el checkbox del plugin.
 3. Escribe su prefijo en el buscador.
 4. **Verificar**: el plugin no aparece en resultados.
-5. Vuelve a activarlo — **verificar**: aparece de nuevo.
+5. Vuelve a activarlo - **verificar**: aparece de nuevo.
 
 ### Cambiar prefijo de plugin
 
@@ -144,3 +142,24 @@ Accesible en este repo via `user-data/config/plugins/`.
 1. Configura un plugin con prefijo personalizado.
 2. Cierra y vuelve a abrir la app.
 3. **Verificar**: la configuración del plugin se mantiene.
+
+---
+
+## Suite automatizada (xUnit)
+
+Dos proyectos de test, cada uno se ejecuta con `dotnet test` desde su carpeta:
+
+```bash
+cd Yottacast.Core.Tests && dotnet test   # lógica del Core (search sources, services, scoring, viewmodels)
+cd Yottacast.Ipc.Tests   && dotnet test   # mappers IPC (ResultMapper, SettingsMapper)
+```
+
+`Yottacast.Core.Tests` agrupa sus tests por area en subcarpetas (`Search/`, `Services/`, `Platform/`, `ViewModels/`); cada `CLAUDE.md` de paquete lista los ficheros relevantes de su area. `Yottacast.Ipc.Tests` solo contiene `Mapping/ResultMapperTests.cs` y `Mapping/SettingsMapperTests.cs`.
+
+### Riesgos y gaps conocidos de la suite
+
+> **Bug conocido** - varios tests llaman `UserSettings.Load(platform)` SIN pasar `settingsPath`, por lo que cargan y reescriben el `settings.json` REAL del usuario (`AppPaths.SettingsFile`), no un fichero temporal. Esto puede mutar la configuracion local al ejecutar los tests. Los tests bien aislados pasan un path temporal (ver `UserSettingsTests`, `HistoryServiceTests`, `SettingsMapperTests`). Verificar en `Yottacast.Core.Tests/Search/*` (ej. `EmojiSearchTests`, `UrlSearchTests`, `SystemSettingsSearchTests`, `UserDocumentSearchTests`) frente a `Yottacast.Core/Services/UserSettings.cs` -> `Load` (default `settingsPath = AppPaths.SettingsFile`).
+
+> **Estado: incompleto** - `SettingsMapperTests` no cubre lo que su nombre promete: no ejercita las listas (`WebSearchEngines`, `SearchFolders`, `AppDirectories`, `DictionaryLanguages`) ni los campos con bugs de mapeo conocidos (`clipboard_history_enabled` huerfano, perdida de `ModeOnly` en `FileSearchVisibility`). Ver `docs/ipc-daemon.md` (gaps de mapeo). Verificar en `Yottacast.Ipc.Tests/Mapping/SettingsMapperTests.cs`.
+
+> **Bug conocido** - `Yottacast.Ipc.Tests.csproj` referencia el proyecto `Yottacast.Ipc` Y ademas vuelve a incluir los mismos `.proto` con `Grpc.Tools`, generando los tipos protobuf por duplicado. Compilar los tests produce warnings `CS0436` (tipo definido en dos ensamblados). No rompe la build pero ensucia la salida. Verificar en `Yottacast.Ipc.Tests/Yottacast.Ipc.Tests.csproj` (item `Protobuf` mas `ProjectReference` a `Yottacast.Ipc`).

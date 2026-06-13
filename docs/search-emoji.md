@@ -11,7 +11,7 @@ Yottacast permite buscar e insertar emojis en cualquier aplicacion. El usuario e
 | Query         | Comportamiento                                                                        |
 |---------------|---------------------------------------------------------------------------------------|
 | `:`           | Muestra todos los emojis ordenados por `sort_order` positivo ascendente (orden Unicode CLDR). Se excluyen los que tienen `sort_order == 0`. El viewport muestra las primeras filas visibles. |
-| `:smile`      | Filtra todos los emojis cuyo nombre o keywords coincidan con "smile", ordenados por relevancia descendente, limitados por el parametro `limit` de la pipeline. |
+| `:smile`      | Filtra todos los emojis cuyo nombre o keywords coincidan con "smile", ordenados por relevancia descendente. El filtrado no recorta por `limit` (todos los matches con score > 0 entran en el grid). |
 | `: smile`     | Equivalente a `:smile` -- los espacios tras los dos puntos se ignoran.                |
 | `smile`       | Sin `:` inicial, la busqueda de emojis no se activa. El usuario nunca ve emojis si no escribe `:`. |
 
@@ -24,12 +24,12 @@ Yottacast permite buscar e insertar emojis en cualquier aplicacion. El usuario e
 Los resultados se muestran como un unico item de tipo grid en la lista de resultados, en lugar de items individuales. El grid contiene:
 
 - Secciones con cabecera que agrupa emojis por tipo: favoritos, frecuentes y categorias Unicode (por ejemplo "Smileys & Emotion", "People & Body"). Cada seccion tiene un header visible que se desplaza con el contenido.
-- Cada seccion renderiza sus celdas en una `UniformGrid` con el numero de columnas definido por tema (`Theme.Emoji.Columns`).
+- Cada seccion renderiza sus celdas en una `UniformGrid` con el numero de columnas y filas de viewport definidos por `EmojiLayoutConfig` (singleton mutable que `ThemeService` actualiza en cada cambio de tema; default `AppDefaults.EmojiColumns`/`EmojiViewportRows`). `EmojiSearch` los lee al construir el grid.
 - Debajo del grid, informacion del emoji seleccionado: nombre, categoria y keywords.
 
-El primer emoji del grid aparece seleccionado inicialmente. El icono y titulo del resultado en la lista se toman del primer emoji del grid. La categoria del resultado siempre es `"Emoji"` y el score es `3.5`.
+El primer emoji del grid aparece seleccionado inicialmente. El icono y titulo del resultado en la lista se toman del primer emoji del grid. La categoria del resultado siempre es `"Emoji"`, el `ScoreReason` es `"Grid de emojis"` y el score es `5.5`.
 
-**Invariante:** siempre se devuelve exactamente 0 o 1 resultado (nunca multiples items en la lista). Si no hay emojis que coincidan, no se muestra ningun resultado. Si no hay favoritos ni frecuentes, la primera seccion visible es la primera categoria Unicode — no se muestran secciones vacias.
+**Invariante:** siempre se devuelve exactamente 0 o 1 resultado (nunca multiples items en la lista). Si no hay emojis que coincidan, no se muestra ningun resultado. Si no hay favoritos ni frecuentes, la primera seccion visible es la primera categoria Unicode - no se muestran secciones vacias.
 
 > **Verificar en:** `EmojiSearch.MakeGrid()` -- construccion del `EmojiGridResultViewModel`; `EmojiGridResultView.axaml` -- template AXAML con secciones (`EmojiGridSection`) y panel de informacion; `EmojiGridResultViewModel.VisibleSections` -- agrupacion del viewport en secciones.
 
@@ -43,13 +43,13 @@ El primer emoji del grid aparece seleccionado inicialmente. El icono y titulo de
 | Derecha   | Mueve la seleccion a la celda siguiente (con wrap circular al inicio del grid). Siempre consume el evento. |
 | Arriba    | Mueve la seleccion una fila hacia arriba. Si ya esta en la primera fila, no consume el evento y la ventana gestiona la navegacion de lista. |
 | Abajo     | Mueve la seleccion una fila hacia abajo. Si ya esta en la ultima fila, no consume el evento y la ventana gestiona la navegacion de lista. |
-| Enter     | Copia el emoji seleccionado al portapapeles, oculta el launcher y pega automaticamente en la app anterior. Registra el uso en `EmojiUsageStore`. |
-| Cmd+C     | Copia el emoji seleccionado al portapapeles, oculta el launcher y restaura el foco a la app anterior (sin pegar). Registra el uso. Solo activo en modo emoji (si `OnCopy` no es null). El shortcut exacto lo define `AppHandler.CopyShortcut` por plataforma (Ctrl+C en Windows/Linux). |
-| Cmd+Shift+F | Marca o desmarca el emoji seleccionado como favorito. Actualiza `IsFavorite` en la celda y persiste en `EmojiUsageStore`. El shortcut exacto lo define `AppHandler.ToggleFavoriteShortcut` (Ctrl+Shift+F en Windows/Linux). |
+| Enter     | Accion "Close and paste": copia el emoji seleccionado al portapapeles, oculta el launcher y pega automaticamente en la app anterior. Registra el uso en `EmojiUsageStore`. |
+| Cmd+C     | Accion "Copy" (`ActionHotkey.MetaC`): copia el emoji seleccionado al portapapeles, oculta el launcher y restaura el foco a la app anterior (sin pegar). Registra el uso. `Meta` resuelve a Cmd en macOS y Ctrl en Windows/Linux. |
+| Cmd+Shift+F | Accion "Favorite" (`ActionHotkey.MetaShiftF`, con `RequiresRefresh = true`): marca o desmarca el emoji seleccionado como favorito. Actualiza `IsFavorite` en todas las celdas con ese char y persiste en `EmojiUsageStore`. |
 
 **Invariante:** las teclas izquierda/derecha nunca escapan del grid. Las teclas arriba/abajo escapan solo cuando no hay fila disponible en esa direccion, permitiendo al usuario navegar a otros resultados de la lista.
 
-> **Verificar en:** `EmojiGridResultViewModel.SelectNext()`, `SelectPrevious()` (wrap circular), `SelectUp()`, `SelectDown()` (devuelven `bool`); `MainWindow.axaml.cs` -- `OnTunnelKeyDown()` maneja las flechas en fase tunnel; `OnKeyDown()` -- shortcuts de emoji via `AppHandler.Instance.CopyShortcut` y `ToggleFavoriteShortcut`; `AppHandler.cs` / `MacAppHandler.cs` -- definicion de shortcuts por plataforma.
+> **Verificar en:** `EmojiGridResultViewModel.SelectNext()`, `SelectPrevious()` (wrap circular), `SelectUp()`, `SelectDown()` (devuelven `bool`); `EmojiSearch.MakeGrid()` -- acciones "Close and paste", "Copy" (`MetaC`), "Favorite" (`MetaShiftF`) y callbacks `OnLeft`/`OnRight`/`OnUp`/`OnDown`; `MainWindow.axaml.cs` -- maneja las flechas y dispara las acciones por hotkey; `ActionHotkey.cs` -- `Meta` agnostico de plataforma.
 
 ---
 
@@ -67,7 +67,7 @@ La propiedad `IsEmojiMode` en `MainWindowViewModel` se recalcula cada vez que ca
 
 Al escribir `:` sin termino de busqueda, el grid por defecto muestra secciones con cabeceras visibles:
 
-1. **Seccion combinada "Favorites & recently used"**: favoritos primero (marcados con Cmd+Shift+F), hasta `EmojiMaxFavorites` celdas (maximo 4); despues los emojis mas usados (excluyendo favoritos), hasta completar `EmojiMaxPinnedTotal` celdas (maximo 10 entre favoritos + mas usados). Favoritos tienen `Section = Favorite`; los mas usados tienen `Section = MostUsed`. Ambos tipos comparten la misma cabecera de seccion visible. El pinned section no necesita alinearse a filas completas — el viewport de Default es independiente y siempre arranca en la primera celda de Default.
+1. **Seccion combinada "Favorites & recently used"**: favoritos primero (marcados con Cmd+Shift+F), hasta `EmojiMaxFavorites` celdas (maximo 4); despues los emojis mas usados (excluyendo favoritos), hasta completar el total efectivo de la seccion pinned. El total efectivo es `EmojiMaxPinnedTotal` redondeado HACIA ARRIBA al siguiente multiplo de columnas, para que la seccion pinned nunca termine a mitad de fila (con 10 columnas el total es 10; con 8 columnas es 16; con 12 columnas es 12). Favoritos tienen `Section = Favorite`; los mas usados tienen `Section = MostUsed`. Ambos tipos comparten la misma cabecera de seccion visible.
 2. **Secciones por categoria Unicode**: la lista completa de emojis restantes en orden Unicode CLDR (`sort_order`), agrupados por su categoria ("Smileys & Emotion", "People & Body", etc.). Cada celda tiene `Section = Default` y la cabecera se toma de `Category`.
 
 Las cabeceras de seccion se renderizan en la UI con estilos controlados por tema (`Theme.Emoji.SectionHeader.*`). Las secciones se calculan en `EmojiGridResultViewModel.VisibleSections` agrupando las celdas visibles del viewport por `EmojiSection` y `Category`.
@@ -76,13 +76,13 @@ Las celdas de emojis favoritos tienen `IsFavorite = true` mostrando una estrella
 
 **Ranking de más usados:** el orden usa un *decay score*: `count × 0.5^(días_desde_último_uso / halfLifeDays)` con `halfLifeDays = AppDefaults.EmojiHalfLifeDays` (30 días por defecto). Un emoji usado hace más de 30 días sin volver a usarse baja en el ranking; uno usado recientemente con menos usos totales puede superarlo. Tras ~4 meses sin uso, el score decae hasta ser despreciable.
 
-**Límite total de la sección pinned:** favoritos + más usados juntos nunca superan `AppDefaults.EmojiMaxPinnedTotal` (10). El número de más usados se calcula como `EmojiMaxPinnedTotal - favorites.Count`. Con 0 favoritos: hasta 10 más usados. Con 4 favoritos: hasta 6 más usados.
+**Límite total de la sección pinned:** favoritos + más usados juntos llenan como máximo el total efectivo de la sección (`EmojiMaxPinnedTotal` redondeado hacia arriba al múltiplo de columnas, ver arriba). El número de más usados se calcula como `effectivePinnedTotal - favorites.Count`. Con 10 columnas y 0 favoritos: hasta 10 más usados; con 4 favoritos: hasta 6. Con 8 columnas (total efectivo 16) y 0 favoritos: hasta 16 más usados.
 
 Al alternar favorito con `OnToggleFavorite`, se reconstruye el grid y el cursor se mantiene en el mismo indice numerico. El unico caso especial es cuando ese indice ya no existe (p.ej. el ultimo favorito se quitó y el grid encoge): en ese caso el cursor va al indice anterior (`Count - 1`), que es el emoji que estaba a su izquierda.
 
 **Disposicion de secciones:** la seccion Default contiene SIEMPRE todos los emojis en orden Unicode CLDR, sin excluir favoritos ni frecuentes. Adicionalmente, los favoritos aparecen tambien en la seccion Favorites (al principio) y los mas usados en la seccion Frequently Used. Esto imita el comportamiento del picker de emoji del sistema operativo, donde los favoritos y frecuentes son secciones de acceso rapido que no desplazan al emoji de su posicion natural. No se muestran secciones vacias.
 
-> **Verificar en:** `EmojiSearch.GetDefaultEmojis()` -- lógica de merge con `EmojiSection` y cálculo de límite dinámico; `EmojiSearch.MakeGrid()` -- asignación de `Section` y `UsageCount`; `EmojiUsageStore.Favorites`, `GetMostUsed()`, `GetUsageCount()`, `DecayScore()`; `AppDefaults.EmojiMaxFavorites`, `EmojiMaxPinnedTotal`, `EmojiHalfLifeDays`; `EmojiGridResultViewModel.VisibleSections`, `PinnedCount()` y `SectionKey()` -- viewport por secciones y agrupación (Favorite y MostUsed comparten la misma clave); `MainWindow.axaml.cs` -- `Key.F` handler invoca `RefreshSearch()`.
+> **Verificar en:** `EmojiSearch.GetDefaultEmojis()` -- lógica de merge con `EmojiSection` y cálculo de límite dinámico; `EmojiSearch.MakeGrid()` -- asignación de `Section` y `UsageCount`; `EmojiUsageStore.Favorites`, `GetMostUsed()`, `GetUsageCount()`, `DecayScore()`; `AppDefaults.EmojiMaxFavorites`, `EmojiMaxPinnedTotal`, `EmojiHalfLifeDays`; `EmojiGridResultViewModel.VisibleSections`, `PinnedCount()` y `SectionKey()` -- viewport por secciones y agrupación (Favorite y MostUsed comparten la misma clave); `MainWindow.axaml.cs` -- la accion con `RequiresRefresh = true` captura el indice/char seleccionado y, tras `RefreshSearch()`, restaura el cursor (cae a `Cells.Count - 1` si el indice ya no existe).
 
 ---
 
@@ -121,9 +121,9 @@ Cuando el usuario pulsa Enter sobre el grid:
 5. Se restaura el foco a la aplicacion que estaba activa antes de abrir Yottacast (`AppHandler.OnHide()`).
 6. Se simula un pegado (Cmd+V en macOS, Ctrl+V en Windows) con un breve delay para que la app destino tenga tiempo de tomar el foco.
 
-**Invariante:** el emoji se pega automaticamente en la aplicacion de destino sin intervencion adicional del usuario. Este comportamiento lo controla la propiedad `PasteAfterActivate = true`.
+**Invariante:** el emoji se pega automaticamente en la aplicacion de destino sin intervencion adicional del usuario. Este comportamiento lo controla la accion por defecto (label "Close and paste") con `PasteAfterClose = true` (campo de `ResultAction`).
 
-> **Verificar en:** `EmojiSearch.MakeGrid()` -- `OnActivate`, `OnCopy`, `OnToggleFavorite` y `PasteAfterActivate`; `MainWindow.axaml.cs` -- logica de Enter que invoca `OnActivate`, `Hide()`, `OnHide()`, `SimulatePasteAsync()`; `MacAppHandler.cs` / `WindowsAppHandler.cs` -- implementaciones de `SimulatePasteAsync()`.
+> **Verificar en:** `EmojiSearch.MakeGrid()` -- lista `Actions` (acciones "Close and paste" con `PasteAfterClose`, "Copy", "Favorite" con `RequiresRefresh`), `OnLeft`/`OnRight`/`OnUp`/`OnDown` y `GetDragPayload`; `MainWindow.axaml.cs` -- logica de Enter que invoca la accion, `Hide()`, `OnHide()`, `SimulatePasteAsync()`; `MacAppHandler.cs` / `WindowsAppHandler.cs` -- implementaciones de `SimulatePasteAsync()`.
 
 ---
 
@@ -134,14 +134,17 @@ La busqueda compara el termino contra el nombre y los keywords de cada emoji. El
 | Tipo de coincidencia         | Score        | Ejemplo                                     |
 |------------------------------|--------------|----------------------------------------------|
 | Nombre exacto                | 3.0          | `:fire` coincide exactamente con "fire"       |
-| Nombre parcial (NameMatcher) | 1.2 -- 2.0   | `:grin` coincide con "grinning face"          |
+| Nombre parcial (NameMatcher) | 1.2 -- 2.0   | `:grin` coincide con "grinning face" (score + 1) |
 | Keyword (NameMatcher)        | 0.0 -- 1.0   | `:thumbsup` coincide con el keyword "thumbsup"|
+| Categoria (NameMatcher × 0.5)| 0.0 -- 0.5   | coincidencia con el nombre de categoria; puntua por debajo de keywords |
 
 **Invariante:** cualquier coincidencia por nombre siempre puntua mas alto que cualquier coincidencia exclusivamente por keyword. Esto garantiza que al buscar `:fire`, el emoji "fire" aparece antes que "fireworks" (que coincidiria por prefijo).
 
-El matching de nombre usa los tokens pre-computados del nombre (space-split), aprovechando que los nombres de emoji son siempre minusculas separadas por espacios. Para keywords, se aplica `NameMatcher.Score(string, string)` a cada keyword individual y se toma el mejor score.
+El matching de nombre usa los tokens pre-computados del nombre (space-split), aprovechando que los nombres de emoji son siempre minusculas separadas por espacios. Para keywords, se aplica `NameMatcher.Score(string, string)` a cada keyword individual y se toma el mejor score. Si no hay match de nombre ni keyword, se intenta un match contra la categoria del emoji, ponderado a la mitad (`× 0.5`) para que nunca supere a un keyword.
 
-> **Verificar en:** `EmojiSearch.MatchScore()` -- logica de scoring con rangos; `EmojiEntry.NameTokens` -- pre-tokenizacion; `NameMatcher.Score()` en `NameMatcher.cs`.
+**Queries multi-palabra:** si el termino contiene varias palabras (`:flag sp`), cada token debe coincidir y el score final es el minimo entre los tokens. Si algun token no coincide, el emoji se descarta.
+
+> **Verificar en:** `EmojiSearch.MatchScore()` y `EmojiSearch.SingleTermScore()` -- logica de scoring con rangos, match de categoria y queries multi-palabra; `EmojiEntry.NameTokens` -- pre-tokenizacion; `NameMatcher.Score()` en `NameMatcher.cs`.
 
 ---
 

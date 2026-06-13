@@ -60,12 +60,16 @@ Yottacast permite lanzar busquedas web en multiples motores directamente desde e
 
 | Modo | Cuando aparece | Score | Ejemplo |
 |---|---|---|---|
-| `ShowAlways` | Siempre (query no vacia, sin prefijo activo de otro motor) | 3.0 | Escribir "hola" muestra "Google: hola" |
-| `PrefixOnly` | Solo si la query empieza por `"{prefijo} "` (prefijo + espacio) | 3.5 | Escribir "y gatos" muestra "YouTube: gatos" |
+| `ShowAlways` | Siempre (query no vacia, sin prefijo activo de otro motor) | 0.4 | Escribir "hola" muestra `Google: "hola"` |
+| `PrefixOnly` | Solo si la query empieza por `"{prefijo} "` (prefijo + espacio) y hay texto despues | 3.8 | Escribir "y gatos" muestra `YouTube: "gatos"` |
+
+El score bajo de `ShowAlways` (0.4) es intencionado: la busqueda web actua como fallback y queda por debajo de apps, ficheros y resultados de sistema. El detalle de scoring esta en `docs/search-scoring.md` seccion 6.
 
 ### Titulo del resultado
 
-El formato es `"{NombreMotor}: {queryBusqueda}"`, p. ej. `"Google: hola"`. El subtitulo siempre es `"Open in browser"`.
+El formato es `{NombreMotor}: "{queryBusqueda}"` (con la query entre comillas), p. ej. `Google: "hola"`. El subtitulo es `"Open search in {NombreNavegador}"` (p. ej. "Open search in Safari"), usando el navegador activo.
+
+> **Estado: incompleto** - `CLAUDE.md` indica que en modo emoji (query empieza por `:`) la busqueda web deberia usar el texto tras `:` como termino. El codigo no lo hace: `WebSearchSource.Search` devuelve `[]` para toda query que empiece por `:`. Gap pendiente.
 
 ### Motores disponibles por defecto
 
@@ -126,10 +130,13 @@ Para cada archivo encontrado, se intenta cargar el icono de la aplicacion por de
 
 | | `IInstantSearchSource` | `IDeferredSearchSource` |
 |---|---|---|
-| `Start()` | `void` — fire-and-forget | `void` — fire-and-forget |
-| `WhenReady()` | `Task` — completa cuando esta lista | `Task` — completa cuando esta lista |
+| `Start()` | `void` - fire-and-forget | `void` - fire-and-forget |
+| `WhenReady()` | `Task` - completa cuando esta lista | `Task` - completa cuando esta lista |
 | `Stop()` | `Task` | `Task` |
+| `Limit` | `int` - tope propio de resultados (`-1` = hereda el limite global pasado a `Search`) | - (no expone `Limit`; recibe `limit` por parametro en `SearchAsync`) |
 | Busqueda | `Search(query, limit)` → `IReadOnlyList<BaseResultItemViewModel>` (sincrono) | `SearchAsync(query, limit, ct)` → `IAsyncEnumerable<IReadOnlyList<BaseResultItemViewModel>>` (cada elemento es un snapshot completo) |
+
+Algunas fuentes implementan ademas `ISearchModeSource` (`IsActiveIn(mode)`) para participar solo en ciertos modos (All / Files / Clipboard), e `ISearchHintProvider` para aportar hints.
 
 ### Busqueda instant con hints
 
@@ -173,9 +180,9 @@ Los resultados instant y deferred se combinan, se ordenan por score descendente 
 
 ### Limites
 
-Cada fuente recibe un limite de 10 resultados. El merge global tambien se limita a 10 resultados visibles (configurable en `AppDefaults.SearchSourceLimit`).
+Cada fuente expone su propio `Limit`. `GlobalSearch` pasa `AppDefaults.SearchSourceLimit` (actualmente 500) como limite global; las fuentes con `Limit = -1` (calculadora, emoji, web, URL, ficheros) heredan ese valor, mientras que las que fijan un tope propio lo respetan (apps: `AppSearchLimit` = 10; rutas locales: 5; system settings: 5). El merge final en `RefreshResults` no aplica ningun tope adicional, asi que la lista visible puede contener mas de 10 elementos. Ver `docs/search-scoring.md` seccion 1.
 
-> **Verificar en:** `MainWindowViewModel.cs` (OnSearchTextChanged, SearchAsync, RefreshResults, OnNewAppInstalled, OnAppCacheChanged), `AppDefaults.cs` (SearchSourceLimit, SearchDebouncedMs).
+> **Verificar en:** `MainWindowViewModel.cs` (OnSearchTextChanged, SearchAsync, RefreshResults, OnNewAppInstalled, OnAppCacheChanged), `GlobalSearch.SearchInstant` (uso de `s.Limit`), `AppDefaults.cs` (SearchSourceLimit, SearchDebouncedMs).
 
 ---
 
@@ -187,7 +194,7 @@ Los iconos de apps se gestionan en dos capas: carga (plataforma + cache) y rende
 
 | Nivel | Estructura | Acceso |
 |---|---|---|
-| Memoria | `ConcurrentDictionary<string, byte[]?>` por ruta de bundle | `Get(appPath)` — O(1), se llama en cada `Search()` |
+| Memoria | `ConcurrentDictionary<string, byte[]?>` por ruta de bundle | `Get(appPath)` - O(1), se llama en cada `Search()` |
 | Disco | `~/.cache/yottacast/app-icons/{sha1(ruta)}_{mtime_unix}_v2.png` | Consultado en `PreloadAsync` antes de llamar a la plataforma |
 
 ### Invariantes
@@ -221,7 +228,7 @@ Permite al usuario buscar y abrir paneles y sub-secciones de System Settings dir
 - Si `EnableSystemSettings = false`, `Search()` devuelve `[]` siempre.
 - Los paneles compiten por score con el resto de resultados usando `NameMatcher` (mismo algoritmo que apps, rango 0.0–1.0).
 - Las queries que empiezan por `:` (modo emoji) no activan esta fuente.
-- Al activar un resultado, abre System Settings en el panel o sub-sección correspondiente via URL scheme `x-apple.systempreferences:{identifier}` (con anchor opcional: `bundle?anchor`). Si un anchor no está soportado por la versión de macOS actual, `open` abre el panel padre — degradación silenciosa, sin error.
+- Al activar un resultado, abre System Settings en el panel o sub-sección correspondiente via URL scheme `x-apple.systempreferences:{identifier}` (con anchor opcional: `bundle?anchor`). Si un anchor no está soportado por la versión de macOS actual, `open` abre el panel padre - degradación silenciosa, sin error.
 - Paneles de terceros con el mismo `CFBundleIdentifier` que uno builtin se omiten para evitar duplicados.
 
 ### Datos de paneles

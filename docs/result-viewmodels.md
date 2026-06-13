@@ -9,9 +9,12 @@ Los resultados de busqueda se representan mediante una jerarquia de ViewModels. 
 ```
 BaseResultItemViewModel (abstracta)
   +-- ResultItemViewModel            (apps, ficheros, web search, system settings)
+  |     +-- FileResultItemViewModel  (fichero/directorio: ItemPath obligatorio)
   |     +-- EmojiGridResultViewModel (grid de emojis con viewport y secciones)
   +-- CalculatorResultItemViewModel  (resultado de calculo simple)
   +-- ConversionResultItemViewModel  (conversion de unidades con 3 celdas)
+  +-- AlgebraResultItemViewModel     (algebra simbolica con N celdas navegables)
+  +-- DateSearchResultViewModel      (fechas/calculo de fechas con celdas copiables)
   +-- DictionaryResultViewModel      (definicion de diccionario con acepciones)
 ```
 
@@ -77,13 +80,21 @@ Callbacks opcionales que permiten al resultado capturar las teclas de flecha ant
 | `OnUp` | `Func<bool>?` | `true` = consumida. `false` = la lista navega al item anterior |
 | `OnDown` | `Func<bool>?` | `true` = consumida. `false` = la lista navega al item siguiente |
 
+El cableado de estos callbacks con los eventos de teclado (fase tunnel, marcado de `e.Handled`) vive en la capa de UI (`MainWindow.axaml.cs`), no en estos ViewModels. El contrato del ViewModel se limita al valor de retorno `bool`.
+
 ### Flags de comportamiento
 
 | Flag | Tipo | Default | Descripcion |
 |---|---|---|---|
 | `BypassLimit` | `bool` | `false` | Si `true`, el item no se descarta por `SearchSourceLimit`. Usado por WebSearch y Dictionary |
 
-> **Verificar en:** `Yottacast.Core/ViewModels/BaseResultItemViewModel.cs`, `Yottacast.Core/ViewModels/ResultAction.cs`, `Yottacast.Core/ViewModels/ActionHotkey.cs`, `Yottacast.Core/ViewModels/MainWindowViewModel.cs` (`RefreshResults`)
+### Drag-and-drop
+
+| Propiedad | Tipo | Descripcion |
+|---|---|---|
+| `GetDragPayload` | `Func<DragPayload?>?` | Si no es null, el item es arrastrable. La vista invoca este callback al iniciar el drag y traduce el `DragPayload` a un `IDataObject` de la plataforma. Devolver null cancela el drag. Se lee en el hilo UI. Ver `docs/ui-drag-drop.md` |
+
+> **Verificar en:** `Yottacast.Core/ViewModels/BaseResultItemViewModel.cs`, `Yottacast.Core/ViewModels/ResultAction.cs`, `Yottacast.Core/ViewModels/ActionHotkey.cs`, `Yottacast.Core/ViewModels/DragPayload.cs`, `Yottacast.Core/ViewModels/MainWindowViewModel.cs` (`RefreshResults`)
 
 ---
 
@@ -99,8 +110,10 @@ Extiende `BaseResultItemViewModel`. Es el tipo mas comun, usado por apps, ficher
 | `Subtitle` | `string` | Texto secundario (ruta del fichero, URL de busqueda, etc.) |
 | `Category` | `string` | Etiqueta de categoria ("App", "File", "Web"). En modo debug (Alt pulsado), se reemplaza por el score numerico |
 | `Shortcut` | `string` | Atajo de teclado asociado (solo para emojis: muestra Copy y Favorite shortcuts) |
+| `ItemPath` | `string?` | Ruta de fichero o sistema que identifica el item para el tracking de `LaunchHistory`. Null para items sin ruta estable. En `FileResultItemViewModel` es `required` y no-nullable |
 | `RunningTag` | `string?` | Cuando no es null, muestra una pill verde con este texto después del título. Asignado por `ApplicationSearch` cuando la app está en la lista de procesos activos. |
 | `InfoTag` | `string?` | Cuando no es null, muestra una pill azul con este texto después del título. Asignado por `ClipboardSearch` con el valor `"from clipboard"`. |
+| `ErrorTag` | `string?` | Cuando no es null, muestra una pill roja con este texto después del título. |
 
 ### Carga asincrona de iconos
 
@@ -171,11 +184,54 @@ Los metodos `MoveCellLeft/Right` se conectan a `OnLeft/OnRight` en `BaseResultIt
 
 ### Flag adicional
 
-`RatesAreStale: bool` — `true` cuando las tasas de cambio nunca se descargaron o estan obsoletas. Permite a la UI mostrar un indicador visual.
+`RatesAreStale: bool`: `true` cuando las tasas de cambio nunca se descargaron o estan obsoletas. Permite a la UI mostrar un indicador visual.
+
+`RatesDateText: string?`: fecha de los datos de tasas formateada (ej. "May 13, 2026"). Null si se desconoce o el resultado no es una conversion de divisa.
 
 Auto-seleccion: igual que `CalculatorResultItemViewModel`, se auto-selecciona si el usuario no ha navegado.
 
 > **Verificar en:** `Yottacast.Core/ViewModels/ConversionResultItemViewModel.cs`, `Yottacast.Core/Search/Calculator/CalculatorSearch.cs`
+
+---
+
+## 5b. AlgebraResultItemViewModel
+
+Resultado de algebra simbolica (simplify / expand / factor / derivadas / integral). Presenta hasta N celdas navegables horizontalmente con wrap circular. Ver `docs/search-calculator.md` seccion 3b.
+
+| Propiedad / Metodo | Descripcion |
+|---|---|
+| `Icon` | `🧮` por defecto |
+| `Category` | `"Calculator"` por defecto |
+| `Cells` | `IReadOnlyList<AlgebraCell>` (Label + Result). Al asignarse genera `CellItems` |
+| `CellItems` | `IReadOnlyList<AlgebraCellItem>` expuesto a la vista para el `UniformGrid` |
+| `SelectedCell` | `int`. Indice de la celda seleccionada (default 0) |
+| `SelectedCellLabel` | Label de la celda seleccionada (ej. "factor", "d/dx") |
+| `MoveCellLeft()` / `MoveCellRight()` | Navegacion circular. Retornan `false` si `Cells.Count <= 1` |
+| `BuildDragPayload()` | Texto del `Result` de la celda seleccionada |
+
+Los metodos `MoveCellLeft/Right` se conectan a `OnLeft/OnRight`. Enter copia el `Result` de la celda seleccionada.
+
+> **Verificar en:** `Yottacast.Core/ViewModels/AlgebraResultItemViewModel.cs`, `Yottacast.Core/ViewModels/AlgebraCellItem.cs`, `Yottacast.Core/Search/Calculator/CalculatorSearch.cs` (`BuildAlgebraResult`)
+
+---
+
+## 5c. DateSearchResultViewModel
+
+Resultado de busqueda/calculo de fechas. Presenta celdas copiables con navegacion izquierda/derecha circular, cada una con su subtitulo contextual.
+
+| Propiedad / Metodo | Descripcion |
+|---|---|
+| `Icon` | `📅` por defecto |
+| `Category` | Vacio por defecto |
+| `Cells` | `IReadOnlyList<string>`. Al asignarse genera `CellItems` |
+| `CellItems` | `IReadOnlyList<DateCellItem>` para el `UniformGrid` |
+| `CellSubtitles` | Un subtitulo por celda. El de la celda seleccionada se muestra debajo de la fila |
+| `SelectedCell` | `int`. Indice seleccionado (default 0) |
+| `SelectedCellSubtitle` | Subtitulo de la celda seleccionada |
+| `MoveCellLeft()` / `MoveCellRight()` | Navegacion circular. Retornan `false` si `Cells.Count <= 1` |
+| `BuildDragPayload()` | Texto de la celda seleccionada |
+
+> **Verificar en:** `Yottacast.Core/ViewModels/DateSearchResultViewModel.cs`, `Yottacast.Core/ViewModels/DateCellItem.cs`
 
 ---
 
@@ -192,7 +248,8 @@ Extiende `ResultItemViewModel`. Presenta un grid navegable con viewport y seccio
 | `PinnedSectionHeader` | `string` | Header de la seccion pinned (ej. "Favorites & recently used") |
 | `SelectedEmojiIndex` | `int` | Indice de la celda seleccionada en `Cells` |
 | `SelectedEmoji` | `EmojiCellViewModel?` | Celda actualmente seleccionada |
-| `Columns` | `int` (const) | `AppDefaults.EmojiColumns` (10) |
+| `Columns` | `int` (`init`) | Numero de columnas. Default `AppDefaults.EmojiColumns` (10); `EmojiSearch` lo fija desde `EmojiLayoutConfig` |
+| `ViewportRows` | `int` (`init`) | Filas visibles del viewport. Default `AppDefaults.EmojiViewportRows` (8); fijado desde `EmojiLayoutConfig` |
 
 ### Secciones
 
@@ -286,12 +343,14 @@ El `ViewLocator` no interviene aqui. La `MainWindow.axaml` define `DataTemplate`
 - `ResultItemViewModel` → template estandar con icono + titulo + subtitulo + categoria/shortcut
 - `CalculatorResultItemViewModel` → template con titulo (resultado) + subtitulo + badge
 - `ConversionResultItemViewModel` → template con 3 celdas seleccionables
+- `AlgebraResultItemViewModel` → template con N celdas navegables (label + resultado)
+- `DateSearchResultViewModel` → template con celdas copiables + subtitulo contextual
 - `EmojiGridResultViewModel` → template con grid (ItemsRepeater + secciones)
 - `DictionaryResultViewModel` → template con palabra + pills + definiciones
 
 ### Invariantes
 
-- Todos los ViewModels son inmutables excepto las propiedades observables (`IconBytes`, `BadgeIconBytes`, `SelectedCell`, `SelectedEmojiIndex`, `IsFavorite`, `IsSelected`).
+- Todos los ViewModels son inmutables excepto las propiedades observables (`IconBytes`, `BadgeIconBytes`, `SelectedCell` en Conversion/Algebra/Date, `SelectedEmojiIndex`, `IsFavorite`, `IsSelected`) y `GetDragPayload` (settable).
 - `Actions` se establece en el constructor por la fuente y no cambia durante la vida del resultado.
 - `Score` se establece una vez al crear el item. No se modifica durante la vida del resultado.
 - La UI nunca crea ViewModels directamente: siempre los recibe de las fuentes via `GlobalSearch`.

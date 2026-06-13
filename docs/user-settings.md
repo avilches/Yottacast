@@ -17,7 +17,7 @@ El fichero de preferencias se crea automaticamente en la primera ejecucion y se 
 
 - El usuario nunca ve un error si el fichero de settings falta o es invalido; siempre se regenera con defaults.
 - El directorio padre se crea automaticamente si no existe.
-- Los settings se guardan en el momento en que cambian. La posición de la ventana (`WindowX`/`WindowY`) solo se persiste si el usuario la arrastró desde el último guardado — si la posición no cambió, el hide no genera ninguna escritura a disco.
+- Los settings se guardan en el momento en que cambian. La posición de la ventana (`WindowX`/`WindowY`) solo se persiste si el usuario la arrastró desde el último guardado - si la posición no cambió, el hide no genera ninguna escritura a disco.
 - Si la escritura a disco falla (permisos, disco lleno), los cambios se mantienen en memoria pero no se persisten hasta el siguiente guardado exitoso. No se propaga excepcion.
 - Solo existe una instancia de settings en toda la vida de la aplicacion (singleton). No hay recarga desde disco.
 - La unica via de creacion es el metodo de fabrica `Load()`; el constructor es privado.
@@ -44,7 +44,12 @@ El fichero de preferencias se crea automaticamente en la primera ejecucion y se 
 | ClipboardHotkey | `null` | Hotkey dedicada para activar el modo Clipboard (p.ej. `"Alt+Space"`, `"Meta+V"`); `null` = sin hotkey dedicada |
 | ClipboardHistoryMaxEntries | `200` | Número máximo de entradas de historial de portapapeles a conservar |
 | ClipboardHistoryMaxDays | `30` | Días máximos que se conserva una entrada del historial de portapapeles |
+
+> **Bug conocido** - `ClipboardHistoryMaxEntries` y `ClipboardHistoryMaxDays` se persisten y se editan en Settings, pero nunca se propagan al `ClipboardHistoryStore` en caliente: el store se construye con los valores por defecto de `AppDefaults` y sus propiedades `MaxEntries`/`MaxDays` no se actualizan al cambiar los settings. Los nuevos limites no tienen efecto sin reiniciar (y de hecho el store no recibe nunca los valores del usuario). Ver `ClipboardHistoryStore` (registro en `App.BuildServices()`) y `SettingsWindowViewModel.OnClipboardHistoryMaxEntriesChanged()`.
+
+Las propiedades antiguas booleanas de clipboard fueron sustituidas por `ClipboardSearchVisibility` (enum `Disabled`/`Always`/`ModeOnly`). El campo JSON heredado `enableClipboard` solo se conserva como entrada de migracion en el DTO (`ClipboardHistoryEnabled`, omitido al escribir cuando es el valor por defecto).
 | EnableWebSearch | `true` | Activa/desactiva la busqueda web; si `false`, `WebSearchSource.Search()` devuelve siempre lista vacia |
+| EnableUrlValidation | `true` | Si `true`, valida via DNS/HTTP las URLs detectadas antes de mostrarlas como resultado abrible |
 | FileSearchOnlySpecificFolders | `false` | Si `true`, solo busca en las carpetas configuradas en `SearchFolders`; si `false`, busca en toda la home |
 | LastLaunchedVersion | `""` | Version del ultimo arranque (para migraciones) |
 | ShowDisabledWebSearchEngines | `true` | Si muestra los motores deshabilitados en la UI de Settings |
@@ -63,6 +68,12 @@ El fichero de preferencias se crea automaticamente en la primera ejecucion y se 
 | EnableSystemSettings | `true` | Activa/desactiva la busqueda de paneles de System Settings (solo macOS) |
 | EnableHistory | `true` | Activa/desactiva el guardado del historial de búsquedas |
 | HistoryMaxItems | `100` | Número máximo de entradas de historial a conservar (1–100) |
+| DateSearchEnabled | `true` | Activa/desactiva el reconocimiento de fechas y rangos de fechas |
+| DateIsoFormat | `"yyyy-MM-dd"` | Formato de la celda de fecha ISO en resultados de fecha |
+| DateLongFormat | `"d MMMM yyyy (dddd)"` | Formato de la celda de fecha larga en resultados de fecha |
+| EnableFileEditor | `true` | Activa/desactiva el editor inline de ficheros |
+| FileEditorAutoSave | `false` | Si el editor inline guarda automaticamente los cambios |
+| FileEditorExtensions | Lista predeterminada (ver `AppDefaults.FileEditorDefaultExtensions`) | Extensiones de fichero que el editor inline puede abrir |
 | WindowX | `null` | Posicion X de la ventana principal en coordenadas de pantalla (pixels fisicos) |
 | WindowY | `null` | Posicion Y de la ventana principal en coordenadas de pantalla (pixels fisicos) |
 | KeepValueWhenHide | `true` | Si el texto se preserva al ocultar la ventana; `false` lo limpia inmediatamente |
@@ -240,11 +251,11 @@ Ver `docs/examples/hackernews.json` para un ejemplo de plugin.
 
 La ventana de Settings se divide en secciones navegables: General, AppSearch, WebSearch, FileSearch, Calculator, Clipboard y Emoji. Cada apertura de la ventana inicia en la seccion General (el ViewModel es transient y se recrea en cada apertura).
 
-La seccion AppSearch incluye el toggle **"Include system settings panels"** (solo visible en macOS). Si esta activo, la busqueda incluye los paneles de System Settings del sistema. Este toggle solo es funcional cuando App Search tambien esta habilitado — si App Search se desactiva, la busqueda de paneles del sistema queda inactiva independientemente del valor de este toggle.
+La seccion AppSearch incluye el toggle **"Include system settings panels"** (solo visible en macOS). Si esta activo, la busqueda incluye los paneles de System Settings del sistema. Este toggle solo es funcional cuando App Search tambien esta habilitado - si App Search se desactiva, la busqueda de paneles del sistema queda inactiva independientemente del valor de este toggle.
 
 ### Flujo de apertura
 
-Si la ventana ya esta visible, simplemente se activa sin recrearla. La apertura es sincrona — no necesita esperar a `ApplicationSearch` porque los pickers de browser y terminal usan sus propios mecanismos de deteccion en disco.
+Si la ventana ya esta visible, simplemente se activa sin recrearla. La apertura es sincrona - no necesita esperar a `ApplicationSearch` porque los pickers de browser y terminal usan sus propios mecanismos de deteccion en disco.
 
 ### Seguridad en los pickers
 

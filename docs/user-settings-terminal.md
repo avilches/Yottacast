@@ -29,6 +29,10 @@ Los resultados se cachean en memoria. La cache se invalida al cambiar las carpet
 - En Windows, `TerminalKnownPaths` contiene rutas absolutas a ejecutables conocidos; las que incluyen wildcards (`Microsoft.WindowsTerminal*\wt.exe`) se filtran correctamente.
 - En Linux, las listas de terminales conocidos estan vacias. `Discover()` devuelve lista vacia.
 
+> **Bug conocido (Windows)** - la unica ruta conocida de "Windows Terminal" es un glob (`Microsoft.WindowsTerminal*\wt.exe`). El descubrimiento descarta rutas con `*`, asi que "Windows Terminal" nunca se resuelve y nunca aparece en el selector: es codigo muerto. Ver `WindowsPlatformProvider.TerminalKnownPaths` y `TerminalDiscovery.FindTerminal()`.
+
+> **Estado: incompleto (Linux)** - `LinuxPlatformProvider.KnownTerminalNames` esta vacio y `ExecuteCommand()` es un no-op. La auto-reparacion no puede operar (`ActiveTerminal` siempre resuelve a `null`) y ejecutar comandos en terminal no hace nada en Linux.
+
 > **Verificar en:**
 > - `TerminalDiscovery.Discover()`, `TerminalDiscovery.InvalidateCache()` en `Yottacast.Core/Services/TerminalDiscovery.cs`
 > - `KnownTerminalNames`, `TerminalKnownPaths` en cada `*PlatformProvider.cs`
@@ -79,9 +83,11 @@ Nota: el archivo temporal `.command` no se elimina tras su uso.
 |----------|-----------|----------|
 | PowerShell | `-NoExit -Command "<comando>"` | `"` -> `\"` |
 | Command Prompt | `/K "<comando>"` | Sin escaping adicional |
-| Otros (Windows Terminal, Git Bash) | Comando tal cual | Sin modificaciones |
+| Otros (Git Bash) | Comando tal cual | Sin modificaciones |
 
-Si no se encuentra una ruta valida para el ejecutable, el metodo retorna silenciosamente sin error.
+Si no se encuentra una ruta valida para el ejecutable (incluido el descarte de rutas con `*`), el metodo retorna silenciosamente sin error.
+
+> **Bug conocido (Windows)** - "Git Bash" cae en el caso `Otros` y se invoca como `bash.exe <comando>` sin `-c`. `bash.exe` trata ese argumento como nombre de script a ejecutar, no como orden inline, por lo que el comando no se ejecuta como se espera. Faltaria envolverlo en `-c "<comando>"`. Ver `WindowsPlatformProvider.ExecuteCommand()`.
 
 ### Linux
 

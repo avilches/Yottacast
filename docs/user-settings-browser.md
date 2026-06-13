@@ -99,7 +99,7 @@ Cuando el usuario activa un resultado de tipo Web Search, se abre la URL constru
 | Busqueda | No hay navegadores conocidos |
 | Apertura de URL | No-op (metodo vacio) |
 
-La funcionalidad de navegador no esta implementada en Linux.
+> **Estado: incompleto (Linux)** - `LinuxPlatformProvider.KnownBrowserNames` esta vacio y `OpenUrl()` tiene cuerpo vacio. El descubrimiento devuelve siempre lista vacia y la auto-reparacion no puede operar: `ActiveBrowser` resuelve siempre a `null`, asi que activar un resultado Web Search no abre nada en Linux. Ver `Yottacast.Core/Platform/LinuxPlatformProvider.cs`.
 
 > **Verificar en:**
 > - `Yottacast.Core/Platform/MacOsPlatformProvider.cs` -- seccion Browser

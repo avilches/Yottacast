@@ -23,6 +23,8 @@ de logging cumple estos contratos:
 |------------------|-----------------------------|--------------------------------------------------------------------------------------------|
 | Fichero en disco | Diaria, 7 dias de retencion | `{Timestamp:HH:mm:ss.fff} [{Level:u5}] [{SourceContext}] {Message:lj}{NewLine}{Exception}` |
 
+El nivel minimo configurado es `Debug`, de modo que se capturan tambien las lineas `Debug` de las operaciones frecuentes.
+
 **Rutas del fichero de log (GUI):**
 
 | Plataforma      | Ruta                                                           |
@@ -34,4 +36,4 @@ El campo `SourceContext` se rellena automaticamente con el nombre de la clase ge
 origen de cada linea sin esfuerzo manual.
 
 > **Verificar en:** `AppPaths.cs` (propiedades `LogDir`, `LogFilePattern`), `App.axaml.cs` (metodo `BuildServices` --
-> configuracion de Serilog).
+> configuracion de Serilog -- y `ComputeLogPath()`, que crea `LogDir` y devuelve `LogFilePattern`).

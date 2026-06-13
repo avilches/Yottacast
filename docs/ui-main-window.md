@@ -29,7 +29,7 @@ Cuando el usuario escribe, las fuentes en memoria (apps cacheadas, emojis, calcu
 
 ### Fase diferida (con debounce de 250 ms)
 
-Tras la fase instant, se espera 250 ms sin nuevas pulsaciones antes de consultar las fuentes de disco (busqueda de archivos via Spotlight/Windows Search). Mientras estas fuentes trabajan, se muestra un spinner de actividad en lugar del badge ESC.
+Tras la fase instant, se espera 250 ms sin nuevas pulsaciones antes de consultar las fuentes de disco (busqueda de archivos via Spotlight/Windows Search). Mientras estas fuentes trabajan, se muestra un spinner de actividad (`IsVisible="{Binding IsSearching}"`) a la derecha del campo de busqueda. No existe ningun badge ESC en la UI.
 
 ### Modo emoji (prefijo `:`)
 
@@ -107,10 +107,14 @@ El handler de ESC aplica esta logica en cascada:
 
 Al pulsar Enter sobre un resultado seleccionado:
 
-1. Ejecuta la accion del resultado (`OnActivate`).
+1. Ejecuta la accion `Enter` del resultado seleccionado.
 2. Limpia el texto de busqueda.
 3. Oculta la ventana.
-4. Si el resultado tiene `PasteAfterActivate = true` (usado por emojis): devuelve el foco a la app anterior y simula un pegado (Cmd+V / Ctrl+V).
+4. Si el resultado tiene `PasteAfterActivate = true` (usado por emojis): devuelve el foco a la app anterior y simula un pegado (`SimulatePasteAsync`: Cmd+V en macOS, Ctrl+V en Windows; en Linux es un no-op heredado de la clase base, ver `docs/ui-hotkeys.md`).
+
+**Cmd+Enter** ejecuta la accion `Enter` sin ocultar la ventana (`AsKeepOpen()`).
+
+> **Bug conocido** - El `Cmd+Enter` en `OnKeyDown` (case `Key.Return`) detecta el modificador con `KeyModifiers.Meta` hardcodeado en lugar de `AppHandler.MatchesHotkey`; en Windows/Linux exige la tecla Meta/Super fisica en vez de Ctrl. Mismo problema que el `Cmd+doble-click` (ver seccion 8).
 
 ### Cierre nativo de ventana
 
@@ -164,7 +168,9 @@ Cada item puede definir handlers opcionales (`OnLeft`, `OnRight`, `OnUp`, `OnDow
 | Izquierda/Derecha | Navegacion circular dentro de las celdas del grid (al llegar al final vuelve al principio). |
 | Arriba/Abajo | Si el movimiento saldria del grid (primera o ultima fila), devuelve `false` y delega la navegacion al nivel de lista. |
 
-> **Verificar en:** `MainWindow.axaml.cs` -- `OnTunnelKeyDown`, `SelectNext`, `SelectDelta`. `AppDefaults.cs` -- `SearchSourceLimit`. `EmojiGridResultViewModel.cs` -- `SelectDown`, `SelectUp`, `SelectNext`, `SelectPrevious`. `BaseResultItemViewModel.cs` -- `OnLeft`, `OnRight`, `OnUp`, `OnDown`.
+> **Bug conocido** - En el switch de navegacion de grid de `OnTunnelKeyDown`, los casos `Key.Up`/`Key.Down` asignan `e.Handled = onUp()`/`onDown()` (respetando el bool que devuelve el handler), pero `Key.Left`/`Key.Right` invocan `onLeft()`/`onRight()` **sin** asignar `e.Handled`. Como `OnLeft`/`OnRight` son `Func<bool>?`, su valor de retorno se descarta y la tecla sigue propagandose al `TextBox`: al navegar horizontalmente en el grid de emojis el caret del SearchBox se mueve.
+
+> **Verificar en:** `MainWindow.axaml.cs` -- `OnTunnelKeyDown` (switch de navegacion de grid), `SelectNext`, `SelectDelta`. `AppDefaults.cs` -- `SearchSourceLimit`. `EmojiGridResultViewModel.cs` -- `SelectDown`, `SelectUp`, `SelectNext`, `SelectPrevious`. `BaseResultItemViewModel.cs` -- `OnLeft`, `OnRight`, `OnUp`, `OnDown` (todos `Func<bool>?`).
 
 ---
 
@@ -181,10 +187,12 @@ Mientras el usuario escribe, el cursor del raton se oculta para no distraer. Se 
 | Gesto | Comportamiento |
 |---|---|
 | Click izquierdo | Selecciona el elemento. Si habia un menu de opciones abierto, se cierra. |
-| Doble click izquierdo | Ejecuta la accion por defecto del elemento (equivalente a Enter). Cmd+doble click ejecuta sin cerrar la ventana. |
+| Doble click izquierdo | Ejecuta la accion por defecto del elemento (equivalente a Enter). Cmd+doble click ejecuta sin cerrar la ventana (`AsKeepOpen()`). |
 | Click derecho | Selecciona el elemento y abre el menu de opciones en la posicion del cursor. Las opciones son clicables con el raton. |
 
 El movimiento del raton sobre resultados ya no selecciona el elemento bajo el cursor. La seleccion solo cambia por teclado o por click.
+
+> **Bug conocido** - `OnResultsDoubleTapped` decide el modo "sin cerrar" comprobando `_lastClickModifiers.HasFlag(KeyModifiers.Meta)` **hardcodeado**, en vez de `AppHandler.MatchesHotkey`. Igual que el `Cmd+Enter` de teclado, en macOS funciona (Cmd = Meta) pero en Windows/Linux exige la tecla Meta/Super fisica en lugar de Ctrl, asi que el "ejecutar sin cerrar" no responde a Ctrl+doble-click.
 
 > **Verificar en:** `MainWindow.axaml.cs` -- `OnResultsPointerPressed`, `OnResultsDoubleTapped`.
 
@@ -204,8 +212,8 @@ Cuando el buscador esta vacio (sin texto), la ventana muestra resultados procede
 ### Ciclo de vida
 
 Al abrir la ventana con buscador vacio:
-1. `MainWindow` llama `vm.OnWindowShown(null)` inmediatamente — las fuentes ya activas muestran sus resultados al instante.
-2. `MainWindow` lee el portapapeles en background y llama `vm.OnWindowShown(text)` si hay contenido — `ClipboardSearch` puede añadir un resultado.
+1. `MainWindow` llama `vm.OnWindowShown(null)` inmediatamente - las fuentes ya activas muestran sus resultados al instante.
+2. `MainWindow` lee el portapapeles en background y llama `vm.OnWindowShown(text)` si hay contenido - `ClipboardSearch` puede añadir un resultado.
 
 Cuando el usuario empieza a escribir, `OnSearchStarted()` se llama en todas las fuentes: `NewlyInstalledAppsSource` descarta sus pendientes, `ClipboardSearch` limpia su cache.
 
@@ -293,7 +301,7 @@ Hay dos estilos visuales:
 
 El hint se limpia automáticamente en cada nueva búsqueda o cuando el texto se vacía.
 
-> **Verificar en:** `MainWindowViewModel.cs` — `SetSearchHint`, `SearchHintIsError`, `SearchHintIsInfo`. `MainWindow.axaml` — `Grid` con `MinHeight` y dos TextBlocks. `GlobalSearch.cs` — `SearchInstant` devuelve `SearchHintKind`. `CalculatorSearch.cs` — `LastHintKind`. `ThemeService.cs` — `Theme.Search.Hint.Error`, `Theme.Search.Hint.Info`.
+> **Verificar en:** `MainWindowViewModel.cs` - `SetSearchHint`, `SearchHintIsError`, `SearchHintIsInfo`. `MainWindow.axaml` - `Grid` con `MinHeight` y dos TextBlocks. `GlobalSearch.cs` - `SearchInstant` devuelve `SearchHintKind`. `CalculatorSearch.cs` - `LastHintKind`. `ThemeService.cs` - `Theme.Search.Hint.Error`, `Theme.Search.Hint.Info`.
 
 ---
 
@@ -348,7 +356,7 @@ La posicion se actualiza en memoria en cada movimiento via `PositionChanged` (si
 
 El panel de preview/editor se muestra a la derecha de la lista de resultados, dentro del mismo `Grid x:Name="ResultsPanel"` (columna 1). La columna 0 tiene siempre `Width=Theme.Window.Width`; la columna 1 (`Theme.Preview.Width`) solo es visible cuando `IsEditorOpen=true`. El resto de elementos (SearchBox, Divider, Footer) tienen `Width=Theme.Window.Width` y `HorizontalAlignment="Left"` para no expandirse cuando el panel de preview amplía la ventana.
 
-El panel de preview/editor (`EditorPanelView`) no tiene cabecera en modo preview. Su parte inferior tiene siempre el mismo aspecto que el footer de la lista de resultados: separador superior (`BorderThickness="0,1,0,0"`), mismo fondo (`Theme.Footer.Background`) y sin esquinas redondeadas propias (`CornerRadius="0"` — la ventana exterior ya gestiona el redondeo). En modo edición, el footer muestra además los atajos de teclado (`⌘S`, `⌘E`, `Esc`).
+El panel de preview/editor (`EditorPanelView`) no tiene cabecera en modo preview. Su parte inferior tiene siempre el mismo aspecto que el footer de la lista de resultados: separador superior (`BorderThickness="0,1,0,0"`), mismo fondo (`Theme.Footer.Background`) y sin esquinas redondeadas propias (`CornerRadius="0"` - la ventana exterior ya gestiona el redondeo). En modo edición, el footer muestra además los atajos de teclado (`⌘S`, `⌘E`, `Esc`).
 
 > **Verificar en:** `MainWindow.axaml` -- atributos del `Window`, `Grid x:Name="ResultsPanel"` y `Panel x:Name="EditorContainer"`.
 
@@ -368,4 +376,4 @@ En modo sticky, al perder el foco la ventana se oculta si el campo está vacío.
 
 El timer vive en `MainWindowViewModel` como un `CancellationTokenSource` (`_decayCts`). `MainWindow` lo arranca y cancela desde los eventos `IsVisible`, `Deactivated` y `Activated`.
 
-> **Verificar en:** `MainWindowViewModel.StartDecayTimer()`, `MainWindowViewModel.CancelDecayTimer()` — `Yottacast/ViewModels/MainWindowViewModel.cs`. Hooks en `MainWindow.OnPropertyChanged`, `Activated`, `Deactivated` — `Yottacast/Views/MainWindow.axaml.cs`.
+> **Verificar en:** `MainWindowViewModel.StartDecayTimer()`, `MainWindowViewModel.CancelDecayTimer()` - `Yottacast/ViewModels/MainWindowViewModel.cs`. Hooks en `MainWindow.OnPropertyChanged`, `Activated`, `Deactivated` - `Yottacast/Views/MainWindow.axaml.cs`.

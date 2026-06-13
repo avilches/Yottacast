@@ -12,9 +12,10 @@ El score final de cada item es `score_base + bonus_de_uso`, donde el bonus lo ap
 
 **Invariantes:**
 - Los resultados siempre aparecen ordenados de mayor a menor score (base + bonus).
-- Cada fuente devuelve como maximo 10 resultados (`SearchSourceLimit`).
-- Tras mezclar, la lista visible contiene como maximo 10 elementos.
+- Cada fuente instant expone su propio `IInstantSearchSource.Limit`. Si vale `-1`, hereda el limite global pasado a `SearchInstant`, que es `AppDefaults.SearchSourceLimit` (actualmente 500, no 10). Las fuentes deferred no exponen `Limit`: reciben directamente el limite global por parametro en `SearchAsync`. Solo `AppSearchLimit` (10), `LocalPathSearchLimit` (5) y `SystemSettingsSearchLimit` (5) imponen topes pequeños; calculadora, emoji, web, URL y ficheros usan `-1` o el limite global.
+- Tras mezclar, `MainWindowViewModel.RefreshResults()` no aplica ningun tope adicional: la lista visible muestra todos los resultados ordenados, limitada en la practica solo por los limites por fuente y por `SearchSourceLimit`. No hay un tope fijo de elementos visibles.
 - Si hay un resultado de calculadora o conversor y el usuario no ha navegado con las teclas, ese resultado queda seleccionado automaticamente, independientemente de su posicion en la lista.
+- `RefreshResults()` deduplica ademas los resultados de fichero cuyo stem (nombre sin extension) coincide con el `Title` de una app ya presente (categoria "Application"), para no mostrar la app y su bundle/fichero por duplicado.
 
 > **Verificar en:** `GlobalSearch.SearchInstant()`, `GlobalSearch.SearchSourcesAsync()`, `MainWindowViewModel.RefreshResults()`
 
@@ -117,10 +118,12 @@ El modo ShowAlways tiene score bajo (0.4) para actuar como fallback: aparece deb
 
 **Invariantes:**
 - Cuando un motor PrefixOnly coincide, los motores ShowAlways se ocultan para no saturar la lista.
-- La busqueda web no se activa con queries vacias ni con queries que empiecen por `:` (modo emoji).
-- Activar el resultado abre la URL en el navegador configurado por el usuario.
+- La busqueda web no se activa con queries vacias ni con queries que empiecen por `:` (modo emoji): `Search` hace early return `[]` si `query.StartsWith(':')`.
+- Activar el resultado abre la URL en el navegador configurado por el usuario (accion principal Enter; existe ademas una accion `Cmd+Enter` que abre en segundo plano y mantiene el foco).
 
-> **Verificar en:** `Search/WebSearch/WebSearchSource.cs` (metodo `Search`)
+> **Estado: incompleto** - `CLAUDE.md` describe que en modo emoji (query empieza por `:`) la busqueda web deberia usar el texto tras `:` como termino de busqueda. Eso NO esta implementado: `WebSearchSource.Search` devuelve `[]` para cualquier query que empiece por `:`. El comportamiento documentado en CLAUDE.md es un gap pendiente.
+
+> **Verificar en:** `Search/WebSearch/WebSearchSource.cs` (metodo `Search`, `TryBuildResult`; scores 0.4 y 3.8; guard `query.StartsWith(':')`)
 
 ---
 
@@ -175,7 +178,11 @@ Cuando el usuario escribe una ruta del sistema de ficheros o una URL reconocida,
 | LocalPathSearch | Query empieza por `/`, `~/`, `./`, `../` o sigue patron Windows `C:\` | 10.0 |
 | UrlSearch | Query reconocida como URL (con protocolo, `www.`, o dominio con TLD conocido) | 10.0 |
 
-> **Verificar en:** `Search/LocalPath/LocalPathSearch.cs`, `Search/Url/UrlSearch.cs`
+`UrlSearch.TryNormalizeUrl` normaliza la query a `https://...` (o la deja tal cual si ya trae `http://`/`https://`). Si `EnableUrlValidation` esta activo, valida el dominio por DNS en background y muestra un `ErrorTag` ("domain doesn't exist", "connection timed out") sin bloquear el resultado.
+
+> **Bug conocido** - `UrlSearch.Search` y `CheckReachabilityAsync` llaman `new Uri(url).Host` directamente. Si el usuario escribe exactamente `http://` o `https://` (sin host), `TryNormalizeUrl` los acepta como URL valida y `new Uri("http://")` lanza `UriFormatException` no capturada. La deteccion deberia rechazar URLs sin host.
+
+> **Verificar en:** `Search/LocalPath/LocalPathSearch.cs`, `Search/Url/UrlSearch.cs` (`TryNormalizeUrl`, `Search`, `CheckReachabilityAsync`)
 
 ---
 
@@ -184,24 +191,27 @@ Cuando el usuario escribe una ruta del sistema de ficheros o una URL reconocida,
 Cada vez que el usuario activa un item (app o archivo), `LaunchHistory` registra el evento. En `MainWindowViewModel.RefreshResults()`, antes de ordenar, cada item recibe un **bonus** basado en su historial:
 
 ```
-ageDays = (ahora - ultimoUso).TotalDays
-decay   = e^(-ageDays / 30)          // half-life ~21 días
-bonus   = min(ln(count + 1) × decay, 1.0)
+ageDays = max(0, (ahora - ultimoUso).TotalDays)
+decay   = e^(-ageDays / LaunchHistoryHalfLifeDays)   // LaunchHistoryHalfLifeDays = 30
+bonus   = min(ln(count + 1) × decay, LaunchHistoryMaxBonus)   // MaxBonus = 1.0
 ```
+
+La formula real usa `ln(count + 1)` (no `count`) multiplicado por el decaimiento exponencial, y el resultado se capa en `AppDefaults.LaunchHistoryMaxBonus` (1.0). Ver `LaunchHistory.BonusInfo`.
 
 Solo reciben bonus los items con `ItemPath` no nulo: aplicaciones (`ApplicationSearch`) y archivos (`UserDocumentSearch`). Calculator, Emoji, WebSearch y Dictionary no tienen `ItemPath` y no participan.
 
-El bonus maxima (1.0) esta calibrado para que incluso la app mas usada no salga de su banda: una app con prefijo exacto muy usada puede llegar a 5.0, por debajo de Emoji (5.5) y muy por debajo de Calculator (7.0).
+El bonus maximo (1.0) esta calibrado para que incluso la app mas usada no salga de su banda: una app con prefijo exacto muy usada puede llegar a 5.0, por debajo de Emoji (5.5) y muy por debajo de Calculator (7.0).
 
-**Ejemplos:**
-- 1 lanzamiento reciente: +0.35
-- 10 lanzamientos recientes: +0.80
-- ≥30 lanzamientos recientes: cap en +1.0
-- 30 dias sin uso: bonus reducido a ~37% del valor fresco
+**Ejemplos (bonus fresco, ageDays = 0):**
+- 1 lanzamiento: ln(2) ≈ +0.69
+- 2 lanzamientos: ln(3) ≈ +1.0 (ya alcanza el cap)
+- ≥2 lanzamientos: el cap de 1.0 domina mientras el item siga reciente
 
-Los datos se persisten en `AppPaths.LaunchHistoryFile` (JSON atomico, mismo patron que `EmojiUsageStore`).
+> **Bug conocido (discrepancia de documentacion en el codigo)** - La constante `AppDefaults.LaunchHistoryHalfLifeDays` se documenta en su XML-doc como "half-life: after this many days without use, the bonus is halved", pero el factor de decaimiento real es `e^(-ageDays / 30)`. Eso NO es una half-life de 30 dias: el bonus se reduce a la mitad cuando `ageDays = 30 × ln(2) ≈ 20.8 dias`. A los 30 dias el decaimiento es `e^-1 ≈ 0.37` (no 0.5). El nombre de la constante y su comentario inducen a error; la formula es la fuente de verdad. La misma observacion aplica a `EmojiHalfLifeDays` y `ClipboardHistoryHalfLifeDays`, que usan la misma forma `e^(-age/30)`.
 
-> **Verificar en:** `Services/LaunchHistory.cs` (`BonusFor`, `Record`, `LoadAsync`), `MainWindowViewModel.RefreshResults()` (aplicacion del bonus), `MainWindow.axaml.cs` (`RecordLaunch` en Key.Return y OnResultsTapped), `AppDefaults.LaunchHistoryHalfLifeDays`, `AppDefaults.LaunchHistoryMaxBonus`
+Los datos se persisten en `AppPaths.LaunchHistoryFile` (JSON atomico: fichero temporal + `File.Move`).
+
+> **Verificar en:** `Services/LaunchHistory.cs` (`BonusFor`, `BonusInfo`, `Record`, `LoadAsync`), `MainWindowViewModel.RefreshResults()` (aplicacion del bonus), `MainWindow.axaml.cs` (`RecordLaunch` en Key.Return y OnResultsTapped), `AppDefaults.LaunchHistoryHalfLifeDays`, `AppDefaults.LaunchHistoryMaxBonus`
 
 ---
 

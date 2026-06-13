@@ -82,7 +82,7 @@ La busqueda tiene un timeout configurable (por defecto 20 segundos, `FileSearchT
 | Timeout interno | Han pasado 20s desde el inicio | Se emite snapshot final con resultados parciales |
 | Cancelacion del caller | El usuario cambia la query o cierra el launcher | El channel de lectura se interrumpe |
 
-No hay limite por numero de resultados (se pasa `int.MaxValue`): el timeout y la cancelacion del caller son los unicos mecanismos de parada.
+Al backend del SO se le pasa `int.MaxValue` como `maxResults`, asi que el timeout y la cancelacion del caller son los unicos mecanismos de parada de la consulta nativa. Cada snapshot emitido a la UI si se recorta a los mejores `limit` resultados (el limite global, ver seccion 12).
 
 **Invariante:** una busqueda de ficheros nunca bloquea el proceso mas de 20 segundos (por defecto). El snapshot final siempre se emite, incluso si se cancela.
 
@@ -247,7 +247,7 @@ Cada plataforma usa el indice nativo del SO. `FileSearch` es solo un intermediar
 | `FileSearchMinQueryLength` | 2 | Caracteres minimos para iniciar busqueda |
 | `FileSearchTimeoutMs` | 20,000 ms | Timeout maximo por busqueda |
 | `FileSearchSnapshotIntervalMs` | 200 ms | Intervalo minimo entre snapshots |
-| `SearchSourceLimit` | 10 | Maximo de resultados por fuente de busqueda |
+| `SearchSourceLimit` | 500 | Limite global pasado a las fuentes; `UserDocumentSearch` lo recibe como `limit` y lo usa en el `Take(limit)` de cada snapshot |
 
 > **Verificar en:** `AppDefaults.cs`.
 

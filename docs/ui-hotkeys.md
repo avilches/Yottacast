@@ -23,7 +23,7 @@ En modo sticky la ventana permanece visible cuando pierde el foco: el usuario pu
 
 En modo no-sticky la ventana se oculta automaticamente en cuanto pierde el foco (comportamiento tipo Alfred). El hotkey siempre oculta si esta visible porque al perder el foco se habrá ocultado antes de que el usuario pueda pulsarlo.
 
-La ventana no se oculta automaticamente cuando quien toma el foco es la propia ventana de Settings de Yottacast. Si el usuario pulsa el hotkey estando la ventana principal o la de Settings en primer plano, la ventana principal se oculta pero Settings permanece abierta — solo el usuario la puede cerrar manualmente.
+La ventana no se oculta automaticamente cuando quien toma el foco es la propia ventana de Settings de Yottacast. Si el usuario pulsa el hotkey estando la ventana principal o la de Settings en primer plano, la ventana principal se oculta pero Settings permanece abierta - solo el usuario la puede cerrar manualmente.
 
 El setting se configura en Settings → General ("Sticky window") y se persiste en `UserSettings.StickyWindow`.
 
@@ -42,20 +42,23 @@ La combinacion de teclas configurable se almacena como `HotkeyConfig` (record co
 
 ## 2. Comportamiento de la tecla Escape (ventana principal)
 
-Escape tiene tres niveles de accion, evaluados en este orden de prioridad:
+Escape aplica esta logica en cascada, evaluada en este orden de prioridad:
 
 | Condicion                                        | Accion                                                   |
 |--------------------------------------------------|----------------------------------------------------------|
+| Hay un editor/preview abierto (`IsEditorOpen`)    | Si hay dialogo de cambios sin guardar, lo cancela; en otro caso cierra el editor (`RequestClose`) |
+| Hay un menu de opciones abierto (`IsOptionsMenuOpen`) | Cierra el menu                                         |
 | Hay una busqueda diferida en curso (`IsSearching`) | Cancela la busqueda diferida y limpia el texto           |
 | El campo de texto no esta vacio                   | Limpia el texto                                          |
 | El campo de texto esta vacio y no hay busqueda    | Oculta la ventana                                        |
 
 Invariantes:
 
-- Escape nunca cierra la aplicacion, solo oculta la ventana.
+- Escape nunca cierra la aplicacion, solo oculta la ventana (salvo el caso de cerrar editor/menu, que no llega a ocultar).
+- El modo de busqueda activo (All / Files / Clipboard) no cambia al pulsar Escape; persiste hasta que el usuario lo cambie explicitamente.
 - Al ocultar con Escape, el estado del ViewModel se preserva intacto (resultados, busquedas pendientes). Al volver a mostrar la ventana, el usuario ve el estado tal como lo dejo.
 
-> **Verificar en:** `MainWindow.axaml.cs` (`OnKeyDown`, case `Key.Escape`)
+> **Verificar en:** `MainWindow.axaml.cs` (`OnKeyDown`, case `Key.Escape`). El caso de cerrar el editor en modo edicion se intercepta antes, en `OnTunnelKeyDown` (`if (e.Key == Key.Escape)` dentro del bloque `isEditMode`).
 
 ---
 
@@ -74,9 +77,11 @@ Invariantes:
 
 ### Flechas izquierda/derecha
 
-Las teclas izquierda y derecha se interceptan en la fase **tunnel** antes de que lleguen al TextBox. Si el item seleccionado tiene un handler `OnLeft`/`OnRight`, se invoca y, si devuelve `true`, la tecla queda consumida (el cursor del TextBox no se mueve). Si no hay handler o devuelve `false`, el TextBox procesa la tecla normalmente.
+Las teclas izquierda y derecha se interceptan en la fase **tunnel** antes de que lleguen al TextBox. Si el item seleccionado tiene un handler `OnLeft`/`OnRight`, se invoca. El contrato esperado: si el item consume la tecla, el cursor del TextBox no deberia moverse.
 
-> **Verificar en:** `MainWindow.axaml.cs` (`OnTunnelKeyDown`, `OnKeyDown`, `SelectNext`), `MainWindowViewModel.cs` (`NotifyUserNavigated`, `RefreshResults`, `OnSearchTextChanged`), `BaseResultItemViewModel` (`OnLeft`, `OnRight`, `OnUp`, `OnDown`)
+> **Bug conocido** - En `OnTunnelKeyDown` (`MainWindow.axaml.cs`, switch de navegacion de grid), los casos `Key.Left`/`Key.Right` invocan `onLeft()`/`onRight()` pero **no** asignan `e.Handled`, a diferencia de `Key.Up`/`Key.Down` que hacen `e.Handled = onUp()`/`onDown()`. Aunque `OnLeft`/`OnRight` son `Func<bool>?` (devuelven un bool que indica si consumieron la tecla), ese valor se descarta. Resultado: al navegar horizontalmente dentro de un grid (p. ej. el de emojis), la tecla tambien llega al TextBox y el caret del SearchBox se mueve.
+
+> **Verificar en:** `MainWindow.axaml.cs` (`OnTunnelKeyDown` switch de navegacion de grid, `OnKeyDown`, `SelectNext`), `MainWindowViewModel.cs` (`NotifyUserNavigated`, `RefreshResults`, `OnSearchTextChanged`), `BaseResultItemViewModel` (`OnLeft`, `OnRight`, `OnUp`, `OnDown`, todos `Func<bool>?`)
 
 ---
 
@@ -84,17 +89,22 @@ Las teclas izquierda y derecha se interceptan en la fase **tunnel** antes de que
 
 Al pulsar Enter o hacer click/tap sobre un resultado seleccionado:
 
-1. Se ejecuta `OnActivate` del item.
+1. Se ejecuta la accion `Enter` del item seleccionado.
 2. Se limpia el texto de busqueda.
 3. Se oculta la ventana.
-4. Si el item tiene `PasteAfterActivate = true`, ademas se devuelve el foco a la app anterior (`AppHandler.OnHide`) y se simula un pegado (`SimulatePasteAsync`, que envia Cmd+V en macOS o Ctrl+V en Windows).
+4. Si el item tiene `PasteAfterActivate = true`, ademas se devuelve el foco a la app anterior (`AppHandler.OnHide`) y se simula un pegado (`SimulatePasteAsync`).
+
+**Cmd+Enter (ejecutar sin cerrar)**: con la accion `Enter` disponible, `Cmd+Enter` ejecuta la accion sin ocultar la ventana (`AsKeepOpen()`). Lo mismo aplica a `Cmd+doble-click` (ver seccion de raton).
 
 Invariantes:
 
-- Si el item no tiene `OnActivate`, no ocurre ninguna accion.
 - `PasteAfterActivate` solo lo usan items de tipo emoji. Tras copiar el emoji al portapapeles, el launcher se oculta y lo pega automaticamente en la app destino.
 
-> **Verificar en:** `MainWindow.axaml.cs` (`OnKeyDown` case `Key.Return`, `OnResultsTapped`), `BaseResultItemViewModel.PasteAfterActivate`, `EmojiSearch` en `Yottacast.Core/Search/Emoji/EmojiSearch.cs`
+> **Bug conocido** - El detector de `Cmd+Enter` en `OnKeyDown` (case `Key.Return`) y el de `Cmd+doble-click` en `OnResultsDoubleTapped` comprueban `KeyModifiers.Meta` **hardcodeado**, en vez de pasar por `AppHandler.MatchesHotkey` (que resuelve `Meta` a Cmd en macOS y a Ctrl en Windows/Linux). En macOS funciona porque la tecla Cmd es `Meta`. En Windows/Linux estos dos atajos concretos exigen la tecla Meta/Super fisica en vez de Ctrl, por lo que el atajo "ejecutar sin cerrar" no responde a `Ctrl+Enter` / `Ctrl+doble-click`.
+
+> **Estado: incompleto** - `SimulatePasteAsync` solo lo overridean `MacAppHandler` (Cmd+V) y `WindowsAppHandler` (Ctrl+V). En Linux se hereda el no-op de la clase base (`AppHandler.SimulatePasteAsync => Task.CompletedTask`), por lo que el paste automatico de emoji no funciona en Linux.
+
+> **Verificar en:** `MainWindow.axaml.cs` (`OnKeyDown` case `Key.Return`, `OnResultsDoubleTapped`), `BaseResultItemViewModel.PasteAfterActivate`, `AppHandler.SimulatePasteAsync` y overrides en `MacAppHandler.cs` / `WindowsAppHandler.cs`, `EmojiSearch` en `Yottacast.Core/Search/Emoji/EmojiSearch.cs`
 
 ---
 
@@ -184,10 +194,10 @@ El campo hotkey muestra siempre 4 badges de modificadores (⌃/Ctrl, ⌥/Alt, �
 
 El flujo de captura:
 
-1. **Inicio** — Click sobre el campo: borde se pone rojo (`#FF3B30`), todos los badges se apagan, texto central pasa a "Press a modifier…". Aparece un botón ✕ para cancelar.
-2. **Modificador pulsado** — El badge correspondiente se ilumina en tiempo real y el texto pasa a "Press a key…". Si se sueltan todos los modificadores, vuelve a "Press a modifier…".
-3. **Tecla pulsada** — Con al menos un modificador sostenido, se construye el `HotkeyConfig`, se valida (no prohibido), se guarda y termina la captura.
-4. **Cancelacion** — Escape, click en el botón ✕, o click fuera del campo: cancela sin guardar.
+1. **Inicio** - Click sobre el campo: borde se pone rojo, todos los badges se apagan, texto central pasa a "Press a modifier…". Aparece un botón ✕ para cancelar. El color de captura (`#FF3B30`) esta hardcodeado en `SettingsWindow.axaml` (la ventana de Settings no usa el sistema de temas; ver `docs/ui-themes.md`).
+2. **Modificador pulsado** - El badge correspondiente se ilumina en tiempo real y el texto pasa a "Press a key…". Si se sueltan todos los modificadores, vuelve a "Press a modifier…".
+3. **Tecla pulsada** - Con al menos un modificador sostenido, se construye el `HotkeyConfig`, se valida (no prohibido), se guarda y termina la captura.
+4. **Cancelacion** - Escape, click en el botón ✕, o click fuera del campo: cancela sin guardar.
 
 Combinaciones prohibidas (ignoradas silenciosamente, no se pueden capturar):
 - macOS: `Meta+Q` (Cmd+Q = salir), `Meta+W` (Cmd+W = cerrar ventana)

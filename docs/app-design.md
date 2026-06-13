@@ -79,8 +79,8 @@ estado en cierre; los settings se guardan en el momento en que cambian.
 
 | Tipo                                   | Comportamiento                                                 | Ejemplos                                           |
 |----------------------------------------|----------------------------------------------------------------|----------------------------------------------------|
-| **Instant** (`IInstantSearchSource`)   | En memoria, síncrono, responde sin delay al escribir           | Apps instaladas, calculadora, emojis, búsqueda web |
-| **Deferred** (`IDeferredSearchSource`) | Acceso a disco/red, asíncrono, se lanza tras 250ms de debounce | Ficheros del usuario                               |
+| **Instant** (`IInstantSearchSource`)   | En memoria, síncrono, responde sin delay al escribir           | Apps, calculadora, emojis, búsqueda web, historial de portapapeles |
+| **Deferred** (`IDeferredSearchSource`) | Acceso a disco/red, asíncrono, se lanza tras 250ms de debounce | Ficheros del usuario, diccionario                 |
 
 Cada fuente produce un **snapshot completo** (los mejores N resultados ordenados), no ítems individuales. `GlobalSearch`
 mantiene un slot por fuente deferred y mezcla los snapshots en cada actualización.
@@ -159,7 +159,7 @@ las fuentes producen y la UI consume.
   interna (ej: grid de emojis). Si el resultado no consume la tecla, la ventana aplica la navegación estándar de lista.
 - **Atajo decorativo** (`Shortcut`): texto para mostrar un atajo en la UI. No genera lógica de teclado.
 
-**Grid de emojis** — caso especial: un resultado que contiene una cuadrícula de 8 columnas. La navegación horizontal
+**Grid de emojis** - caso especial: un resultado que contiene una cuadrícula de 8 columnas. La navegación horizontal
 wrappea (del último emoji salta al primero). La navegación vertical devuelve el control a la ventana cuando llega al
 borde, permitiendo al usuario salir del grid con las flechas.
 
@@ -181,7 +181,7 @@ borde, permitiendo al usuario salir del grid con las flechas.
 
 | Operación       | macOS                                                    | Windows                            | Linux                              |
 |-----------------|----------------------------------------------------------|------------------------------------|------------------------------------|
-| Arranque        | `NSApplicationActivationPolicyAccessory` (sin Dock icon) | —                                  | —                                  |
+| Arranque        | `NSApplicationActivationPolicyAccessory` (sin Dock icon) | -                                  | -                                  |
 | Captura de foco | Captura la app en primer plano                           | Captura la ventana en primer plano | Captura la ventana en primer plano |
 | Paste simulado  | `CGEvent` (Cmd+V)                                        | `keybd_event` (Ctrl+V)             | No implementado                    |
 | Atajo de cierre | Cmd+W                                                    | Ctrl+F4                            | Ctrl+W                             |
@@ -191,7 +191,7 @@ borde, permitiendo al usuario salir del grid con las flechas.
 
 ### Portapapeles: bridge Core → UI
 
-`Yottacast.Core` no puede depender de Avalonia, pero necesita leer y copiar el portapapeles. Se resuelve con callbacks: al arrancar, la capa UI inyecta dos funciones — una para escritura y otra para lectura — que encapsulan el acceso a Avalonia con el marshal al UI thread. Core llama `clipboardService.CopyText(text)` para copiar y `clipboardService.ReadTextAsync()` para leer.
+`Yottacast.Core` no puede depender de Avalonia, pero necesita leer y copiar el portapapeles. Se resuelve con callbacks: al arrancar, la capa UI inyecta dos funciones - una para escritura y otra para lectura - que encapsulan el acceso a Avalonia con el marshal al UI thread. Core llama `clipboardService.CopyText(text)` para copiar y `clipboardService.ReadTextAsync()` para leer.
 
 La lectura del portapapeles se usa en `ClipboardSearch` (via `MainWindow.HandleWindowShownAsync`) para detectar URLs o rutas locales al abrir la ventana.
 
@@ -221,15 +221,19 @@ usan `ILogger<T>` estándar de Microsoft, desacoplando la implementación.
 Todos los servicios se registran en `App.axaml.cs` → `BuildServices()`. La lista canónica está en el código; aquí se
 documenta la intención de cada grupo:
 
-| Grupo             | Servicios                                                                                                                                     | Lifetime  | Propósito                  |
+| Grupo             | Servicios (no exhaustivo)                                                                                                                     | Lifetime  | Propósito                  |
 |-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|-----------|----------------------------|
 | Plataforma        | `PlatformProvider`, `ProcessRunner`                                                                                                           | Singleton | Abstracción de OS          |
 | Config            | `UserSettings`                                                                                                                                | Singleton | Configuración persistente  |
-| Búsqueda instant  | `ApplicationSearch`, `CalculatorSearch`, `EmojiSearch`, `WebSearchSource`, `SystemSettingsSearch` (macOS)                                      | Singleton | Fuentes rápidas en memoria |
-| Búsqueda deferred | `UserDocumentSearch`, `DictionarySource`                                                                                                      | Singleton | Fuentes lentas (disco/red) |
+| Búsqueda instant  | `ApplicationSearch`, `CalculatorSearch`, `EmojiSearch`, `WebSearchSource`, `LocalPathSearch`, `UrlSearch`, `DateSearch`, `ClipboardHistorySearch`, `SystemSettingsSearch` (macOS) | Singleton | Fuentes rápidas en memoria |
+| Búsqueda deferred | `UserDocumentSearch`, `DictionarySource`, `RandomSearch`                                                                                      | Singleton | Fuentes lentas (disco/red) |
+| Empty-state       | `NewlyInstalledAppsSource`, `ClipboardSearch` (`IEmptyStateSource`)                                                                           | Singleton | Resultados con query vacía  |
 | Orquestación      | `GlobalSearch`                                                                                                                                | Singleton | Agrega y mezcla fuentes    |
-| Cache de iconos   | `AppIconCache`, `FileIconCache`                                                                                                               | Singleton | Cache dos niveles (mem+disco) |
-| Soporte           | `UpdateChecker`, `BrowserDiscovery`, `TerminalDiscovery`, `FileSearch`, `ClipboardService`, `MathJsEngineProvider`, `ExchangeRateService`, `EmojiDataLoader`, `EmojiUsageStore`, `PluginService`, `HistoryService`, `ThemeService`, `HttpClient` | Singleton | Servicios auxiliares       |
+| Cache de iconos   | `AppIconCache`, `FileIconCache`, `FaviconCache`                                                                                               | Singleton | Cache dos niveles (mem+disco) |
+| Persistencia      | `HistoryService`, `LaunchHistory`, `ClipboardHistoryStore`, `EmojiUsageStore`                                                                 | Singleton | Estado e historiales en disco |
+| Soporte           | `UpdateChecker`, `BrowserDiscovery`, `TerminalDiscovery`, `FileSearch`, `FileEditorService`, `ClipboardService`, `MathJsEngineProvider`, `NerdamerEngine`, `ExchangeRateService`, `EmojiDataLoader`, `PluginService`, `ThemeService`, `HttpClient` | Singleton | Servicios auxiliares       |
 | ViewModels        | `MainWindowViewModel`, `SettingsWindowViewModel`                                                                                              | Transient | Estado de UI por ventana   |
+
+La lista canónica y completa vive en el código; esta tabla solo documenta los grupos y su intención.
 
 > **Verificar en:** `App.axaml.cs` → `BuildServices()`.

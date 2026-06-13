@@ -16,10 +16,10 @@ Yottacast puede buscar definiciones de palabras en un diccionario online multili
 
 | Modo | Cuando aparece | Score | Ejemplo |
 |---|---|---|---|
-| `PrefixOnly` (default) | Solo si la query empieza por `"{prefijo} "` (prefijo + espacio) | 3.5 | Escribir "define hello" busca "hello" |
-| `ShowAlways` | Siempre (query no vacia, sin modo emoji) | 2.5 | Escribir "hello" busca "hello" |
+| `PrefixOnly` (default) | Solo si la query empieza por `"{prefijo} "` (prefijo + espacio) | 3.7 | Escribir "define hello" busca "hello" |
+| `ShowAlways` | Siempre (query no vacia, sin modo emoji) | 0.3 | Escribir "hello" busca "hello" |
 
-En modo `PrefixOnly` el score es 3.5 (intent explicito). En modo `ShowAlways` el score es 2.5, inferior al de web search (3.0), para que las definiciones no dominen sobre los resultados de busqueda web.
+En modo `PrefixOnly` el score es 3.7 (intent explicito). En modo `ShowAlways` el score es 0.3, por debajo incluso del fallback de web search ShowAlways (0.4), para que las definiciones nunca dominen. Estos scores estan en `DictionarySource.SearchAsync` (ramas `DictionaryShowAlways`). Ver `docs/search-scoring.md` seccion 7.
 
 ## Presentacion del resultado
 
@@ -91,4 +91,4 @@ En la ventana de Settings, la seccion "Dictionary" permite:
 
 El icono de los resultados es un PNG embebido (`Search/Dictionary/Icons/wiktionary.png`), cargado una sola vez al inicializar la source.
 
-> **Verificar en:** `DictionarySource.cs` (Start, ConvertInBackground, SearchAsync, BuildDefsFromLocal), `LocalDictionaryDb.cs` (Lookup, Exists), `LocalDictionaryConverter.cs` (ConvertAsync), `DictionaryApi.cs` — clase `DictionaryApiClient` (LookupAsync, StripHtml, IsFormOfDefinition), `DictionaryResultViewModel.cs`, `DictionaryResultItemView.axaml`, `UserSettings.cs` (EnableDictionary, DictionaryPrefix, DictionaryShowAlways, DictionaryLanguages), `AppDefaults.cs` (DictionaryTimeoutSeconds, DictionaryDefaultPrefix, DictionaryAvailableLanguages, DictionaryDefaultLanguages, KaikkiLanguages), `AppPaths.cs` (DictionaryDir, DictionaryDb, DictionaryJsonl), `SettingsWindowViewModel.cs` (DictionaryLanguageItem, DictionaryLanguages). Tests: `LocalDictionaryTests.cs`.
+> **Verificar en:** `DictionarySource.cs` (Start, ConvertInBackground, SearchAsync, BuildDefsFromLocal), `LocalDictionaryDb.cs` (Lookup, Exists), `LocalDictionaryConverter.cs` (ConvertAsync), `DictionaryApi.cs` - clase `DictionaryApiClient` (LookupAsync, StripHtml, IsFormOfDefinition), `DictionaryResultViewModel.cs`, `DictionaryResultItemView.axaml`, `UserSettings.cs` (EnableDictionary, DictionaryPrefix, DictionaryShowAlways, DictionaryLanguages), `AppDefaults.cs` (DictionaryTimeoutSeconds, DictionaryDefaultPrefix, DictionaryAvailableLanguages, DictionaryDefaultLanguages, KaikkiLanguages), `AppPaths.cs` (DictionaryDir, DictionaryDb, DictionaryJsonl), `SettingsWindowViewModel.cs` (DictionaryLanguageItem, DictionaryLanguages). Tests: `LocalDictionaryTests.cs`.

@@ -1,4 +1,4 @@
-# Emoji Grid — Viewport Scrolling: Gotchas y Solución
+# Emoji Grid - Viewport Scrolling: Gotchas y Solución
 
 Este documento recoge los invariantes, trampas y decisiones de diseño del scroll del grid de emojis
 por secciones. El scroll funciona correctamente; este doc existe para no olvidar por qué está
@@ -96,13 +96,13 @@ Helpers para calcular posiciones section-row-aligned:
 - `AlignToSectionRow(pinnedCount, pos)`:
   `sectionStart + floor((pos - sectionStart) / Columns) * Columns`
 
-### `EnsureVisible` — reglas de scroll
+### `EnsureVisible` - reglas de scroll
 
 **UP scroll** (celda seleccionada por encima del viewport):
 ```
 newStart = AlignToSectionRow(pinnedCount, defaultIndex)
 ```
-Nunca usar `(defaultIndex / Columns) * Columns` — eso es flat-aligned y rompe secciones
+Nunca usar `(defaultIndex / Columns) * Columns` - eso es flat-aligned y rompe secciones
 que no empiezan en múltiplo de `Columns`.
 
 **DOWN scroll** (celda seleccionada por debajo del viewport):
@@ -145,10 +145,10 @@ que no empiezan en múltiplo de `Columns`.
 - `EnsureVisible` usa section-row-aligned (UP y DOWN) ✓
 
 > **Verificar en:**
-> - `Yottacast.Core/ViewModels/EmojiGridResultViewModel.cs` — `EnsureVisible`,
+> - `Yottacast.Core/ViewModels/EmojiGridResultViewModel.cs` - `EnsureVisible`,
 >   `AlignToSectionRow`, `SectionStartOf`, `SectionEndOf`, `ComputeVisibleDefaultCount`,
 >   `GroupIntoSections`
-> - `Yottacast.Core/ViewModels/EmojiCellViewModel.cs` — `IsPlaceholder`, `Placeholder`
-> - `Yottacast/Views/MainWindow.axaml` — estilo `Border.emoji-placeholder`
-> - `Yottacast/Views/Results/EmojiGridResultView.axaml` — binding `Classes.emoji-placeholder`
-> - `Yottacast.Core.Tests/Search/EmojiSearchTests.cs` — tests de viewport y padding
+> - `Yottacast.Core/ViewModels/EmojiCellViewModel.cs` - `IsPlaceholder`, `Placeholder`
+> - `Yottacast/Views/MainWindow.axaml` - estilo `Border.emoji-placeholder`
+> - `Yottacast/Views/Results/EmojiGridResultView.axaml` - binding `Classes.emoji-placeholder`
+> - `Yottacast.Core.Tests/Search/EmojiSearchTests.cs` - tests de viewport y padding

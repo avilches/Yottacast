@@ -35,9 +35,11 @@ Los temas solo afectan a la **ventana principal de busqueda** (MainWindow). La v
 1. `SettingsWindow.RequestedThemeVariant` se fija en el constructor según `PlatformSettings.GetColorValues().ThemeVariant`, desacoplándose del `Application.RequestedThemeVariant` que cambia ThemeService.
 2. `Window.Resources` de SettingsWindow define sus propios ThemeDictionaries (Light/Dark) con colores nativos macOS para todos los tokens `Theme.*` que usa, que tienen prioridad sobre los de `Application.Resources`.
 
+Algunos colores puntuales de Settings no provienen ni de los temas ni de los ThemeDictionaries: estan hardcodeados directamente en el AXAML. Por ejemplo, el rojo de captura de hotkey (`#FF3B30`) aparece literal en `SettingsWindow.axaml` (borde del campo en captura, boton de cancelar). Un cambio de ese color exige editar el AXAML, no un tema.
+
 > **Verificar en:**
-> - `SettingsWindow.axaml.cs` — constructor, detección OS y asignación de `RequestedThemeVariant`.
-> - `MacAppHandler.cs`, `LinuxAppHandler.cs`, `WindowsAppHandler.cs` — `ApplySettingsTheme()` inyecta `ThemeDictionaries` via C# (no hay bloque en AXAML).
+> - `SettingsWindow.axaml.cs` - constructor, detección OS y asignación de `RequestedThemeVariant`.
+> - `MacAppHandler.cs`, `LinuxAppHandler.cs`, `WindowsAppHandler.cs` - `ApplySettingsTheme()` inyecta `ThemeDictionaries` via C# (no hay bloque en AXAML).
 
 ---
 
@@ -77,10 +79,16 @@ Cada tema es un fichero `.json` en la carpeta `Themes/` del directorio de la apl
 | `emoji` | Columnas, filas visibles, celda, caracter, nombre, keywords |
 | `noResults` | Titulo y subtitulo cuando no hay resultados |
 | `footer` | Fondo, borde superior y texto del pie |
-| `escBadge` | Fondo, cornerRadius y texto del badge ESC |
+| `optionsMenu` | Fondo, borde, cabecera y opciones del menu contextual de resultados |
 | `updateBanner` | Fondo y texto del banner de actualizacion |
+| `preview` | Anchura del panel lateral de preview/editor |
+| `editor` | Cabecera, cuerpo y pie del panel de edicion de ficheros |
 
 Si el valor de `variant` no es `"light"`, se asume `"dark"`.
+
+**Secciones heterogeneas entre temas:** no todos los ficheros contienen todas las secciones. `editor` solo existe en `dark-default.json`; el resto de temas no lo definen y `ThemeService` cae a los valores hardcodeados de `ApplyBuiltinDefault()` para los tokens `Theme.Editor.*`. `optionsMenu`, `preview` y las demas secciones estan presentes en los cinco temas built-in. Cualquier seccion ausente se omite sin error y conserva el valor previo (ver "Comportamiento silencioso ante valores invalidos").
+
+No existe ninguna seccion `escBadge` ni tokens `Theme.Esc.*`: el indicador de actividad durante la busqueda diferida es un spinner controlado por la seccion `spinner`, no un badge tematizable.
 
 > **Verificar en:**
 > - `ThemeService.Apply()` -- lectura del JSON y asignacion de tokens.
@@ -249,14 +257,43 @@ El estilo filled (fondo tintado, borde transparente) u outline (fondo transparen
 | `footer.text.color` | `Theme.Footer.Color` |
 | `footer.text.size` | `Theme.Footer.Size` |
 
-### ESC Badge
+### Options Menu
 
 | JSON path | Recurso Avalonia |
 |---|---|
-| `escBadge.background` | `Theme.Esc.Background` |
-| `escBadge.cornerRadius` | `Theme.Esc.CornerRadius` |
-| `escBadge.text.color` | `Theme.Esc.Color` |
-| `escBadge.text.size` | `Theme.Esc.Size` |
+| `optionsMenu.background` | `Theme.Menu.Background` |
+| `optionsMenu.border.color` | `Theme.Menu.Border.Color` |
+| `optionsMenu.border.radius` | `Theme.Menu.Border.Radius` |
+| `optionsMenu.header.color` | `Theme.Menu.Header.Color` |
+| `optionsMenu.header.size` | `Theme.Menu.Header.Size` |
+| `optionsMenu.header.background` | `Theme.Menu.Header.Background` |
+| `optionsMenu.header.padding` | `Theme.Menu.Header.Padding` |
+| `optionsMenu.header.margin` | `Theme.Menu.Header.Margin` |
+| `optionsMenu.option.color` | `Theme.Menu.Option.Color` |
+| `optionsMenu.option.size` | `Theme.Menu.Option.Size` |
+| `optionsMenu.option.padding` | `Theme.Menu.Option.Padding` |
+| `optionsMenu.option.cornerRadius` | `Theme.Menu.Option.CornerRadius` |
+| `optionsMenu.optionSelected.background` | `Theme.Menu.OptionSelected.Background` |
+| `optionsMenu.optionSelected.color` | `Theme.Menu.OptionSelected.Color` |
+
+### Editor
+
+Presente solo en `dark-default.json`; el resto de temas dejan que estos tokens tomen su valor de `ApplyBuiltinDefault()`.
+
+| JSON path | Recurso Avalonia |
+|---|---|
+| `editor.header.background` | `Theme.Editor.Header.Background` |
+| `editor.header.color` | `Theme.Editor.Header.Color` |
+| `editor.header.size` | `Theme.Editor.Header.Size` |
+| `editor.header.padding` | `Theme.Editor.Header.Padding` |
+| `editor.header.margin` | `Theme.Editor.Header.Margin` |
+| `editor.header.fontFamily` | `Theme.Editor.Header.FontFamily` |
+| `editor.body.background` | `Theme.Editor.Body.Background` |
+| `editor.footer.background` | `Theme.Editor.Footer.Background` |
+| `editor.footer.border` | `Theme.Editor.Footer.Border` |
+| `editor.footer.color` | `Theme.Editor.Footer.Color` |
+| `editor.footer.size` | `Theme.Editor.Footer.Size` |
+| `editor.footer.padding` | `Theme.Editor.Footer.Padding` |
 
 ### Update Banner
 
@@ -313,7 +350,7 @@ Reglas de deduplicacion y resolucion:
 - El nombre para mostrar se extrae del campo `"name"` del JSON. Si falla el parsing, se usa el `id` como nombre.
 - Si no se encuentra ningun tema, se anade un fallback `"dark-default"` / `"Dark Default"`.
 
-Al escanear, `ThemeService` construye un diccionario `id → path` que cubre todos los temas. Todas las operaciones posteriores (aplicar, vigilar cambios) resuelven la ruta del fichero a traves de este diccionario — el nombre del fichero no interviene en ninguna operacion posterior al escaneo.
+Al escanear, `ThemeService` construye un diccionario `id → path` que cubre todos los temas. Todas las operaciones posteriores (aplicar, vigilar cambios) resuelven la ruta del fichero a traves de este diccionario - el nombre del fichero no interviene en ninguna operacion posterior al escaneo.
 
 La carpeta de temas se resuelve relativa al directorio del ejecutable (`AppContext.BaseDirectory`), no al directorio de trabajo actual.
 
@@ -355,11 +392,11 @@ El fichero debe incluir un campo `"id"` obligatorio en el nivel raiz. Sin este c
 
 ### Identificacion
 
-Los temas de usuario se identifican con el prefijo `user:` en su ID. Un fichero `theme.my-theme.json` con `"id": "my-theme"` produce el ID `"user:my-theme"`. Esto evita colisiones con temas built-in. El nombre del fichero y el valor de `id` son independientes — la ruta se resuelve siempre a traves del diccionario `_themePaths` construido al escanear.
+Los temas de usuario se identifican con el prefijo `user:` en su ID. Un fichero `theme.my-theme.json` con `"id": "my-theme"` produce el ID `"user:my-theme"`. Esto evita colisiones con temas built-in. El nombre del fichero y el valor de `id` son independientes - la ruta se resuelve siempre a traves del diccionario `_themePaths` construido al escanear.
 
 ### Formato
 
-El formato es identico al de los temas built-in (mismas secciones y tokens). No se requiere campo `"type"` — la deteccion es por nombre de archivo.
+El formato es identico al de los temas built-in (mismas secciones y tokens). No se requiere campo `"type"` - la deteccion es por nombre de archivo.
 
 ### Recarga automatica del tema activo
 

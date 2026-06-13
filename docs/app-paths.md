@@ -26,16 +26,21 @@ disco obtiene la ruta de una unica clase centralizada. Esto garantiza que:
 | Emoji cache      | Configuracion   | `emoji-cache.json`            | Cache compacta de datos de emojis                                    |
 | Emoji usage      | Configuracion   | `emoji-usage.json`            | Favoritos y contadores de uso de emojis (JSON)                       |
 | History          | Configuracion   | `history.json`                | Historial de busquedas del usuario (JSON)                            |
+| Launch history   | Configuracion   | `launch-history.json`         | Contador y ultimo uso por item lanzado (para scoring por uso, JSON)  |
+| Clipboard history| Configuracion   | `clipboard-history.json`      | Historial de portapapeles (JSON)                                    |
 | Log pattern      | Logs            | `yottacast-.log`              | Patron de Serilog para log diario                                    |
 | App icons        | Cache           | `app-icons/`                  | Iconos de aplicaciones instaladas                                    |
 | File icons       | Cache           | `file-icons/`                 | Iconos de tipo de fichero (por extension), cacheados                 |
 | Badge icons      | Cache           | `badge-icons/`                | Iconos de la app predeterminada por extension de fichero             |
 | Plugin icons     | Cache           | `plugin-icons/`               | Iconos descargados de plugins WebSearch                              |
+| Favicons         | Cache           | `favicons/`                   | Favicons descargados para resultados de URL/web                      |
 | Exchange rates   | Cache           | `exchange-rates.json`         | Cache de tasas de cambio descargadas (JSON)                          |
 | Dict JSONL       | Cache           | `dictionary/{lang}.jsonl`     | Diccionario basico descargable (kaikki, 1 linea por entrada)         |
 | Dict SQLite      | Cache           | `dictionary/{lang}.db`        | Diccionario local compilado; la app lo genera del JSONL si no existe |
 | IPC socket       | Cache           | `core.sock`                   | Unix domain socket del daemon gRPC (creado al arrancar, borrado al salir) |
 | IPC PID file     | Cache           | `core.pid`                    | PID del daemon en ejecucion; evita instancias duplicadas |
+
+Ademas, `AppPaths` define rutas de solo lectura del sistema en macOS para la fuente System Settings: `SystemSettingsAppPath` (`/System/Applications/System Settings.app`), `SystemPreferencePanesDir` (`/Library/PreferencePanes`) y `UserPreferencePanesDir` (`~/Library/PreferencePanes`). No son ficheros que la app escriba, sino ubicaciones del SO que consulta.
 
 ### Invariantes
 
@@ -44,6 +49,10 @@ disco obtiene la ruta de una unica clase centralizada. Esto garantiza que:
   correcto y no viola esta regla.)
 - Los directorios se crean bajo demanda: cada consumidor llama a `Directory.CreateDirectory` antes de escribir, por lo
   que la app no falla si el directorio no existe aun.
+- `LogDir` es la unica propiedad de `AppPaths` que usa una comprobacion de SO (`OperatingSystem.IsMacOS()`) para
+  decidir entre `~/Library/Logs/Yottacast` (macOS) y `%LOCALAPPDATA%/Yottacast/Logs` (resto). Es una excepcion
+  consciente a la regla de no consultar el SO fuera de `PlatformProvider`: se acepta aqui porque `AppPaths` es estatica
+  y se inicializa antes de que exista el contenedor DI, de modo que no puede delegar en `PlatformProvider`.
 
 > **Verificar en:** `Yottacast.Core/AppPaths.cs` (definiciones), consumidores: `App.axaml.cs`, `AppIconCache.cs`,
 `FileIconCache.cs`, `UserDocumentSearch.cs`, `UserSettings.cs`, `EmojiDataLoader.cs`, `ExchangeRateService.cs`,
@@ -80,6 +89,11 @@ definen en una unica clase de constantes. Esto permite:
 | Exchange rates    | Intervalo por defecto   | 4 h           | Frecuencia de refresco de tasas de cambio (configurable)     |
 | Exchange rates    | Timeout HTTP            | 10 s          | Timeout de cada llamada a la API de tasas                    |
 | Historial         | Max entradas            | 100           | Numero maximo de entradas en el historial de busqueda        |
+| Clipboard         | Max entradas            | 200           | Numero maximo de entradas en el historial de portapapeles    |
+| Clipboard         | Max dias                | 30            | Antiguedad maxima de una entrada de portapapeles             |
+| Clipboard         | Half-life (dias)        | 30            | Vida media del decay score de uso de portapapeles            |
+| Clipboard         | Debounce de guardado    | 1000 ms       | Espera antes de persistir el historial a disco               |
+| Clipboard         | Intervalo de polling    | 500 ms        | Frecuencia de muestreo del monitor de portapapeles           |
 | Ventana           | Decay timer             | 60 s          | Duracion por defecto antes de limpiar el texto al ocultar    |
 
 ### Invariantes

@@ -88,6 +88,7 @@ con duracion variable.
 | Electromagnetismo | `cd` (candela) | Sin par de conversion cotidiano |
 | No existentes en esta build | `Bq` (becquerel), `Sv` (sievert), `Gy` (gray), `lm` (lumen), `lx` (lux) | No estan precomputados; bloquear da un error claro en vez de comportamiento inesperado |
 | Tiempo variable | `month`, `months` | Duracion variable (28-31 dias) produce conversiones confusas |
+| Funcion math.js | `gcd` | Colisiona con la funcion `gcd()` de math.js |
 
 **Invariante:** El usuario nunca ve un resultado para una unidad bloqueada. Si escribe `10 BTU` o `5 months`, el sistema no genera ningun item de resultado.
 

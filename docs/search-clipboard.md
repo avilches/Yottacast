@@ -17,7 +17,7 @@ El monitor solo captura texto plano (`NSStringPboardType` en macOS, `CF_UNICODET
 
 Las implementaciones concretas son `MacClipboardMonitor` y `WindowsClipboardMonitor` en `Yottacast/Services/`. Los selectores Objective-C se cachean como `static readonly` para evitar llamadas repetidas a `sel_registerName` en cada tick.
 
-> **Verificar en:** `IClipboardMonitor` — `Yottacast.Core/Services/IClipboardMonitor.cs`. `MacClipboardMonitor` — `Yottacast/Services/MacClipboardMonitor.cs`. `WindowsClipboardMonitor` — `Yottacast/Services/WindowsClipboardMonitor.cs`. Constante de intervalo en `AppDefaults.ClipboardMonitorIntervalMs`.
+> **Verificar en:** `IClipboardMonitor` - `Yottacast.Core/Services/IClipboardMonitor.cs`. `MacClipboardMonitor` - `Yottacast/Services/MacClipboardMonitor.cs`. `WindowsClipboardMonitor` - `Yottacast/Services/WindowsClipboardMonitor.cs`. Constante de intervalo en `AppDefaults.ClipboardMonitorIntervalMs`.
 
 ---
 
@@ -40,6 +40,10 @@ La ruta está centralizada en `AppPaths.ClipboardHistoryFile`.
 - Entradas con `CopiedAt` anterior al corte (`now - MaxDays`) se eliminan.
 - Si la lista supera `MaxEntries`, se eliminan las entradas sobrantes del final (las más antiguas).
 
+`MaxEntries` y `MaxDays` son propiedades públicas mutables del store, inicializadas a `AppDefaults.ClipboardHistoryMaxEntries` (200) y `AppDefaults.ClipboardHistoryMaxDays` (30).
+
+> **Bug conocido** - Los valores de `UserSettings.ClipboardHistoryMaxEntries` / `ClipboardHistoryMaxDays` NO se propagan nunca al store. El `ClipboardHistoryStore` se construye en `App.axaml.cs` (`AddSingleton<ClipboardHistoryStore>`) solo con `filePath` y `logger`, dejando `MaxEntries`/`MaxDays` en sus defaults de `AppDefaults`. Cuando el usuario cambia esos valores en Settings (`SettingsWindowViewModel.OnClipboardHistoryMaxEntriesChanged` / `OnClipboardHistoryMaxDaysChanged`), se escriben en `UserSettings` y se persisten a disco, pero `store.MaxEntries` / `store.MaxDays` no se actualizan ni al arranque ni en caliente. En la practica el historial siempre se limita a 200 entradas / 30 dias, sin importar la configuracion del usuario.
+
 **Persistencia:**
 - `Add` y `RecordUsage` usan guardado con debounce de 1 segundo (`AppDefaults.ClipboardHistoryDebounceMs`).
 - `Remove` llama `FlushAsync()` directamente, sin debounce, para garantizar que el borrado sobrevive a un crash.
@@ -52,7 +56,7 @@ La ruta está centralizada en `AppPaths.ClipboardHistoryFile`.
 - El store nunca bloquea el arranque ni la búsqueda.
 - `GetAll()` devuelve una copia inmutable de la lista (thread-safe via `Lock`).
 
-> **Verificar en:** `ClipboardHistoryStore` — `Yottacast.Core/Search/Clipboard/ClipboardHistoryStore.cs`. Constantes en `AppDefaults.ClipboardHistoryMaxEntries`, `ClipboardHistoryMaxDays`, `ClipboardHistoryDebounceMs`. Ruta en `AppPaths.ClipboardHistoryFile`.
+> **Verificar en:** `ClipboardHistoryStore` - `Yottacast.Core/Search/Clipboard/ClipboardHistoryStore.cs`. Constantes en `AppDefaults.ClipboardHistoryMaxEntries`, `ClipboardHistoryMaxDays`, `ClipboardHistoryDebounceMs`. Ruta en `AppPaths.ClipboardHistoryFile`.
 
 ---
 
@@ -87,7 +91,7 @@ usageBonus = min(log(usageCount + 1) × e^(-ageDays / halfLifeDays), maxBonus)
 - `Subtitle`: tiempo relativo desde la copia ("just now", "5 min ago", "3h ago", "yesterday", "5 days ago", o fecha corta).
 - `Category`: `"Clipboard"`.
 
-> **Verificar en:** `ClipboardHistorySearch.Search()`, `ComputeScore()`, `BuildResult()` — `Yottacast.Core/Search/Clipboard/ClipboardHistorySearch.cs`.
+> **Verificar en:** `ClipboardHistorySearch.Search()`, `ComputeScore()`, `BuildResult()` - `Yottacast.Core/Search/Clipboard/ClipboardHistorySearch.cs`.
 
 ---
 
@@ -130,11 +134,13 @@ La sección Clipboard History en Settings expone:
 |---|---|---|
 | `ClipboardSearchVisibility` | `Disabled` | Visibilidad: `Disabled` (Off), `Always` (modo All), `ModeOnly` (solo modo Clipboard) |
 | `ClipboardHotkey` | `null` | Hotkey dedicada para activar el modo Clipboard; `null` = sin hotkey dedicada |
-| `ClipboardHistoryMaxEntries` | `200` | Número máximo de entradas a conservar |
-| `ClipboardHistoryMaxDays` | `30` | Días máximos que se conserva una entrada |
+| `ClipboardHistoryMaxEntries` | `200` | Número máximo de entradas a conservar (ver bug abajo) |
+| `ClipboardHistoryMaxDays` | `30` | Días máximos que se conserva una entrada (ver bug abajo) |
 
 El monitor de portapapeles solo captura cuando `ClipboardSearchVisibility != Disabled`. Con `Disabled`, el monitor se para y no se almacena nada nuevo.
 
-**Nota:** cambiar la hotkey dedicada tiene efecto inmediato — el handler lee `settings.ParsedClipboardHotkey` en cada evento del hook global, sin necesidad de reiniciar.
+> **Bug conocido** - `ClipboardHistoryMaxEntries` y `ClipboardHistoryMaxDays` se muestran y se editan en Settings y se persisten en `UserSettings`, pero no se aplican al `ClipboardHistoryStore`: nunca se copian a `store.MaxEntries` / `store.MaxDays`. El store siempre usa los defaults de `AppDefaults` (200 entradas, 30 dias). Ver detalle en la seccion 2.
 
-> **Verificar en:** `UserSettings` — `Yottacast.Core/Services/UserSettings.cs`. `SettingsWindowViewModel` (propiedades `ClipboardSearchVisibility`, `ClipboardHistoryMaxEntries`, `ClipboardHistoryMaxDays`, estado de captura de hotkey) — `Yottacast/ViewModels/SettingsWindowViewModel.cs`. Panel Clipboard History — `Yottacast/Views/SettingsWindow.axaml`.
+**Nota:** cambiar la hotkey dedicada tiene efecto inmediato - el handler lee `settings.ParsedClipboardHotkey` en cada evento del hook global, sin necesidad de reiniciar.
+
+> **Verificar en:** `UserSettings` - `Yottacast.Core/Services/UserSettings.cs`. `SettingsWindowViewModel` (propiedades `ClipboardSearchVisibility`, `ClipboardHistoryMaxEntries`, `ClipboardHistoryMaxDays`, estado de captura de hotkey) - `Yottacast/ViewModels/SettingsWindowViewModel.cs`. Panel Clipboard History - `Yottacast/Views/SettingsWindow.axaml`.

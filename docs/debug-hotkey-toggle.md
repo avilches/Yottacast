@@ -3,10 +3,10 @@
 ## Estado actual (2026-04-21)
 
 Fixes implementados:
-1. `_isToggling` + `try/finally` — evita que el flag quede bloqueado si hay excepción
-2. `_hotkeyDown` — requiere soltar la tecla antes de aceptar el siguiente toggle (guard simple: `if (_hotkeyDown) return;`)
-3. `IsSelf` por PID — evita capturar Yottacast como `_previousApp` cuando macOS no ha procesado la activación anterior
-4. `activateWithOptions:` eliminado de `ShowWindow` — solo se llama en `OnHide`; hacerlo en Show causaba que macOS activara la app anterior antes de `makeKeyWindow`, haciendo que `makeKeyWindow` fallara silenciosamente y la ventana dejara de recibir teclas
+1. `_isToggling` + `try/finally` - evita que el flag quede bloqueado si hay excepción
+2. `_hotkeyDown` - requiere soltar la tecla antes de aceptar el siguiente toggle (guard simple: `if (_hotkeyDown) return;`)
+3. `IsSelf` por PID - evita capturar Yottacast como `_previousApp` cuando macOS no ha procesado la activación anterior
+4. `activateWithOptions:` eliminado de `ShowWindow` - solo se llama en `OnHide`; hacerlo en Show causaba que macOS activara la app anterior antes de `makeKeyWindow`, haciendo que `makeKeyWindow` fallara silenciosamente y la ventana dejara de recibir teclas
 
 ---
 
@@ -21,34 +21,19 @@ UI thread   → Hide()/ShowWindow() → _isToggling=false
 
 ### Por qué se atasca
 
-`_isToggling` se queda a `true` de forma permanente. Esto ocurre si el lambda del `InvokeAsync` lanza una excepción antes de llegar a `_isToggling = false`. `InvokeAsync` sin `await` swallows la excepción silenciosamente — el flag nunca se limpia.
+El riesgo original: `_isToggling` se queda a `true` de forma permanente si el lambda del `InvokeAsync` lanza una excepción antes de llegar a `_isToggling = false`. `InvokeAsync` sin `await` swallows la excepción silenciosamente - el flag nunca se limpia.
 
-**Sospechoso principal**: `ShowWindow()` en `MacAppHandler` hace varias llamadas a ObjC (`GetFrontmostApp`, `activateWithOptions:`, `makeKeyWindow`) y Avalonia (`window.Show()`). Bajo key-repeat rápido, macOS puede estar en un estado transitorio donde alguna de estas falla o produce un comportamiento inesperado que resulta en excepción en la capa de Avalonia.
+**Sospechoso principal**: `ShowWindow()` en `MacAppHandler` hace varias llamadas a ObjC (`GetFrontmostApp`, `makeKeyWindow`) y Avalonia (`window.Show()`). Bajo key-repeat rápido, macOS puede estar en un estado transitorio donde alguna de estas falla o produce un comportamiento inesperado que resulta en excepción en la capa de Avalonia.
 
-**Fix pendiente**: envolver el cuerpo del lambda en `try/finally` para garantizar que `_isToggling = false` siempre se ejecute:
+**Fix aplicado**: el cuerpo del lambda de `InvokeAsync` esta envuelto en `try/finally`, garantizando que `_isToggling = false` se ejecute siempre. Ademas, dentro del `InvokeAsync` se distingue ventana enfocada / Settings enfocada / sin foco para decidir entre `Hide()` simple, `OnHide()` (restaurar app previa) o activar la SettingsWindow.
 
-```csharp
-Dispatcher.UIThread.InvokeAsync(() => {
-    try {
-        var window = desktop.MainWindow;
-        if (window is null) return;
-        if (window.IsVisible) {
-            window.Hide();
-            AppHandler.Instance.OnHide();
-        } else {
-            AppHandler.Instance.ShowWindow(window);
-        }
-    } finally {
-        _isToggling = false;
-    }
-});
-```
+> **Verificar en:** `App.axaml.cs` -- `RegisterGlobalHotKey`, handler `KeyPressed` del `_globalHook` (bloque `try { ... } finally { _isToggling = false; }`), handler `KeyReleased` (limpia `_hotkeyDown`).
 
 ---
 
 ## Cambios implementados (todos en main)
 
-### 1. `_isToggling` guard — `App.axaml.cs`
+### 1. `_isToggling` guard - `App.axaml.cs`
 
 Reemplazó un debounce de 300ms por un flag que bloquea nuevos toggles mientras el anterior está en curso. El hook thread lee/escribe el flag (`volatile bool`), el UI thread lo limpia al terminar.
 
@@ -59,7 +44,7 @@ private volatile bool _isToggling = false;
 
 **Por qué no debounce**: el debounce ignora pulsaciones arbitrariamente durante 300ms. El flag solo bloquea mientras la operación está en curso (más correcto).
 
-### 2. `_positionDirty` — `MainWindow.axaml.cs`
+### 2. `_positionDirty` - `MainWindow.axaml.cs`
 
 `SavePosition()` (llamada en cada hide) solo escribe a disco si el usuario arrastró la ventana. Sin drag → cero I/O en disco en cada toggle.
 
@@ -69,7 +54,7 @@ private volatile bool _isToggling = false;
 
 **Motivación**: el fichero de settings puede estar en iCloud. Escribirlo en cada hide (potencialmente 30 veces/segundo con key-repeat) saturaba la sincronización.
 
-### 3. `activateWithOptions:` solo en `OnHide` — `MacAppHandler.cs`
+### 3. `activateWithOptions:` solo en `OnHide` - `MacAppHandler.cs`
 
 `ShowWindow` NO llama a `activateWithOptions:`. Solo captura el frontmost app y llama a `makeKeyWindow`. La restauración de foco ocurre únicamente en `OnHide`.
 
@@ -77,9 +62,9 @@ private volatile bool _isToggling = false;
 
 **Trade-off aceptado**: los semáforos de la app anterior pueden ponerse grises mientras Yottacast está abierto (Avalonia llama `activateIgnoringOtherApps:YES` en `window.Show()`). Es preferible a la ventana sin foco de teclado.
 
-### 4. `IsSelf` con PID — `MacAppHandler.cs`
+### 4. `IsSelf` con PID - `MacAppHandler.cs`
 
-En `ShowWindow`, antes de capturar `_previousApp`, se comprueba si la app frontmost es Yottacast mismo. Si lo es, no se sobreescribe `_previousApp` — se mantiene el valor anterior (la app real del usuario).
+En `ShowWindow`, antes de capturar `_previousApp`, se comprueba si la app frontmost es Yottacast mismo. Si lo es, no se sobreescribe `_previousApp` - se mantiene el valor anterior (la app real del usuario).
 
 ```csharp
 var frontmost = GetFrontmostApp();
@@ -98,7 +83,7 @@ private static bool IsSelf(IntPtr app) {
 }
 ```
 
-**Por qué PID y no `isEqual:`**: `isEqual:` retorna `BOOL` (1 byte en Objective-C). En ARM64, `objc_msgSend` con retorno `bool` en P/Invoke tiene problemas de marshaling — puede devolver garbage. El PID retorna `int` (pid_t = 32 bits), que se mapea limpiamente a `int` en C#.
+**Por qué PID y no `isEqual:`**: `isEqual:` retorna `BOOL` (1 byte en Objective-C). En ARM64, `objc_msgSend` con retorno `bool` en P/Invoke tiene problemas de marshaling - puede devolver garbage. El PID retorna `int` (pid_t = 32 bits), que se mapea limpiamente a `int` en C#.
 
 **Motivación**: al hacer toggle rápido, `activateWithOptions:` de `OnHide()` es asíncrono en el window server de macOS. `GetFrontmostApp()` puede devolvernos Yottacast como app frontmost antes de que macOS procese la activación. Si capturamos Yottacast como `_previousApp`, el siguiente `OnHide()` activa Yottacast en vez de la app real, dejando los semáforos grises.
 
@@ -106,7 +91,7 @@ private static bool IsSelf(IntPtr app) {
 
 ## Lo que NO hay que tocar
 
-- `ApplyPositionOnShow()` se llama en cada show. No hay I/O de disco — solo lee `_settings.WindowX/Y` de memoria. Optimizarlo para saltárselo cuando "no cambia la pantalla" rompió el toggle rápido (causa desconocida, posiblemente interacción con Avalonia internals). No merece la pena.
+- `ApplyPositionOnShow()` se llama en cada show. No hay I/O de disco - solo lee `_settings.WindowX/Y` de memoria. Optimizarlo para saltárselo cuando "no cambia la pantalla" rompió el toggle rápido (causa desconocida, posiblemente interacción con Avalonia internals). No merece la pena.
 - `UserSettings.Save()` es síncrono. El único caller problemático era `SavePosition()`, que ya está protegido con `_positionDirty`.
 
 ---

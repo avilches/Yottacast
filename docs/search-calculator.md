@@ -32,14 +32,16 @@ una conversion valida, aparece un resultado sin necesidad de pulsar Enter ni sel
   ejemplo, escribir solo `42` no produce resultado).
 - La calculadora devuelve **como maximo un resultado** por query. El parametro `limit` del contrato de busqueda se
   ignora.
-- El resultado de la calculadora siempre tiene prioridad alta (score 4), por lo que aparece cerca de la cima de las
-  sugerencias.
+- El resultado numerico, de conversion y de ecuacion tiene prioridad alta (score `7`), por lo que aparece cerca de la
+  cima de las sugerencias. El resultado de algebra simbolica es la excepcion: usa `AppDefaults.AlgebraResultScore`
+  (4.01). Ver seccion 3b.
 - Los errores de unidades incompatibles (`1 kg to m`) y los avisos de ambiguedad de unidades (`Maybe you meant...`) se
   muestran como hint informativo debajo del campo de busqueda via `LastHint`.
   Los errores de simbolos desconocidos se descartan silenciosamente para no generar ruido con texto plano (
   `safari to km`).
-- La activacion (Enter) **copia al portapapeles y pega en la app anterior** (`PasteAfterActivate = true`): el resultado
-  aritmetico para calculos, o la celda seleccionada para conversiones. Cmd+C copia sin cerrar la ventana.
+- La activacion (Enter) **copia al portapapeles y pega en la app anterior**: la accion por defecto del item lleva
+  `PasteAfterClose = true` (campo de `ResultAction`). Copia el resultado aritmetico para calculos, o la celda
+  seleccionada para conversiones. Cmd+C copia sin cerrar la ventana.
 - El icono del resultado distingue el tipo: calculadora para aritmetica, conversor para unidades/divisas.
 - La calculadora solo responde si `EnableCalculator` está activo. Controla aritmética, ecuaciones, conversiones de unidades y divisas. El toggle aparece en Settings → Calculator.
 
@@ -352,11 +354,21 @@ Los resultados numericos se formatean con precision adaptativa:
 | Valor absoluto >= 1 | 2 decimales (configurable) | `6.213711922 mi` -> `6.21 mi`         |
 | Valor absoluto < 1  | 3 cifras significativas    | `0.001450377377 psi` -> `0.00145 psi` |
 
-El numero de decimales para valores >= 1 se puede cambiar en Settings → Calculator (rango 0-6). La precision base es de 10 cifras significativas (parametro `BasePrecision` de `FormatConfig`). El cambio se aplica en caliente sin reiniciar la app.
+El numero de decimales para valores >= 1 se puede cambiar en Settings → Calculator (rango 0-6) y se aplica en caliente.
+La precision base (parametro `BasePrecision` de `FormatConfig`, 10 cifras significativas por defecto) y las cifras
+significativas para valores < 1 (`SmallNumberSigFigs`, 3 por defecto) son parametros de `FormatConfig` que la UI no
+expone: `App.axaml.cs > BuildFormatConfig` solo rellena `LargeNumberDecimals` (de `CalculatorDecimalPlaces`) y el par de
+divisas, dejando el resto en sus defaults.
+
+> **Estado: incompleto** - el hot-reload de formato (`MathJsEngine.UpdateConfig`) solo reaplica `_FMT_LARGE_DECIMALS` y
+> `_defaultCurrencyPair`. Ignora `SmallNumberSigFigs` y `BasePrecision`: estos solo se aplican al construir el motor
+> (`MathJsEngine` constructor, lineas que hacen `SetValue("_FMT_SMALL_SIG_FIGS"/"_FMT_BASE_PRECISION")`). Cambiarlos en
+> caliente requeriria recrear el motor (`MathJsEngineProvider.RecreateAsync`), no `UpdateConfig`.
 
 Los resultados algebraicos (nerdamer) también respetan los decimales configurados mediante `roundLongDecimals()` en `nerdamer-helpers.js`.
 
-> **Verificar en:** `smartFormat()` en `mathjs-helpers.js`; `FormatConfig` en `MathJsEngine.cs`
+> **Verificar en:** `smartFormat()` en `mathjs-helpers.js`; `FormatConfig` y `UpdateConfig()` en `MathJsEngine.cs`;
+> `BuildFormatConfig` en `App.axaml.cs`
 
 ---
 
