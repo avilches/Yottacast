@@ -135,13 +135,17 @@ internal sealed class MacAppHandler : AppHandler {
     public override async Task SimulatePasteAsync() {
         await Task.Delay(AppDefaults.PasteDelayMs);
         var vDown = CGEventCreateKeyboardEvent(IntPtr.Zero, 0x09, true);
-        CGEventSetFlags(vDown, 0x100000);
+        if (vDown != IntPtr.Zero) {
+            CGEventSetFlags(vDown, 0x100000);
+            CGEventPost(0, vDown);
+            CFRelease(vDown);
+        }
         var vUp = CGEventCreateKeyboardEvent(IntPtr.Zero, 0x09, false);
-        CGEventSetFlags(vUp, 0x100000);
-        CGEventPost(0, vDown);
-        CGEventPost(0, vUp);
-        CFRelease(vDown);
-        CFRelease(vUp);
+        if (vUp != IntPtr.Zero) {
+            CGEventSetFlags(vUp, 0x100000);
+            CGEventPost(0, vUp);
+            CFRelease(vUp);
+        }
     }
 
     public override void DisableMinimizeButton(Window window) {

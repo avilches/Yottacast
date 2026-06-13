@@ -149,4 +149,53 @@ public class LaunchHistoryTests : IDisposable {
         await h.LoadAsync();
         Assert.Equal(0, h.BonusFor(ItemWith("/Applications/Safari.app")));
     }
+
+    // ── Concurrency ───────────────────────────────────────────────────────────
+
+    [Fact]
+    public void ConcurrentRecordAndScoring_DoesNotThrow() {
+        // The scoring thread reads _data (BonusFor) in a tight loop while many threads call
+        // Record concurrently. A plain Dictionary would throw or corrupt under this access
+        // pattern; ConcurrentDictionary must let it run cleanly with no exception.
+        var now = DateTime.UtcNow;
+        var h = Build(clock: () => now);
+
+        var paths = Enumerable.Range(0, 50)
+            .Select(i => $"/Applications/App{i}.app")
+            .ToArray();
+        var items = paths.Select(ItemWith).ToArray();
+
+        Exception? failure = null;
+        using var stop = new CancellationTokenSource();
+
+        // Reader thread: continuously score every item until the writers finish.
+        var reader = Task.Run(() => {
+            try {
+                while (!stop.IsCancellationRequested) {
+                    foreach (var item in items) {
+                        _ = h.BonusFor(item);
+                    }
+                }
+            } catch (Exception ex) {
+                failure = ex;
+            }
+        });
+
+        // Writers: hammer Record from many iterations across the same hot keys.
+        try {
+            Parallel.For(0, 500, i => {
+                h.Record(paths[i % paths.Length]);
+            });
+        } catch (Exception ex) {
+            failure = ex;
+        } finally {
+            stop.Cancel();
+        }
+
+        reader.Wait();
+
+        Assert.Null(failure);
+        // Sanity: scoring still works after the storm.
+        Assert.True(h.BonusFor(items[0]) > 0);
+    }
 }

@@ -42,6 +42,7 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
     private FileSystemWatcher? _activeThemeWatcher;
     private CancellationTokenSource? _debounceCts;
     private string? _activeThemeId;
+    private PluginService? _pluginService;
 
     // Maps theme id → actual file path on disk (populated by AvailableThemes, covers all themes)
     private readonly Dictionary<string, string> _themePaths = new();
@@ -119,11 +120,14 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
     /// the active theme file watcher for hot-reload.
     /// </summary>
     public void StartWatching(PluginService pluginService) {
-        pluginService.PluginsChanged += () => ThemesChanged?.Invoke();
+        _pluginService = pluginService;
+        pluginService.PluginsChanged += OnPluginsChanged;
 
         if (_activeThemeId != null)
             WatchActiveTheme(_activeThemeId);
     }
+
+    private void OnPluginsChanged() => ThemesChanged?.Invoke();
 
     private void WatchActiveTheme(string themeId) {
         _activeThemeWatcher?.Dispose();
@@ -140,9 +144,16 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
         void OnChanged(object? _, FileSystemEventArgs __) {
             var cts = new CancellationTokenSource();
             var prevCts = Interlocked.Exchange(ref _debounceCts, cts);
-            prevCts?.Cancel();
+            if (prevCts != null) {
+                try {
+                    prevCts.Cancel();
+                } catch (ObjectDisposedException) {
+                    // Already disposed by a concurrent Dispose(); nothing to cancel.
+                }
+                prevCts.Dispose();
+            }
             var ct = cts.Token;
-            Task.Delay(300, ct).ContinueWith(_ => {
+            Task.Delay(AppDefaults.PluginReloadDebounceMs, ct).ContinueWith(_ => {
                 if (!ct.IsCancellationRequested)
                     Dispatcher.UIThread.Post(() => Apply(themeId));
             }, ct);
@@ -736,6 +747,10 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
     }
 
     public void Dispose() {
+        if (_pluginService != null) {
+            _pluginService.PluginsChanged -= OnPluginsChanged;
+            _pluginService = null;
+        }
         _activeThemeWatcher?.Dispose();
         _debounceCts?.Cancel();
         _debounceCts?.Dispose();

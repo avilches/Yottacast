@@ -23,10 +23,10 @@ public sealed class SystemSettingsSearch(
     private readonly IReadOnlyList<string> _thirdPartyDirs =
         thirdPartyDirs ?? DefaultThirdPartyDirs;
     private readonly TimeSpan _cacheTtl = dynamicCacheTtl ?? AppDefaults.SystemSettingsDynamicCacheTtl;
-    private readonly List<SystemSettingsPanel> _panels = [];
     private readonly TaskCompletionSource _readyTcs = new();
     private CancellationTokenSource? _backgroundCts;
 
+    private volatile IReadOnlyList<SystemSettingsPanel> _panels = [];
     private volatile IReadOnlyList<SystemSettingsPanel> _dynamicCache = [];
 
     public int Limit => AppDefaults.SystemSettingsSearchLimit;
@@ -45,7 +45,7 @@ public sealed class SystemSettingsSearch(
     public Task Stop() {
         _backgroundCts?.Cancel();
         _backgroundCts = null;
-        _panels.Clear();
+        _panels = [];
         return Task.CompletedTask;
     }
 
@@ -146,9 +146,10 @@ public sealed class SystemSettingsSearch(
     }
 
     private void Load() {
+        var panels = new List<SystemSettingsPanel>();
         try {
             foreach (var panel in BuiltinPanels.All)
-                _panels.Add(panel);
+                panels.Add(panel);
 
             foreach (var dir in _thirdPartyDirs) {
                 if (!Directory.Exists(dir)) continue;
@@ -157,15 +158,17 @@ public sealed class SystemSettingsSearch(
                     var parsed = TryReadPlist(plistPath);
                     if (parsed is null) continue;
                     var (name, bundleId) = parsed.Value;
-                    if (_panels.Any(p => p.UrlIdentifier == bundleId)) continue;
-                    _panels.Add(new SystemSettingsPanel(name, bundleId, IsBuiltin: false));
+                    if (panels.Any(p => p.UrlIdentifier == bundleId)) continue;
+                    panels.Add(new SystemSettingsPanel(name, bundleId, IsBuiltin: false));
                 }
             }
 
             iconCache.PreloadAsync(AppPaths.SystemSettingsAppPath);
-            logger.LogInformation("SystemSettings: loaded {Count} panels", _panels.Count);
+            logger.LogInformation("SystemSettings: loaded {Count} panels", panels.Count);
         } catch (Exception ex) {
             logger.LogWarning(ex, "SystemSettings: error loading panels, using partial results");
+        } finally {
+            _panels = panels;
         }
     }
 

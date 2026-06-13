@@ -734,6 +734,14 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     /// <summary>Called from the View when the settings window is closed.</summary>
     public void OnWindowClosed() {
         FlushAppDirectoryChanges();
+
+        // This VM is transient (one instance per window open) but subscribes to
+        // singleton services in the constructor. Unsubscribe here to avoid leaking
+        // this instance and running stale handlers on every later Settings open.
+        _themeService.ThemesChanged    -= OnThemesChanged;
+        _historyService.Changed        -= OnHistoryChanged;
+        _pluginService.PluginsChanged  -= OnPluginsReloaded;
+
         _logger.LogInformation("Settings: closed");
     }
 

@@ -239,6 +239,51 @@ public class SystemSettingsSearchTests {
             $"Expected background refresh to increment WifiCallCount, got {platform.WifiCallCount} (started at {initialCount})");
     }
 
+    [Fact]
+    public async Task Search_ConcurrentWithStartStop_DoesNotThrow() {
+        // Regresión: _panels se publica como referencia inmutable reasignada por copia
+        // (igual que _dynamicCache). Stop() reasigna _panels y Start() lo repuebla en
+        // background mientras Search() enumera la referencia que capturó. Sin la publicación
+        // segura, un Search() concurrente lanzaría "Collection was modified".
+        var platform = new DynamicFakePlatformProvider { WifiNetwork = "MyHomeWifi" };
+        var (search, _) = BuildWithPlatform(platform, thirdPartyDirs: []);
+        search.Start();
+        await search.WhenReady();
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        Exception? caught = null;
+
+        var reader = Task.Run(() => {
+            try {
+                while (!cts.IsCancellationRequested) {
+                    foreach (var r in search.Search("wi", 10)) _ = r.Title;
+                    _ = search.Search("network", 10).ToList();
+                }
+            } catch (OperationCanceledException) {
+            } catch (Exception ex) {
+                caught = ex;
+            }
+        });
+
+        var mutator = Task.Run(async () => {
+            try {
+                while (!cts.IsCancellationRequested) {
+                    await search.Stop();
+                    search.Start();
+                    await search.WhenReady();
+                }
+            } catch (OperationCanceledException) {
+            } catch (Exception ex) {
+                caught ??= ex;
+            }
+        });
+
+        await Task.WhenAll(reader, mutator);
+        await search.Stop();
+
+        Assert.Null(caught);
+    }
+
     [Fact(Skip = "manual — abre System Settings para verificar visualmente cada anchor")]
     public async Task Manual_AllAnchorsOpen() {
         var (search, _, _) = Build();

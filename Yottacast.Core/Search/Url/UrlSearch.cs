@@ -123,7 +123,7 @@ public class UrlSearch(
         try {
             using var dnsCts = new CancellationTokenSource(TimeSpan.FromSeconds(AppDefaults.UrlReachabilityDnsTimeoutSeconds));
             await Dns.GetHostAddressesAsync(host, dnsCts.Token).ConfigureAwait(false);
-        } catch (Exception ex) when (ex is SocketException or TaskCanceledException or OperationCanceledException) {
+        } catch (Exception ex) when (ex is SocketException or TaskCanceledException or OperationCanceledException or ArgumentException) {
             _reachabilityError[url] = ex is TaskCanceledException or OperationCanceledException
                 ? "connection timed out"
                 : "domain doesn't exist";

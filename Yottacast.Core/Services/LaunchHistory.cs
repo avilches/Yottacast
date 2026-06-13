@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Yottacast.Core.ViewModels;
@@ -18,15 +19,19 @@ public class LaunchHistory(string filePath, ILogger<LaunchHistory> logger, Func<
 
     private record LaunchRecord(int Count, DateTime LastUsedAt);
 
-    private Dictionary<string, LaunchRecord> _data = new();
+    // _data is read from the search/scoring thread (BonusInfo) while Record writes from the
+    // activation thread, so it must be thread-safe. ConcurrentDictionary allows safe concurrent
+    // reads, updates and enumeration. The field is reassigned wholesale in LoadAsync, so it is
+    // marked volatile to publish the new reference atomically to other threads.
+    private volatile ConcurrentDictionary<string, LaunchRecord> _data = new();
 
     private DateTime Now => clock?.Invoke() ?? DateTime.UtcNow;
 
     public void Record(string itemPath) {
-        _data.TryGetValue(itemPath, out var existing);
-        _data[itemPath] = new LaunchRecord(
-            Count: (existing?.Count ?? 0) + 1,
-            LastUsedAt: Now
+        _data.AddOrUpdate(
+            itemPath,
+            _ => new LaunchRecord(Count: 1, LastUsedAt: Now),
+            (_, existing) => new LaunchRecord(Count: existing.Count + 1, LastUsedAt: Now)
         );
         Save();
     }
@@ -61,20 +66,23 @@ public class LaunchHistory(string filePath, ILogger<LaunchHistory> logger, Func<
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
 
-            _data = new Dictionary<string, LaunchRecord>();
+            var loaded = new ConcurrentDictionary<string, LaunchRecord>();
             foreach (var prop in root.EnumerateObject()) {
                 if (prop.Value.ValueKind != JsonValueKind.Object) continue;
                 var count = prop.Value.TryGetProperty("count", out var cp) && cp.TryGetInt32(out var c) ? c : 0;
                 var lastUsedAt = prop.Value.TryGetProperty("lastUsedAt", out var lp) && lp.TryGetDateTimeOffset(out var dt)
                     ? dt.UtcDateTime
                     : DateTime.UtcNow;
-                _data[prop.Name] = new LaunchRecord(count, lastUsedAt);
+                loaded[prop.Name] = new LaunchRecord(count, lastUsedAt);
             }
 
+            // Publish the fully-built dictionary in one atomic reference assignment so concurrent
+            // readers never observe a half-populated store.
+            _data = loaded;
             logger.LogInformation("LaunchHistory loaded: {Count} entries", _data.Count);
         } catch (Exception ex) {
             logger.LogWarning("Failed to load launch history, starting fresh: {Message}", ex.Message);
-            _data = new Dictionary<string, LaunchRecord>();
+            _data = new ConcurrentDictionary<string, LaunchRecord>();
         }
     }
 
@@ -83,10 +91,14 @@ public class LaunchHistory(string filePath, ILogger<LaunchHistory> logger, Func<
             Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
             var tmpPath = filePath + ".tmp";
 
+            // Snapshot the reference so a concurrent LoadAsync reassignment cannot swap the
+            // dictionary out from under this enumeration. ConcurrentDictionary enumeration is
+            // itself safe against concurrent writes.
+            var data = _data;
             using (var stream = File.Create(tmpPath)) {
                 using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true });
                 writer.WriteStartObject();
-                foreach (var (path, rec) in _data) {
+                foreach (var (path, rec) in data) {
                     writer.WritePropertyName(path);
                     writer.WriteStartObject();
                     writer.WriteNumber("count", rec.Count);

@@ -100,7 +100,7 @@ public class ClipboardSearch(
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(AppDefaults.UrlReachabilityDnsTimeoutSeconds));
             await Dns.GetHostAddressesAsync(host, cts.Token).ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is SocketException or TaskCanceledException or OperationCanceledException)
+        catch (Exception ex) when (ex is SocketException or TaskCanceledException or OperationCanceledException or ArgumentException)
         {
             logger.LogDebug("ClipboardSearch: DNS {Host} failed: {Message}", host, ex.Message);
             lock (_cacheLock)

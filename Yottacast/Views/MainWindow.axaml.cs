@@ -95,8 +95,10 @@ public partial class MainWindow : Window {
         if (change.Property == IsVisibleProperty) {
             Log($"[Property] IsVisible → {change.NewValue}");
             var isVisible = change.GetNewValue<bool>();
-            SearchBox.IsEnabled = isVisible;
             if (isVisible) {
+                // Recompute SearchBox.IsEnabled via UpdateEditorLayout so that it stays
+                // disabled when the window reappears in editor mode (instead of forcing true).
+                UpdateEditorLayout();
                 ApplyPositionOnShow();
                 _positionDirty = false;
                 _screenPosKnown = false;
@@ -107,6 +109,7 @@ public partial class MainWindow : Window {
                         _ = HandleWindowShownAsync(vm);
                 }
             } else {
+                SearchBox.IsEnabled = false;
                 SavePosition();
                 if (DataContext is MainWindowViewModel vm) {
                     vm.IsAltPressed = false;
@@ -771,8 +774,16 @@ public partial class MainWindow : Window {
     }
 
     private void CancelDragTimer() {
-        _dragTimerCts?.Cancel();
+        var prevCts = _dragTimerCts;
         _dragTimerCts = null;
+        if (prevCts == null) return;
+        try {
+            prevCts.Cancel();
+        } catch (ObjectDisposedException) {
+            // already disposed; nothing to cancel
+        } finally {
+            prevCts.Dispose();
+        }
     }
 
     private void StartDragLongPressTimer(PointerEventArgs triggerEvent, BaseResultItemViewModel candidateVm) {
