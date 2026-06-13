@@ -674,17 +674,13 @@ public partial class MainWindowViewModel(
         var merged = _instantSnapshot
             .Concat(_deferredSnapshot)
             .Select(x => {
+                // Only the numeric bonus (needed for ordering) is computed per keystroke.
+                // The Alt-debug strings (ScoreDisplayText/ScoreTooltipText) are built lazily by
+                // BaseResultItemViewModel when a realized row binds them, so we just stash the raw data.
                 var (bonus, count, ageDays) = launchHistory.BonusInfoFor(x);
                 x.FrequencyBonus = bonus;
-
-                x.ScoreDisplayText = $"{x.Score + bonus:F2}";
-
-                var reason    = string.IsNullOrEmpty(x.ScoreReason) ? "—" : x.ScoreReason;
-                var bonusLine = bonus > 0.001
-                    ? $"+{bonus:F2}: {count} lanzamiento{(count != 1 ? "s" : "")}, hace {(int)ageDays} día{((int)ageDays != 1 ? "s" : "")}"
-                    : "Sin historial de uso";
-                x.ScoreTooltipText = $"Score {x.Score:F2}: {reason}\n{bonusLine}";
-
+                x.FrequencyCount = count;
+                x.FrequencyAgeDays = ageDays;
                 return (item: x, score: x.Score + bonus);
             })
             .OrderByDescending(x => x.score)

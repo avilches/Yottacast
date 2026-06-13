@@ -55,11 +55,32 @@ public abstract class BaseResultItemViewModel {
     /// <summary>Frequency/recency bonus from launch history. Set by MainWindowViewModel.RefreshResults().</summary>
     public double FrequencyBonus { get; set; }
 
-    /// <summary>Formatted score for Alt-debug display. e.g. "2.40 +0.24" or "2.40". Set by RefreshResults().</summary>
-    public string ScoreDisplayText { get; set; } = "";
+    /// <summary>Launch count behind <see cref="FrequencyBonus"/>. Set by RefreshResults(); used to build the lazy tooltip.</summary>
+    public int FrequencyCount { get; set; }
 
-    /// <summary>Tooltip text for score badge in debug mode. Multi-line explanation. Set by RefreshResults().</summary>
-    public string? ScoreTooltipText { get; set; }
+    /// <summary>Age in days of the last launch behind <see cref="FrequencyBonus"/>. Set by RefreshResults(); used to build the lazy tooltip.</summary>
+    public double FrequencyAgeDays { get; set; }
+
+    /// <summary>
+    /// Formatted total score for the Alt-debug badge (e.g. "2.40"). Computed lazily: only the
+    /// realized (visible) rows that bind it pay the formatting cost, not every merged result on
+    /// each keystroke. Depends on <see cref="Score"/> + <see cref="FrequencyBonus"/>.
+    /// </summary>
+    public string ScoreDisplayText => $"{Score + FrequencyBonus:F2}";
+
+    /// <summary>
+    /// Multi-line tooltip for the Alt-debug score badge. Computed lazily (see <see cref="ScoreDisplayText"/>):
+    /// only built when a realized row's tooltip binding is read.
+    /// </summary>
+    public string ScoreTooltipText {
+        get {
+            var reason    = string.IsNullOrEmpty(ScoreReason) ? "—" : ScoreReason;
+            var bonusLine = FrequencyBonus > 0.001
+                ? $"+{FrequencyBonus:F2}: {FrequencyCount} lanzamiento{(FrequencyCount != 1 ? "s" : "")}, hace {(int)FrequencyAgeDays} día{((int)FrequencyAgeDays != 1 ? "s" : "")}"
+                : "Sin historial de uso";
+            return $"Score {Score:F2}: {reason}\n{bonusLine}";
+        }
+    }
 
     // ============================================================================
     // Drag-and-drop (set by each search source / VM when the item is draggable)

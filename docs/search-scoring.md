@@ -263,9 +263,9 @@ Posicionarse sobre el badge del score muestra un tooltip multi-linea con dos blo
 
 - El badge solo aparece cuando Alt esta presionado. Sin Alt, se muestra la categoria normal.
 - Los tooltips solo se muestran si el mouse esta sobre el resultado. No requieren interaccion adicional.
-- El score se calcula en `MainWindowViewModel.RefreshResults()` combinando el score base de la fuente con el bonus de `LaunchHistory`.
+- El score total (`base + bonus`) se calcula en `MainWindowViewModel.RefreshResults()`. El bonus numerico se aplica por keystroke (necesario para ordenar), pero los textos de debug (`ScoreDisplayText`, `ScoreTooltipText`) se construyen de forma perezosa en `BaseResultItemViewModel`: solo formatean cuando una fila realizada (visible) los bindea, no para todos los resultados del merge en cada pulsacion. `RefreshResults()` solo guarda los datos numericos crudos (`FrequencyBonus`, `FrequencyCount`, `FrequencyAgeDays`).
 
-> **Verificar en:** `MainWindowViewModel.RefreshResults()` (construccion de `ScoreDisplayText` y `ScoreTooltipText`), `Yottacast/Views/MainWindow.axaml.cs` (captura de Alt), `BaseResultItemViewModel.cs` (propiedades `ScoreDisplayText`, `ScoreTooltipText`, `ScoreReason`), cada fuente de busqueda (propiedad `ScoreReason` al crear items)
+> **Verificar en:** `MainWindowViewModel.RefreshResults()` (aplicacion del bonus y stash de datos crudos), `Yottacast/Views/MainWindow.axaml.cs` (captura de Alt), `BaseResultItemViewModel.cs` (getters perezosos `ScoreDisplayText`, `ScoreTooltipText`; `ScoreReason`), cada fuente de busqueda (propiedad `ScoreReason` al crear items)
 
 ---
 

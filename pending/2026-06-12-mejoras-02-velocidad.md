@@ -12,7 +12,10 @@ Requisito: ejecutar despues del Plan 1 (varios ficheros se solapan; los fixes de
 
 ## Tareas (orden por ratio impacto/esfuerzo)
 
-### T1. Tooltips de score lazy (impacto alto, esfuerzo bajo)
+### T1. Tooltips de score lazy (impacto alto, esfuerzo bajo) — DONE
+
+> Hecho: `ScoreDisplayText`/`ScoreTooltipText` convertidos en getters computados perezosos en `BaseResultItemViewModel`; `RefreshResults` solo guarda los datos numericos (`FrequencyBonus`/`FrequencyCount`/`FrequencyAgeDays`). Doc `search-scoring.md` §10 y §12 actualizado. Tests verdes (Core 1387).
+
 
 - **Donde**: `Yottacast/ViewModels/MainWindowViewModel.cs:635-714` (RefreshResults, lineas ~645-663).
 - **Problema**: por cada keystroke se construyen `ScoreDisplayText` y `ScoreTooltipText` (interpolaciones de string + formato) para TODOS los resultados del merge, aunque solo se ven cuando el usuario pulsa Alt.
