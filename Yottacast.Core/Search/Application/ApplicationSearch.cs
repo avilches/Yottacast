@@ -158,7 +158,7 @@ public sealed class ApplicationSearch(
                 runningByPath.Count, string.Join(", ", runningByPath.Keys.Take(3)));
 
         var results = _apps.Values
-            .Select(a => (app: a, match: NameMatcher.Match(a.Name, query)))
+            .Select(a => (app: a, match: NameMatcher.Match(a.MatchName, query)))
             .Where(x => x.match.Score > 0)
             .OrderByDescending(x => x.match.Score)
             .Take(limit)

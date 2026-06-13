@@ -52,7 +52,7 @@ public sealed class SystemSettingsSearch(
     public IReadOnlyList<BaseResultItemViewModel> Search(string query, int limit) {
         if (!settings.EnableSystemSettings || !settings.EnableAppSearch) return [];
         return _panels.Concat(_dynamicCache)
-            .Select(p => (panel: p, match: NameMatcher.Match(p.Name, query)))
+            .Select(p => (panel: p, match: NameMatcher.Match(p.MatchName, query)))
             .Where(x => x.match.Score > 0)
             .OrderByDescending(x => x.match.Score)
             .Take(limit)

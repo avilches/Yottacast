@@ -6,6 +6,24 @@ public record NameMatchResult(
     IReadOnlyList<(int Start, int Length)>? Ranges
 );
 
+/// <summary>
+/// A name with its tokenization precomputed once. Names being matched (app names, settings panels)
+/// are fixed while the user types, so re-splitting them on every keystroke is wasted work. Build a
+/// <see cref="MatchableName"/> at discovery time and reuse it across keystrokes via
+/// <see cref="NameMatcher.Match(MatchableName, string)"/>.
+/// </summary>
+public sealed class MatchableName {
+    public string Name { get; }
+    internal IReadOnlyList<(string Token, int Start)> TokensWithPos { get; }
+    internal IReadOnlyList<string> Tokens { get; }
+
+    internal MatchableName(string name, IReadOnlyList<(string Token, int Start)> tokensWithPos) {
+        Name = name;
+        TokensWithPos = tokensWithPos;
+        Tokens = [.. tokensWithPos.Select(t => t.Token)];
+    }
+}
+
 public static class NameMatcher {
     public static double Score(string name, string query) =>
         Match(name, query).Score;
@@ -16,14 +34,18 @@ public static class NameMatcher {
         return Match(name, query).Score;
     }
 
-    public static NameMatchResult Match(string name, string query) {
-        var tokensWithPos = SplitTokensWithPositions(name);
-        var tokens = tokensWithPos.Select(t => t.Token).ToList();
+    /// <summary>Precompute a name's tokenization so it can be matched repeatedly without re-splitting.</summary>
+    public static MatchableName Tokenize(string name) => new(name, SplitTokensWithPositions(name));
 
-        var result = MatchWith(tokensWithPos, tokens, name, query);
+    public static NameMatchResult Match(string name, string query) =>
+        Match(Tokenize(name), query);
+
+    /// <summary>Match against a name whose tokens were precomputed via <see cref="Tokenize"/>.</summary>
+    public static NameMatchResult Match(MatchableName name, string query) {
+        var result = MatchWith(name.TokensWithPos, name.Tokens, name.Name, query);
         // All-lowercase query: also try as initials (same as if typed in uppercase)
         if (result.Score < 1.0 && query.All(char.IsLower)) {
-            var upper = MatchWith(tokensWithPos, tokens, name, query.ToUpperInvariant());
+            var upper = MatchWith(name.TokensWithPos, name.Tokens, name.Name, query.ToUpperInvariant());
             if (upper.Score > result.Score) result = upper;
         }
         return result;

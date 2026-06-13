@@ -30,7 +30,10 @@ Requisito: ejecutar despues del Plan 1 (varios ficheros se solapan; los fixes de
 - **Decision**: preguntar al usuario si prefiere la dedup en GlobalSearch (mas limpio, afecta tambien al daemon IPC) o en el ViewModel (mas local). Recomendada: GlobalSearch.
 - **Verificar**: buscar el nombre de una app instalada que tambien exista como .app en las carpetas de busqueda; el fichero duplicado no debe aparecer.
 
-### T3. Cachear tokens de NameMatcher en AppInfo (impacto medio, esfuerzo bajo)
+### T3. Cachear tokens de NameMatcher en AppInfo (impacto medio, esfuerzo bajo) — DONE
+
+> Hecho: nueva clase `MatchableName` (NameMatcher) que precomputa la tokenizacion una vez; `NameMatcher.Tokenize` + overload `Match(MatchableName, query)`. `AppInfo.MatchName` (eager en construccion) y `SystemSettingsPanel.MatchName` (lazy) cacheados; ambas Search usan el overload. Tests del area verdes (95). Nota: `EmojiSearch` aun re-tokeniza (el overload `Score(tokens,...)` es no-op) — se aborda en T5.
+
 
 - **Donde**: `Yottacast.Core/Search/Application/NameMatcher.cs:19-30` y `ApplicationSearch.cs:161`.
 - **Problema**: para cada app del cache (100-500) y cada keystroke se re-tokeniza el nombre (split CamelCase + List intermedia).
