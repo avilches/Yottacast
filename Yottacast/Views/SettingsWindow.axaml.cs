@@ -5,7 +5,6 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform;
-using Avalonia.Platform.Storage;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
 using System.Linq;
@@ -93,17 +92,6 @@ public partial class SettingsWindow : Window {
         k is Key.LeftAlt or Key.RightAlt or Key.LeftCtrl or Key.RightCtrl
           or Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin;
 
-    // Click on the hotkey border → start capture only if not already capturing
-    // (prevents restarting when the cancel button inside is clicked)
-    private void OnHotkeyAreaPointerPressed(object? sender, PointerPressedEventArgs e) {
-        if (DataContext is SettingsWindowViewModel { IsCapturingHotkey: false } vm) {
-            // Clear focus from any control (e.g. Theme combo) so it doesn't intercept keys during capture
-            FocusManager?.ClearFocus();
-            vm.StartHotkeyCapture();
-        }
-        e.Handled = true;  // always stop bubble so OnPointerPressed doesn't also cancel
-    }
-
     private void OnCancelHotkeyCaptureClicked(object? sender, RoutedEventArgs e) {
         (DataContext as SettingsWindowViewModel)?.CancelHotkeyCapture();
     }
@@ -176,13 +164,6 @@ public partial class SettingsWindow : Window {
         Activate();
     }
 
-    // ── Folder picker ─────────────────────────────────────────────────────────
-    private async Task<string?> PickFolderAsync() {
-        var results = await StorageProvider.OpenFolderPickerAsync(
-            new FolderPickerOpenOptions { Title = "Select Folder", AllowMultiple = false });
-        return results.Count > 0 ? results[0].TryGetLocalPath() : null;
-    }
-
     private void OnDecimalPlacesTextInputting(object? sender, TextInputEventArgs e) {
         if (e.Text != null && !e.Text.All(char.IsDigit))
             e.Handled = true;
@@ -191,10 +172,5 @@ public partial class SettingsWindow : Window {
     private async void OnBrowserDropDownOpened(object? sender, EventArgs e) {
         if (DataContext is SettingsWindowViewModel vm)
             await vm.RefreshBrowsersAsync();
-    }
-
-    private async void OnTerminalDropDownOpened(object? sender, EventArgs e) {
-        if (DataContext is SettingsWindowViewModel vm)
-            await vm.RefreshTerminalsAsync();
     }
 }
