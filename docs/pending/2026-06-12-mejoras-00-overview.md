@@ -8,7 +8,7 @@ Este fichero es el indice; cada plan tiene su propio documento accionable por un
 | Plan | Fichero | Alcance | Esfuerzo estimado | Estado |
 |------|---------|---------|-------------------|--------|
 | 1. Estabilidad | `2026-06-12-mejoras-01-estabilidad.md` | Fixes de los bugs encontrados (8 criticos, 26 menores) | ~1 semana | DONE (tandas 1-3, review-result borrado por resuelto) |
-| 2. Velocidad | `2026-06-12-mejoras-02-velocidad.md` | Optimizaciones del hot path de busqueda | 3-5 dias | EN CURSO |
+| 2. Velocidad | `2026-06-12-mejoras-02-velocidad.md` | Optimizaciones del hot path de busqueda | 3-5 dias | CASI DONE (T1/T2/T3/T5 hechos; T6 descartado; T4 y T7 aplazados) |
 | 3. UX | `2026-06-12-mejoras-03-ux.md` | Descubribilidad, navegacion, feedback | 1-2 semanas | pendiente |
 | 4. UI visual | `2026-06-12-mejoras-04-ui.md` | Temas, coherencia visual, refactor de Settings | ~1 semana | EN CURSO (split de SettingsWindow: General/estilos/iconos extraidos) |
 | 5. Features | `2026-06-12-mejoras-05-features.md` | Nuevas funcionalidades por fases | variable | pendiente |
