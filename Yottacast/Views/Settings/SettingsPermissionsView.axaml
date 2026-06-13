@@ -1,0 +1,89 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Yottacast.ViewModels"
+             x:Class="Yottacast.Views.Settings.SettingsPermissionsView"
+             x:DataType="vm:SettingsWindowViewModel">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://Yottacast/Views/Settings/SettingsResources.axaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <UserControl.Styles>
+        <StyleInclude Source="avares://Yottacast/Views/Settings/SettingsStyles.axaml"/>
+    </UserControl.Styles>
+
+    <StackPanel Spacing="16">
+        <TextBlock Classes="section-heading" Text="Permissions"/>
+
+        <TextBlock Classes="description"
+                   TextWrapping="Wrap"
+                   Text="Yottacast needs these system permissions. If a row is red, click Grant to open the matching System Settings pane."/>
+
+        <Border BorderThickness="1"
+                BorderBrush="{DynamicResource Theme.Divider.Color}"
+                CornerRadius="4"
+                Padding="10,8">
+            <StackPanel Spacing="3">
+                <TextBlock Text="In System Settings, look for this entry:"
+                           Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
+                           FontSize="12"/>
+                <TextBlock Text="{Binding PermissionsProcessName}"
+                           FontFamily="Menlo, Consolas, monospace"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource Theme.Results.Title.Color}"
+                           FontSize="13"/>
+                <TextBlock Text="{Binding PermissionsProcessPath}"
+                           FontFamily="Menlo, Consolas, monospace"
+                           Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
+                           FontSize="11"
+                           TextWrapping="Wrap"/>
+            </StackPanel>
+        </Border>
+
+        <ItemsControl ItemsSource="{Binding PermissionRows}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:PermissionRowViewModel">
+                    <Border BorderThickness="1"
+                            BorderBrush="{DynamicResource Theme.Divider.Color}"
+                            CornerRadius="6"
+                            Padding="14,12"
+                            Margin="0,0,0,10">
+                        <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+                            <Ellipse Grid.Column="0"
+                                     Width="12" Height="12"
+                                     Fill="{Binding StatusBrush}"
+                                     VerticalAlignment="Center"
+                                     Margin="0,0,12,0"/>
+                            <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Title}"
+                                           Foreground="{DynamicResource Theme.Results.Title.Color}"
+                                           FontSize="{DynamicResource Theme.Results.Title.Size}"
+                                           FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding Description}"
+                                           Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
+                                           FontSize="12"
+                                           TextWrapping="Wrap"/>
+                            </StackPanel>
+                            <Button Grid.Column="2"
+                                    Content="Grant"
+                                    Command="{Binding RequestCommand}"
+                                    IsVisible="{Binding !IsGranted}"
+                                    VerticalAlignment="Center"
+                                    Margin="12,0,0,0"/>
+                            <Button Grid.Column="2"
+                                    Content="Review"
+                                    Command="{Binding RequestCommand}"
+                                    IsVisible="{Binding IsGranted}"
+                                    FontSize="11"
+                                    Padding="8,3"
+                                    VerticalAlignment="Center"
+                                    Margin="12,0,0,0"/>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
+</UserControl>

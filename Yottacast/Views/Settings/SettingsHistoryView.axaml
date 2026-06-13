@@ -1,0 +1,63 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Yottacast.ViewModels"
+             x:Class="Yottacast.Views.Settings.SettingsHistoryView"
+             x:DataType="vm:SettingsWindowViewModel">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://Yottacast/Views/Settings/SettingsResources.axaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <UserControl.Styles>
+        <StyleInclude Source="avares://Yottacast/Views/Settings/SettingsStyles.axaml"/>
+    </UserControl.Styles>
+
+    <StackPanel Spacing="16">
+        <TextBlock Classes="section-heading" Text="History"/>
+        <ToggleSwitch IsChecked="{Binding EnableHistory}"
+                      OnContent="Enabled"
+                      OffContent="Disabled"/>
+        <TextBlock Classes="description"
+                   Text="Records searches that end in an action or are dismissed with Escape. Navigate past searches with ↑ or Ctrl+↑ in the search bar."/>
+
+        <StackPanel Spacing="16" IsVisible="{Binding EnableHistory}">
+
+            <!-- Max items -->
+            <StackPanel Spacing="6">
+                <TextBlock Classes="label" Text="Max history items"/>
+                <Border Classes="numeric-field"
+                        Width="130"
+                        HorizontalAlignment="Left"
+                        ClipToBounds="True">
+                    <NumericUpDown Value="{Binding HistoryMaxItems}"
+                                   Minimum="1"
+                                   Maximum="100"
+                                   Increment="1"
+                                   FormatString="0"/>
+                </Border>
+            </StackPanel>
+
+            <!-- Clear button -->
+            <Button Content="Clear history"
+                    Command="{Binding ClearHistoryCommand}"
+                    HorizontalAlignment="Left"/>
+
+            <!-- Live history log -->
+            <StackPanel Spacing="4">
+                <TextBlock Classes="label" Text="History log (most recent first)"/>
+                <ScrollViewer MaxHeight="300"
+                              HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto">
+                    <TextBlock Text="{Binding HistoryDisplayText}"
+                               FontFamily="Menlo, Consolas, monospace"
+                               FontSize="11"
+                               TextWrapping="Wrap"
+                               Foreground="{DynamicResource Theme.Results.Subtitle.Color}"/>
+                </ScrollViewer>
+            </StackPanel>
+
+        </StackPanel>
+    </StackPanel>
+</UserControl>
