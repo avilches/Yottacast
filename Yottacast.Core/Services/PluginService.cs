@@ -11,7 +11,7 @@ namespace Yottacast.Core.Services;
 /// Also loads WebSearch plugins (websearch.*.json) and caches their icons.
 /// </summary>
 public class PluginService(ILogger<PluginService> logger) : IDisposable {
-    private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(10) };
+    private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(AppDefaults.PluginIconHttpTimeoutSeconds) };
     private FileSystemWatcher? _watcher;
 
     public IReadOnlyList<WebSearchPlugin> Plugins { get; private set; } = [];
@@ -48,7 +48,7 @@ public class PluginService(ILogger<PluginService> logger) : IDisposable {
 
     private async void OnDirectoryChanged(object _, FileSystemEventArgs __) {
         try {
-            await Task.Delay(300);  // small debounce: editors often write in multiple steps
+            await Task.Delay(AppDefaults.PluginReloadDebounceMs);  // small debounce: editors often write in multiple steps
             await ReloadAsync();
         } catch (Exception ex) {
             // async void: any escaping exception (ReloadAsync, or a PluginsChanged subscriber

@@ -37,7 +37,7 @@ public class ClipboardHistorySearch(
         if (string.IsNullOrEmpty(query))
             return entries
                 .Take(limit < 0 ? entries.Count : limit)
-                .Select((e, i) => BuildResult(e, score: 1000.0 - i))
+                .Select((e, i) => BuildResult(e, score: AppDefaults.ClipboardHistoryUnfilteredBaseScore - i))
                 .ToList();
 
         return entries
@@ -52,11 +52,11 @@ public class ClipboardHistorySearch(
     {
         double matchScore;
         if (entry.Text.Equals(query, StringComparison.OrdinalIgnoreCase))
-            matchScore = 4.0;
+            matchScore = AppDefaults.ClipboardHistoryExactMatchScore;
         else if (entry.Text.StartsWith(query, StringComparison.OrdinalIgnoreCase))
-            matchScore = 3.5;
+            matchScore = AppDefaults.ClipboardHistoryPrefixMatchScore;
         else
-            matchScore = 3.0;
+            matchScore = AppDefaults.ClipboardHistoryContainsMatchScore;
 
         var ageDays = Math.Max(0, (DateTimeOffset.UtcNow - entry.LastUsedAt).TotalDays);
         var decay = Math.Exp(-ageDays / AppDefaults.ClipboardHistoryHalfLifeDays);

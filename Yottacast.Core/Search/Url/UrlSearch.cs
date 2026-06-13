@@ -76,7 +76,7 @@ public class UrlSearch(
             Subtitle    = $"Open in {browserLabel}",
             ErrorTag    = errorHint,
             Category    = "Web",
-            Score       = 10.0,
+            Score       = AppDefaults.UrlResultScore,
             ScoreReason = "URL directa",
             Actions = [
                 new() {
@@ -121,7 +121,7 @@ public class UrlSearch(
 
         // Phase 1: DNS — confirm the domain exists
         try {
-            using var dnsCts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            using var dnsCts = new CancellationTokenSource(TimeSpan.FromSeconds(AppDefaults.UrlReachabilityDnsTimeoutSeconds));
             await Dns.GetHostAddressesAsync(host, dnsCts.Token).ConfigureAwait(false);
         } catch (Exception ex) when (ex is SocketException or TaskCanceledException or OperationCanceledException) {
             _reachabilityError[url] = ex is TaskCanceledException or OperationCanceledException

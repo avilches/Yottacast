@@ -82,6 +82,9 @@ definen en una unica clase de constantes. Esto permite:
 | Emojis            | Max pinned total        | 10            | Maximo total de emojis en la seccion pinned (fav + most-used)|
 | Emojis            | Half-life (dias)        | 30            | Vida media del decay score de uso de emojis                  |
 | UI                | Delay de pegado         | 150 ms        | Espera antes de simular Cmd+V / Ctrl+V tras seleccionar      |
+| Plugins           | Timeout HTTP iconos     | 10 s          | Timeout de descarga de iconos de plugins                     |
+| Plugins           | Debounce de recarga     | 300 ms        | Espera tras un cambio de fichero antes de recargar plugins   |
+| URL               | Timeout DNS             | 2 s           | Timeout del chequeo de alcanzabilidad de una URL tecleada/copiada |
 | Actualizaciones   | Timeout HTTP            | 10 s          | Timeout del request de comprobacion de version               |
 | Diccionario       | Timeout HTTP            | 5 s           | Timeout de peticion a la API de Wiktionary                   |
 | Diccionario       | Max definiciones        | 5             | Definiciones mostradas por entrada (parte del discurso)      |

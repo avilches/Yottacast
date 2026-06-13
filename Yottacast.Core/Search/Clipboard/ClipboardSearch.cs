@@ -97,7 +97,7 @@ public class ClipboardSearch(
         var host = new Uri(url).Host;
         try
         {
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(AppDefaults.UrlReachabilityDnsTimeoutSeconds));
             await Dns.GetHostAddressesAsync(host, cts.Token).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is SocketException or TaskCanceledException or OperationCanceledException)

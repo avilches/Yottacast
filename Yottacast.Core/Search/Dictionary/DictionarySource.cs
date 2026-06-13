@@ -65,7 +65,7 @@ public class DictionarySource(
 
         if (settings.DictionaryShowAlways) {
             searchWord = query.Trim();
-            score = 0.3;
+            score = AppDefaults.DictionaryShowAlwaysScore;
             scoreReason = "Diccionario siempre";
             titleRanges = null;
         } else {
@@ -74,7 +74,7 @@ public class DictionarySource(
             var trigger = prefix + " ";
             if (!query.StartsWith(trigger, StringComparison.OrdinalIgnoreCase)) yield break;
             searchWord = query[trigger.Length..].Trim();
-            score = 3.7;
+            score = AppDefaults.DictionaryPrefixScore;
             scoreReason = "Diccionario prefijo";
             titleRanges = [(0, searchWord.Length)];
         }

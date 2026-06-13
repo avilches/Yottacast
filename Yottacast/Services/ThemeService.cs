@@ -335,7 +335,7 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
                 SetOpacity(app, "Theme.Emoji.UsageCount.Opacity", emoji["usageCount"]?["opacity"]);
 
                 // Calculate columns/rows from theme dimensions
-                var windowWidth       = window?["width"]?.GetValue<double>()               ?? 730.0;
+                var windowWidth       = window?["width"]?.GetValue<double>()               ?? AppDefaults.WindowDefaultWidth;
                 var maxHeight         = results?["maxHeight"]?.GetValue<double>()           ?? 540.0;
                 var resultsPadding    = results?["padding"]?.GetValue<double>()             ?? 8.0;
                 var cellSize          = emoji["cell"]?["size"]?.GetValue<double>()          ?? 48.0;
@@ -437,7 +437,7 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
 
         // ── Window ──
         app.Resources["Theme.Window.Background"]         = B("#1C1C22");
-        app.Resources["Theme.Window.Width"]               = 730.0;
+        app.Resources["Theme.Window.Width"]               = AppDefaults.WindowDefaultWidth;
         app.Resources["Theme.Window.CornerRadius"]             = new CornerRadius(14);
         app.Resources["Theme.Window.CornerRadius.Bottom"]      = new CornerRadius(0, 0, 14, 14);
         app.Resources["Theme.Window.CornerRadius.BottomRight"] = new CornerRadius(0, 0, 14, 0);
@@ -546,7 +546,7 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
         app.Resources["Theme.Emoji.UsageCount.Size"]    = 9.0;
         app.Resources["Theme.Emoji.UsageCount.Opacity"] = 0.4;
         app.Resources["Theme.Emoji.Cell.Margin"] = new Thickness(2);
-        CalculateEmojiLayout(app, windowWidth: 730.0, maxHeight: 540.0,
+        CalculateEmojiLayout(app, windowWidth: AppDefaults.WindowDefaultWidth, maxHeight: 540.0,
             resultsPadding: 8.0, cellSize: 48.0, cellMargin: 2.0, sectionHeaderSize: 11.0);
 
         // ── No Results ──

@@ -105,7 +105,7 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
             Icon        = cells.Count > 0 ? cells[0].Char : "",
             Title       = cells.Count > 0 ? cells[0].Name : "",
             Category    = "Emoji",
-            Score       = 5.5,
+            Score       = AppDefaults.EmojiResultScore,
             ScoreReason = "Grid de emojis",
             Columns      = emojiLayoutConfig.Columns,
             ViewportRows = emojiLayoutConfig.ViewportRows,

@@ -446,7 +446,7 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
                 // On Retina (2×) produces 128×128 pixels — more than enough for 28×28 logical display.
                 // Avoids the inconsistency of TIFFRepresentation returning all reps (16×16 to 1024×1024)
                 // and imageRepWithData: picking any one of them unpredictably.
-                const int targetSize = 64;
+                const int targetSize = AppDefaults.MacAppIconRenderSize;
                 var alloc = ObjcMsgSend(ObjcGetClass("NSImage"), SelRegisterName("alloc"));
                 if (alloc == IntPtr.Zero) {
                     logger.LogWarning("Icon [{App}]: NSImage alloc returned zero", name);

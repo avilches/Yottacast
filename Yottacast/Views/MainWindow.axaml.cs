@@ -233,7 +233,7 @@ public partial class MainWindow : Window {
     }
 
     private static double GetWindowWidth() =>
-        Application.Current?.Resources["Theme.Window.Width"] is double w ? w : 730.0;
+        Application.Current?.Resources["Theme.Window.Width"] is double w ? w : AppDefaults.WindowDefaultWidth;
 
     private static double GetPreviewWidth() =>
         Application.Current?.Resources["Theme.Preview.Width"] is double w ? w : AppDefaults.EditorWidth;
@@ -713,7 +713,7 @@ public partial class MainWindow : Window {
 
         var panelW = ResultsList.Bounds.Width;
         var panelH = ResultsPanel.Bounds.Height;
-        var menuW  = OptionsMenuOverlay.Bounds.Width > 0 ? OptionsMenuOverlay.Bounds.Width : 220.0;
+        var menuW  = OptionsMenuOverlay.Bounds.Width > 0 ? OptionsMenuOverlay.Bounds.Width : AppDefaults.OptionsMenuFallbackWidth;
         var menuH  = OptionsMenuOverlay.Bounds.Height;
 
         double x, y;
@@ -790,7 +790,7 @@ public partial class MainWindow : Window {
     }
 
     private int GetVisiblePageSize() {
-        const double itemMinHeight = 52.0; // matches ListBoxItem MinHeight in Window.Styles
+        const double itemMinHeight = AppDefaults.ResultItemMinHeight; // matches ListBoxItem MinHeight in Window.Styles
         var sv = ResultsList.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
         var viewportHeight = sv?.Viewport.Height ?? ResultsList.Bounds.Height;
         return viewportHeight > 0 ? Math.Max(1, (int)(viewportHeight / itemMinHeight)) : 5;

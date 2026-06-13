@@ -81,6 +81,17 @@ public static class AppDefaults {
     /// After this many days without use, a score is halved.
     public const int EmojiHalfLifeDays = 30;
 
+    // ── Services — plugins ───────────────────────────────────────────────────────
+    /// HTTP timeout for downloading plugin icons.
+    public const int PluginIconHttpTimeoutSeconds = 10;
+    /// Debounce before reloading plugins after a file change. Editors often write a plugin
+    /// file in multiple steps, so a short wait coalesces those into a single reload.
+    public const int PluginReloadDebounceMs = 300;
+
+    // ── Platform — macOS ──────────────────────────────────────────────────────────
+    /// Point size at which macOS application icons are rendered to PNG via NSImage.
+    public const int MacAppIconRenderSize = 64;
+
     // ── Services — launch history ────────────────────────────────────────────────
     /// Half-life in days for launch history decay. After this many days without use, the bonus is halved.
     public const double LaunchHistoryHalfLifeDays = 30.0;
@@ -108,6 +119,36 @@ public static class AppDefaults {
     public const string DateIsoFormat = "yyyy-MM-dd";
     /// Default format string for the long date cell in date search results.
     public const string DateLongFormat = "d MMMM yyyy (dddd)";
+
+    // ── Search — result scores ────────────────────────────────────────────────
+    // Scores that rank results across sources. Higher wins. Kept here so the relative
+    // ordering between sources is auditable in one place (see also AppMinScore,
+    // AlgebraResultScore and DateSearchScore in their own sections).
+    /// Score for a recognized URL result (typed or detected). Sits well above app/file matches.
+    public const double UrlResultScore = 10.0;
+    /// Score for a recognized local filesystem path result.
+    public const double LocalPathResultScore = 10.0;
+    /// Score for a calculator / unit-conversion / equation result.
+    public const double CalculatorResultScore = 7.0;
+    /// Score for the emoji picker grid result.
+    public const double EmojiResultScore = 5.5;
+    /// Web search score when the prefix is active (explicit web search intent).
+    public const double WebSearchPrefixScore = 3.8;
+    /// Web search score in ShowAlways mode (passive suggestion, ranks below most matches).
+    public const double WebSearchShowAlwaysScore = 0.4;
+    /// Dictionary score when the prefix is active (explicit lookup intent).
+    public const double DictionaryPrefixScore = 3.7;
+    /// Dictionary score in ShowAlways mode (passive suggestion).
+    public const double DictionaryShowAlwaysScore = 0.3;
+    /// Base score for clipboard history entries when no filter is typed (ordered by recency,
+    /// decremented by index so the most recent entry ranks highest).
+    public const double ClipboardHistoryUnfilteredBaseScore = 1000.0;
+    /// Clipboard history score for an exact match of the typed filter.
+    public const double ClipboardHistoryExactMatchScore = 4.0;
+    /// Clipboard history score when an entry starts with the typed filter.
+    public const double ClipboardHistoryPrefixMatchScore = 3.5;
+    /// Clipboard history score when an entry contains the typed filter.
+    public const double ClipboardHistoryContainsMatchScore = 3.0;
 
     // ── Search — dictionary ────────────────────────────────────────────────
     /// HTTP timeout for dictionary API requests.
@@ -192,6 +233,11 @@ public static class AppDefaults {
     // ── Search — URL ─────────────────────────────────────────────────────────
     /// HTTP timeout for favicon requests.
     public const int FaviconTimeoutSeconds = 5;
+    /// Pixel size requested for downloaded favicons (sz= parameter of the favicon provider).
+    public const int FaviconSize = 64;
+    /// Timeout for the DNS reachability check that decides whether a typed/clipboard URL
+    /// resolves to a real host before showing it as reachable.
+    public const int UrlReachabilityDnsTimeoutSeconds = 2;
 
     // ── Search — System Settings ──────────────────────────────────────────────
     /// TTL for dynamic System Settings panels cache (Wi-Fi, VPN, etc).
@@ -201,6 +247,16 @@ public static class AppDefaults {
     /// Default duration in seconds before auto-clearing the search text after hide.
     /// 0 means "always keep" (never auto-clear).
     public const int KeepValueWhenHideDuration = 60;
+
+    // ── UI — layout ───────────────────────────────────────────────────────────
+    /// Fallback window width (px) used when the active theme does not define
+    /// Theme.Window.Width. Must match the width baked into the built-in default theme.
+    public const double WindowDefaultWidth = 730.0;
+    /// Minimum height (px) of a single result list item. Mirrors the ListBoxItem MinHeight
+    /// in the window styles and is used to compute the visible page size for PageUp/PageDown.
+    public const double ResultItemMinHeight = 52.0;
+    /// Fallback width (px) for the options menu overlay before its real width is measured.
+    public const double OptionsMenuFallbackWidth = 220.0;
 
     // ── Drag-and-drop ─────────────────────────────────────────────────────────
     /// Pixel distance the cursor must travel with the left button held before a drag is initiated.

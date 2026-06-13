@@ -34,7 +34,7 @@ public class LocalPathSearch(
             Subtitle       = expanded,
             ItemPath       = capturedPath,
             Category       = "Files",
-            Score          = 10.0,
+            Score          = AppDefaults.LocalPathResultScore,
             ScoreReason    = "Ruta local directa",
             Actions = [
                 new() {

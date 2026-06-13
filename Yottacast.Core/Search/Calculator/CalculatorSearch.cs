@@ -84,7 +84,7 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
                 vm = new ConversionResultItemViewModel {
                     Icon              = "📐",
                     Category          = "Converter",
-                    Score             = 7,
+                    Score             = AppDefaults.CalculatorResultScore,
                     ScoreReason       = "Conversión detectada",
                     FromShort         = fromShort,
                     FromLong          = fromLong,
@@ -154,7 +154,7 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
                     TitleLong = titleLong,
                     Subtitle = subtitle,
                     Category = "Calculator",
-                    Score = 7,
+                    Score = AppDefaults.CalculatorResultScore,
                     ScoreReason = "Expresión detectada",
                     GetDragPayload = () => new DragPayload.Text(captured),
                     Actions = [
@@ -299,7 +299,7 @@ public class CalculatorSearch(MathJsEngineProvider engineProvider, ExchangeRateS
             Title = title,
             Subtitle = originalQuery,
             Category = "Calculator",
-            Score = 7,
+            Score = AppDefaults.CalculatorResultScore,
             ScoreReason = "Expresión detectada",
             GetDragPayload = () => new DragPayload.Text(captured),
             Actions = [

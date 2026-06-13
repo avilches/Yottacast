@@ -61,7 +61,7 @@ public sealed class FaviconCache {
             }
 
             // Phase 2: HTTP fetch from Google favicon service
-            var url = $"https://www.google.com/s2/favicons?sz=64&domain={host}";
+            var url = $"https://www.google.com/s2/favicons?sz={AppDefaults.FaviconSize}&domain={host}";
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(AppDefaults.FaviconTimeoutSeconds));
             var bytes = await _httpClient.GetByteArrayAsync(url, cts.Token).ConfigureAwait(false);
             if (bytes.Length > 0) {

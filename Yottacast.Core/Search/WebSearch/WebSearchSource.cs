@@ -93,7 +93,7 @@ public class WebSearchSource(
         if (userConfig.Mode == WebSearchMode.ShowAlways) {
             if (anyPrefixMatch) return null;
             searchQuery = query;
-            score = 0.4;
+            score = AppDefaults.WebSearchShowAlwaysScore;
             scoreReason = "Búsqueda web siempre";
         } else {
             var prefix = userConfig.Prefix;
@@ -102,7 +102,7 @@ public class WebSearchSource(
             if (!query.StartsWith(trigger, StringComparison.OrdinalIgnoreCase)) return null;
             searchQuery = query[trigger.Length..].Trim();
             if (string.IsNullOrEmpty(searchQuery)) return null;
-            score = 3.8;
+            score = AppDefaults.WebSearchPrefixScore;
             scoreReason = "Búsqueda web prefijo";
         }
 
