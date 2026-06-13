@@ -194,22 +194,6 @@ public partial class SettingsWindow : Window {
         return results.Count > 0 ? results[0].TryGetLocalPath() : null;
     }
 
-    private async void OnAddSearchFolderClicked(object? sender, RoutedEventArgs e) {
-        var path = await PickFolderAsync();
-        if (path != null && DataContext is SettingsWindowViewModel vm)
-            vm.AddSearchFolder(path);
-    }
-
-    private void OnRemoveSearchFolderClicked(object? sender, RoutedEventArgs e) {
-        if (sender is Button { Tag: SearchFolderItem item } && DataContext is SettingsWindowViewModel vm)
-            vm.RemoveSearchFolder(item);
-    }
-
-    private void OnAddCommonFoldersClicked(object? sender, RoutedEventArgs e) {
-        if (DataContext is SettingsWindowViewModel vm)
-            vm.AddCommonFolders();
-    }
-
     private void OnDecimalPlacesTextInputting(object? sender, TextInputEventArgs e) {
         if (e.Text != null && !e.Text.All(char.IsDigit))
             e.Handled = true;
