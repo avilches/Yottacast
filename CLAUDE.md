@@ -208,6 +208,13 @@ toman iniciativas de "limpieza" no solicitadas si el prompt no lo prohibe, y cua
 trabajo del usuario. Verificar el `git log`/`git show` de los commits que hagan los subagentes por si tocaron algo de
 mas.
 
+## Pendientes y TODOs
+
+- **TODOs (features futuras)**: cuando el usuario pida "recordar hacer una feature mas adelante", anadirla a `docs/TODO.md`.
+- **PENDING (trabajo aplazado)**: cuando algo quede pendiente y el usuario diga que no lo quiere hacer ahora, meterlo en `docs/PENDING.md`.
+- `docs/PENDING.md` es el indice del trabajo aplazado y referencia todos los ficheros de la carpeta `docs/pending/`. Al anadir un documento de plan a `docs/pending/`, anadir su entrada en `docs/PENDING.md`.
+- **Cuando el usuario pregunte "que queda por hacer"**: responder primero con lo de `docs/PENDING.md` (y su carpeta `docs/pending/`) y despues con los TODOs de `docs/TODO.md`.
+
 ## Documentacion
 
 Los docs estan en `docs/`. **Antes de modificar cualquier feature o area del codigo, leer SI O SI los ficheros
