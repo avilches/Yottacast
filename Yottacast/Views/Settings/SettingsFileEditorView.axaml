@@ -1,0 +1,65 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Yottacast.ViewModels"
+             xmlns:sys="using:System"
+             x:Class="Yottacast.Views.Settings.SettingsFileEditorView"
+             x:DataType="vm:SettingsWindowViewModel">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://Yottacast/Views/Settings/SettingsResources.axaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <UserControl.Styles>
+        <StyleInclude Source="avares://Yottacast/Views/Settings/SettingsStyles.axaml"/>
+    </UserControl.Styles>
+
+    <StackPanel Spacing="16">
+        <TextBlock Classes="section-heading" Text="File Editor"/>
+
+        <ToggleSwitch IsChecked="{Binding EnableFileEditor}"
+                      OnContent="Enabled"
+                      OffContent="Disabled"/>
+
+        <TextBlock Classes="description"
+                   Text="Open text and code files directly from search results with &#x2318;E."/>
+
+        <StackPanel Spacing="12" IsVisible="{Binding EnableFileEditor}">
+            <CheckBox Content="Auto-save on close"
+                      IsChecked="{Binding FileEditorAutoSave}"/>
+            <TextBlock Classes="description"
+                       Text="If disabled, a save button (&#x2318;S) appears in the editor header."/>
+            <TextBlock Classes="label" Text="Editable extensions"/>
+            <ItemsControl ItemsSource="{Binding FileEditorExtensions}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="sys:String">
+                        <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                            <TextBlock Grid.Column="0"
+                                       Text="{Binding}"
+                                       VerticalAlignment="Center"
+                                       FontSize="12"/>
+                            <Button Grid.Column="1"
+                                    Content="✕"
+                                    FontSize="11"
+                                    Padding="6,2"
+                                    Click="OnRemoveExtensionClick"/>
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                <TextBox Grid.Column="0"
+                         x:Name="NewExtensionBox"
+                         Watermark="e.g. txt"
+                         FontSize="12"/>
+                <Button Grid.Column="1"
+                        Content="Add"
+                        FontSize="12"
+                        Padding="10,4"
+                        Margin="6,0,0,0"
+                        Click="OnAddExtensionClick"/>
+            </Grid>
+        </StackPanel>
+    </StackPanel>
+</UserControl>
