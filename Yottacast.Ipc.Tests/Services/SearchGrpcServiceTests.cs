@@ -43,6 +43,63 @@ public class SearchGrpcServiceTests {
         return (service, source, clipboard);
     }
 
+    private sealed class FakeDeferredSource(IReadOnlyList<BaseResultItemViewModel> items) : IDeferredSearchSource {
+        public void Start() { }
+        public Task WhenReady() => Task.CompletedTask;
+        public Task Stop() => Task.CompletedTask;
+        public async IAsyncEnumerable<IReadOnlyList<BaseResultItemViewModel>> SearchAsync(
+            string query, int limit, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default) {
+            await Task.Yield();
+            yield return items;
+        }
+    }
+
+    private sealed class FakeStreamWriter<T> : IServerStreamWriter<T> {
+        public List<T> Written { get; } = [];
+        public WriteOptions? WriteOptions { get; set; }
+        public Task WriteAsync(T message) { Written.Add(message); return Task.CompletedTask; }
+    }
+
+    private sealed class FakeServerCallContext(CancellationToken ct) : ServerCallContext {
+        protected override CancellationToken CancellationTokenCore => ct;
+        protected override string MethodCore => "";
+        protected override string HostCore => "";
+        protected override string PeerCore => "";
+        protected override DateTime DeadlineCore => DateTime.MaxValue;
+        protected override Metadata RequestHeadersCore => [];
+        protected override Metadata ResponseTrailersCore => [];
+        protected override Status StatusCore { get; set; }
+        protected override WriteOptions? WriteOptionsCore { get; set; }
+        protected override AuthContext AuthContextCore => new("", new Dictionary<string, List<AuthProperty>>());
+        protected override ContextPropagationToken CreatePropagationTokenCore(ContextPropagationOptions? options) => null!;
+        protected override Task WriteResponseHeadersAsyncCore(Metadata responseHeaders) => Task.CompletedTask;
+    }
+
+    [Fact]
+    public async Task SearchDeferred_RemovesFileThatIsTheSameBundleAsAnApp() {
+        var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
+        var instant = new FakeInstantSource([
+            new ResultItemViewModel { Title = "Safari", ItemPath = "/Applications/Safari.app", Category = "Application", Score = 4.0 },
+        ]);
+        var deferred = new FakeDeferredSource([
+            // Same bundle path as the app → removed.
+            new FileResultItemViewModel { Title = "Safari.app", ItemPath = "/Applications/Safari.app", Category = "Documents", Score = 3.5 },
+            // Distinct file that merely shares the app's name → kept.
+            new FileResultItemViewModel { Title = "Safari.txt", ItemPath = "/Desktop/Safari.txt", Category = "Documents", Score = 2.0 },
+        ]);
+        var globalSearch = new GlobalSearch([instant], [deferred]);
+        var service = new SearchGrpcService(globalSearch, clipboard, NullLogger<SearchGrpcService>.Instance);
+        service.Initialize();
+
+        var writer = new FakeStreamWriter<SearchResponse>();
+        await service.SearchDeferred(new SearchRequest { Query = "safari", Limit = 10 }, writer, new FakeServerCallContext(default));
+
+        var lastSnapshot = writer.Written.First(r => r.IsSearching);
+        var titles = lastSnapshot.Results.Select(r => r.Title).ToList();
+        Assert.DoesNotContain("Safari.app", titles);  // same bundle as the Safari app → deduped
+        Assert.Contains("Safari.txt", titles);         // distinct document → kept
+    }
+
     [Fact]
     public async Task Activate_ReturnsCopiedTextOfTheActivatedResult() {
         var (service, source, clipboard) = BuildService();

@@ -671,7 +671,7 @@ public partial class MainWindowViewModel(
             return;
         }
 
-        var merged = _instantSnapshot
+        var sorted = _instantSnapshot
             .Concat(_deferredSnapshot)
             .Select(x => {
                 // Only the numeric bonus (needed for ordering) is computed per keystroke.
@@ -687,16 +687,9 @@ public partial class MainWindowViewModel(
             .Select(x => x.item)
             .ToList();
 
-        // Deduplicate: remove file results whose stem matches an app already in the list
-        var appNames = merged
-            .OfType<ResultItemViewModel>()
-            .Where(x => x.Category == "Application")
-            .Select(x => x.Title)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        if (appNames.Count > 0)
-            merged.RemoveAll(x =>
-                x is FileResultItemViewModel file &&
-                appNames.Contains(Path.GetFileNameWithoutExtension(file.Title)));
+        // Remove file results whose stem matches an app already in the list (e.g. Safari + Safari.app).
+        // The dedup logic lives in GlobalSearch so the GUI and the IPC daemon behave identically.
+        var merged = GlobalSearch.DeduplicateFilesAgainstApps(sorted);
 
         var previousSelected = SelectedResult;
         Results.Clear();

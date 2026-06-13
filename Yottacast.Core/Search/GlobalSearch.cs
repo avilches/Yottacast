@@ -30,6 +30,48 @@ public class GlobalSearch(
         _instantSources.Select(s => s.Stop())
         .Concat(_deferredSources.Select(s => s.Stop())));
 
+    // ── File-vs-app deduplication ───────────────────────────────────────────────
+    // The same app bundle can surface twice: as an app (e.g. Safari at /Applications/Safari.app)
+    // and as a file from the document source when that exact bundle lies in an indexed folder.
+    // We dedup by PATH, not by name: only a file whose ItemPath equals an app's ItemPath is the
+    // very same bundle and gets removed. A distinct document that merely shares a name with an app
+    // (e.g. ~/Desktop/Safari.txt) has a different path and is always kept — the user may want it.
+    // Centralized here so the GUI (merged list in RefreshResults) and the IPC daemon (deferred file
+    // snapshots filtered against the instant app paths) dedup identically.
+
+    /// <summary>Paths (ItemPath) of app results (Category == "Application") in <paramref name="items"/>.</summary>
+    public static HashSet<string> AppResultPaths(IEnumerable<BaseResultItemViewModel> items) =>
+        items.OfType<ResultItemViewModel>()
+            .Where(x => x.Category == "Application" && !string.IsNullOrEmpty(x.ItemPath))
+            .Select(x => x.ItemPath!)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Removes file results whose path equals one of <paramref name="appPaths"/> (i.e. the file IS the
+    /// same bundle as an app already present). Returns the input unchanged when there is nothing to remove.
+    /// </summary>
+    public static IReadOnlyList<BaseResultItemViewModel> RemoveFilesDuplicatingApps(
+        IReadOnlyList<BaseResultItemViewModel> items, IReadOnlySet<string> appPaths) {
+        if (appPaths.Count == 0) return items;
+        static bool IsDup(BaseResultItemViewModel x, IReadOnlySet<string> paths) =>
+            x is FileResultItemViewModel file && paths.Contains(file.ItemPath);
+
+        var hasDup = false;
+        foreach (var x in items)
+            if (IsDup(x, appPaths)) { hasDup = true; break; }
+        if (!hasDup) return items;
+
+        var result = new List<BaseResultItemViewModel>(items.Count);
+        foreach (var x in items)
+            if (!IsDup(x, appPaths)) result.Add(x);
+        return result;
+    }
+
+    /// <summary>Convenience: dedup a single merged list (apps + files) against its own app paths.</summary>
+    public static IReadOnlyList<BaseResultItemViewModel> DeduplicateFilesAgainstApps(
+        IReadOnlyList<BaseResultItemViewModel> items) =>
+        RemoveFilesDuplicatingApps(items, AppResultPaths(items));
+
     public (IReadOnlyList<BaseResultItemViewModel> Items, string? Hint, SearchHintKind HintKind)
         SearchInstant(string query, int limit, SearchMode mode = SearchMode.All) {
 

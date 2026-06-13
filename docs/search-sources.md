@@ -147,7 +147,11 @@ Cada fuente deferred ocupa un slot. Cuando cualquier fuente emite un nuevo snaps
 
 La coordinacion interna usa un `Channel` unbounded. Cada tarea de fuente se inicia con `CancellationToken.None` (la cancelacion llega via el token pasado a `SearchAsync`). Las `OperationCanceledException` se capturan silenciosamente dentro de cada tarea.
 
-> **Verificar en:** `GlobalSearch.cs` (SearchInstant, SearchDeferredAsync, SearchSourcesAsync), `IInstantSearchSource.cs`, `IDeferredSearchSource.cs`, `ISearchHintProvider.cs`.
+### Deduplicacion fichero-vs-app
+
+El mismo bundle puede aparecer dos veces: como app (p. ej. Safari en `/Applications/Safari.app`) y como fichero desde la fuente de documentos cuando ese bundle cae en una carpeta indexada. `GlobalSearch` expone los helpers estaticos `AppResultPaths`, `RemoveFilesDuplicatingApps` y `DeduplicateFilesAgainstApps` que eliminan el fichero cuya **ruta** coincide con la de una app. La dedup es por ruta (no por nombre): un documento distinto que solo comparte nombre con una app (`Safari.txt`) tiene otra ruta y se conserva. La logica esta centralizada para que la GUI (sobre su lista mezclada en `RefreshResults`) y el daemon IPC (que filtra cada snapshot deferred contra las rutas de app obtenidas del instant) deduplican identicamente. El daemon es necesario porque envia instant y deferred al cliente en streams separados y el merge ocurre en el cliente.
+
+> **Verificar en:** `GlobalSearch.cs` (SearchInstant, SearchDeferredAsync, SearchSourcesAsync, AppResultPaths, RemoveFilesDuplicatingApps, DeduplicateFilesAgainstApps), `IInstantSearchSource.cs`, `IDeferredSearchSource.cs`, `ISearchHintProvider.cs`, `SearchGrpcService.SearchDeferred`.
 
 ---
 

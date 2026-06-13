@@ -22,7 +22,11 @@ Requisito: ejecutar despues del Plan 1 (varios ficheros se solapan; los fixes de
 - **Cambio**: calcular el bonus numerico en el merge (se necesita para ordenar) pero diferir la construccion de los strings: solo cuando `IsAltPressed` es true, o convertir ScoreDisplayText/ScoreTooltipText en propiedades computadas perezosas que formatean al primer acceso.
 - **Verificar**: con Alt pulsado los scores y tooltips se muestran identicos a antes.
 
-### T2. Deduplicacion apps vs files en una sola pasada (impacto alto, esfuerzo medio)
+### T2. Deduplicacion apps vs files en una sola pasada (impacto alto, esfuerzo medio) — DONE (Opcion A: GlobalSearch)
+
+> Hecho: la dedup vive ahora en `GlobalSearch` como helpers estaticos (`AppResultPaths`, `RemoveFilesDuplicatingApps`, `DeduplicateFilesAgainstApps`). La GUI los usa en `RefreshResults` (reemplaza el OfType+Where+ToHashSet+RemoveAll por una sola llamada). El daemon IPC ahora tambien deduplica: `SearchGrpcService.SearchDeferred` calcula las rutas de app del instant y filtra cada snapshot deferred (antes el daemon NO deduplicaba — bug corregido).
+> Ademas se corrigio un bug de comportamiento: la dedup era por NOMBRE (stem == Title de app), asi que escondia documentos distintos que solo compartian nombre con una app (p. ej. `Safari.txt`). Ahora es por RUTA (`ItemPath`): solo se elimina el fichero que es literalmente el mismo bundle que una app; los documentos homonimos se conservan. Tests: 6 en `GlobalSearchDedupTests` (Core) y 1 en `SearchGrpcServiceTests` (IPC). Docs `search-scoring.md` §1 y `search-sources.md` §4 actualizados.
+
 
 - **Donde**: `MainWindowViewModel.cs:645-674`.
 - **Problema**: tras el merge se itera la lista completa 3 veces (OfType+Where para extraer apps, construccion de HashSet, RemoveAll con Path.GetFileNameWithoutExtension por elemento).
@@ -58,7 +62,10 @@ Requisito: ejecutar despues del Plan 1 (varios ficheros se solapan; los fixes de
 - **Cambio**: (a) cachear `charToEntry` como campo construido en Start(); (b) reescribir FilterEmojis con bucle manual y un solo Sort sobre buffer reutilizable o preasignado.
 - **Verificar**: tests de EmojiSearch; el orden de resultados no cambia.
 
-### T6. Propiedades computadas del footer con cache (impacto bajo, esfuerzo bajo)
+### T6. Propiedades computadas del footer con cache (impacto bajo, esfuerzo bajo) — DESCARTADO
+
+> Descartado: impacto real muy bajo (se formatean solo las 2-5 acciones del item seleccionado por keystroke, no un bucle sobre cientos) y riesgo de correctitud: el `LabelProvider` de documentos ("Open in <App>") es dinamico y depende de `_appNameByExtension`, que se puebla async; `OnBadgeIconLoaded` re-emite `FooterHints`/`OptionsMenuItems` a proposito para refrescar ese label sobre el mismo `SelectedResult`. Un cache por referencia lo congelaria salvo invalidacion en todos los caminos. Relacion riesgo/beneficio desfavorable.
+
 
 - **Donde**: `MainWindowViewModel.cs:74-120` (FooterHints, OptionsMenuItems, AvailableModes).
 - **Problema**: se recomputan (cadenas LINQ) en cada cambio de SelectedResult, es decir por keystroke.

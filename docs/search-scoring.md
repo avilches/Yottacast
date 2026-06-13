@@ -15,9 +15,9 @@ El score final de cada item es `score_base + bonus_de_uso`, donde el bonus lo ap
 - Cada fuente instant expone su propio `IInstantSearchSource.Limit`. Si vale `-1`, hereda el limite global pasado a `SearchInstant`, que es `AppDefaults.SearchSourceLimit` (actualmente 500, no 10). Las fuentes deferred no exponen `Limit`: reciben directamente el limite global por parametro en `SearchAsync`. Solo `AppSearchLimit` (10), `LocalPathSearchLimit` (5) y `SystemSettingsSearchLimit` (5) imponen topes pequeños; calculadora, emoji, web, URL y ficheros usan `-1` o el limite global.
 - Tras mezclar, `MainWindowViewModel.RefreshResults()` no aplica ningun tope adicional: la lista visible muestra todos los resultados ordenados, limitada en la practica solo por los limites por fuente y por `SearchSourceLimit`. No hay un tope fijo de elementos visibles.
 - Si hay un resultado de calculadora o conversor y el usuario no ha navegado con las teclas, ese resultado queda seleccionado automaticamente, independientemente de su posicion en la lista.
-- `RefreshResults()` deduplica ademas los resultados de fichero cuyo stem (nombre sin extension) coincide con el `Title` de una app ya presente (categoria "Application"), para no mostrar la app y su bundle/fichero por duplicado.
+- Se deduplican los resultados de fichero cuya **ruta** (`ItemPath`) es exactamente la de una app presente (categoria "Application"), para no mostrar dos veces el mismo bundle (p. ej. la app Safari y el fichero `/Applications/Safari.app`). La dedup es por ruta, no por nombre: un documento distinto que solo comparte nombre con una app (p. ej. `~/Desktop/Safari.txt`) tiene otra ruta y **siempre se conserva**. La logica vive en `GlobalSearch` (`AppResultPaths`, `RemoveFilesDuplicatingApps`, `DeduplicateFilesAgainstApps`) y la aplican por igual la GUI (sobre la lista mezclada en `RefreshResults`) y el daemon IPC (filtrando cada snapshot deferred contra las rutas de app del instant, que el cliente recibe por separado).
 
-> **Verificar en:** `GlobalSearch.SearchInstant()`, `GlobalSearch.SearchSourcesAsync()`, `MainWindowViewModel.RefreshResults()`
+> **Verificar en:** `GlobalSearch.SearchInstant()`, `GlobalSearch.SearchSourcesAsync()`, `GlobalSearch.DeduplicateFilesAgainstApps()`, `MainWindowViewModel.RefreshResults()`, `SearchGrpcService.SearchDeferred()`
 
 ---
 

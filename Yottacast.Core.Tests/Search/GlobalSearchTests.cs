@@ -591,3 +591,79 @@ public class GlobalSearchModeTests {
         Assert.Single(items);
     }
 }
+
+// ── File-vs-app deduplication helpers ──────────────────────────────────────────
+
+public class GlobalSearchDedupTests {
+
+    private static ResultItemViewModel App(string title, string path) =>
+        new() { Title = title, ItemPath = path, Category = "Application", Score = 4.0 };
+
+    private static FileResultItemViewModel File(string title, string path) =>
+        new() { Title = title, ItemPath = path, Category = "Documents", Score = 3.5 };
+
+    [Fact]
+    public void AppResultPaths_OnlyAppCategoryWithPath() {
+        var paths = GlobalSearch.AppResultPaths([
+            App("Safari", "/Applications/Safari.app"),
+            File("Safari.app", "/Downloads/Safari.app"),
+            App("Mail", "/Applications/Mail.app"),
+        ]);
+        Assert.Equal(new List<string> { "/Applications/Mail.app", "/Applications/Safari.app" },
+            paths.OrderBy(x => x).ToList());
+    }
+
+    [Fact]
+    public void RemoveFilesDuplicatingApps_RemovesFileWithSamePathAsApp() {
+        var items = new List<BaseResultItemViewModel> {
+            App("Safari", "/Applications/Safari.app"),
+            File("Safari.app", "/Applications/Safari.app"), // same bundle → removed
+            File("notes.txt", "/Desktop/notes.txt"),
+        };
+        var result = GlobalSearch.RemoveFilesDuplicatingApps(items, GlobalSearch.AppResultPaths(items));
+        Assert.Equal(new List<string> { "Safari", "notes.txt" },
+            result.OfType<ResultItemViewModel>().Select(x => x.Title).ToList());
+    }
+
+    [Fact]
+    public void RemoveFilesDuplicatingApps_KeepsFileThatOnlySharesNameWithApp() {
+        // The reported bug: Safari.txt shares the app's name but is a distinct file → must be kept.
+        var items = new List<BaseResultItemViewModel> {
+            App("Safari", "/Applications/Safari.app"),
+            File("Safari.txt", "/Desktop/Safari.txt"),
+        };
+        var result = GlobalSearch.RemoveFilesDuplicatingApps(items, GlobalSearch.AppResultPaths(items));
+        Assert.Equal(2, result.Count);
+    }
+
+    [Fact]
+    public void RemoveFilesDuplicatingApps_PathMatchIsCaseInsensitive() {
+        var items = new List<BaseResultItemViewModel> {
+            App("Safari", "/Applications/Safari.app"),
+            File("Safari.app", "/APPLICATIONS/SAFARI.APP"),
+        };
+        var result = GlobalSearch.RemoveFilesDuplicatingApps(items, GlobalSearch.AppResultPaths(items));
+        Assert.Single(result);
+        Assert.IsType<ResultItemViewModel>(result[0]);
+    }
+
+    [Fact]
+    public void RemoveFilesDuplicatingApps_NoApps_ReturnsInputUnchanged() {
+        var items = new List<BaseResultItemViewModel> { File("Safari.app", "/Downloads/Safari.app") };
+        var result = GlobalSearch.RemoveFilesDuplicatingApps(items, GlobalSearch.AppResultPaths(items));
+        Assert.Same(items, result);
+    }
+
+    [Fact]
+    public void DeduplicateFilesAgainstApps_PreservesOrder() {
+        var items = new List<BaseResultItemViewModel> {
+            App("Safari", "/Applications/Safari.app"),
+            File("doc.pdf", "/Desktop/doc.pdf"),
+            File("Safari.app", "/Applications/Safari.app"),
+            App("Mail", "/Applications/Mail.app"),
+        };
+        var result = GlobalSearch.DeduplicateFilesAgainstApps(items);
+        Assert.Equal(new List<string> { "Safari", "doc.pdf", "Mail" },
+            result.OfType<ResultItemViewModel>().Select(x => x.Title).ToList());
+    }
+}

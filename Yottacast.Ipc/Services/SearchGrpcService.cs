@@ -82,12 +82,18 @@ public class SearchGrpcService(
         ServerCallContext context) {
 
         var ct = context.CancellationToken;
+        // App paths from the instant phase: the client receives apps from SearchInstant and files
+        // from this deferred stream separately, so we filter file results that ARE the same bundle
+        // as an app here (the GUI does the same on its merged list). The instant search is in-memory.
+        var (instant, _, _) = globalSearch.SearchInstant(request.Query, request.Limit);
+        var appPaths = GlobalSearch.AppResultPaths(instant);
         try {
             await foreach (var snapshot in globalSearch
                 .SearchDeferredAsync(request.Query, request.Limit, ct: ct)
                 .WithCancellation(ct)) {
 
-                var response = BuildResponse(snapshot, hint: null, isSearching: true);
+                var deduped = GlobalSearch.RemoveFilesDuplicatingApps(snapshot, appPaths);
+                var response = BuildResponse(deduped, hint: null, isSearching: true);
                 await responseStream.WriteAsync(response, ct);
             }
 
