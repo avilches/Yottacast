@@ -517,9 +517,15 @@ public partial class App : Application {
             Dispatcher.UIThread.InvokeAsync(() => {
                 var window = desktop.MainWindow;
                 if (window is null) return;
-                if (!window.IsVisible) AppHandler.Instance.ShowWindow(window);
-                if (window.DataContext is MainWindowViewModel vm)
+                if (window.DataContext is not MainWindowViewModel vm) return;
+                if (!window.IsVisible) {
+                    AppHandler.Instance.ShowWindow(window);
                     vm.ActivateMode(SearchMode.Clipboard);
+                } else if (vm.ClipboardModeActive) {
+                    window.Hide();
+                } else {
+                    vm.ActivateMode(SearchMode.Clipboard);
+                }
             });
         };
 
