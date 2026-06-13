@@ -33,9 +33,11 @@ Los temas solo afectan a la **ventana principal de busqueda** (MainWindow). La v
 **Invariante:** la ventana de Settings sigue siempre el modo claro/oscuro del sistema operativo, no el tema del buscador. Esto se logra mediante dos mecanismos:
 
 1. `SettingsWindow.RequestedThemeVariant` se fija en el constructor según `PlatformSettings.GetColorValues().ThemeVariant`, desacoplándose del `Application.RequestedThemeVariant` que cambia ThemeService.
-2. `Window.Resources` de SettingsWindow define sus propios ThemeDictionaries (Light/Dark) con colores nativos macOS para todos los tokens `Theme.*` que usa, que tienen prioridad sobre los de `Application.Resources`.
+2. `ApplySettingsTheme()` (en el `AppHandler` de cada plataforma) inyecta en runtime, via C#, los `ThemeDictionaries` (Light/Dark) con colores nativos del OS para los tokens `Theme.*` que usa Settings; tienen prioridad sobre los de `Application.Resources`. Estos colores no se definen en el AXAML.
 
-Algunos colores puntuales de Settings no provienen ni de los temas ni de los ThemeDictionaries: estan hardcodeados directamente en el AXAML. Por ejemplo, el rojo de captura de hotkey (`#FF3B30`) aparece literal en `SettingsWindow.axaml` (borde del campo en captura, boton de cancelar). Un cambio de ese color exige editar el AXAML, no un tema.
+La ventana de Settings se compone de UserControls por sección bajo `Yottacast/Views/Settings/` (uno por sección: General, AppSearch, FileSearch, FileEditor, Clipboard, Emoji, Dictionary, DateSearch, History, Permissions), más los recursos compartidos `SettingsResources.axaml` (iconos) y `SettingsStyles.axaml` (estilos de campos). Las secciones WebSearch y Calculator permanecen inline en `SettingsWindow.axaml`, que además conserva el chrome (sidebar, divider) y sus estilos.
+
+Algunos colores puntuales de Settings están hardcodeados directamente en el AXAML, no provienen de los temas. Por ejemplo, el rojo de captura de hotkey (`#FF3B30`) aparece literal en el estilo compartido `hotkey-field.capturing` de `Yottacast/Views/Settings/SettingsStyles.axaml` y en los campos de captura de `SettingsGeneralView.axaml` y `SettingsClipboardView.axaml` (y en `SettingsWindow.axaml` para las secciones inline). Cambiar ese color exige editar esos AXAML, no un tema.
 
 > **Verificar en:**
 > - `SettingsWindow.axaml.cs` - constructor, detección OS y asignación de `RequestedThemeVariant`.
