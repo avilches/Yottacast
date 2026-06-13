@@ -252,10 +252,18 @@ Si un fichero de doc empieza a ser demasiado grande, sugiere dividirlo en dos.
 - `docs/user-settings.md` — Persistencia JSON, auto-reparacion, migraciones de settings, propiedades del modelo.
 - `docs/user-settings-browser.md` — Descubrimiento de navegadores, auto-reparacion, lanzamiento de URLs por plataforma.
 - `docs/user-settings-terminal.md` — Descubrimiento de terminales, ejecucion de comandos, escaping por plataforma.
-- `docs/ui-themes.md` — Temas JSON, deteccion dark/light, hot-swap, estructura de un tema, IMPORTANTE: themes solo
-  aplican al buscador, los colores nativos de Settings estan hardcodeados en `Yottacast/Views/SettingsWindow.axaml`. 
-  Si se pide algun cambio de fuente o color o theme en los settings, hay que buscarlo hardcodeado ahi. 
-  dentro de `Window.Resources > ResourceDictionary.ThemeDictionaries` (dos diccionarios: Light y Dark).
+- `docs/ui-themes.md` — Temas JSON, deteccion dark/light, hot-swap, estructura de un tema. IMPORTANTE: los themes JSON
+  solo aplican al buscador, no a Settings. La ventana de Settings esta troceada en UserControls por seccion bajo
+  `Yottacast/Views/Settings/` (General, AppSearch, FileSearch, FileEditor, Clipboard, Emoji, Dictionary, DateSearch,
+  History, Permissions) mas los recursos compartidos `SettingsResources.axaml` (iconos) y `SettingsStyles.axaml`
+  (estilos de campos); WebSearch, Calculator y el chrome/sidebar siguen inline en `SettingsWindow.axaml`.
+  Sus colores de tema (tokens `Theme.*`) NO estan en el AXAML: se inyectan en runtime en C# via
+  `AppHandler.ApplySettingsTheme()` de cada plataforma (diccionarios Light/Dark segun el OS). Algunos colores literales
+  si estan hardcodeados en el AXAML, p.ej. el rojo de captura de hotkey `#FF3B30` (estilo `hotkey-field.capturing` en
+  `SettingsStyles.axaml` y en `SettingsGeneralView.axaml`/`SettingsClipboardView.axaml`). Si se pide un cambio de
+  fuente/color/estilo en Settings: buscar primero en `SettingsStyles.axaml` (estilos compartidos) y en el
+  `Settings<Seccion>View.axaml` correspondiente (o en `SettingsWindow.axaml` para WebSearch/Calculator/sidebar); para
+  los colores de tema nativos del OS, en `ApplySettingsTheme()` del `AppHandler`.
 - `docs/ui-drag-drop.md` — Drag-and-drop de resultados al sistema operativo (Finder, editores). Contrato `GetDragPayload` y disparo desde `MainWindow.axaml.cs`.
 - `docs/ui-hotkeys.md` — Hotkey global configurable, supresion a nivel de OS, mapa de teclas soportadas.
 - `docs/ui-main-window.md` — Layout de la ventana, bindings, indicadores de busqueda, banner de actualizacion.
