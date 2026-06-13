@@ -38,11 +38,12 @@ El fichero de preferencias se crea automaticamente en la primera ejecucion y se 
 | AppDirectories | Directorios por defecto de la plataforma | Directorios donde buscar aplicaciones |
 | EnableAppSearch | `true` | Activa/desactiva la busqueda de aplicaciones |
 | EnableCalculator | `true` | Toggle de la fuente calculadora: controla aritmética, ecuaciones, conversiones de unidades y divisas |
-| EnableClipboard | `true` | Toggle de la fuente clipboard (sin efecto funcional; ver nota) |
 | EnableEmoji | `true` | Toggle de la fuente emoji |
 | FileSearchVisibility | `Always` | Visibilidad de la busqueda de ficheros: `Disabled` (nunca activa), `Always` (activa en modo All), `ModeOnly` (solo en modo Files) |
-| ClipboardSearchVisibility | `Disabled` | Visibilidad de la busqueda de clipboard: mismos valores que `FileSearchVisibility`; `Disabled` por defecto hasta que la fuente exista |
+| ClipboardSearchVisibility | `Disabled` | Visibilidad de la búsqueda de clipboard: `Disabled` (Off, monitor parado), `Always` (modo All), `ModeOnly` (solo modo Clipboard) |
 | ClipboardHotkey | `null` | Hotkey dedicada para activar el modo Clipboard (p.ej. `"Alt+Space"`, `"Meta+V"`); `null` = sin hotkey dedicada |
+| ClipboardHistoryMaxEntries | `200` | Número máximo de entradas de historial de portapapeles a conservar |
+| ClipboardHistoryMaxDays | `30` | Días máximos que se conserva una entrada del historial de portapapeles |
 | EnableWebSearch | `true` | Activa/desactiva la busqueda web; si `false`, `WebSearchSource.Search()` devuelve siempre lista vacia |
 | FileSearchOnlySpecificFolders | `false` | Si `true`, solo busca en las carpetas configuradas en `SearchFolders`; si `false`, busca en toda la home |
 | LastLaunchedVersion | `""` | Version del ultimo arranque (para migraciones) |
@@ -66,8 +67,6 @@ El fichero de preferencias se crea automaticamente en la primera ejecucion y se 
 | WindowY | `null` | Posicion Y de la ventana principal en coordenadas de pantalla (pixels fisicos) |
 | KeepValueWhenHide | `true` | Si el texto se preserva al ocultar la ventana; `false` lo limpia inmediatamente |
 | KeepValueWhenHideDuration | `60` | Segundos antes de borrar el texto tras ocultar; `0` = nunca (Siempre) |
-
-**Nota sobre `EnableClipboard`**: se expone en Settings y se persiste en JSON, pero no tiene efecto funcional porque `ClipboardSearchVisibility` controla la visibilidad real de la fuente; `EnableClipboard` se mantiene por compatibilidad con settings antiguos.
 
 **Nota sobre `EnableAppSearch`**: cuando es `false`, `ApplicationSearch.Start()` marca la fuente como ready inmediatamente (sin escanear) y `Search()` devuelve siempre una lista vacia.
 
@@ -304,7 +303,7 @@ Internamente se usa un record privado `UserSettingsData` como DTO de serializaci
 Cuando el usuario modifica un setting que afecta a los resultados de busqueda, la busqueda activa se re-ejecuta automaticamente sin que el usuario tenga que reescribir la query. Si no hay query activa (barra vacia), no ocurre nada.
 
 **Settings que disparan refresco:**
-- Toggles de fuentes: `EnableAppSearch`, `EnableCalculator`, `EnableClipboard`, `EnableEmoji`, `FileSearchVisibility`, `ClipboardSearchVisibility`, `EnableWebSearch`, `EnableDictionary`
+- Toggles de fuentes: `EnableAppSearch`, `EnableCalculator`, `EnableEmoji`, `FileSearchVisibility`, `ClipboardSearchVisibility`, `EnableWebSearch`, `EnableDictionary`
 - Configuracion de file search: `FileSearchOnlySpecificFolders`, cambios en `SearchFolders`
 - Configuracion de diccionario: `DictionaryPrefix`, `DictionaryShowAlways`, `DictionaryLanguages`
 - Configuracion de calculadora: `CalculatorCurrencyA`, `CalculatorCurrencyB`, `CalculatorDecimalPlaces`

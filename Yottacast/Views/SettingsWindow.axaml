@@ -1015,7 +1015,7 @@
                         <RadioButton Content="Always"
                                      GroupName="FileSearchVisibility"
                                      IsChecked="{Binding FileSearchAlways}"/>
-                        <RadioButton Content="⌘F only"
+                        <RadioButton Content="Exclusive view only (activate with ⌘F)"
                                      GroupName="FileSearchVisibility"
                                      IsChecked="{Binding FileSearchModeOnly}"/>
                     </StackPanel>
@@ -1400,54 +1400,48 @@
                 <!-- Clipboard -->
                 <StackPanel Spacing="16" IsVisible="{Binding IsClipboardSelected}">
                     <TextBlock Classes="section-heading" Text="Clipboard History"/>
-                    <ToggleSwitch IsChecked="{Binding ClipboardHistoryEnabled}"
-                                  OnContent="Enabled"
-                                  OffContent="Disabled"/>
+
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <RadioButton Content="Off"
+                                     GroupName="ClipboardSearchVisibility"
+                                     IsChecked="{Binding ClipboardSearchDisabled}"/>
+                        <RadioButton Content="Always"
+                                     GroupName="ClipboardSearchVisibility"
+                                     IsChecked="{Binding ClipboardSearchAlways}"/>
+                        <RadioButton Content="Exclusive view only (activate with ⌘F)"
+                                     GroupName="ClipboardSearchVisibility"
+                                     IsChecked="{Binding ClipboardSearchModeOnly}"/>
+                    </StackPanel>
+
                     <TextBlock Classes="description"
                                Text="Capture everything you copy and search it from Clipboard mode."/>
 
-                    <StackPanel Spacing="16" IsVisible="{Binding ClipboardHistoryEnabled}">
+                    <StackPanel Spacing="0" IsVisible="{Binding ClipboardSearchModeOnlySelected}">
+                        <TextBlock Classes="label" Text="Clipboard mode hotkey"/>
+                        <Border Classes="hotkey-field"
+                                Classes.capturing="{Binding IsCapturingClipboardHotkey}"
+                                PointerPressed="OnClipboardHotkeyPointerPressed">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="0">
+                                <Border Classes="modifier-badge" Classes.active="{Binding ClipboardBadgeCtrlActive}">
+                                    <TextBlock Text="{Binding CtrlSymbol}"/>
+                                </Border>
+                                <Border Classes="modifier-badge" Classes.active="{Binding ClipboardBadgeAltActive}">
+                                    <TextBlock Text="{Binding AltSymbol}"/>
+                                </Border>
+                                <Border Classes="modifier-badge" Classes.active="{Binding ClipboardBadgeShiftActive}">
+                                    <TextBlock Text="{Binding ShiftSymbol}"/>
+                                </Border>
+                                <Border Classes="modifier-badge" Classes.active="{Binding ClipboardBadgeMetaActive}">
+                                    <TextBlock Text="{Binding MetaSymbol}"/>
+                                </Border>
+                                <TextBlock Classes="hotkey-key" Text="{Binding ClipboardHotkeyKeyText}"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
 
-                        <StackPanel Spacing="4">
-                            <TextBlock Classes="label" Text="Show in search"/>
-                            <RadioButton Content="Off"
-                                         GroupName="ClipboardSearchVisibility"
-                                         IsChecked="{Binding ClipboardSearchDisabled}"/>
-                            <RadioButton Content="Always (in all search)"
-                                         GroupName="ClipboardSearchVisibility"
-                                         IsChecked="{Binding ClipboardSearchAlways}"/>
-                            <RadioButton Content="⌘F only (dedicated Clipboard mode)"
-                                         GroupName="ClipboardSearchVisibility"
-                                         IsChecked="{Binding ClipboardSearchModeOnly}"/>
-                        </StackPanel>
+                    <Separator IsVisible="{Binding ClipboardSearchNotDisabled}"/>
 
-                        <StackPanel Spacing="8" IsVisible="{Binding ClipboardSearchModeOnlySelected}">
-                            <TextBlock Classes="label" Text="Clipboard mode hotkey"/>
-                            <TextBlock Classes="description"
-                                       Text="Press this key combination to open directly in Clipboard mode."/>
-                            <Border Classes="hotkey-field"
-                                    Classes.capturing="{Binding IsCapturingClipboardHotkey}"
-                                    PointerPressed="OnClipboardHotkeyPointerPressed">
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="0">
-                                    <Border Classes="modifier-badge" Classes.active="{Binding ClipboardBadgeCtrlActive}">
-                                        <TextBlock Text="{Binding CtrlSymbol}"/>
-                                    </Border>
-                                    <Border Classes="modifier-badge" Classes.active="{Binding ClipboardBadgeAltActive}">
-                                        <TextBlock Text="{Binding AltSymbol}"/>
-                                    </Border>
-                                    <Border Classes="modifier-badge" Classes.active="{Binding ClipboardBadgeShiftActive}">
-                                        <TextBlock Text="{Binding ShiftSymbol}"/>
-                                    </Border>
-                                    <Border Classes="modifier-badge" Classes.active="{Binding ClipboardBadgeMetaActive}">
-                                        <TextBlock Text="{Binding MetaSymbol}"/>
-                                    </Border>
-                                    <TextBlock Classes="hotkey-key" Text="{Binding ClipboardHotkeyKeyText}"/>
-                                </StackPanel>
-                            </Border>
-                        </StackPanel>
-
-                        <Separator/>
-
+                    <StackPanel Spacing="16" IsVisible="{Binding ClipboardSearchNotDisabled}">
                         <StackPanel Spacing="8">
                             <TextBlock Classes="label" Text="Max entries"/>
                             <NumericUpDown Value="{Binding ClipboardHistoryMaxEntries}"
@@ -1461,7 +1455,6 @@
                                            Minimum="1" Maximum="365"
                                            HorizontalAlignment="Left" Width="120"/>
                         </StackPanel>
-
                     </StackPanel>
                 </StackPanel>
 

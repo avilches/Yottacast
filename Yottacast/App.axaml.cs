@@ -379,7 +379,7 @@ public partial class App : Application {
 
         void StartMonitor()
         {
-            if (!settings.ClipboardHistoryEnabled) return;
+            if (settings.ClipboardSearchVisibility == SearchSourceVisibility.Disabled) return;
             var prev = Interlocked.Exchange(ref _clipboardMonitor, null);
             prev?.Stop();
             IClipboardMonitor monitor;
@@ -406,7 +406,7 @@ public partial class App : Application {
 
         settings.SearchSettingsChanged += () =>
         {
-            if (settings.ClipboardHistoryEnabled)
+            if (settings.ClipboardSearchVisibility != SearchSourceVisibility.Disabled)
                 StartMonitor();
             else
                 StopMonitor();
@@ -491,41 +491,45 @@ public partial class App : Application {
             }
         };
 
-        // Hotkey global para abrir directamente en modo Clipboard
-        var clipboardHotkey = HotkeyConfig.Parse(settings.ClipboardHotkey);
-        if (clipboardHotkey != null && settings.ClipboardSearchVisibility == SearchSourceVisibility.ModeOnly) {
-            _globalHook.KeyPressed += (_, e) => {
-                var mask = e.RawEvent.Mask;
-                var hasAlt  = mask.HasFlag(EventMask.LeftAlt)  || mask.HasFlag(EventMask.RightAlt);
-                var hasCtrl = mask.HasFlag(EventMask.LeftCtrl) || mask.HasFlag(EventMask.RightCtrl);
-                var hasShift= mask.HasFlag(EventMask.LeftShift)|| mask.HasFlag(EventMask.RightShift);
-                var hasMeta = mask.HasFlag(EventMask.LeftMeta) || mask.HasFlag(EventMask.RightMeta);
+        // Hotkey global para abrir directamente en modo Clipboard — lee de settings en cada evento
+        // para que los cambios en Settings tengan efecto inmediato sin reiniciar.
+        _globalHook.KeyPressed += (_, e) => {
+            var ch = settings.ParsedClipboardHotkey;
+            if (ch == null) return;
+            if (settings.ClipboardSearchVisibility != SearchSourceVisibility.ModeOnly) return;
 
-                if (e.Data.KeyCode == KeyNameToKeyCode(clipboardHotkey.KeyName)
-                    && hasAlt == clipboardHotkey.Alt && hasCtrl == clipboardHotkey.Ctrl
-                    && hasShift == clipboardHotkey.Shift && hasMeta == clipboardHotkey.Meta) {
+            var mask = e.RawEvent.Mask;
+            var hasAlt  = mask.HasFlag(EventMask.LeftAlt)  || mask.HasFlag(EventMask.RightAlt);
+            var hasCtrl = mask.HasFlag(EventMask.LeftCtrl) || mask.HasFlag(EventMask.RightCtrl);
+            var hasShift= mask.HasFlag(EventMask.LeftShift)|| mask.HasFlag(EventMask.RightShift);
+            var hasMeta = mask.HasFlag(EventMask.LeftMeta) || mask.HasFlag(EventMask.RightMeta);
 
-                    e.SuppressEvent = true;
-                    if (_clipboardHotkeyDown) return;
-                    _clipboardHotkeyDown = true;
+            if (e.Data.KeyCode != KeyNameToKeyCode(ch.KeyName)) return;
+            if (hasAlt != ch.Alt || hasCtrl != ch.Ctrl || hasShift != ch.Shift || hasMeta != ch.Meta) return;
 
-                    Dispatcher.UIThread.InvokeAsync(() => {
-                        var window = desktop.MainWindow;
-                        if (window is null) return;
-                        if (!window.IsVisible) AppHandler.Instance.ShowWindow(window);
-                        if (window.DataContext is MainWindowViewModel vm)
-                            vm.ActivateMode(SearchMode.Clipboard);
-                    });
-                }
-            };
+            // Dejar pasar el evento a Settings si está capturando el clipboard hotkey
+            if (_settingsVm?.IsCapturingClipboardHotkey == true) return;
 
-            _globalHook.KeyReleased += (_, e) => {
-                if (e.Data.KeyCode == KeyNameToKeyCode(clipboardHotkey.KeyName)) {
-                    e.SuppressEvent = true;
-                    _clipboardHotkeyDown = false;
-                }
-            };
-        }
+            e.SuppressEvent = true;
+            if (_clipboardHotkeyDown) return;
+            _clipboardHotkeyDown = true;
+
+            Dispatcher.UIThread.InvokeAsync(() => {
+                var window = desktop.MainWindow;
+                if (window is null) return;
+                if (!window.IsVisible) AppHandler.Instance.ShowWindow(window);
+                if (window.DataContext is MainWindowViewModel vm)
+                    vm.ActivateMode(SearchMode.Clipboard);
+            });
+        };
+
+        _globalHook.KeyReleased += (_, e) => {
+            var ch = settings.ParsedClipboardHotkey;
+            if (ch != null && e.Data.KeyCode == KeyNameToKeyCode(ch.KeyName)) {
+                e.SuppressEvent = true;
+                _clipboardHotkeyDown = false;
+            }
+        };
 
         _ = _globalHook.RunAsync();
     }

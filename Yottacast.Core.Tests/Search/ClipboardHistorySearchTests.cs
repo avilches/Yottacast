@@ -12,12 +12,10 @@ namespace Yottacast.Core.Tests.Search;
 public class ClipboardHistorySearchTests
 {
     private static (ClipboardHistorySearch search, ClipboardHistoryStore store, UserSettings settings) Build(
-        SearchSourceVisibility visibility = SearchSourceVisibility.ModeOnly,
-        bool historyEnabled = true)
+        SearchSourceVisibility visibility = SearchSourceVisibility.ModeOnly)
     {
         var platform = new FakePlatformProvider([]);
         var settings = UserSettings.Load(platform);
-        settings.ClipboardHistoryEnabled = historyEnabled;
         settings.ClipboardSearchVisibility = visibility;
         var filePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json");
         var store = new ClipboardHistoryStore(filePath, NullLogger<ClipboardHistoryStore>.Instance);
@@ -50,14 +48,6 @@ public class ClipboardHistorySearchTests
         var (search, _, _) = Build(SearchSourceVisibility.Disabled);
         Assert.False(search.IsActiveIn(SearchMode.All));
         Assert.False(search.IsActiveIn(SearchMode.Clipboard));
-    }
-
-    [Fact]
-    public void Search_HistoryDisabled_ReturnsEmpty()
-    {
-        var (search, store, _) = Build(historyEnabled: false);
-        store.Add("hello");
-        Assert.Empty(search.Search("", 10));
     }
 
     [Fact]

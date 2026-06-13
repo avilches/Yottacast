@@ -228,6 +228,7 @@ Si un fichero de doc empieza a ser demasiado grande, sugiere dividirlo en dos.
 - `docs/search-scoring.md` — Algoritmo de puntuacion y ordenacion de resultados entre fuentes.
 - `docs/search-dictionary.md` — Definiciones de diccionario: fuente local (kaikki/SQLite) con fallback a API Wiktionary, modos prefix/showAlways, conversion automatica JSONL→SQLite, settings. Leer tambien `tools/kaikki/README.md` si se toca la generacion de datos.
 - `docs/search-history.md` — Historial de búsquedas: qué se guarda, persistencia, navegación con ↑/Ctrl+↑/Ctrl+↓, settings.
+- `docs/search-clipboard.md` — Historial de portapapeles: captura por polling (macOS/Windows), store con dedup y límites, scoring con decay, acciones Paste/Delete, modos de visibilidad, settings.
 
 **IPC daemon:**
 

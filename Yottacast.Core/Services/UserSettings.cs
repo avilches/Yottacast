@@ -77,7 +77,6 @@ public class UserSettings {
     public string DateLongFormat { get; set; } = AppDefaults.DateLongFormat;
     public bool EnableHistory { get; set; } = true;
     public int HistoryMaxItems { get; set; } = AppDefaults.HistoryMaxItems;
-    public bool ClipboardHistoryEnabled { get; set; } = false;
     public int ClipboardHistoryMaxEntries { get; set; } = AppDefaults.ClipboardHistoryMaxEntries;
     public int ClipboardHistoryMaxDays { get; set; } = AppDefaults.ClipboardHistoryMaxDays;
     public bool EnableFileEditor { get; set; } = true;
@@ -173,7 +172,7 @@ public class UserSettings {
         [JsonPropertyName("enableAppSearch")] public bool EnableAppSearch { get; init; } = true;
         [JsonPropertyName("enableCalculator")] public bool EnableCalculator { get; init; } = true;
         [JsonPropertyName("enableConverter")] public bool EnableConverter { get; init; } = false;
-        [JsonPropertyName("enableClipboard")] public bool ClipboardHistoryEnabled { get; init; } = false;
+        [JsonPropertyName("enableClipboard")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public bool ClipboardHistoryEnabled { get; init; } = false;
         [JsonPropertyName("clipboardHistoryMaxEntries")] public int ClipboardHistoryMaxEntries { get; init; } = AppDefaults.ClipboardHistoryMaxEntries;
         [JsonPropertyName("clipboardHistoryMaxDays")] public int ClipboardHistoryMaxDays { get; init; } = AppDefaults.ClipboardHistoryMaxDays;
         [JsonPropertyName("enableEmoji")] public bool EnableEmoji { get; init; } = true;
@@ -273,7 +272,6 @@ public class UserSettings {
                         .Distinct(StringComparer.OrdinalIgnoreCase)
                         .ToList(),
                     EnableCalculator = data.EnableCalculator || data.EnableConverter,
-                    ClipboardHistoryEnabled = data.ClipboardHistoryEnabled,
                     ClipboardHistoryMaxEntries = data.ClipboardHistoryMaxEntries,
                     ClipboardHistoryMaxDays = data.ClipboardHistoryMaxDays,
                     EnableEmoji = data.EnableEmoji,
@@ -394,7 +392,6 @@ public class UserSettings {
                 AppDirectories = AppDirectories,
                 EnableAppSearch = EnableAppSearch,
                 EnableCalculator = EnableCalculator,
-                ClipboardHistoryEnabled = ClipboardHistoryEnabled,
                 ClipboardHistoryMaxEntries = ClipboardHistoryMaxEntries,
                 ClipboardHistoryMaxDays = ClipboardHistoryMaxDays,
                 EnableEmoji = EnableEmoji,

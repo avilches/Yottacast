@@ -1,144 +1,127 @@
 # Handoff — Clipboard History Search
 
 **Fecha:** 2026-06-11
-**Rama:** main (trabajo directo en main, ya pusheado a origin)
-**Próxima feature:** `ClipboardHistorySearch` — historial de portapapeles con búsqueda en modo Clipboard
+**Rama:** main (trabajo directo en main, pendiente push a origin — 15 commits por encima)
+**Estado:** implementación completa, 1317 tests pasando, prueba manual pendiente
 
 ---
 
 ## Qué se hizo en esta sesión
 
-Se implementó el sistema de **Search Modes** completo (19 commits, pusheados a origin/main).
+Se diseñó e implementó la feature **ClipboardHistorySearch** completa (brainstorming + spec + plan + subagent-driven development, 10 tareas).
 
 **Artefactos generados:**
-- Spec: `docs/superpowers/specs/2026-06-11-search-modes-design.md`
-- Plan: `docs/superpowers/plans/2026-06-11-search-modes.md`
+- Spec: `docs/superpowers/specs/2026-06-11-clipboard-history-search-design.md`
+- Plan: `docs/superpowers/plans/2026-06-11-clipboard-history-search.md`
 
-**Resumen de lo implementado:**
-- `SearchSourceVisibility` (Disabled/Always/ModeOnly) y `SearchMode` (All/Files/Clipboard) como tipos base en Core
-- `ISearchModeSource` — interfaz que implementan las fuentes con modo dedicado (solo `IsActiveIn(SearchMode)`)
-- `GlobalSearch` filtra fuentes por modo activo usando `GetActiveSources<T>` genérico
-- `UserDocumentSearch` implementa `ISearchModeSource` (Mode=Files)
-- `UserSettings` reemplaza `EnableFileSearch: bool` por `FileSearchVisibility: SearchSourceVisibility` (migración automática desde JSON antiguo); añade `ClipboardSearchVisibility` y `ClipboardHotkey`
-- `MainWindowViewModel`: `ActiveMode`, `CycleMode()`, `ResetMode()`, `ActivateMode()`, `ShowModePill`, `ActiveModeName`, `AvailableModes`
-- UI: pill de modo activo debajo del search box, Cmd+F cicla modos, Escape vuelve a All, click en pill vuelve a All
-- Settings: RadioButtons Off/Always/⌘F only para FileSearch
-- App.axaml.cs: hotkey global de Clipboard (condicional, con guard de key-repeat y KeyReleased)
+**Commits de esta sesión (más antiguo a más reciente):**
+```
+d894d8f feat: foundation para ClipboardHistory (AppPaths, AppDefaults, ActionHotkey.Delete, IClipboardMonitor)
+883a787 feat: ClipboardHistoryEntry + ClipboardHistoryStore con tests
+ed2cc7d fix: ClipboardHistoryStore — thread safety, save inmediato en Remove, clock injection, tests
+d7c0434 feat: ClipboardHistorySearch con tests (search, scoring, actions)
+529e0ea feat: UserSettings — ClipboardHistoryEnabled, MaxEntries, MaxDays (migración de EnableClipboard)
+43352fb feat: MacClipboardMonitor — polling NSPasteboard via P/Invoke
+957690e fix: MacClipboardMonitor — Interlocked.Exchange para CTS, cachear selectores Obj-C
+d378f95 feat: WindowsClipboardMonitor — polling via Win32 OpenClipboard
+afb879f feat: DI y wiring ClipboardHistoryStore, ClipboardHistorySearch, ClipboardMonitor
+61967c1 feat: SettingsWindowViewModel — propiedades Clipboard (visibility, maxEntries, maxDays, hotkey capture)
+22d329a feat: SettingsWindow — sección Clipboard History expandida con hotkey configurador
+9660838 chore: Fix trailing whitespace in dark-default.json theme
+853ccd9 fix: suscribir ClipboardHistorySearch.ResultChanged en MainWindowViewModel
+```
 
 ---
 
-## Estado actual relevante para la próxima feature
+## Lo que se implementó
 
-### Lo que YA existe y la próxima sesión debe conocer
+### Archivos nuevos
+| Fichero | Descripción |
+|---------|-------------|
+| `Yottacast.Core/Services/IClipboardMonitor.cs` | Interfaz: `TextCopied, Start(), Task Stop()` |
+| `Yottacast.Core/Search/Clipboard/ClipboardHistoryEntry.cs` | Record `(Text, CopiedAt, UsageCount, LastUsedAt)` |
+| `Yottacast.Core/Search/Clipboard/ClipboardHistoryStore.cs` | Store thread-safe, dedup, límites, debounce save, clock injection |
+| `Yottacast.Core/Search/Clipboard/ClipboardHistorySearch.cs` | `IInstantSearchSource + ISearchModeSource`, scoring con decay, acciones Paste y Delete |
+| `Yottacast/Services/MacClipboardMonitor.cs` | Polling NSPasteboard via P/Invoke, selectores cacheados, `Interlocked.Exchange` |
+| `Yottacast/Services/WindowsClipboardMonitor.cs` | Polling Win32 `OpenClipboard/GetClipboardData` |
+| `Yottacast.Core.Tests/Search/ClipboardHistoryStoreTests.cs` | 16 tests (Add, dedup, límites, Remove, RecordUsage, EntriesChanged, round-trip) |
+| `Yottacast.Core.Tests/Search/ClipboardHistorySearchTests.cs` | 16 tests (IsActiveIn, Search, scoring, acciones, ResultChanged, formato) |
 
-**Ya preparado para Clipboard mode:**
-- `SearchMode.Clipboard` ya existe en el enum
-- `UserSettings.ClipboardSearchVisibility: SearchSourceVisibility` (default Disabled) — ya en settings.json
-- `UserSettings.ClipboardHotkey: string?` — ya en settings.json
-- `App.axaml.cs`: ya registra el hotkey global de Clipboard cuando `ClipboardSearchVisibility == ModeOnly && ClipboardHotkey != null`
-- `MainWindowViewModel.ActivateMode(SearchMode.Clipboard)` — ya existe y funciona
-- `GlobalSearch.GetActiveSources<T>` — ya filtra fuentes con `ISearchModeSource` por modo. Una fuente que implemente `ISearchModeSource.IsActiveIn(Clipboard) == true` ya aparece automáticamente en Clipboard mode
+### Archivos modificados clave
+- `Yottacast.Core/AppPaths.cs` — `ClipboardHistoryFile`
+- `Yottacast.Core/AppDefaults.cs` — constantes clipboard history (MaxEntries, MaxDays, HalfLifeDays, MaxBonus, DebounceMs, MonitorIntervalMs)
+- `Yottacast.Core/ViewModels/ActionHotkey.cs` — `ActionHotkey.Delete = new("Delete")`
+- `Yottacast.Core/Services/UserSettings.cs` — `ClipboardHistoryEnabled` (reemplaza `EnableClipboard`), `ClipboardHistoryMaxEntries`, `ClipboardHistoryMaxDays`, `ParsedClipboardHotkey`
+- `Yottacast.Ipc/Proto/settings.proto` — campo 9: `enable_clipboard` → `clipboard_history_enabled`
+- `Yottacast.Ipc/Mapping/SettingsMapper.cs` — usa `ClipboardHistoryEnabled`
+- `Yottacast/App.axaml.cs` — DI de store/search, `_ = clipboardStore.LoadAsync()`, `SetupClipboardMonitor()`
+- `Yottacast/ViewModels/MainWindowViewModel.cs` — suscripción a `ClipboardHistorySearch.ResultChanged`
+- `Yottacast/ViewModels/SettingsWindowViewModel.cs` — `ClipboardSearchVisibility` radio buttons, `MaxEntries/MaxDays`, hotkey capture state
+- `Yottacast/Views/SettingsWindow.axaml` — sección Clipboard History completa (toggle + radio buttons + hotkey widget + NumericUpDowns)
+- `Yottacast/Views/SettingsWindow.axaml.cs` — handlers `OnClipboardHotkeyPointerPressed`, bloques `IsCapturingClipboardHotkey` en `OnKeyDown/OnKeyUp`
 
-**ClipboardSearch existente (DIFERENTE de lo que se va a construir):**
-- `Yottacast.Core/Search/Clipboard/ClipboardSearch.cs` es un `IEmptyStateSource`, NO un `IInstantSearchSource`
-- Lee el portapapeles ACTUAL cuando se abre la ventana (detecta URLs y rutas de fichero)
-- No tiene nada que ver con historial — es un componente separado que se mantiene
-
-**Ficheros clave de contexto:**
-- `Yottacast.Core/Search/Clipboard/ClipboardSearch.cs` — ver su estructura para entender cómo está organizado el namespace
-- `Yottacast.Core/Services/ClipboardService.cs` — bridge Core↔Avalonia para leer el portapapeles sin depender de Avalonia
-- `Yottacast.Core/AppPaths.cs` — añadir aquí la ruta del fichero de historial de clipboard
-- `Yottacast.Core/AppDefaults.cs` — añadir aquí las constantes (max entries, max days)
-- `Yottacast.Core.Tests/Search/ClipboardSearchTests.cs` — tests del ClipboardSearch existente, ver estructura para los nuevos tests
-
-**Patrón de fuente instant:** Ver `Yottacast.Core/Search/Application/ApplicationSearch.cs` o `Yottacast.Core/Search/Date/DateSearch.cs` como referencia de `IInstantSearchSource`.
+### Comportamiento implementado
+- Captura texto copiado al portapapeles cada 500ms (macOS: `NSPasteboard.changeCount`; Windows: `GetClipboardData`)
+- Deduplicación: si el mismo texto se copia de nuevo, se mueve al principio con timestamp actualizado
+- Score: exact match (4.0) > startsWith (3.5) > contains (3.0) + bonus de uso con decay (`log(n+1) * e^(-días/30)`)
+- Acción "Paste" (Enter): copia al clipboard + cierra ventana + `PasteAfterClose=true` (simula Cmd+V como emoji)
+- Acción "Delete" (Supr): elimina la entrada sin cerrar la ventana, la lista se refresca automáticamente
+- Settings: toggle on/off, visibilidad (Off/Always/⌘F only), hotkey configurable, MaxEntries y MaxDays
 
 ---
 
-## Lo que hay que construir
+## Pendiente para la próxima sesión
 
-### Feature: ClipboardHistorySearch
-
-**Objetivo:** Historial de todo lo copiado al portapapeles (texto), buscable en modo Clipboard. Accesible via hotkey global configurable o Cmd+F dentro del launcher.
-
-**Comportamiento:**
-- Captura todo lo que el usuario copia (texto) en background, incluso cuando el launcher está oculto
-- Almacena hasta X entradas (configurable, ej. default 200) y no más antiguas de X días (configurable, ej. default 30)
-- Persiste en disco: `AppPaths.ClipboardHistoryFile` (añadir a AppPaths) — formato JSON
-- Al buscar en modo Clipboard: filtra por texto de la query (substring o fuzzy), ordenado por recencia
-- Cada entrada: el texto copiado + timestamp + (opcional) source app
-- Al activar una entrada: copia al portapapeles + oculta ventana (como el resultado de calculadora)
-- Si la query está vacía en modo Clipboard: muestra las N entradas más recientes
-
-**Settings necesarios (en UserSettings + UI):**
-- `ClipboardHistoryEnabled: bool` (default false — opt-in)
-- `ClipboardHistoryMaxEntries: int` (default 200)
-- `ClipboardHistoryMaxDays: int` (default 30)
-- `ClipboardSearchVisibility` ya existe (Off/Always/⌘F only)
-- `ClipboardHotkey` ya existe
-
-**Captura del portapapeles:**
-- En macOS: `NSPasteboard` via P/Invoke o polling periódico (Spotlight no cubre portapapeles). Avalonia no expone eventos de cambio de clipboard. La estrategia habitual es polling (ej. cada 500ms) comparando el `changeCount` de `NSPasteboard.generalPasteboard`
-- En Windows: `AddClipboardFormatListener` o polling
-- La captura debe hacerse desde la capa de UI (Yottacast/Services/AppHandler o un servicio nuevo) ya que requiere acceso a Avalonia/P/Invoke de UI. Core solo define la interfaz y el almacenamiento
-
-**Arquitectura sugerida:**
+### 1. Push a origin (inmediato)
+```bash
+git push origin main
 ```
-Yottacast.Core/Search/Clipboard/
-  ClipboardHistorySearch.cs    ← IInstantSearchSource + ISearchModeSource
-  ClipboardHistoryStore.cs     ← almacenamiento en memoria + persistencia JSON
-  ClipboardHistoryEntry.cs     ← record (Text, Timestamp, ?)
+15 commits en main local sin pushear.
 
-Yottacast/Services/
-  ClipboardMonitor.cs          ← polling de NSPasteboard (macOS) / Win API
-  (o integrado en MacAppHandler/WindowsAppHandler)
-```
+### 2. Prueba manual end-to-end
+La feature NO se ha probado en la app real (subagents solo ejecutan tests). Verificar:
+1. Settings → Clipboard History → Enable → "⌘F only" → configurar hotkey (ej. `⌥Space`)
+2. Copiar texto en otra app → activar Yottacast con el hotkey → verificar que aparece en la lista
+3. Copiar el mismo texto → verificar que hay UNA entrada (dedup) con timestamp actualizado
+4. Buscar texto → verificar filtrado y que exact match aparece primero
+5. Activar entrada → verificar paste automático en la app anterior
+6. Borrar entrada con Supr → verificar que desaparece sin cerrar la ventana
+7. Activar la misma entrada varias veces → verificar que sube en ranking de búsqueda
 
-**ISearchModeSource para la nueva fuente:**
-```csharp
-public bool IsActiveIn(SearchMode mode) => mode switch {
-    SearchMode.All      => settings.ClipboardSearchVisibility == SearchSourceVisibility.Always,
-    SearchMode.Clipboard => settings.ClipboardSearchVisibility == SearchSourceVisibility.ModeOnly,
-    _ => false,
-};
-```
-
-**Settings UI:** Añadir sección "Clipboard History" en SettingsWindow con:
-- Toggle ClipboardHistoryEnabled
-- Si enabled: RadioButtons Off/Always/⌘F only (ya hay patrón en FileSearch)
-- Configurador de hotkey global (mismo patrón que el hotkey principal)
-- Max entries y max days
+### 3. Posibles bugs / puntos de atención
+- **Hotkey global no es reactivo**: si el usuario cambia el hotkey o visibilidad en Settings, necesita reiniciar para que el hotkey global se re-registre (igual que el hotkey principal — comportamiento conocido)
+- **Score en modo All con Always**: cuando `ClipboardSearchVisibility=Always` y query vacía, las entradas tienen score `1000 - index`, lo que las sitúa por encima de prácticamente todo. Puede ser un problema visual
+- **"⌘F only" en el radio button**: en Windows/Linux debería decir "Ctrl+F only" — revisar
 
 ---
 
 ## Lecciones aprendidas en esta sesión
 
-- **El `ISearchModeSource` NO tiene `Mode` property** — solo `IsActiveIn(SearchMode)`. Se eliminó en la primera review porque `GlobalSearch` nunca la usaba. No re-añadir.
-- **`GlobalSearch.GetActiveSources<T>` es el punto central de filtrado** — no poner lógica de filtrado en las fuentes (salvo la ya en `SearchAsync` de UserDocumentSearch que se eliminó). Si una fuente no debe ejecutarse en un modo, GlobalSearch no la llama.
-- **La pill de modo usa `Foreground="White"` hardcodeado** — no `Theme.Window.Background` que da bajo contraste en light themes.
-- **`OnSearchSettingsChanged` debe ejecutar el reset de modo ANTES del early-return por SearchText vacío** — bug sutil: si el usuario cambia settings con search vacío y modo activo, el modo quedaba "atascado".
-- **Pill click requiere handler de `Tapped` explícito** — sin él, el click llega a `OnRootPointerPressed` y abre window drag.
-- **El hotkey global de Clipboard necesita guard de key-repeat** (`_clipboardHotkeyDown`) y `KeyReleased` handler, igual que el hotkey principal. Sin esto, se acumulan dispatches en el UI thread al mantener pulsada la tecla.
+- **`Stop()` debe devolver `Task`** en interfaces de ciclo de vida del proyecto. El revisor lo detectó en `IClipboardMonitor` — el proyecto usa `Task Stop()` consistentemente.
+- **Brace style en interfaces**: el proyecto usa `public interface IFoo {` (brace en la misma línea), no Allman style.
+- **`Interlocked.Exchange` para CancellationTokenSources**: el patrón `_cts?.Cancel(); _cts = new CTS()` tiene race condition. Siempre usar `Interlocked.Exchange`.
+- **Clock injection en stores**: necesaria para testear evicción de entradas antiguas. Sin clock, el test `Add_EntryOlderThanMaxDays_IsDiscarded` era inútil.
+- **`ResultChanged` debe suscribirse en MainWindowViewModel**: bug real detectado en revisión final. Si una `IInstantSearchSource` tiene `ResultChanged`, hay que suscribirlo con `Dispatcher.UIThread.Post(RefreshSearch)` en el ViewModel, igual que `UrlSearch.ResultChanged` y `DateSearch.ResultChanged`.
+- **Selectores Obj-C deben cachearse como `static readonly`**: llamar `SelRegisterName` en cada tick del poll (500ms) es ineficiente. Cachear al nivel de clase.
+- **`Remove` debe usar save inmediato, no debounced**: borrar una entrada del historial debe persistir de inmediato (`FlushAsync`) para no perder la operación en un crash.
+
+---
+
+## Tests actuales
+
+1317 passed, 0 failed, 1 skipped (`Manual_AllAnchorsOpen` — skip manual/visual).
+
+```bash
+cd Yottacast.Core.Tests && dotnet test    # suite completa
+cd Yottacast.Ipc.Tests && dotnet test     # IPC tests (9 tests)
+```
 
 ---
 
 ## Suggested Skills
 
 ```
-superpowers:brainstorming          ← PRIMERO: diseñar ClipboardHistorySearch antes de tocar código
-superpowers:writing-plans          ← después del brainstorming
-superpowers:subagent-driven-development  ← para ejecutar el plan
-superpowers:test-driven-development     ← para cada tarea de implementación
-superpowers:verification-before-completion  ← antes de dar por terminado
-```
-
----
-
-## Tests actuales
-
-1284 passed, 0 failed, 1 skipped (el skip es manual/visual para System Settings anchors).
-
-```bash
-cd Yottacast.Core.Tests && dotnet test   # suite completa
-cd Yottacast.Ipc.Tests && dotnet test    # IPC tests
+superpowers:verification-before-completion  ← PRIMERO: prueba manual end-to-end antes de mergear/pushear
+superpowers:systematic-debugging            ← si algo falla en la prueba manual
+superpowers:finishing-a-development-branch  ← para hacer push/PR cuando esté verificado
 ```
