@@ -76,9 +76,10 @@ public class TerminalDiscovery(UserSettings settings, PlatformProvider platform,
                 return new TerminalInfo(name, path);
         }
 
-        // 3. Check platform-specific known paths (e.g. Windows hardcoded exe paths)
+        // 3. Check platform-specific known paths (e.g. Windows hardcoded exe paths).
+        // Glob entries (e.g. Windows Terminal under WindowsApps) are expanded by the platform.
         var paths = platform.TerminalKnownPaths.TryGetValue(name, out var fp) ? fp : [];
-        var existing = paths.FirstOrDefault(p => !p.Contains('*') && (Directory.Exists(p) || File.Exists(p)));
+        var existing = paths.Select(platform.ResolveKnownPath).FirstOrDefault(r => r is not null);
         if (existing is not null) return new TerminalInfo(name, existing);
 
         return null;

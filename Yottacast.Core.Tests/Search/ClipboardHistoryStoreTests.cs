@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
+using Yottacast.Core;
 using Yottacast.Core.Search.Clipboard;
 
 namespace Yottacast.Core.Tests.Search;
@@ -202,5 +203,101 @@ public class ClipboardHistoryStoreTests
         store.EntriesChanged += () => fired = true;
         store.RecordUsage("ghost");
         Assert.False(fired);
+    }
+
+    [Fact]
+    public void ApplyLimitsNow_LoweringMaxEntries_TrimsImmediately()
+    {
+        // Regression: changing ClipboardHistoryMaxEntries in Settings must trim the store right away,
+        // not just on the next Add().
+        var store = BuildStore();
+        for (int i = 0; i < 5; i++)
+            store.Add($"entry-{i}");
+        Assert.Equal(5, store.GetAll().Count);
+
+        store.MaxEntries = 2;
+        store.ApplyLimitsNow();
+
+        var entries = store.GetAll();
+        Assert.Equal(2, entries.Count);
+        Assert.Equal("entry-4", entries[0].Text);
+        Assert.Equal("entry-3", entries[1].Text);
+    }
+
+    [Fact]
+    public void ApplyLimitsNow_FiresEntriesChanged_WhenSomethingTrimmed()
+    {
+        var store = BuildStore();
+        for (int i = 0; i < 4; i++)
+            store.Add($"entry-{i}");
+        var fired = false;
+        store.EntriesChanged += () => fired = true;
+
+        store.MaxEntries = 2;
+        store.ApplyLimitsNow();
+
+        Assert.True(fired);
+    }
+
+    [Fact]
+    public void ApplyLimitsNow_NoChange_DoesNotFireEntriesChanged()
+    {
+        var store = BuildStore();
+        store.Add("only");
+        var fired = false;
+        store.EntriesChanged += () => fired = true;
+
+        store.MaxEntries = 10;
+        store.ApplyLimitsNow();
+
+        Assert.False(fired);
+    }
+
+    [Fact]
+    public void ApplyLimitsNow_LoweringMaxDays_DropsOldEntries()
+    {
+        var baseTime = DateTimeOffset.UtcNow;
+        var times = new Queue<DateTimeOffset>(new[]
+        {
+            baseTime.AddDays(-10), // "old"
+            baseTime,              // "recent"
+        });
+        var current = baseTime;
+        var store = new ClipboardHistoryStore(
+            Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json"),
+            NullLogger<ClipboardHistoryStore>.Instance,
+            clock: () => times.Count > 0 ? (current = times.Dequeue()) : current);
+        store.Add("old");
+        store.Add("recent");
+        Assert.Equal(2, store.GetAll().Count);
+
+        // Now the clock returns baseTime (current). Lower MaxDays so the 10-day-old entry falls outside.
+        store.MaxDays = 5;
+        store.ApplyLimitsNow();
+
+        var entries = store.GetAll();
+        Assert.Single(entries);
+        Assert.Equal("recent", entries[0].Text);
+    }
+
+    [Fact]
+    public async Task Remove_AfterAdd_PersistsRemovalWithoutRace()
+    {
+        // Regression: Remove triggers an immediate flush. A pending debounced save from the prior Add
+        // must be cancelled and the writes serialized so the persisted file reflects the removal.
+        var file = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json");
+        var store1 = new ClipboardHistoryStore(file, NullLogger<ClipboardHistoryStore>.Instance);
+        store1.Add("keep");
+        store1.Add("drop"); // schedules a debounced save
+        store1.Remove("drop"); // cancels debounce + immediate flush
+
+        // Give the immediate flush time to complete and ensure no debounced save undoes it.
+        await Task.Delay(AppDefaults.ClipboardHistoryDebounceMs + 200);
+
+        var store2 = new ClipboardHistoryStore(file, NullLogger<ClipboardHistoryStore>.Instance);
+        await store2.LoadAsync();
+        var entries = store2.GetAll();
+        Assert.Single(entries);
+        Assert.Equal("keep", entries[0].Text);
     }
 }

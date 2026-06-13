@@ -15,6 +15,7 @@ El usuario escribe un nombre (parcial o completo) y Yottacast muestra las aplica
 - Si el usuario no ha escrito nada, las apps recien detectadas se muestran via `NewlyInstalledAppsSource` (ver `docs/ui-main-window.md`). Si esta buscando, se refrescan los resultados instant para incluir la nueva app si coincide con la query.
 - Solo se monitorizan directorios que existen en disco; los configurados pero inexistentes se ignoran silenciosamente.
 - El arranque es idempotente: llamadas repetidas a `Start()` son no-op. El ciclo `Stop()` + `Start()` es valido para reinicio, aunque actualmente ningun codigo lo ejecuta.
+- Un escaneo inicial fallido nunca deja la app sin UI: `WhenInstantReady` completa igualmente (el error se loguea y la cache de apps queda vacia). En ese caso no se montan watchers ni se emite `AppsChanged`; las busquedas de apps simplemente no devuelven resultados hasta el siguiente rescan.
 
 ### Escaneo por plataforma
 
@@ -200,10 +201,12 @@ Los iconos de apps se gestionan en dos capas: carga (plataforma + cache) y rende
 ### Invariantes
 
 - El sufijo `_v2` y el mtime en el nombre del fichero invalidan la entrada automaticamente cuando la app se actualiza.
-- `PreloadAsync` ignora llamadas duplicadas para la misma ruta (comprueba `ContainsKey` antes de lanzar la tarea).
+- `PreloadAsync` deduplica llamadas concurrentes para la misma ruta: ademas de comprobar `_memory`, marca la ruta en un set `_loading` con `TryAdd`, de modo que N llamadas simultaneas lanzan una sola tarea y una sola llamada costosa a la plataforma. La marca se libera en el `finally` de `Load`. `FileIconCache` usa el mismo patron por extension.
 - `Reload` invalida la entrada en memoria y relanza la carga. Se usa cuando una app conocida es re-detectada por el watcher (p. ej. el bundle seguia copiandose al primer evento).
 - Cuando un icono termina de cargarse con bytes no nulos, se dispara `IconLoaded`. La UI se suscribe y re-ejecuta `SearchInstant` en el hilo UI para refrescar los iconos visibles.
-- Los archivos huerfanos de versiones anteriores en la cache de disco no se limpian activamente.
+- Al escribir un icono nuevo a disco, `LoadFromPlatform` borra los ficheros huerfanos del mismo app (mismo `sha1(ruta)`, distinto mtime o version de cache) antes de escribir el actual. Asi la cache de disco no crece indefinidamente cuando una app se actualiza o cambia la version de cache.
+
+**Invariante:** para una app dada, el directorio de disco contiene como mucho un PNG (el de su mtime y version actuales); los de mtimes/versiones anteriores se eliminan al regenerar el icono.
 
 ### Obtencion del icono por plataforma
 
@@ -214,7 +217,7 @@ Los iconos de apps se gestionan en dos capas: carga (plataforma + cache) y rende
 
 `PathToAppIconConverter` recibe `byte[]?` de `IconBytes` y devuelve un `Bitmap` de Avalonia. Usa `ConditionalWeakTable<byte[], Bitmap>` como cache para que los bitmaps se liberen junto con los bytes que los originaron. Si `IconBytes` es `null`, se muestra el emoji fallback.
 
-> **Verificar en:** `AppIconCache.cs` (PreloadAsync, Reload, Load, DiskCachePath), `MacOsPlatformProvider.cs` (GetAppIconBytes), `PathToAppIconConverter.cs`, `ApplicationSearch.cs` (CreateResultItem, IconLoaded).
+> **Verificar en:** `AppIconCache.cs` (PreloadAsync, Reload, Load, LoadFromPlatform, DeleteOrphans, DiskCachePath), `MacOsPlatformProvider.cs` (GetAppIconBytes), `PathToAppIconConverter.cs`, `ApplicationSearch.cs` (CreateResultItem, IconLoaded).
 
 ---
 

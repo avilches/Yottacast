@@ -15,7 +15,7 @@ public static class SettingsMapper {
             EnableAppSearch = s.EnableAppSearch,
             EnableCalculator = s.EnableCalculator,
             EnableEmoji = s.EnableEmoji,
-            EnableFileSearch = s.FileSearchVisibility != SearchSourceVisibility.Disabled,
+            FileSearchVisibility = ToProtoVisibility(s.FileSearchVisibility),
             EnableWebSearch = s.EnableWebSearch,
             ShowDisabledWebSearchEngines = s.ShowDisabledWebSearchEngines,
             FileSearchOnlySpecificFolders = s.FileSearchOnlySpecificFolders,
@@ -59,7 +59,7 @@ public static class SettingsMapper {
         s.EnableAppSearch = msg.EnableAppSearch;
         s.EnableCalculator = msg.EnableCalculator;
         s.EnableEmoji = msg.EnableEmoji;
-        s.FileSearchVisibility = msg.EnableFileSearch ? SearchSourceVisibility.Always : SearchSourceVisibility.Disabled;
+        s.FileSearchVisibility = FromProtoVisibility(msg.FileSearchVisibility);
         s.EnableWebSearch = msg.EnableWebSearch;
         s.ShowDisabledWebSearchEngines = msg.ShowDisabledWebSearchEngines;
         s.FileSearchOnlySpecificFolders = msg.FileSearchOnlySpecificFolders;
@@ -91,4 +91,18 @@ public static class SettingsMapper {
             QueryUrl = string.IsNullOrEmpty(e.QueryUrl) ? null : e.QueryUrl,
         }).ToList();
     }
+
+    private static SearchVisibility ToProtoVisibility(SearchSourceVisibility v) => v switch {
+        SearchSourceVisibility.Disabled => SearchVisibility.Disabled,
+        SearchSourceVisibility.Always   => SearchVisibility.Always,
+        SearchSourceVisibility.ModeOnly => SearchVisibility.ModeOnly,
+        _                               => SearchVisibility.Disabled,
+    };
+
+    private static SearchSourceVisibility FromProtoVisibility(SearchVisibility v) => v switch {
+        SearchVisibility.Disabled => SearchSourceVisibility.Disabled,
+        SearchVisibility.Always   => SearchSourceVisibility.Always,
+        SearchVisibility.ModeOnly => SearchSourceVisibility.ModeOnly,
+        _                         => SearchSourceVisibility.Disabled,
+    };
 }

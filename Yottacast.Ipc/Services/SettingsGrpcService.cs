@@ -1,3 +1,4 @@
+using System.Threading.Channels;
 using Grpc.Core;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.Extensions.Logging;
@@ -11,7 +12,9 @@ public class SettingsGrpcService(
     UserSettings settings,
     ILogger<SettingsGrpcService> logger) : SettingsService.SettingsServiceBase {
 
-    private readonly List<IServerStreamWriter<SettingsMessage>> _watchers = [];
+    // Each subscriber owns a bounded channel; its WatchSettings call is the only writer
+    // of its stream, so gRPC never sees concurrent WriteAsync on the same stream.
+    private readonly List<Channel<SettingsMessage>> _subscribers = [];
     private readonly Lock _lock = new();
 
     public void Initialize() {
@@ -19,21 +22,19 @@ public class SettingsGrpcService(
         settings.AppDirectoriesChanged += BroadcastCurrentSettings;
     }
 
-    private async void BroadcastCurrentSettings() {
-        List<IServerStreamWriter<SettingsMessage>> snapshot;
-        lock (_lock) { snapshot = [.._watchers]; }
-
-        var msg = SettingsMapper.ToProto(settings);
-        List<IServerStreamWriter<SettingsMessage>> failed = [];
-        foreach (var writer in snapshot) {
-            try {
-                await writer.WriteAsync(msg);
-            } catch {
-                failed.Add(writer);
-            }
+    private void BroadcastCurrentSettings() {
+        SettingsMessage msg;
+        try {
+            msg = SettingsMapper.ToProto(settings);
+        } catch (Exception ex) {
+            logger.LogWarning("Failed to build settings broadcast: {Message}", ex.Message);
+            return;
         }
-        if (failed.Count > 0) {
-            lock (_lock) { foreach (var w in failed) _watchers.Remove(w); }
+
+        List<Channel<SettingsMessage>> snapshot;
+        lock (_lock) { snapshot = [.._subscribers]; }
+        foreach (var channel in snapshot) {
+            channel.Writer.TryWrite(msg);
         }
     }
 
@@ -44,10 +45,14 @@ public class SettingsGrpcService(
         UpdateSettingsRequest request,
         ServerCallContext context) {
 
+        var oldAppDirectories = settings.AppDirectories.ToList();
         SettingsMapper.ApplyProto(request.Settings, settings);
         settings.Save();
         logger.LogInformation("Settings updated via IPC");
         settings.NotifySearchSettingsChanged();
+        if (!oldAppDirectories.SequenceEqual(settings.AppDirectories, StringComparer.OrdinalIgnoreCase)) {
+            settings.NotifyAppDirectoriesChanged();
+        }
         return Task.FromResult(new Empty());
     }
 
@@ -56,16 +61,21 @@ public class SettingsGrpcService(
         IServerStreamWriter<SettingsMessage> responseStream,
         ServerCallContext context) {
 
-        lock (_lock) { _watchers.Add(responseStream); }
-
-        // Send current state immediately
-        await responseStream.WriteAsync(SettingsMapper.ToProto(settings));
+        var channel = Channel.CreateUnbounded<SettingsMessage>(
+            new UnboundedChannelOptions { SingleReader = true });
+        lock (_lock) { _subscribers.Add(channel); }
 
         try {
-            await Task.Delay(Timeout.Infinite, context.CancellationToken);
+            // Send current state immediately
+            await responseStream.WriteAsync(SettingsMapper.ToProto(settings));
+
+            await foreach (var msg in channel.Reader.ReadAllAsync(context.CancellationToken)) {
+                await responseStream.WriteAsync(msg);
+            }
         } catch (OperationCanceledException) { }
         finally {
-            lock (_lock) { _watchers.Remove(responseStream); }
+            lock (_lock) { _subscribers.Remove(channel); }
+            channel.Writer.TryComplete();
         }
     }
 }

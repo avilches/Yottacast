@@ -42,21 +42,24 @@ La ruta está centralizada en `AppPaths.ClipboardHistoryFile`.
 
 `MaxEntries` y `MaxDays` son propiedades públicas mutables del store, inicializadas a `AppDefaults.ClipboardHistoryMaxEntries` (200) y `AppDefaults.ClipboardHistoryMaxDays` (30).
 
-> **Bug conocido** - Los valores de `UserSettings.ClipboardHistoryMaxEntries` / `ClipboardHistoryMaxDays` NO se propagan nunca al store. El `ClipboardHistoryStore` se construye en `App.axaml.cs` (`AddSingleton<ClipboardHistoryStore>`) solo con `filePath` y `logger`, dejando `MaxEntries`/`MaxDays` en sus defaults de `AppDefaults`. Cuando el usuario cambia esos valores en Settings (`SettingsWindowViewModel.OnClipboardHistoryMaxEntriesChanged` / `OnClipboardHistoryMaxDaysChanged`), se escriben en `UserSettings` y se persisten a disco, pero `store.MaxEntries` / `store.MaxDays` no se actualizan ni al arranque ni en caliente. En la practica el historial siempre se limita a 200 entradas / 30 dias, sin importar la configuracion del usuario.
+**Wiring de límites desde Settings:** los valores de `UserSettings.ClipboardHistoryMaxEntries` / `ClipboardHistoryMaxDays` se propagan al store en `App.SetupClipboardMonitor`: una vez al arranque y de nuevo en cada `SearchSettingsChanged`. Tras copiar los valores se invoca `store.ApplyLimitsNow()`, que recorta las entradas que sobran inmediatamente (sin esperar al siguiente `Add`) y persiste/notifica `EntriesChanged` solo si algo cambió. Al bajar `MaxEntries` o `MaxDays` en Settings, el historial se acorta en caliente.
 
 **Persistencia:**
 - `Add` y `RecordUsage` usan guardado con debounce de 1 segundo (`AppDefaults.ClipboardHistoryDebounceMs`).
-- `Remove` llama `FlushAsync()` directamente, sin debounce, para garantizar que el borrado sobrevive a un crash.
+- `Remove` cancela cualquier debounce pendiente (`CancelPendingSave`) y llama `FlushAsync()` directamente, sin debounce, para garantizar que el borrado sobrevive a un crash y no es pisado por un guardado debounced anterior.
+- Todas las escrituras a disco se serializan con un `SemaphoreSlim` interno: dos `SaveAsync` concurrentes (p. ej. un `Add` debounced y un flush inmediato de `Remove`) nunca escriben el fichero `*.tmp` compartido a la vez.
 - La escritura usa fichero temporal (`*.tmp`) con `File.Move(..., overwrite: true)` para evitar corrupción.
 - Si el fichero no existe al arrancar, el historial comienza vacío sin error.
 - Si el JSON está corrupto, se loguea en Warning y el historial arranca vacío.
+
+**Orden de arranque:** `App` espera (`await`) a `ClipboardHistoryStore.LoadAsync()` antes de iniciar el monitor de portapapeles (`LoadClipboardThenStartMonitorAsync`). Así se evita una carrera en la que el primer poll del monitor haría `Add(textoActual)` y a continuación `LoadAsync` reemplazaría toda la lista, descartando esa entrada.
 
 **Invariantes:**
 - El directorio padre se crea automáticamente si no existe.
 - El store nunca bloquea el arranque ni la búsqueda.
 - `GetAll()` devuelve una copia inmutable de la lista (thread-safe via `Lock`).
 
-> **Verificar en:** `ClipboardHistoryStore` - `Yottacast.Core/Search/Clipboard/ClipboardHistoryStore.cs`. Constantes en `AppDefaults.ClipboardHistoryMaxEntries`, `ClipboardHistoryMaxDays`, `ClipboardHistoryDebounceMs`. Ruta en `AppPaths.ClipboardHistoryFile`.
+> **Verificar en:** `ClipboardHistoryStore` (incluido `ApplyLimitsNow`, `CancelPendingSave`, `_saveGate`) - `Yottacast.Core/Search/Clipboard/ClipboardHistoryStore.cs`. Wiring de límites y orden de arranque en `App.SetupClipboardMonitor` y `App.LoadClipboardThenStartMonitorAsync` - `Yottacast/App.axaml.cs`. Constantes en `AppDefaults.ClipboardHistoryMaxEntries`, `ClipboardHistoryMaxDays`, `ClipboardHistoryDebounceMs`. Ruta en `AppPaths.ClipboardHistoryFile`.
 
 ---
 
@@ -134,12 +137,12 @@ La sección Clipboard History en Settings expone:
 |---|---|---|
 | `ClipboardSearchVisibility` | `Disabled` | Visibilidad: `Disabled` (Off), `Always` (modo All), `ModeOnly` (solo modo Clipboard) |
 | `ClipboardHotkey` | `null` | Hotkey dedicada para activar el modo Clipboard; `null` = sin hotkey dedicada |
-| `ClipboardHistoryMaxEntries` | `200` | Número máximo de entradas a conservar (ver bug abajo) |
-| `ClipboardHistoryMaxDays` | `30` | Días máximos que se conserva una entrada (ver bug abajo) |
+| `ClipboardHistoryMaxEntries` | `200` | Número máximo de entradas a conservar; se aplica al store en caliente |
+| `ClipboardHistoryMaxDays` | `30` | Días máximos que se conserva una entrada; se aplica al store en caliente |
 
 El monitor de portapapeles solo captura cuando `ClipboardSearchVisibility != Disabled`. Con `Disabled`, el monitor se para y no se almacena nada nuevo.
 
-> **Bug conocido** - `ClipboardHistoryMaxEntries` y `ClipboardHistoryMaxDays` se muestran y se editan en Settings y se persisten en `UserSettings`, pero no se aplican al `ClipboardHistoryStore`: nunca se copian a `store.MaxEntries` / `store.MaxDays`. El store siempre usa los defaults de `AppDefaults` (200 entradas, 30 dias). Ver detalle en la seccion 2.
+`ClipboardHistoryMaxEntries` y `ClipboardHistoryMaxDays` se editan en Settings, se persisten en `UserSettings` y se propagan al `ClipboardHistoryStore` (a `store.MaxEntries` / `store.MaxDays`) en cada `SearchSettingsChanged`, aplicándose de inmediato vía `store.ApplyLimitsNow()`. Ver detalle en la sección 2.
 
 **Nota:** cambiar la hotkey dedicada tiene efecto inmediato - el handler lee `settings.ParsedClipboardHotkey` en cada evento del hook global, sin necesidad de reiniciar.
 

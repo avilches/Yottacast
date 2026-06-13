@@ -1,13 +1,19 @@
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Yottacast.Core.ViewModels;
 
 namespace Yottacast.Core.Search;
 
-public class GlobalSearch(IEnumerable<IInstantSearchSource> instantSources, IEnumerable<IDeferredSearchSource> deferredSources) {
+public class GlobalSearch(
+    IEnumerable<IInstantSearchSource> instantSources,
+    IEnumerable<IDeferredSearchSource> deferredSources,
+    ILogger<GlobalSearch>? logger = null) {
 
     private readonly IReadOnlyList<IInstantSearchSource> _instantSources = instantSources.ToList();
     private readonly IReadOnlyList<IDeferredSearchSource> _deferredSources = deferredSources.ToList();
+    private readonly ILogger<GlobalSearch> _logger = logger ?? NullLogger<GlobalSearch>.Instance;
 
     public void Start() {
         foreach (var s in _instantSources) s.Start();
@@ -69,7 +75,7 @@ public class GlobalSearch(IEnumerable<IInstantSearchSource> instantSources, IEnu
     /// Merges snapshots from all sources. Each source owns a slot; when it emits a new
     /// snapshot the slot is updated and the merged+sorted union is yielded.
     /// </summary>
-    private static async IAsyncEnumerable<IReadOnlyList<BaseResultItemViewModel>> SearchSourcesAsync(
+    private async IAsyncEnumerable<IReadOnlyList<BaseResultItemViewModel>> SearchSourcesAsync(
         IReadOnlyList<IDeferredSearchSource> subset, string query, int limit,
         [EnumeratorCancellation] CancellationToken ct = default) {
 
@@ -82,7 +88,12 @@ public class GlobalSearch(IEnumerable<IInstantSearchSource> instantSources, IEnu
             try {
                 await foreach (var snap in s.SearchAsync(query, limit, ct).ConfigureAwait(false))
                     await channel.Writer.WriteAsync((i, snap), ct).ConfigureAwait(false);
-            } catch (OperationCanceledException) { }
+            } catch (OperationCanceledException) {
+                // Expected when the search is superseded or cancelled; ignore.
+            } catch (Exception ex) {
+                _logger.LogError(ex, "Deferred source {Source} failed for query \"{Query}\"",
+                    s.GetType().Name, query);
+            }
         }, CancellationToken.None)).ToList();
 
         _ = Task.WhenAll(tasks).ContinueWith(_ => channel.Writer.TryComplete(), TaskScheduler.Default);

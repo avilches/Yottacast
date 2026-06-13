@@ -81,7 +81,7 @@ internal sealed class WindowsAppHandler : AppHandler {
     [DllImport("user32.dll")]
     private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, nuint dwExtraInfo);
 
-    [DllImport("user32.dll")]
+    [DllImport("user32.dll", EntryPoint = "ShowCursor")]
     private static extern int ShowCursorWin(bool show);
 
     [DllImport("user32.dll")]

@@ -41,6 +41,18 @@ internal sealed class FakePlatformProviderWithApps : FakePlatformProvider {
     public override void ForceQuitApp(int pid) => LastForceQuitPid = pid;
 }
 
+/// <summary>
+/// PlatformProvider whose ScanAppsAsync always throws, simulating a failed initial scan.
+/// Used to verify ApplicationSearch never leaves the app without UI (WhenReady must complete).
+/// </summary>
+internal sealed class FakePlatformProviderScanThrows : FakePlatformProvider {
+    public FakePlatformProviderScanThrows() : base([]) { }
+
+    public override Task ScanAppsAsync(
+        Action<string> addApp, IReadOnlyList<string> dirs, CancellationToken ct) =>
+        throw new InvalidOperationException("scan boom");
+}
+
 public class ApplicationSearchTests {
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -360,6 +372,38 @@ public class ApplicationSearchTests {
         // Without Start(), WhenReady() should remain pending
         var completed = await Task.WhenAny(search.WhenReady(), Task.Delay(100)) == search.WhenReady();
         Assert.False(completed, "WhenReady() completed without Start() being called");
+    }
+
+    // ── Scan failure (must never leave the app without UI) ───────────────────
+
+    [Fact]
+    public async Task WhenReady_CompletesEvenIfInitialScanThrows() {
+        var platform = new FakePlatformProviderScanThrows();
+        var settings = UserSettings.Load(platform);
+        var iconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
+        var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
+        var search = new ApplicationSearch(settings, platform, iconCache, clipboard, NullLogger<ApplicationSearch>.Instance);
+
+        search.Start();
+
+        // WhenReady must complete despite the scan throwing — otherwise the UI never shows.
+        var completed = await Task.WhenAny(search.WhenReady(), Task.Delay(1000)) == search.WhenReady();
+        Assert.True(completed, "WhenReady() did not complete after the initial scan threw");
+    }
+
+    [Fact]
+    public async Task FailedInitialScan_SearchReturnsEmpty_NoCrash() {
+        var platform = new FakePlatformProviderScanThrows();
+        var settings = UserSettings.Load(platform);
+        var iconCache = new AppIconCache(platform, NullLogger<AppIconCache>.Instance);
+        var clipboard = new ClipboardService(NullLogger<ClipboardService>.Instance);
+        var search = new ApplicationSearch(settings, platform, iconCache, clipboard, NullLogger<ApplicationSearch>.Instance);
+
+        search.Start();
+        await search.WhenReady();
+
+        // Cache stays empty; searches simply return nothing, never throw.
+        Assert.Empty(SearchAll(search, "safari"));
     }
 
     // ── Rescan ────────────────────────────────────────────────────────────────

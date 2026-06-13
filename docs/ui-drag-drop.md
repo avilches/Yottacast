@@ -15,8 +15,7 @@ Cualquier resultado de la lista principal puede arrastrarse fuera de Yottacast h
 - En resultados con celdas navegables (conversion, álgebra, fechas, emoji) el drag usa el contenido de la celda **actualmente seleccionada**, no la celda bajo el cursor.
 - Si el payload no puede resolverse (fichero borrado, URI inválida) el drag se cancela silenciosamente - no hay excepción visible al usuario.
 - Sólo se admite `DragDropEffects.Copy`; mover archivos no es una operación soportada.
-
-> **Bug conocido** - `DragDataFactory.FileAsync` construye la URI del fichero con `new Uri(absolutePath)` tratando la ruta absoluta como si ya fuera una URI. Los caracteres `#` y `%` en el nombre del fichero rompen esa interpretacion: `#` arranca el fragmento de la URI (la ruta resultante pierde todo lo que va despues), y `%` se interpreta como inicio de un escape porcentual (`%20` se decodifica a espacio; una secuencia invalida como `%xx` lanza `UriFormatException`). En todos esos casos el lookup posterior (`TryGetFileFromPathAsync`/`TryGetFolderFromPathAsync`) no encuentra el item o resuelve uno distinto, y el `catch` cancela el drag sin avisar. Ficheros y apps con `#` o `%` en el nombre no se pueden arrastrar correctamente. La forma robusta seria construir la URI con `new Uri(absolutePath, UriKind.Absolute)` solo tras escapar la ruta, o usar el constructor de fichero apropiado.
+- El nombre del fichero puede contener cualquier carácter, incluidos `#` y `%`. `DragDataFactory.FileAsync` construye la URI `file://` con `UriBuilder` (asignando la ruta absoluta a `Path`), de modo que esos caracteres se tratan como parte de la ruta y no como fragmento (`#`) ni escape porcentual (`%`).
 
 ## Plataformas
 

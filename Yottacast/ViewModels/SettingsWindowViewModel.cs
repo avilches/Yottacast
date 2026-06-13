@@ -193,12 +193,14 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         if (value < 1) return;
         _settings.ClipboardHistoryMaxEntries = value;
         _settings.Save();
+        _settings.NotifySearchSettingsChanged();
     }
 
     partial void OnClipboardHistoryMaxDaysChanged(int value) {
         if (value < 1) return;
         _settings.ClipboardHistoryMaxDays = value;
         _settings.Save();
+        _settings.NotifySearchSettingsChanged();
     }
 
     [ObservableProperty] private bool _enableFileEditor;
@@ -761,6 +763,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     }
 
     public void StartHotkeyCapture() {
+        CancelClipboardHotkeyCapture();  // only one capture active at a time
         _capturingModifiers = KeyModifiers.None;
         IsCapturingHotkey   = true;
         NotifyBadgesAndKey();
@@ -825,6 +828,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     }
 
     public void StartClipboardHotkeyCapture() {
+        CancelHotkeyCapture();  // only one capture active at a time
         _capturingClipboardModifiers = KeyModifiers.None;
         IsCapturingClipboardHotkey   = true;
         NotifyClipboardBadgesAndKey();

@@ -41,6 +41,11 @@ public static class NameMatcher {
 
         var queryHumps = SplitTokens(query);
 
+        // Query made of only separators (e.g. "-", "_", "--") yields no humps;
+        // without this guard the CamelHump loop below would match any name with score 1.0.
+        if (queryHumps.Count == 0)
+            return new NameMatchResult(0, null, null);
+
         // CamelHump: each query hump must be prefix of successive tokens
         for (var start = 0; start <= tokens.Count - queryHumps.Count; start++) {
             var match = true;

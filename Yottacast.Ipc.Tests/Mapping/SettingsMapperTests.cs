@@ -1,4 +1,5 @@
 using Yottacast.Core.Platform;
+using Yottacast.Core.Search;
 using Yottacast.Core.Search.UserDocuments;
 using Yottacast.Core.Services;
 using Yottacast.Ipc.Mapping;
@@ -102,5 +103,42 @@ public class SettingsMapperTests {
 
         Assert.Equal("dark-raycast", settings2.Theme);
         Assert.False(settings2.EnableWebSearch);
+    }
+
+    [Theory]
+    [InlineData(SearchSourceVisibility.Disabled, SearchVisibility.Disabled)]
+    [InlineData(SearchSourceVisibility.Always, SearchVisibility.Always)]
+    [InlineData(SearchSourceVisibility.ModeOnly, SearchVisibility.ModeOnly)]
+    public void ToProto_MapsFileSearchVisibility(SearchSourceVisibility source, SearchVisibility expected) {
+        var settings = MakeSettings();
+        settings.FileSearchVisibility = source;
+
+        var msg = SettingsMapper.ToProto(settings);
+
+        Assert.Equal(expected, msg.FileSearchVisibility);
+    }
+
+    [Theory]
+    [InlineData(SearchSourceVisibility.Disabled)]
+    [InlineData(SearchSourceVisibility.Always)]
+    [InlineData(SearchSourceVisibility.ModeOnly)]
+    public void RoundTrip_PreservesFileSearchVisibility(SearchSourceVisibility source) {
+        var settings = MakeSettings();
+        settings.FileSearchVisibility = source;
+
+        var msg = SettingsMapper.ToProto(settings);
+        var settings2 = MakeSettings();
+        SettingsMapper.ApplyProto(msg, settings2);
+
+        // ModeOnly must not be flattened to Always (regression guard).
+        Assert.Equal(source, settings2.FileSearchVisibility);
+    }
+
+    [Fact]
+    public void SettingsMessage_HasNoClipboardHistoryEnabledField() {
+        // The orphaned clipboard_history_enabled proto field (tag 9) was removed and its
+        // tag reserved. There must be no generated property for it on the message type.
+        var prop = typeof(SettingsMessage).GetProperty("ClipboardHistoryEnabled");
+        Assert.Null(prop);
     }
 }

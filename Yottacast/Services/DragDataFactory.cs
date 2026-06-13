@@ -33,7 +33,10 @@ public static class DragDataFactory {
         if (storage is null) return null;
         IStorageItem? item;
         try {
-            var uri = new Uri(absolutePath);
+            // Build the file URI via UriBuilder instead of `new Uri(absolutePath)`: the latter treats
+            // the path as if it were already a URI, so `#` starts a fragment and `%` starts a percent
+            // escape, breaking files/apps whose name contains those characters.
+            var uri = new UriBuilder { Scheme = "file", Host = "", Path = absolutePath }.Uri;
             // .app bundles and regular folders are directories on the filesystem; try file first
             // (regular files), then folder (apps + folders). macOS Finder treats both identically
             // once they're in DataFormats.Files.

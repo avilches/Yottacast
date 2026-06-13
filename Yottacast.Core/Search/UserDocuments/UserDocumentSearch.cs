@@ -262,17 +262,19 @@ public class UserDocumentSearch(
             } catch (OperationCanceledException) {
                 logger.LogInformation("DocSearch cancelled query=\"{Query}\" results={Count} callerCancelled={CallerCancelled} timeout={Timeout}",
                     query, buffer.Count, ct.IsCancellationRequested, cts.IsCancellationRequested && !ct.IsCancellationRequested);
+            } catch (Exception ex) {
+                logger.LogError(ex, "DocSearch failed query=\"{Query}\" results={Count}", query, buffer.Count);
+            } finally {
+                cts.Dispose();
+                if (buffer.Count > 0) {
+                    var finalItems = buffer.OrderByDescending(x => x.Score).Take(limit).ToList();
+                    foreach (var item in finalItems)
+                        item.IconBytes ??= fileIconCache.GetOrPreload(item.Subtitle);
+                    RefreshIconBytes(buffer);
+                    channel.Writer.TryWrite(finalItems);
+                }
+                channel.Writer.TryComplete();
             }
-
-            cts.Dispose();
-            if (buffer.Count > 0) {
-                var finalItems = buffer.OrderByDescending(x => x.Score).Take(limit).ToList();
-                foreach (var item in finalItems)
-                    item.IconBytes ??= fileIconCache.GetOrPreload(item.Subtitle);
-                RefreshIconBytes(buffer);
-                channel.Writer.TryWrite(finalItems);
-            }
-            channel.Writer.TryComplete();
         }, CancellationToken.None);
 
         await foreach (var snapshot in channel.Reader.ReadAllAsync(ct).ConfigureAwait(false))

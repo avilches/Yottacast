@@ -29,6 +29,8 @@ public sealed class FaviconCache {
     /// <summary>
     /// Returns cached bytes if available, triggers async load on first call per host.
     /// Returns null while loading or if favicon could not be obtained.
+    /// On a transient IO error (disk read/write) the host is not marked null and its started-guard
+    /// is cleared, so a later call retries instead of being stuck forever.
     /// </summary>
     public byte[]? GetOrLoad(string host) {
         if (_memory.TryGetValue(host, out var cached)) return cached;
@@ -45,20 +47,20 @@ public sealed class FaviconCache {
     }
 
     private async Task LoadAsync(string host) {
-        // Phase 1: disk cache
         var diskPath = Path.Combine(_cacheDir, $"{host}.png");
-        if (File.Exists(diskPath)) {
-            var diskBytes = File.ReadAllBytes(diskPath);
-            if (diskBytes.Length > 0) {
-                _memory[host] = diskBytes;
-                _logger.LogDebug("FaviconCache: disk hit for {Host} ({N} bytes)", host, diskBytes.Length);
-                FaviconLoaded?.Invoke();
-                return;
-            }
-        }
-
-        // Phase 2: HTTP fetch from Google favicon service
         try {
+            // Phase 1: disk cache
+            if (File.Exists(diskPath)) {
+                var diskBytes = File.ReadAllBytes(diskPath);
+                if (diskBytes.Length > 0) {
+                    _memory[host] = diskBytes;
+                    _logger.LogDebug("FaviconCache: disk hit for {Host} ({N} bytes)", host, diskBytes.Length);
+                    FaviconLoaded?.Invoke();
+                    return;
+                }
+            }
+
+            // Phase 2: HTTP fetch from Google favicon service
             var url = $"https://www.google.com/s2/favicons?sz=64&domain={host}";
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(AppDefaults.FaviconTimeoutSeconds));
             var bytes = await _httpClient.GetByteArrayAsync(url, cts.Token).ConfigureAwait(false);
@@ -72,8 +74,14 @@ public sealed class FaviconCache {
                 _memory[host] = null;
             }
         } catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException) {
+            // A favicon could genuinely not be obtained: mark as null so we do not retry on every keystroke.
             _memory[host] = null;
             _logger.LogDebug("FaviconCache: fetch failed for {Host}: {Message}", host, ex.Message);
+        } catch (Exception ex) {
+            // Transient IO error (e.g. disk read/write). Clear the started guard so a later call can retry,
+            // and leave the host unmarked so it is not stuck null forever.
+            _started.TryRemove(host, out _);
+            _logger.LogDebug(ex, "FaviconCache: load error for {Host}, will retry on next request", host);
         }
     }
 }

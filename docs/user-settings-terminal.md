@@ -10,7 +10,7 @@ La aplicacion mantiene una lista de terminales conocidos por plataforma. Al pobl
 
 1. **Carpetas de apps del usuario** -- se busca en las carpetas configuradas en `AppDirectories` (via `AppPathInDirectory` del `PlatformProvider`).
 2. **Carpetas por defecto de la plataforma** -- `DefaultAppDirectories()`, deduplicadas respecto a las del usuario.
-3. **Rutas conocidas de la plataforma** -- `TerminalKnownPaths`, solo relevante en Windows con rutas absolutas a ejecutables. Las rutas con wildcards (`*`) se descartan.
+3. **Rutas conocidas de la plataforma** -- `TerminalKnownPaths`, solo relevante en Windows con rutas absolutas a ejecutables. Cada ruta se resuelve via `PlatformProvider.ResolveKnownPath`: las literales se aceptan si existen y las que contienen un glob `*` (p. ej. Windows Terminal en `WindowsApps`) se expanden a la primera coincidencia existente en disco.
 
 Los resultados se cachean en memoria. La cache se invalida al cambiar las carpetas de apps en Settings (diferido al salir de la seccion AppSearch o cerrar Settings). La deteccion no depende de la cache de `ApplicationSearch`. Solo se muestran al usuario los terminales que realmente existen en disco.
 
@@ -26,10 +26,8 @@ Los resultados se cachean en memoria. La cache se invalida al cambiar las carpet
 
 - El usuario nunca ve un terminal en el selector que no tenga ruta resuelta (se filtran entradas con ruta vacia o nula).
 - En macOS, los terminales se buscan via `AppPathInDirectory` en las carpetas del usuario y las por defecto (`/Applications`, `~/Applications`, `/System/Applications`, `/System/Applications/Utilities`).
-- En Windows, `TerminalKnownPaths` contiene rutas absolutas a ejecutables conocidos; las que incluyen wildcards (`Microsoft.WindowsTerminal*\wt.exe`) se filtran correctamente.
+- En Windows, `TerminalKnownPaths` contiene rutas absolutas a ejecutables conocidos. "Windows Terminal" aporta el stub de alias `%LocalAppData%\Microsoft\WindowsApps\wt.exe` (sin glob) y, como respaldo, el glob `Microsoft.WindowsTerminal*\wt.exe`, que `ResolveKnownPath` expande a la version instalada.
 - En Linux, las listas de terminales conocidos estan vacias. `Discover()` devuelve lista vacia.
-
-> **Bug conocido (Windows)** - la unica ruta conocida de "Windows Terminal" es un glob (`Microsoft.WindowsTerminal*\wt.exe`). El descubrimiento descarta rutas con `*`, asi que "Windows Terminal" nunca se resuelve y nunca aparece en el selector: es codigo muerto. Ver `WindowsPlatformProvider.TerminalKnownPaths` y `TerminalDiscovery.FindTerminal()`.
 
 > **Estado: incompleto (Linux)** - `LinuxPlatformProvider.KnownTerminalNames` esta vacio y `ExecuteCommand()` es un no-op. La auto-reparacion no puede operar (`ActiveTerminal` siempre resuelve a `null`) y ejecutar comandos en terminal no hace nada en Linux.
 
@@ -73,9 +71,9 @@ Una vez resuelto el terminal, la aplicacion puede ejecutar comandos en el. El la
 | Terminal | AppleScript: `tell application "Terminal" to do script "..."` | `\` -> `\\`, `"` -> `\"` (EscapeAppleScript) |
 | iTerm | AppleScript: `create window with default profile command "..."` | Mismo EscapeAppleScript |
 | Warp | URL scheme: `warp://action/new_tab?command=<encoded>`, lanzado con `open` | `Uri.EscapeDataString` |
-| Otros (Alacritty, Kitty, etc.) | Script `.command` temporal: se escribe en disco, se marca ejecutable con `chmod +x`, se abre con `open -a <nombre>` | Sin escaping adicional |
+| Otros (Alacritty, Kitty, etc.) | Script `.command` temporal: se escribe en `AppPaths.TerminalScriptsDir` con nombre unico, se marca ejecutable con `chmod +x`, se abre con `open -a <nombre>` | Sin escaping adicional |
 
-Nota: el archivo temporal `.command` no se elimina tras su uso.
+Nota: el script `.command` no puede borrarse justo despues de `open` (el terminal quiza aun no lo ha leido). En su lugar, cada nueva ejecucion barre los scripts de ejecuciones anteriores de `AppPaths.TerminalScriptsDir` antes de crear el nuevo, de modo que el directorio no acumula basura.
 
 ### Windows
 
@@ -83,11 +81,12 @@ Nota: el archivo temporal `.command` no se elimina tras su uso.
 |----------|-----------|----------|
 | PowerShell | `-NoExit -Command "<comando>"` | `"` -> `\"` |
 | Command Prompt | `/K "<comando>"` | Sin escaping adicional |
-| Otros (Git Bash) | Comando tal cual | Sin modificaciones |
+| Git Bash | `-c "<comando>"` | `\` -> `\\`, `"` -> `\"` |
+| Otros | Comando tal cual | Sin modificaciones |
 
-Si no se encuentra una ruta valida para el ejecutable (incluido el descarte de rutas con `*`), el metodo retorna silenciosamente sin error.
+Los argumentos se construyen en `WindowsPlatformProvider.BuildTerminalArgs`. El ejecutable se resuelve via `ResolveKnownPath`, que expande globs (p. ej. Windows Terminal). Si no se encuentra una ruta valida, el metodo retorna silenciosamente sin error.
 
-> **Bug conocido (Windows)** - "Git Bash" cae en el caso `Otros` y se invoca como `bash.exe <comando>` sin `-c`. `bash.exe` trata ese argumento como nombre de script a ejecutar, no como orden inline, por lo que el comando no se ejecuta como se espera. Faltaria envolverlo en `-c "<comando>"`. Ver `WindowsPlatformProvider.ExecuteCommand()`.
+**Invariante (Git Bash)**: el comando se pasa inline via `-c "<comando>"`. Un argumento crudo se interpretaria como ruta de script y no se ejecutaria; por eso se envuelve y se escapan comillas y barras invertidas.
 
 ### Linux
 

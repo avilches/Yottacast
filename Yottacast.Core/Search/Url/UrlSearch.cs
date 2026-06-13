@@ -303,23 +303,27 @@ public class UrlSearch(
         url = "";
         if (string.IsNullOrWhiteSpace(query) || query.Contains(' ')) return false;
 
+        string candidate;
         if (query.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
             query.StartsWith("https://", StringComparison.OrdinalIgnoreCase)) {
-            url = query;
-            return true;
+            candidate = query;
+        } else if (query.StartsWith("www.", StringComparison.OrdinalIgnoreCase)) {
+            candidate = "https://" + query;
+        } else if (LooksLikeDomain(query)) {
+            candidate = "https://" + query;
+        } else {
+            return false;
         }
 
-        if (query.StartsWith("www.", StringComparison.OrdinalIgnoreCase)) {
-            url = "https://" + query;
-            return true;
+        // Reject anything without a host (e.g. "http://", "https://", "http://:8080")
+        // so callers can safely build `new Uri(url)` without it throwing.
+        if (!Uri.TryCreate(candidate, UriKind.Absolute, out var parsed)
+            || string.IsNullOrEmpty(parsed.Host)) {
+            return false;
         }
 
-        if (LooksLikeDomain(query)) {
-            url = "https://" + query;
-            return true;
-        }
-
-        return false;
+        url = candidate;
+        return true;
     }
 
     private static bool LooksLikeDomain(string query) {

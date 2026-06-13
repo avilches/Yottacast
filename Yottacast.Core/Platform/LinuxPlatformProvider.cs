@@ -100,10 +100,12 @@ public sealed class LinuxPlatformProvider(ProcessRunner runner, ILogger<LinuxPla
         };
 
         var binary = File.Exists("/usr/bin/plocate") ? "/usr/bin/plocate" : "/usr/bin/locate";
-        var safeQuery = query.Replace("\"", "");
+        var safeQuery = query.Replace("\"", "").Trim();
+        if (string.IsNullOrEmpty(safeQuery)) return Task.CompletedTask;
         var cwd = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
         var tokens = safeQuery.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (tokens.Length == 0) return Task.CompletedTask;
         var primaryToken = tokens[0];
         var extraTokens = tokens.Skip(1).ToArray();
 

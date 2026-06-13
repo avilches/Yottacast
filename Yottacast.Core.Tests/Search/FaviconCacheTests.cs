@@ -98,6 +98,28 @@ public class FaviconCacheTests : IDisposable {
     }
 
     [Fact]
+    public async Task GetOrLoad_DiskWriteFails_StillServesFromMemory() {
+        // Make the cache dir collide with a regular file so Directory.CreateDirectory / disk write
+        // throws a non-HTTP IOException after a successful fetch. The fetched bytes were already
+        // stored in memory, so the host must serve them (never get stuck null) despite the disk error.
+        var fileAsDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        File.WriteAllBytes(fileAsDir, [0x00]); // a file where a directory is expected
+        try {
+            var handler = new FakeHttpMessageHandler(HttpStatusCode.OK, [0x89, 0x50, 0x4E, 0x47]);
+            var cache = new FaviconCache(new HttpClient(handler), NullLogger<FaviconCache>.Instance, fileAsDir);
+
+            cache.GetOrLoad("example.com");
+            await Task.Delay(500);
+
+            // The fetched favicon is served from memory even though it could not be persisted to disk.
+            Assert.NotNull(cache.GetOrLoad("example.com"));
+            Assert.Equal(1, handler.CallCount);
+        } finally {
+            File.Delete(fileAsDir);
+        }
+    }
+
+    [Fact]
     public async Task Stop_ClearsMemory() {
         var cache = Build();
         var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);

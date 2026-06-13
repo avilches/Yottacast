@@ -1,3 +1,4 @@
+using System.Threading.Channels;
 using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
@@ -19,7 +20,9 @@ public class IconGrpcService(
     UserDocumentSearch userDocumentSearch,
     ILogger<IconGrpcService> logger) : IconService.IconServiceBase {
 
-    private readonly List<IServerStreamWriter<IconLoadedEvent>> _watchers = [];
+    // Each subscriber owns a bounded channel; its WatchIconsLoaded call is the only writer
+    // of its stream, so gRPC never sees concurrent WriteAsync on the same stream.
+    private readonly List<Channel<IconLoadedEvent>> _subscribers = [];
     private readonly Lock _lock = new();
 
     public void Initialize() {
@@ -28,21 +31,16 @@ public class IconGrpcService(
         userDocumentSearch.BadgeIconLoaded += () => BroadcastIconLoaded("");
     }
 
-    private async void BroadcastIconLoaded(string iconId) {
-        List<IServerStreamWriter<IconLoadedEvent>> snapshot;
-        lock (_lock) { snapshot = [.._watchers]; }
-
-        var evt = new IconLoadedEvent { IconId = iconId };
-        List<IServerStreamWriter<IconLoadedEvent>> failed = [];
-        foreach (var writer in snapshot) {
-            try {
-                await writer.WriteAsync(evt);
-            } catch {
-                failed.Add(writer);
+    private void BroadcastIconLoaded(string iconId) {
+        try {
+            var evt = new IconLoadedEvent { IconId = iconId };
+            List<Channel<IconLoadedEvent>> snapshot;
+            lock (_lock) { snapshot = [.._subscribers]; }
+            foreach (var channel in snapshot) {
+                channel.Writer.TryWrite(evt);
             }
-        }
-        if (failed.Count > 0) {
-            lock (_lock) { foreach (var w in failed) _watchers.Remove(w); }
+        } catch (Exception ex) {
+            logger.LogWarning("Failed to broadcast icon-loaded event: {Message}", ex.Message);
         }
     }
 
@@ -74,15 +72,21 @@ public class IconGrpcService(
         IServerStreamWriter<IconLoadedEvent> responseStream,
         ServerCallContext context) {
 
-        lock (_lock) { _watchers.Add(responseStream); }
-        logger.LogDebug("WatchIconsLoaded: client connected (total={Count})", _watchers.Count);
+        var channel = Channel.CreateUnbounded<IconLoadedEvent>(
+            new UnboundedChannelOptions { SingleReader = true });
+        int connected;
+        lock (_lock) { _subscribers.Add(channel); connected = _subscribers.Count; }
+        logger.LogDebug("WatchIconsLoaded: client connected (total={Count})", connected);
 
         try {
-            await Task.Delay(Timeout.Infinite, context.CancellationToken);
+            await foreach (var evt in channel.Reader.ReadAllAsync(context.CancellationToken)) {
+                await responseStream.WriteAsync(evt);
+            }
         } catch (OperationCanceledException) { }
         finally {
             int remaining;
-            lock (_lock) { _watchers.Remove(responseStream); remaining = _watchers.Count; }
+            lock (_lock) { _subscribers.Remove(channel); remaining = _subscribers.Count; }
+            channel.Writer.TryComplete();
             logger.LogDebug("WatchIconsLoaded: client disconnected (total={Count})", remaining);
         }
     }

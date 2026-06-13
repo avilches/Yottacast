@@ -75,6 +75,13 @@ public static class AppPaths {
     /// <summary>Exchange rates cache JSON file.</summary>
     public static readonly string ExchangeRatesCache = Path.Combine(CacheDir, "exchange-rates.json");
 
+    /// <summary>
+    /// Directory for temporary <c>.command</c> scripts used to launch commands in terminals that
+    /// have no scriptable API (Alacritty, Kitty, etc.) on macOS. Scripts are short-lived and the
+    /// directory is swept on each new launch so it never accumulates orphans.
+    /// </summary>
+    public static readonly string TerminalScriptsDir = Path.Combine(CacheDir, "terminal-scripts");
+
     // ── System Settings (macOS) ──────────────────────────────────────────────
 
     /// <summary>System Settings.app path on macOS.</summary>

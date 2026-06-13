@@ -18,6 +18,9 @@ message SearchResponse {
   repeated ResultMessage results = 1;
   string hint = 2;
   bool is_searching = 3;
+  // Monotonic token identifying this snapshot. Result IDs are only valid within the
+  // generation they were issued in; an Activate/Navigate must echo this value back.
+  int64 generation = 4;
 }
 
 message ResultMessage {
@@ -84,6 +87,9 @@ message ActivateRequest {
   string result_id = 1;
   ActionType action = 2;
   int32 emoji_index = 3;  // only for type="emoji_grid"
+  // Generation of the snapshot result_id belongs to; rejected with FAILED_PRECONDITION
+  // if it no longer matches the current snapshot.
+  int64 generation = 4;
 }
 
 message ActivateResponse {
@@ -102,6 +108,9 @@ message NavigateRequest {
   string result_id = 1;
   Direction direction = 2;
   int32 current_index = 3;
+  // Generation of the snapshot result_id belongs to; rejected with FAILED_PRECONDITION
+  // if it no longer matches the current snapshot.
+  int64 generation = 4;
 }
 
 message NavigateResponse {

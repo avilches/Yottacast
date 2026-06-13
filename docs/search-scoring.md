@@ -178,9 +178,7 @@ Cuando el usuario escribe una ruta del sistema de ficheros o una URL reconocida,
 | LocalPathSearch | Query empieza por `/`, `~/`, `./`, `../` o sigue patron Windows `C:\` | 10.0 |
 | UrlSearch | Query reconocida como URL (con protocolo, `www.`, o dominio con TLD conocido) | 10.0 |
 
-`UrlSearch.TryNormalizeUrl` normaliza la query a `https://...` (o la deja tal cual si ya trae `http://`/`https://`). Si `EnableUrlValidation` esta activo, valida el dominio por DNS en background y muestra un `ErrorTag` ("domain doesn't exist", "connection timed out") sin bloquear el resultado.
-
-> **Bug conocido** - `UrlSearch.Search` y `CheckReachabilityAsync` llaman `new Uri(url).Host` directamente. Si el usuario escribe exactamente `http://` o `https://` (sin host), `TryNormalizeUrl` los acepta como URL valida y `new Uri("http://")` lanza `UriFormatException` no capturada. La deteccion deberia rechazar URLs sin host.
+`UrlSearch.TryNormalizeUrl` normaliza la query a `https://...` (o la deja tal cual si ya trae `http://`/`https://`). Antes de aceptar una query como URL, valida con `Uri.TryCreate(..., UriKind.Absolute)` que la URL resultante tenga host no vacio; asi una query sin host (p.ej. `http://`, `https://`, `www.`) se rechaza y los callers pueden construir `new Uri(url)` con seguridad. Si `EnableUrlValidation` esta activo, valida el dominio por DNS en background y muestra un `ErrorTag` ("domain doesn't exist", "connection timed out") sin bloquear el resultado.
 
 > **Verificar en:** `Search/LocalPath/LocalPathSearch.cs`, `Search/Url/UrlSearch.cs` (`TryNormalizeUrl`, `Search`, `CheckReachabilityAsync`)
 

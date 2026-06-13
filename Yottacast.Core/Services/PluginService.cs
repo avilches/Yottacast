@@ -22,7 +22,10 @@ public class PluginService(ILogger<PluginService> logger) : IDisposable {
     // In-memory icon cache: pluginId → PNG/ICO bytes (null if unavailable)
     private readonly Dictionary<string, byte[]?> _icons = new();
 
-    public byte[]? GetIcon(string id) => _icons.GetValueOrDefault(id);
+    public byte[]? GetIcon(string id) {
+        lock (_icons)
+            return _icons.GetValueOrDefault(id);
+    }
 
     public async Task StartAsync() {
         Directory.CreateDirectory(AppPaths.PluginsDir);
@@ -44,8 +47,14 @@ public class PluginService(ILogger<PluginService> logger) : IDisposable {
     }
 
     private async void OnDirectoryChanged(object _, FileSystemEventArgs __) {
-        await Task.Delay(300);  // small debounce: editors often write in multiple steps
-        await ReloadAsync();
+        try {
+            await Task.Delay(300);  // small debounce: editors often write in multiple steps
+            await ReloadAsync();
+        } catch (Exception ex) {
+            // async void: any escaping exception (ReloadAsync, or a PluginsChanged subscriber
+            // running on the watcher thread) would become unhandled and crash the process.
+            logger.LogError(ex, "Plugin reload failed after directory change");
+        }
     }
 
     private async Task ReloadAsync() {

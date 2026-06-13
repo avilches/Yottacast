@@ -20,12 +20,20 @@ if (File.Exists(AppPaths.IpcPidFile)) {
     var pidStr = await File.ReadAllTextAsync(AppPaths.IpcPidFile);
     if (int.TryParse(pidStr.Trim(), out var existingPid)) {
         try {
-            System.Diagnostics.Process.GetProcessById(existingPid);
-            Console.Error.WriteLine(
-                $"yottacast-core already running (PID {existingPid}). Exiting.");
-            return 1;
+            using var existing = System.Diagnostics.Process.GetProcessById(existingPid);
+            // The OS may have recycled the PID for an unrelated process. Only treat the PID
+            // as a live daemon if the process name also matches ours; otherwise the PID file
+            // is stale and we proceed to overwrite it.
+            using var self = System.Diagnostics.Process.GetCurrentProcess();
+            if (string.Equals(existing.ProcessName, self.ProcessName, StringComparison.Ordinal)) {
+                Console.Error.WriteLine(
+                    $"yottacast-core already running (PID {existingPid}). Exiting.");
+                return 1;
+            }
         } catch (ArgumentException) {
             // Stale PID file — process no longer running
+        } catch (InvalidOperationException) {
+            // Process exited between lookup and name read — treat as stale
         }
     }
 }

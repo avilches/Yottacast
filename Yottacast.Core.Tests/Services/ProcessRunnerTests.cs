@@ -57,6 +57,44 @@ public class ProcessRunnerTests {
     }
 
     [Fact]
+    public async Task IsSuccess_True_WhenStoppedByCallback() {
+        // El callback devuelve false en la primera linea (limite alcanzado): es exito funcional
+        // aunque el proceso se mate antes de terminar y el ExitCode sea distinto de 0.
+        var result = await Runner.RunAsync("/bin/sh", ["-c", "printf 'a\\nb\\nc\\n'; sleep 30"], Cwd,
+            _ => false, CancellationToken.None);
+        Assert.True(result.StoppedByCallback);
+        Assert.True(result.IsSuccess);
+        Assert.False(result.Cancelled);
+    }
+
+    [Fact]
+    public async Task IsSuccess_True_WhenStoppedByErrorCallback() {
+        var result = await Runner.RunAsync("/bin/sh", ["-c", "printf 'a\\nb\\n' >&2; sleep 30"], Cwd,
+            _ => true, CancellationToken.None,
+            _ => false);
+        Assert.True(result.StoppedByCallback);
+        Assert.True(result.IsSuccess);
+    }
+
+    [Fact]
+    public async Task StoppedByCallback_False_OnNormalCompletion() {
+        var result = await Runner.RunAsync("/bin/echo", ["ok"], Cwd, _ => true, CancellationToken.None);
+        Assert.False(result.StoppedByCallback);
+        Assert.True(result.IsSuccess);
+    }
+
+    [Fact]
+    public async Task QuoteArg_EscapesQuotesInArgWithoutSpaces() {
+        // Un argumento con comillas pero sin espacios debe escaparse igualmente; de lo contrario
+        // las comillas se pierden o rompen el parseo del comando.
+        var lines = new List<string>();
+        await Runner.RunAsync("/bin/echo", ["a\"b"], Cwd,
+            line => { lines.Add(line); return true; }, CancellationToken.None);
+        Assert.Single(lines);
+        Assert.Equal("a\"b", lines[0]);
+    }
+
+    [Fact]
     public async Task Cancellation_ViaTokenInsideOnLine() {
         using var cts = new CancellationTokenSource();
         var lines = new List<string>();

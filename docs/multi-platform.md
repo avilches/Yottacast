@@ -52,7 +52,7 @@ la lista actualizada en tiempo real.
 | Plataforma | Que busca                         | Mecanismo                                                                    |
 |------------|-----------------------------------|------------------------------------------------------------------------------|
 | macOS      | Bundles `.app`                    | Spotlight (`kMDItemContentType == 'com.apple.application-bundle'`)           |
-| Windows    | Archivos `.exe` en subdirectorios | Recorrido de filesystem: busca `<carpeta>/<carpeta>.exe`, o el primer `.exe` |
+| Windows    | Archivos `.exe` en subdirectorios | Recorrido recursivo del filesystem (hasta `AppDefaults.WindowsAppScanMaxDepth`), añadiendo cada `.exe` que sea lanzable |
 | Linux      | Archivos `.desktop`               | Enumeracion directa (sin subdirectorios)                                     |
 
 **Invariante**: el escaneo en macOS es asincrono (envuelto en `Task.Run` porque Spotlight bloquea el hilo). En Windows y
@@ -60,14 +60,14 @@ Linux el escaneo es sincrono y devuelve `Task.CompletedTask`.
 
 **Invariante**: si `UserSettings.EnableAppSearch` es `false`, `ApplicationSearch.Start()` marca la fuente como ready inmediatamente sin lanzar el escaneo, y `Search()` devuelve siempre una lista vacia.
 
-> **Bug conocido (Windows)** - el escaneo recorre cada `<carpeta>/<subcarpeta>` con profundidad 1: busca `<subcarpeta>/<subcarpeta>.exe` y, si no, el primer `.exe` de esa subcarpeta. Las apps con su ejecutable anidado mas profundo (p. ej. Chrome en `Application/chrome.exe`) no se encuentran. El watcher, en cambio, es recursivo (`IncludeSubdirectories = true`), lo que crea una inconsistencia: una app anidada que se instale en caliente puede dispararse via watcher pero no aparece en el escaneo inicial. Ver `WindowsPlatformProvider.ScanAppsAsync()` y `CreateAppWatchers()`.
+**Invariante (Windows)**: el escaneo y el watcher comparten el mismo criterio de profundidad y el mismo filtro de ejecutables. El escaneo recorre recursivamente hasta `AppDefaults.WindowsAppScanMaxDepth` (cubre layouts anidados como `Google\Chrome\Application\chrome.exe`) y descarta ejecutables que no son apps lanzables (uninstallers, updaters, crash handlers) segun `AppDefaults.WindowsAppExeExcludeSubstrings`. El watcher aplica el mismo predicado (`WindowsPlatformProvider.IsLaunchableAppExe`) y el mismo limite de profundidad a cada evento, de modo que una app anidada instalada en caliente se trata exactamente igual que en el escaneo inicial. Ver `WindowsPlatformProvider.ScanAppsAsync()` y `CreateAppWatchers()`.
 
 ### 3.2 Vigilancia de cambios (watchers)
 
 | Plataforma | Filtro del watcher | Eventos observados                                                          | Subdirectorios |
 |------------|--------------------|-----------------------------------------------------------------------------|----------------|
 | macOS      | `*.app`            | `Created`, `Changed`, `Deleted` (NotifyFilter: `DirectoryName + LastWrite`) | No             |
-| Windows    | `*.exe`            | `Created`, `Deleted` (NotifyFilter: `FileName`)                             | Si             |
+| Windows    | `*.exe`            | `Created`, `Deleted` (NotifyFilter: `FileName`); filtra helpers y respeta el limite de profundidad del scan | Si             |
 | Linux      | `*.desktop`        | `Created`, `Deleted` (NotifyFilter: `FileName`)                             | No             |
 
 **Invariante (macOS)**: el evento `Changed` existe a proposito. Cuando un `.app` se copia, el `Created` puede llegar
@@ -149,14 +149,17 @@ estatico via `NativeLibrary.Load` + `NativeLibrary.GetExport`.
 
 **Contrato**:
 
-- Los argumentos con espacios se entrecomillan automaticamente (comillas dobles; las comillas internas se escapan con
-  `\"`).
+- Las comillas dobles internas de un argumento se escapan siempre con `\"` (tengan o no espacios). Un argumento se
+  entrecomilla con comillas dobles cuando contiene espacios o comillas, para no perder caracteres ni romper el parseo
+  del comando.
 - `cwd` nullable: si es `null`, se usa `Environment.CurrentDirectory`.
 - El callback `onLine` puede devolver `false` para parar la lectura antes del EOF.
 - El proceso siempre se mata con `Kill(entireProcessTree: true)` en un bloque `finally` tras la lectura (garantiza
   limpieza en cancelacion, early exit por `false`, o finalizacion normal; si el proceso ya termino es un no-op).
-- Resultado: `ProcessResult(Elapsed, ExitCode, Cancelled, Error?)`. `IsSuccess` es `true` cuando
-  `Error is null && !Cancelled && ExitCode == 0`.
+- Resultado: `ProcessResult(Elapsed, ExitCode, Cancelled, Error?, StoppedByCallback)`. `StoppedByCallback` indica
+  terminacion voluntaria porque un callback devolvio `false` (p.ej. limite de resultados alcanzado). `IsSuccess` es
+  `true` cuando `Error is null && !Cancelled && (StoppedByCallback || ExitCode == 0)`: una parada por callback es exito
+  funcional aunque el `ExitCode` sea distinto de 0 (el proceso se mata con `Kill` antes de terminar por su cuenta).
 - Tanto stdout como stderr se drenan en paralelo (`Task.WhenAll`). Cuando cualquier callback devuelve `false`, un
   `CancellationTokenSource` vinculado cancela ambas lecturas.
 
@@ -177,14 +180,14 @@ El discovery busca en tres fuentes por orden de prioridad: carpetas de apps del 
 | Plataforma | Navegadores conocidos | Terminales conocidos | Estrategia de busqueda |
 |---|---|---|---|
 | macOS | Safari, Google Chrome, Firefox, Brave Browser, Microsoft Edge, Opera, Arc, Vivaldi, Chromium, Tor Browser, DuckDuckGo, Orion | Terminal, iTerm, Warp, Alacritty, Kitty, Hyper, WezTerm, Tabby | Via `AppPathInDirectory` en carpetas del usuario + por defecto. Sin rutas conocidas adicionales |
-| Windows | Google Chrome, Mozilla Firefox, Microsoft Edge, Brave Browser, Opera, Vivaldi | Windows Terminal, PowerShell, Command Prompt, Git Bash | Carpetas del usuario + `BrowserKnownPaths`/`TerminalKnownPaths` con rutas absolutas a ejecutables |
+| Windows | Google Chrome, Mozilla Firefox, Microsoft Edge, Brave Browser, Opera, Vivaldi | Windows Terminal, PowerShell, Command Prompt, Git Bash | Carpetas del usuario + `BrowserKnownPaths`/`TerminalKnownPaths` con rutas absolutas a ejecutables (las que llevan glob se expanden) |
 | Linux | (ninguno) | (ninguno) | No soportado |
 
 > **Estado: incompleto (Linux)** - `LinuxPlatformProvider.KnownBrowserNames` y `KnownTerminalNames` estan vacios, y `OpenUrl()`/`ExecuteCommand()` tienen cuerpo vacio (no-op silencioso). Como consecuencia, el descubrimiento devuelve siempre lista vacia y la auto-reparacion de navegador/terminal no puede operar en Linux: `ActiveBrowser`/`ActiveTerminal` siempre resuelven a `null`. Abrir busquedas web y ejecutar comandos en terminal no hace nada en Linux. Ver `Yottacast.Core/Platform/LinuxPlatformProvider.cs`.
 
-> **Bug conocido (Windows)** - la entrada "Windows Terminal" de `TerminalKnownPaths` solo contiene una ruta con glob (`Microsoft.WindowsTerminal*\wt.exe`). Tanto el descubrimiento (`FindTerminal`) como la ejecucion (`ExecuteCommand`) descartan las rutas que contienen `*`, por lo que "Windows Terminal" nunca resuelve a una ruta valida: es codigo muerto, nunca aparece en el selector ni se puede ejecutar.
+**Resolucion de rutas conocidas**: cada entrada de `TerminalKnownPaths`/`BrowserKnownPaths` se resuelve via `PlatformProvider.ResolveKnownPath`. Una ruta literal se acepta si existe en disco; una ruta con glob `*` (solo en un segmento de directorio) se expande a la primera coincidencia existente. La implementacion base trata cualquier glob como no resoluble; Windows la sobrescribe para expandirlos.
 
-> **Bug conocido (Windows)** - "Git Bash" se descubre correctamente (su `.exe` existe), pero `ExecuteCommand` cae en el caso `default` y pasa el comando como argumento crudo a `bash.exe` sin `-c`. `bash.exe <comando>` interpreta el comando como un nombre de script a ejecutar, no como una orden inline, asi que el comando nunca se ejecuta como se espera. Ver `WindowsPlatformProvider.ExecuteCommand()`.
+**Windows Terminal**: la entrada "Windows Terminal" tiene dos rutas: el stub de alias en `%LocalAppData%\Microsoft\WindowsApps\wt.exe` (sin glob, presente cuando el paquete esta instalado) y el glob `C:\Program Files\WindowsApps\Microsoft.WindowsTerminal*\wt.exe` como respaldo. Ambas se resuelven via `ResolveKnownPath`, asi que "Windows Terminal" aparece en el selector y se puede ejecutar.
 
 ### 8.3 Ejecucion de comandos en terminal (macOS)
 
@@ -195,20 +198,22 @@ El despacho depende del terminal seleccionado:
 | Terminal | AppleScript: `tell application "Terminal" to do script "..."`                                                                 |
 | iTerm    | AppleScript: `tell application "iTerm" to create window with default profile command "..."`                                   |
 | Warp     | Abre URL `warp://action/new_tab?command=<urlencoded>` con `open`                                                              |
-| Otros    | Escribe un script temporal `*.command` en `/tmp`, le da permisos de ejecucion (`chmod +x`) y lo abre con `open -a <terminal>` |
+| Otros    | Escribe un script temporal `*.command` con nombre unico en `AppPaths.TerminalScriptsDir`, le da permisos de ejecucion (`chmod +x`) y lo abre con `open -a <terminal>`. Cada ejecucion barre primero los scripts previos para no dejar huerfanos |
 
 **Invariante**: los comandos enviados via AppleScript se escapan con `EscapeAppleScript` (escapa `\` y `"`).
 
 ### 8.4 Ejecucion de comandos en terminal (Windows)
 
-Los paths de terminales que contienen `*` (por ejemplo, Windows Terminal en `WindowsApps`) se excluyen al buscar el
-primer path existente. Los argumentos varian segun el terminal:
+El ejecutable se resuelve via `ResolveKnownPath` (que expande globs como el de Windows Terminal). Los argumentos varian segun el terminal y se construyen en `WindowsPlatformProvider.BuildTerminalArgs`:
 
-| Terminal       | Argumentos                 |
-|----------------|----------------------------|
-| PowerShell     | `-NoExit -Command "<cmd>"` |
-| Command Prompt | `/K "<cmd>"`               |
-| Otros          | El comando tal cual        |
+| Terminal       | Argumentos                       |
+|----------------|----------------------------------|
+| PowerShell     | `-NoExit -Command "<cmd>"`       |
+| Command Prompt | `/K "<cmd>"`                     |
+| Git Bash       | `-c "<cmd>"` (escapa `\` y `"`)  |
+| Otros          | El comando tal cual              |
+
+**Invariante (Git Bash)**: el comando se pasa inline via `-c "<cmd>"`. Un argumento crudo se interpretaria como ruta de script y no se ejecutaria. Las comillas dobles y barras invertidas internas se escapan.
 
 > **Verificar en:** `MacOsPlatformProvider.ExecuteCommand()`, `MacOsPlatformProvider.OpenUrl()`,
 `WindowsPlatformProvider.ExecuteCommand()`, `WindowsPlatformProvider.OpenUrl()`, `LinuxPlatformProvider`.
@@ -320,6 +325,18 @@ recibir el evento de teclado.
 | macOS      | Cmd+W   |
 | Windows    | Ctrl+F4 |
 | Linux      | Ctrl+W  |
+
+### 10.7 Modificador de "comando" (`MetaKeyModifier`)
+
+`AppHandler` expone la propiedad `MetaKeyModifier` con el `KeyModifiers` que representa la tecla de "comando"
+de cada plataforma: `Meta` (Cmd) en macOS, `Control` en Windows/Linux. Se deriva de `CopyShortcut.Modifiers`.
+
+Las Views la usan para detectar atajos de accion sin hardcodear `KeyModifiers.Meta` (que en Windows seria la tecla
+Windows/Super fisica): por ejemplo `Cmd/Ctrl+Enter` y `Cmd/Ctrl+doble-click` para "ejecutar sin cerrar". El resto de
+atajos de accion se resuelven via `AppHandler.MatchesHotkey`, que internamente usa el mismo `MetaKeyModifier`.
+
+> **Verificar en:** `AppHandler.MetaKeyModifier`, `AppHandler.MatchesHotkey`, `MainWindow.axaml.cs`
+(`OnKeyDown` case `Key.Return`, `OnResultsDoubleTapped`).
 
 > **Verificar en:** `Yottacast/Services/AppHandler.cs`, `Yottacast/Services/MacAppHandler.cs`,
 `Yottacast/Services/WindowsAppHandler.cs`, `Yottacast/Services/LinuxAppHandler.cs`, `Yottacast.Core/AppDefaults.cs` (

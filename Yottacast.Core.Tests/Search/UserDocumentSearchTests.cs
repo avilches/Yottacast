@@ -130,6 +130,38 @@ public class UserDocumentSearchTests {
         Assert.Equal(r1[0].Score, r2[0].Score);
     }
 
+    // ── Stream resilience ─────────────────────────────────────────────────────
+
+    /// <summary>PlatformProvider whose SearchFilesAsync emits some results, then throws a non-OCE.</summary>
+    private sealed class ThrowingPlatformProvider(IReadOnlyList<FileResult> files) : FakePlatformProvider(files) {
+        public override Task SearchFilesAsync(
+            string query, Action<FileResult> onResult, int maxResults,
+            IReadOnlyList<string>? folders, CancellationToken ct) {
+            foreach (var f in files)
+                onResult(f);
+            throw new InvalidOperationException("backend exploded");
+        }
+    }
+
+    [Fact]
+    public async Task SearchAsync_BackendThrows_StreamCompletesWithPartialResults() {
+        var platform = new ThrowingPlatformProvider([new FileResult("report.pdf", "/docs/report.pdf")]);
+        var settings = UserSettings.Load(platform);
+        var search = new UserDocumentSearch(settings, new FileSearch(platform),
+            new FileIconCache(platform, NullLogger<FileIconCache>.Instance),
+            platform, NullLogger<UserDocumentSearch>.Instance,
+            new ClipboardService(NullLogger<ClipboardService>.Instance));
+
+        // The stream must terminate (not hang) even though the backend threw a non-OCE,
+        // and it must still emit the final snapshot with the results buffered before the throw.
+        var enumerate = SearchAllAsync(search, "report");
+        var completed = await Task.WhenAny(enumerate, Task.Delay(TimeSpan.FromSeconds(5)));
+        Assert.Same(enumerate, completed); // did not time out → channel was completed
+        var results = await enumerate;
+        var item = Assert.Single(results);
+        Assert.Equal("report.pdf", item.Title);
+    }
+
     // ── ISearchModeSource ────────────────────────────────────────────────────────
 
     [Fact]

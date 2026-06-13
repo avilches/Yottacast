@@ -45,7 +45,7 @@ El fichero de preferencias se crea automaticamente en la primera ejecucion y se 
 | ClipboardHistoryMaxEntries | `200` | Número máximo de entradas de historial de portapapeles a conservar |
 | ClipboardHistoryMaxDays | `30` | Días máximos que se conserva una entrada del historial de portapapeles |
 
-> **Bug conocido** - `ClipboardHistoryMaxEntries` y `ClipboardHistoryMaxDays` se persisten y se editan en Settings, pero nunca se propagan al `ClipboardHistoryStore` en caliente: el store se construye con los valores por defecto de `AppDefaults` y sus propiedades `MaxEntries`/`MaxDays` no se actualizan al cambiar los settings. Los nuevos limites no tienen efecto sin reiniciar (y de hecho el store no recibe nunca los valores del usuario). Ver `ClipboardHistoryStore` (registro en `App.BuildServices()`) y `SettingsWindowViewModel.OnClipboardHistoryMaxEntriesChanged()`.
+`ClipboardHistoryMaxEntries` y `ClipboardHistoryMaxDays` se persisten y se editan en Settings, y se propagan al `ClipboardHistoryStore` en caliente: en cada `SearchSettingsChanged`, `App.SetupClipboardMonitor` copia ambos valores a `store.MaxEntries` / `store.MaxDays` e invoca `store.ApplyLimitsNow()`, que recorta el historial inmediatamente. Tambien se aplican una vez al arranque. Ver `App.SetupClipboardMonitor` y `ClipboardHistoryStore.ApplyLimitsNow()`.
 
 Las propiedades antiguas booleanas de clipboard fueron sustituidas por `ClipboardSearchVisibility` (enum `Disabled`/`Always`/`ModeOnly`). El campo JSON heredado `enableClipboard` solo se conserva como entrada de migracion en el DTO (`ClipboardHistoryEnabled`, omitido al escribir cuando es el valor por defecto).
 | EnableWebSearch | `true` | Activa/desactiva la busqueda web; si `false`, `WebSearchSource.Search()` devuelve siempre lista vacia |
@@ -320,6 +320,7 @@ Cuando el usuario modifica un setting que afecta a los resultados de busqueda, l
 - Configuracion de calculadora: `CalculatorCurrencyA`, `CalculatorCurrencyB`, `CalculatorDecimalPlaces`
 - Configuracion por motor de web search (enabled, mode, prefix, queryUrl)
 - Cambios en `AppDirectories` (al hacer flush)
+- Limites de clipboard: `ClipboardHistoryMaxEntries`, `ClipboardHistoryMaxDays` (al cambiarlos, `App.SetupClipboardMonitor` recalcula `store.MaxEntries`/`MaxDays` y aplica el recorte). Para que el recorte sea inmediato al editar el spinner, los handlers `OnClipboardHistoryMaxEntriesChanged`/`OnClipboardHistoryMaxDaysChanged` deben llamar `NotifySearchSettingsChanged()`.
 
 **Settings que NO disparan refresco** (no afectan que resultados aparecen):
 - `Browser`, `Terminal`, `Theme`, `Hotkey`, `StickyWindow`, `WindowX`/`WindowY`, `ShowDisabledWebSearchEngines`, `KeepValueWhenHide`, `KeepValueWhenHideDuration`

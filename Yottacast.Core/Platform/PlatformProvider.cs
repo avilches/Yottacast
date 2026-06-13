@@ -49,6 +49,17 @@ public abstract class PlatformProvider {
         new Dictionary<string, string[]>();
     public abstract void ExecuteCommand(string command, string terminalName);
 
+    /// <summary>
+    /// Resolves a known browser/terminal path entry to an existing executable on disk.
+    /// A literal path is returned when it exists; a path containing a <c>*</c> glob is expanded
+    /// by the platform. Returns null when nothing matches. The default treats any path with a glob
+    /// as unresolvable (platforms that support glob known-paths override this).
+    /// </summary>
+    public virtual string? ResolveKnownPath(string knownPath) {
+        if (knownPath.Contains('*')) return null;
+        return Directory.Exists(knownPath) || File.Exists(knownPath) ? knownPath : null;
+    }
+
     /// <summary>Opens the given directory in the system file manager (Finder / Explorer).</summary>
     public virtual void RevealInFileManager(string directoryPath) { }
 

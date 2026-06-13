@@ -235,8 +235,7 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
                 });
                 break;
             default:
-                var script = Path.GetTempFileName() + ".command";
-                File.WriteAllText(script, $"#!/bin/sh\n{command}\n");
+                var script = CreateCommandScript(command);
                 System.Diagnostics.Process.Start("chmod", $"+x \"{script}\"")?.WaitForExit();
                 System.Diagnostics.Process.Start(new ProcessStartInfo {
                     FileName = "open",
@@ -244,6 +243,35 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
                     UseShellExecute = false,
                 });
                 break;
+        }
+    }
+
+    /// <summary>
+    /// Writes a self-contained <c>.command</c> script for terminals with no scriptable API.
+    /// The script lives in <see cref="AppPaths.TerminalScriptsDir"/> with a unique name (so no two
+    /// launches collide), and old scripts from previous launches are swept first to avoid leaking
+    /// temp files. The script cannot be deleted right after <c>open</c> because the terminal may not
+    /// have read it yet; sweeping on the next launch is the safe moment to reclaim them.
+    /// </summary>
+    internal string CreateCommandScript(string command) {
+        Directory.CreateDirectory(AppPaths.TerminalScriptsDir);
+        SweepCommandScripts();
+        var script = Path.Combine(AppPaths.TerminalScriptsDir, $"{Guid.NewGuid():N}.command");
+        File.WriteAllText(script, $"#!/bin/sh\n{command}\n");
+        return script;
+    }
+
+    private void SweepCommandScripts() {
+        try {
+            foreach (var old in Directory.EnumerateFiles(AppPaths.TerminalScriptsDir, "*.command")) {
+                try {
+                    File.Delete(old);
+                } catch (Exception ex) {
+                    logger.LogDebug(ex, "Could not delete stale terminal script {Script}", old);
+                }
+            }
+        } catch (Exception ex) {
+            logger.LogDebug(ex, "Could not sweep terminal scripts directory");
         }
     }
 

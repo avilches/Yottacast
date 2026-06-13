@@ -83,6 +83,27 @@ file sealed class BlockingDeferredSource : IDeferredSearchSource {
 }
 
 /// <summary>
+/// Throws a non-OperationCanceledException after optionally emitting some snapshots.
+/// </summary>
+file sealed class ThrowingDeferredSource(IReadOnlyList<IReadOnlyList<ResultItemViewModel>> snapshots)
+    : IDeferredSearchSource {
+
+    public void Start() { }
+    public Task WhenReady() => Task.CompletedTask;
+    public Task Stop() => Task.CompletedTask;
+
+    public async IAsyncEnumerable<IReadOnlyList<BaseResultItemViewModel>> SearchAsync(
+        string query, int limit, [EnumeratorCancellation] CancellationToken ct = default) {
+        foreach (var snap in snapshots) {
+            await Task.Yield();
+            yield return snap;
+        }
+        await Task.Yield();
+        throw new InvalidOperationException("boom");
+    }
+}
+
+/// <summary>
 /// WhenReady() completes only after the supplied TaskCompletionSource is resolved.
 /// </summary>
 file sealed class DelayedReadyInstantSource(TaskCompletionSource tcs, IReadOnlyList<ResultItemViewModel> results)
@@ -231,6 +252,41 @@ public class GlobalSearchTests {
         Assert.Equal("S1",   ResultItem.TitleOf(last[1]));
         // S2v1 must NOT appear (it was replaced)
         Assert.DoesNotContain(last, r => r is ResultItemViewModel ri && ri.Title == "S2v1");
+    }
+
+    // ── Faulting sources ──────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ThrowingSource_DoesNotPropagateOrHang() {
+        // A source that throws a non-OCE exception must not break the merge stream:
+        // the stream completes cleanly and no exception bubbles to the consumer.
+        var snap = new List<ResultItemViewModel> { ResultItem.Make("A", 0.5) };
+        var source = new ThrowingDeferredSource([snap]);
+        var global = new GlobalSearch([], [source]);
+
+        var allSnapshots = new List<IReadOnlyList<BaseResultItemViewModel>>();
+        await foreach (var s in global.SearchDeferredAsync("q", 10))
+            allSnapshots.Add(s);
+
+        // The snapshot emitted before the throw is still delivered.
+        Assert.Single(allSnapshots);
+        Assert.Single(allSnapshots[0]);
+        Assert.Equal("A", ResultItem.TitleOf(allSnapshots[0][0]));
+    }
+
+    [Fact]
+    public async Task ThrowingSource_OtherSourcesStillEmit() {
+        // When one source faults, healthy sources still contribute their results.
+        var throwing = new ThrowingDeferredSource([]);
+        var healthy = new StubDeferredSource([ResultItem.Make("OK", 0.9)]);
+        var global = new GlobalSearch([], [throwing, healthy]);
+
+        IReadOnlyList<BaseResultItemViewModel> last = [];
+        await foreach (var s in global.SearchDeferredAsync("q", 10))
+            last = s;
+
+        Assert.Single(last);
+        Assert.Equal("OK", ResultItem.TitleOf(last[0]));
     }
 
     // ── Limit ─────────────────────────────────────────────────────────────────

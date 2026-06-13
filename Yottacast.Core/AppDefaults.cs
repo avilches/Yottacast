@@ -14,6 +14,20 @@ public static class AppDefaults {
     /// Minimum query length before any file search is attempted.
     public const int FileSearchMinQueryLength = 2;
 
+    // ── App scanning (Windows) ────────────────────────────────────────────────
+    /// Maximum directory depth (relative to a scanned root) at which Windows app
+    /// executables are discovered. Depth 0 = exe directly in the root, depth 3 covers
+    /// nested layouts like Google\Chrome\Application\chrome.exe. Both the initial scan
+    /// and the FileSystemWatcher apply this same limit so they stay consistent.
+    public const int WindowsAppScanMaxDepth = 3;
+    /// Substrings (case-insensitive) that mark a Windows .exe as a non-launchable helper
+    /// (uninstallers, crash handlers, updaters). Matching executables are skipped by both
+    /// the initial scan and the watcher.
+    public static readonly string[] WindowsAppExeExcludeSubstrings = [
+        "unins", "uninstall", "setup", "installer", "update", "crashpad",
+        "crashhandler", "crashreport", "helper", "notification_helper",
+    ];
+
     // ── Search — application scoring ─────────────────────────────────────────
     /// Minimum score for any app that has a match. Ensures apps appear above all file matches
     /// except exact full-name-with-extension (3.85). Must be > AppMaxFileScore (3.50) and < AppFileExactScore (3.85).

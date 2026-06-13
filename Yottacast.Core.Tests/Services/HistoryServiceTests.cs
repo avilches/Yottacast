@@ -111,6 +111,18 @@ public class HistoryServiceTests : IDisposable {
     }
 
     [Fact]
+    public void Save_IsAtomic_NoTempFileLeftBehind_AndOverwritesExisting() {
+        var svc = MakeService();
+        svc.Add("first", null);
+        svc.Add("second", null); // second Add overwrites the existing file
+        Assert.True(File.Exists(_historyFile));
+        Assert.False(File.Exists(_historyFile + ".tmp"));
+        var svc2 = MakeService();
+        Assert.Equal(2, svc2.Entries.Count);
+        Assert.Equal("second", svc2.Entries[1].Query);
+    }
+
+    [Fact]
     public void Add_MultipleEntries_OrderIsChronological() {
         var svc = MakeService();
         svc.Add("first", null);

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using Grpc.Core;
 using Yottacast.Core.Search;
 using Yottacast.Core.Services;
@@ -23,12 +24,23 @@ public class SearchGrpcService(
     // Volatile so reference swaps in BuildResponse are visible across threads atomically
     private volatile ConcurrentDictionary<string, BaseResultItemViewModel> _registry = new();
 
-    // Captured clipboard text from the last Activate call
-    private volatile string? _lastCopiedText;
+    // Generation token of the current registry snapshot. Incremented on every swap so a
+    // stale Activate/Navigate (issued against an older snapshot) can be rejected instead of
+    // executing a different result that happens to reuse the same sequential ID.
+    private long _generation;
+
+    // Per-call collector for clipboard text. The single shared copy callback writes into the
+    // box installed by the Activate call currently running on this async flow, so concurrent
+    // Activate calls never see each other's copied text.
+    private readonly AsyncLocal<StrongBox<string?>?> _copyCollector = new();
 
     public void Initialize() {
         clipboardService.Initialize(
-            copy: text => _lastCopiedText = text,
+            copy: text => {
+                var collector = _copyCollector.Value;
+                if (collector != null)
+                    collector.Value = text;
+            },
             read: () => Task.FromResult<string?>(null));
     }
 
@@ -38,9 +50,11 @@ public class SearchGrpcService(
         bool isSearching) {
 
         var newRegistry = new ConcurrentDictionary<string, BaseResultItemViewModel>();
+        var generation = Interlocked.Increment(ref _generation);
         var response = new SearchResponse {
             Hint = hint ?? "",
             IsSearching = isSearching,
+            Generation = generation,
         };
 
         for (int i = 0; i < items.Count; i++) {
@@ -77,8 +91,11 @@ public class SearchGrpcService(
                 await responseStream.WriteAsync(response, ct);
             }
 
-            // Signal that deferred search is complete
-            await responseStream.WriteAsync(new SearchResponse { IsSearching = false }, ct);
+            // Signal that deferred search is complete. Echo the current generation so the
+            // client keeps the token of the last snapshot it can still activate against.
+            await responseStream.WriteAsync(
+                new SearchResponse { IsSearching = false, Generation = Interlocked.Read(ref _generation) },
+                ct);
 
         } catch (OperationCanceledException) {
             logger.LogDebug("Deferred search cancelled for query '{Query}'", request.Query);
@@ -89,12 +106,16 @@ public class SearchGrpcService(
         ActivateRequest request,
         ServerCallContext context) {
 
+        RequireCurrentGeneration(request.Generation);
+
         if (!_registry.TryGetValue(request.ResultId, out var vm)) {
             throw new RpcException(new Status(StatusCode.NotFound,
                 $"Result '{request.ResultId}' not found in current session"));
         }
 
-        _lastCopiedText = null;
+        // Per-call collector: the shared copy callback writes into this box during Execute().
+        var collector = new StrongBox<string?>(null);
+        _copyCollector.Value = collector;
 
         // For emoji_grid, set selected index before activating
         if (vm is EmojiGridResultViewModel emojiGrid) {
@@ -112,15 +133,20 @@ public class SearchGrpcService(
         var pasteAfter = request.Action == ActionType.Default
             && (vm.Actions.FirstOrDefault(a => a.Hotkey == ActionHotkey.Enter)?.PasteAfterClose ?? false);
 
+        var copiedText = collector.Value;
+        _copyCollector.Value = null;
+
         return Task.FromResult(new ActivateResponse {
             PasteAfterActivate = pasteAfter,
-            ClipboardText = _lastCopiedText ?? "",
+            ClipboardText = copiedText ?? "",
         });
     }
 
     public override Task<NavigateResponse> Navigate(
         NavigateRequest request,
         ServerCallContext context) {
+
+        RequireCurrentGeneration(request.Generation);
 
         if (!_registry.TryGetValue(request.ResultId, out var vm)) {
             throw new RpcException(new Status(StatusCode.NotFound,
@@ -144,5 +170,18 @@ public class SearchGrpcService(
             Consumed = consumed,
             NewIndex = newIndex,
         });
+    }
+
+    /// <summary>
+    /// Rejects a request whose generation token does not match the current snapshot.
+    /// Result IDs are sequential and reused across snapshots, so a request issued against an
+    /// older snapshot would otherwise execute a different result that reused the same ID.
+    /// </summary>
+    private void RequireCurrentGeneration(long requestGeneration) {
+        var current = Interlocked.Read(ref _generation);
+        if (requestGeneration != current) {
+            throw new RpcException(new Status(StatusCode.FailedPrecondition,
+                $"Stale generation {requestGeneration}; current snapshot is {current}. Re-run the search and retry."));
+        }
     }
 }

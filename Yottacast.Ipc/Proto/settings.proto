@@ -11,7 +11,15 @@ service SettingsService {
   rpc WatchSettings(google.protobuf.Empty) returns (stream SettingsMessage);
 }
 
+// Mirrors Yottacast.Core.Search.SearchSourceVisibility.
+enum SearchVisibility {
+  SEARCH_VISIBILITY_DISABLED = 0;
+  SEARCH_VISIBILITY_ALWAYS = 1;
+  SEARCH_VISIBILITY_MODE_ONLY = 2;
+}
+
 message SettingsMessage {
+  reserved 9;  // was clipboard_history_enabled (removed; clipboard state lives in UserSettings.ClipboardSearchVisibility)
   string browser = 1;
   string terminal = 2;
   string theme = 3;
@@ -20,9 +28,8 @@ message SettingsMessage {
   repeated string app_directories = 6;
   bool enable_app_search = 7;
   bool enable_calculator = 8;
-  bool clipboard_history_enabled = 9;
   bool enable_emoji = 10;
-  bool enable_file_search = 11;
+  SearchVisibility file_search_visibility = 11;
   bool enable_web_search = 12;
   bool show_disabled_web_search_engines = 13;
   bool file_search_only_specific_folders = 14;

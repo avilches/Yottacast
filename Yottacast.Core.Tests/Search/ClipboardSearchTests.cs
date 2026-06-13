@@ -23,6 +23,8 @@ public class ClipboardSearchTests {
     [InlineData("", false)]
     [InlineData("report.pdf", false)]
     [InlineData("/usr/local/bin", false)]
+    [InlineData("http://", false)]   // sin host
+    [InlineData("https://", false)]  // sin host
     public void TryNormalizeUrl_MatchesExpected(string input, bool expected) {
         var result = UrlSearch.TryNormalizeUrl(input, out _);
         Assert.Equal(expected, result);
@@ -84,6 +86,8 @@ public class ClipboardSearchTests {
     [InlineData("   ")]
     [InlineData("hello world")]
     [InlineData("report.pdf")]
+    [InlineData("http://")]   // regresión: sin host hacía lanzar UriFormatException
+    [InlineData("https://")]  // regresión: sin host hacía lanzar UriFormatException
     public void OnWindowShown_InvalidInput_ReturnsEmpty(string? input) {
         var search = BuildSearch();
         search.OnWindowShown(input);

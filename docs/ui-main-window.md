@@ -112,9 +112,7 @@ Al pulsar Enter sobre un resultado seleccionado:
 3. Oculta la ventana.
 4. Si el resultado tiene `PasteAfterActivate = true` (usado por emojis): devuelve el foco a la app anterior y simula un pegado (`SimulatePasteAsync`: Cmd+V en macOS, Ctrl+V en Windows; en Linux es un no-op heredado de la clase base, ver `docs/ui-hotkeys.md`).
 
-**Cmd+Enter** ejecuta la accion `Enter` sin ocultar la ventana (`AsKeepOpen()`).
-
-> **Bug conocido** - El `Cmd+Enter` en `OnKeyDown` (case `Key.Return`) detecta el modificador con `KeyModifiers.Meta` hardcodeado en lugar de `AppHandler.MatchesHotkey`; en Windows/Linux exige la tecla Meta/Super fisica en vez de Ctrl. Mismo problema que el `Cmd+doble-click` (ver seccion 8).
+**Cmd+Enter** (macOS) / **Ctrl+Enter** (Windows/Linux) ejecuta la accion `Enter` sin ocultar la ventana (`AsKeepOpen()`). El modificador se resuelve via `AppHandler.Instance.MetaKeyModifier` (Cmd en macOS, Ctrl en Windows/Linux), nunca con `KeyModifiers.Meta` hardcodeado.
 
 ### Cierre nativo de ventana
 
@@ -168,7 +166,7 @@ Cada item puede definir handlers opcionales (`OnLeft`, `OnRight`, `OnUp`, `OnDow
 | Izquierda/Derecha | Navegacion circular dentro de las celdas del grid (al llegar al final vuelve al principio). |
 | Arriba/Abajo | Si el movimiento saldria del grid (primera o ultima fila), devuelve `false` y delega la navegacion al nivel de lista. |
 
-> **Bug conocido** - En el switch de navegacion de grid de `OnTunnelKeyDown`, los casos `Key.Up`/`Key.Down` asignan `e.Handled = onUp()`/`onDown()` (respetando el bool que devuelve el handler), pero `Key.Left`/`Key.Right` invocan `onLeft()`/`onRight()` **sin** asignar `e.Handled`. Como `OnLeft`/`OnRight` son `Func<bool>?`, su valor de retorno se descarta y la tecla sigue propagandose al `TextBox`: al navegar horizontalmente en el grid de emojis el caret del SearchBox se mueve.
+Los cuatro casos del switch de navegacion de grid (`Key.Left`/`Key.Right`/`Key.Up`/`Key.Down`) asignan `e.Handled` al bool que devuelve el handler (`onLeft()`/`onRight()`/`onUp()`/`onDown()`). Asi, cuando el grid consume la tecla horizontal, el caret del SearchBox no se mueve.
 
 > **Verificar en:** `MainWindow.axaml.cs` -- `OnTunnelKeyDown` (switch de navegacion de grid), `SelectNext`, `SelectDelta`. `AppDefaults.cs` -- `SearchSourceLimit`. `EmojiGridResultViewModel.cs` -- `SelectDown`, `SelectUp`, `SelectNext`, `SelectPrevious`. `BaseResultItemViewModel.cs` -- `OnLeft`, `OnRight`, `OnUp`, `OnDown` (todos `Func<bool>?`).
 
@@ -187,12 +185,12 @@ Mientras el usuario escribe, el cursor del raton se oculta para no distraer. Se 
 | Gesto | Comportamiento |
 |---|---|
 | Click izquierdo | Selecciona el elemento. Si habia un menu de opciones abierto, se cierra. |
-| Doble click izquierdo | Ejecuta la accion por defecto del elemento (equivalente a Enter). Cmd+doble click ejecuta sin cerrar la ventana (`AsKeepOpen()`). |
+| Doble click izquierdo | Ejecuta la accion por defecto del elemento (equivalente a Enter). Cmd+doble click (macOS) / Ctrl+doble click (Windows/Linux) ejecuta sin cerrar la ventana (`AsKeepOpen()`). |
 | Click derecho | Selecciona el elemento y abre el menu de opciones en la posicion del cursor. Las opciones son clicables con el raton. |
 
 El movimiento del raton sobre resultados ya no selecciona el elemento bajo el cursor. La seleccion solo cambia por teclado o por click.
 
-> **Bug conocido** - `OnResultsDoubleTapped` decide el modo "sin cerrar" comprobando `_lastClickModifiers.HasFlag(KeyModifiers.Meta)` **hardcodeado**, en vez de `AppHandler.MatchesHotkey`. Igual que el `Cmd+Enter` de teclado, en macOS funciona (Cmd = Meta) pero en Windows/Linux exige la tecla Meta/Super fisica en lugar de Ctrl, asi que el "ejecutar sin cerrar" no responde a Ctrl+doble-click.
+`OnResultsDoubleTapped` decide el modo "sin cerrar" comprobando `_lastClickModifiers.HasFlag(AppHandler.Instance.MetaKeyModifier)`, que resuelve a Cmd en macOS y a Ctrl en Windows/Linux. Igual que el `Cmd/Ctrl+Enter` de teclado.
 
 > **Verificar en:** `MainWindow.axaml.cs` -- `OnResultsPointerPressed`, `OnResultsDoubleTapped`.
 

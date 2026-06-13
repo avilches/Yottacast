@@ -82,7 +82,9 @@ public class HistoryService {
                 ActionName = e.ActionName,
                 Timestamp = e.Timestamp
             }).ToList();
-            File.WriteAllText(_historyPath, JsonSerializer.Serialize(data, JsonOptions));
+            var tmpPath = _historyPath + ".tmp";
+            File.WriteAllText(tmpPath, JsonSerializer.Serialize(data, JsonOptions));
+            File.Move(tmpPath, _historyPath, overwrite: true);
         } catch (Exception ex) {
             _logger.LogWarning(ex, "History: failed to save to {Path}", _historyPath);
         }

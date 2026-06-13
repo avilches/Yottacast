@@ -35,6 +35,7 @@ disco obtiene la ruta de una unica clase centralizada. Esto garantiza que:
 | Plugin icons     | Cache           | `plugin-icons/`               | Iconos descargados de plugins WebSearch                              |
 | Favicons         | Cache           | `favicons/`                   | Favicons descargados para resultados de URL/web                      |
 | Exchange rates   | Cache           | `exchange-rates.json`         | Cache de tasas de cambio descargadas (JSON)                          |
+| Terminal scripts | Cache           | `terminal-scripts/`           | Scripts `.command` temporales para lanzar comandos en terminales sin API (macOS); barridos en cada ejecucion |
 | Dict JSONL       | Cache           | `dictionary/{lang}.jsonl`     | Diccionario basico descargable (kaikki, 1 linea por entrada)         |
 | Dict SQLite      | Cache           | `dictionary/{lang}.db`        | Diccionario local compilado; la app lo genera del JSONL si no existe |
 | IPC socket       | Cache           | `core.sock`                   | Unix domain socket del daemon gRPC (creado al arrancar, borrado al salir) |

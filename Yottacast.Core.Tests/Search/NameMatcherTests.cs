@@ -44,6 +44,11 @@ public class NameMatcherTests
     [InlineData("xyz",   "Safari",                       0.0)]
     // Score 0.0 — multi-word abbrev does NOT fire on single-token names
     [InlineData("smif",  "smiling",                      0.0)]
+    // Score 0.0 — separator-only queries yield no humps and must not match everything
+    [InlineData("-",     "Safari",                       0.0)]
+    [InlineData("_",     "Safari",                       0.0)]
+    [InlineData("--",    "Activity Monitor",             0.0)]
+    [InlineData(" ",     "Safari",                       0.0)]
     public void Score_ReturnsExpected(string query, string name, double expected)
     {
         Assert.Equal(expected, NameMatcher.Score(name, query));
@@ -195,6 +200,21 @@ public class NameMatcherTests
         Assert.Equal(0, result.Score);
         Assert.Null(result.Reason);
         Assert.Null(result.Ranges);
+    }
+
+    // ── Match() — separator-only query ───────────────────────────────────────
+
+    [Fact]
+    public void Match_SeparatorOnlyQuery_ReturnsNoMatch()
+    {
+        // "-", "_", "--" split to zero humps; without the guard the CamelHump loop
+        // would match any name with score 1.0 (regression).
+        foreach (var query in new[] { "-", "_", "--", "-_-" }) {
+            var result = NameMatcher.Match("Activity Monitor", query);
+            Assert.Equal(0, result.Score);
+            Assert.Null(result.Reason);
+            Assert.Null(result.Ranges);
+        }
     }
 
     // ── Score() backwards compatibility ──────────────────────────────────────

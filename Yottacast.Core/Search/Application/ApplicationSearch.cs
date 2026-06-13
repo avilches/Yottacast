@@ -187,10 +187,29 @@ public sealed class ApplicationSearch(
     // ── Scan + watch ──────────────────────────────────────────────────────────
 
     private async Task ScanAndWatchAsync() {
-        logger.LogInformation("AppSearch scan start dirs=[{Dirs}]", string.Join(", ", settings.ExpandedAppDirectories));
-        await platform.ScanAppsAsync(AddApp, settings.ExpandedAppDirectories, _liveCts.Token);
-        logger.LogInformation("AppSearch scan done apps={Count}", _apps.Count);
-        _readyTcs.TrySetResult();
+        // Capture the TCS this scan owns. If Stop() swaps _readyTcs while we run, the finally
+        // must still complete OUR tcs (Stop already cancelled it, so TrySetResult is a no-op),
+        // never the fresh one Stop installed.
+        var tcs = _readyTcs;
+        var scanOk = false;
+        try {
+            logger.LogInformation("AppSearch scan start dirs=[{Dirs}]", string.Join(", ", settings.ExpandedAppDirectories));
+            await platform.ScanAppsAsync(AddApp, settings.ExpandedAppDirectories, _liveCts.Token);
+            logger.LogInformation("AppSearch scan done apps={Count}", _apps.Count);
+            scanOk = true;
+        } catch (OperationCanceledException) {
+            // Scan was cancelled by Stop/Rescan — expected, not an error. Cache may be partial.
+            logger.LogDebug("AppSearch scan cancelled");
+        } catch (Exception ex) {
+            // A failed scan must never leave the app without UI: WhenReady must complete regardless.
+            // The cache simply stays empty; searches return no app results until the next rescan.
+            logger.LogError(ex, "AppSearch scan failed — continuing with empty app cache");
+        } finally {
+            tcs.TrySetResult();
+        }
+
+        // Only watch and announce results if the scan actually completed.
+        if (!scanOk) return;
         AppsChanged?.Invoke();
         CreateWatchers(settings.ExpandedAppDirectories);
     }

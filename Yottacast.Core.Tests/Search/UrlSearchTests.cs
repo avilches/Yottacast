@@ -33,6 +33,12 @@ public class UrlSearchTests {
     [InlineData("",                         "",                           false)]
     [InlineData("abc",                      "",                           false)]
     [InlineData("/usr/local/bin",           "",                           false)]  // ruta local
+    [InlineData("http://",                  "",                           false)]  // sin host
+    [InlineData("https://",                 "",                           false)]  // sin host
+    [InlineData("http://:8080",             "",                           false)]  // sin host, solo puerto
+    // "www." tiene host "www." (no vacio), asi que se acepta: candidato valido para new Uri,
+    // sin crash. La verificacion de alcanzabilidad (DNS) lo descartara despues si no resuelve.
+    [InlineData("www.",                     "https://www.",               true)]
     public void TryNormalizeUrl_CorrectlyClassifies(
         string query, string expectedUrl, bool expectedResult) {
         var result = UrlSearch.TryNormalizeUrl(query, out var url);
@@ -88,6 +94,22 @@ public class UrlSearchTests {
         Assert.Empty(search.Search("hello world", 10));
         Assert.Empty(search.Search("just text", 10));
         Assert.Empty(search.Search("/local/path", 10));
+    }
+
+    [Theory]
+    [InlineData("h")]
+    [InlineData("ht")]
+    [InlineData("http")]
+    [InlineData("http:")]
+    [InlineData("http:/")]
+    [InlineData("http://")]
+    [InlineData("https://")]
+    public void Search_PartialOrHostlessScheme_ReturnsEmptyWithoutThrowing(string query) {
+        // Regresión: "http://" sin host hacía que new Uri(url).Host lanzara
+        // UriFormatException, matando en silencio la búsqueda de ese keystroke.
+        var search = BuildSearch();
+        var results = search.Search(query, 10);
+        Assert.Empty(results);
     }
 
     [Fact]
