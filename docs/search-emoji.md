@@ -140,11 +140,11 @@ La busqueda compara el termino contra el nombre y los keywords de cada emoji. El
 
 **Invariante:** cualquier coincidencia por nombre siempre puntua mas alto que cualquier coincidencia exclusivamente por keyword. Esto garantiza que al buscar `:fire`, el emoji "fire" aparece antes que "fireworks" (que coincidiria por prefijo).
 
-El matching de nombre usa los tokens pre-computados del nombre (space-split), aprovechando que los nombres de emoji son siempre minusculas separadas por espacios. Para keywords, se aplica `NameMatcher.Score(string, string)` a cada keyword individual y se toma el mejor score. Si no hay match de nombre ni keyword, se intenta un match contra la categoria del emoji, ponderado a la mitad (`× 0.5`) para que nunca supere a un keyword.
+El matching usa tokenizaciones pre-computadas: `EmojiEntry` construye un `MatchableName` para el nombre, otro por cada keyword y uno para la categoria al cargar los datos, de modo que `FilterEmojis` (que recorre todo el dataset en cada keystroke) nunca re-tokeniza. El nombre se matchea con `NameMatcher.Match(NameMatch, term)`; cada keyword con su `MatchableName`, tomando el mejor score; y si no hay match de nombre ni keyword, se intenta contra la categoria, ponderada a la mitad (`× 0.5`) para que nunca supere a un keyword. Como los nombres de emoji son minusculas separadas por espacios, la tokenizacion de `NameMatcher` coincide con un simple split por espacios.
 
 **Queries multi-palabra:** si el termino contiene varias palabras (`:flag sp`), cada token debe coincidir y el score final es el minimo entre los tokens. Si algun token no coincide, el emoji se descarta.
 
-> **Verificar en:** `EmojiSearch.MatchScore()` y `EmojiSearch.SingleTermScore()` -- logica de scoring con rangos, match de categoria y queries multi-palabra; `EmojiEntry.NameTokens` -- pre-tokenizacion; `NameMatcher.Score()` en `NameMatcher.cs`.
+> **Verificar en:** `EmojiSearch.MatchScore()` y `EmojiSearch.SingleTermScore()` -- logica de scoring con rangos, match de categoria y queries multi-palabra; `EmojiEntry.NameMatch`/`KeywordMatches`/`CategoryMatch` -- tokenizaciones pre-computadas; `NameMatcher.Match(MatchableName, string)` en `NameMatcher.cs`.
 
 ---
 

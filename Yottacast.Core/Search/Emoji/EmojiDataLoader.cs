@@ -1,12 +1,17 @@
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using Yottacast.Core.Search.Application;
 
 namespace Yottacast.Core.Search.Emoji;
 
 internal record EmojiEntry(string Char, string Name, string[] Keywords, string Category, int SortOrder) {
-    public IReadOnlyList<string> NameTokens { get; } =
-        Name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+    // Tokenizations precomputed once at load. Emoji names/keywords/categories are fixed while the
+    // user types, so re-splitting them on every keystroke (FilterEmojis runs over the full dataset)
+    // is wasted work. NameMatcher.Match reuses these instead of re-tokenizing.
+    public MatchableName NameMatch { get; } = NameMatcher.Tokenize(Name);
+    public IReadOnlyList<MatchableName> KeywordMatches { get; } = [.. Keywords.Select(NameMatcher.Tokenize)];
+    public MatchableName CategoryMatch { get; } = NameMatcher.Tokenize(Category);
 }
 
 /// <summary>

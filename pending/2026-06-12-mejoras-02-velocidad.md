@@ -48,7 +48,10 @@ Requisito: ejecutar despues del Plan 1 (varios ficheros se solapan; los fixes de
 - **Cambio**: mantener un top-N incremental (PriorityQueue<TElement, TPriority> de tamano limit, o insercion ordenada acotada) y emitir el snapshot desde ahi.
 - **Verificar**: los tests de UserDocumentSearch pasan; los resultados progresivos llegan en el mismo orden final que antes.
 
-### T5. Caches estaticos de EmojiSearch (impacto medio-bajo, esfuerzo bajo)
+### T5. Caches estaticos de EmojiSearch (impacto medio-bajo, esfuerzo bajo) — DONE
+
+> Hecho: (a) `_charToEntry` y `_sortedDefault` derivados una vez al asignar `_entries` (no se reconstruyen en cada `:`); (b) `FilterEmojis` reescrito con bucle manual que solo materializa matches + un `OrderByDescending` estable (orden identico). Ademas se mato la re-tokenizacion por keystroke que dejo T3: `EmojiEntry` precomputa `MatchableName` para nombre, keywords y categoria, y `SingleTermScore` usa `NameMatcher.Match(MatchableName, term)`. Doc `search-emoji.md` §143/§147 actualizado. Tests verdes (109 emoji/namematcher).
+
 
 - **Donde**: `Yottacast.Core/Search/Emoji/EmojiSearch.cs:47-86`.
 - **Problema**: `GetDefaultEmojis()` reconstruye `charToEntry` (ToDictionary de ~2000 entradas) en cada invocacion con query vacia; `FilterEmojis` encadena Select/Where/OrderBy/Select/ToList con materializaciones intermedias.

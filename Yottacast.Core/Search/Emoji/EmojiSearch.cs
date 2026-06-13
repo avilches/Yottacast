@@ -15,6 +15,11 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
 
     private Task<IReadOnlyList<EmojiEntry>>? _loadTask;
     private volatile IReadOnlyList<EmojiEntry> _entries = [];
+    // Derived once when _entries is assigned, since the dataset is immutable after load:
+    // char→entry lookup and the default-grid tail (SortOrder>0, ascending). Avoids rebuilding
+    // a ~2000-entry dictionary and re-sorting on every empty-query (":") keystroke.
+    private volatile IReadOnlyDictionary<string, EmojiEntry> _charToEntry = new Dictionary<string, EmojiEntry>();
+    private volatile IReadOnlyList<EmojiEntry> _sortedDefault = [];
 
     public int Limit => AppDefaults.EmojiSearchLimit;
 
@@ -22,6 +27,8 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
         _loadTask = Task.Run(async () => {
             var entries = await dataLoader.LoadAsync(emojiCachePath);
             _entries = entries;
+            _charToEntry = entries.ToDictionary(e => e.Char);
+            _sortedDefault = [.. entries.Where(e => e.SortOrder > 0).OrderBy(e => e.SortOrder)];
             await usageStore.LoadAsync();
             return entries;
         });
@@ -45,7 +52,7 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
     }
 
     private IReadOnlyList<(EmojiEntry Entry, EmojiSection Section)> GetDefaultEmojis() {
-        var charToEntry = _entries.ToDictionary(e => e.Char);
+        var charToEntry = _charToEntry;
         var result = new List<(EmojiEntry Entry, EmojiSection Section)>();
 
         // Favorites first, capped at EmojiMaxFavorites (4 cells).
@@ -71,19 +78,23 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
 
         // All emojis in normal sort order — no exclusions.
         // Favorites and MostUsed also appear here in their natural category position.
-        foreach (var entry in _entries.Where(e => e.SortOrder > 0).OrderBy(e => e.SortOrder))
+        foreach (var entry in _sortedDefault)
             result.Add((entry, EmojiSection.Default));
 
         return result;
     }
 
-    private IReadOnlyList<EmojiEntry> FilterEmojis(string term, int limit) =>
-        _entries
-            .Select(e => (entry: e, score: MatchScore(e, term)))
-            .Where(x => x.score > 0)
-            .OrderByDescending(x => x.score)
-            .Select(x => x.entry)
-            .ToList();
+    private IReadOnlyList<EmojiEntry> FilterEmojis(string term, int limit) {
+        // Score only matching entries into a small list, then sort once. OrderByDescending is a
+        // stable sort, so emojis with equal score keep their original dataset order (Unicode order),
+        // identical to the previous Select/Where/OrderBy chain.
+        var matches = new List<(EmojiEntry Entry, double Score)>();
+        foreach (var e in _entries) {
+            var score = MatchScore(e, term);
+            if (score > 0) matches.Add((e, score));
+        }
+        return [.. matches.OrderByDescending(x => x.Score).Select(x => x.Entry)];
+    }
 
     private EmojiGridResultViewModel MakeGrid(IReadOnlyList<(EmojiEntry Entry, EmojiSection Section)> emojis) {
         var cells = emojis.Select((x, i) => new EmojiCellViewModel {
@@ -195,10 +206,10 @@ public class EmojiSearch(ClipboardService clipboard, string emojiCachePath, Emoj
 
     private static double SingleTermScore(EmojiEntry e, string term) {
         if (e.Name.Equals(term, StringComparison.OrdinalIgnoreCase)) return 3.0;
-        var nameScore = NameMatcher.Score(e.NameTokens, e.Name, term);
+        var nameScore = NameMatcher.Match(e.NameMatch, term).Score;
         if (nameScore > 0) return nameScore + 1;
-        var keywordScore = e.Keywords.Select(k => NameMatcher.Score(k, term)).DefaultIfEmpty(0d).Max();
+        var keywordScore = e.KeywordMatches.Select(k => NameMatcher.Match(k, term).Score).DefaultIfEmpty(0d).Max();
         if (keywordScore > 0) return keywordScore;
-        return NameMatcher.Score(e.Category, term) * 0.5; // category match scores lower than keywords
+        return NameMatcher.Match(e.CategoryMatch, term).Score * 0.5; // category match scores lower than keywords
     }
 }
