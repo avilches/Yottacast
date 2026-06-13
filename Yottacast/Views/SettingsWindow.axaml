@@ -3,6 +3,7 @@
         xmlns:vm="using:Yottacast.ViewModels"
         xmlns:svc="using:Yottacast.Services"
         xmlns:sys="using:System"
+        xmlns:settings="using:Yottacast.Views.Settings"
         x:Class="Yottacast.Views.SettingsWindow"
         x:DataType="vm:SettingsWindowViewModel"
         Title="Yottacast Settings"
@@ -590,110 +591,7 @@
             <Panel Margin="28,24">
 
                 <!-- General -->
-                <StackPanel Spacing="20" IsVisible="{Binding IsGeneralSelected}">
-                    <TextBlock Classes="section-heading" Text="General"/>
-
-                    <!-- Theme -->
-                    <StackPanel Spacing="0">
-                        <TextBlock Classes="label" Text="Theme"/>
-                        <ComboBox ItemsSource="{Binding Themes}"
-                                  SelectedItem="{Binding SelectedTheme}">
-                            <ComboBox.ItemTemplate>
-                                <DataTemplate x:DataType="svc:ThemeOption">
-                                    <TextBlock Text="{Binding DisplayName}"/>
-                                </DataTemplate>
-                            </ComboBox.ItemTemplate>
-                        </ComboBox>
-                    </StackPanel>
-
-                    <!-- Global Hotkey -->
-                    <StackPanel Spacing="0">
-                        <TextBlock Classes="label" Text="Global Hotkey"/>
-                        <Border Classes="hotkey-field"
-                                Classes.capturing="{Binding IsCapturingHotkey}"
-                                PointerPressed="OnHotkeyAreaPointerPressed">
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="0">
-
-                                <!-- Modifier badges -->
-                                <Border Classes="modifier-badge" Classes.active="{Binding BadgeCtrlActive}">
-                                    <TextBlock Text="{Binding CtrlSymbol}"/>
-                                </Border>
-                                <Border Classes="modifier-badge" Classes.active="{Binding BadgeAltActive}">
-                                    <TextBlock Text="{Binding AltSymbol}"/>
-                                </Border>
-                                <Border Classes="modifier-badge" Classes.active="{Binding BadgeShiftActive}">
-                                    <TextBlock Text="{Binding ShiftSymbol}"/>
-                                </Border>
-                                <Border Classes="modifier-badge" Classes.active="{Binding BadgeMetaActive}">
-                                    <TextBlock Text="{Binding MetaSymbol}"/>
-                                </Border>
-
-                                <!-- Key text (style changes via Border.capturing descendant selector) -->
-                                <TextBlock Classes="hotkey-key"
-                                           Text="{Binding HotkeyKeyText}"/>
-
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-
-                    <!-- Terminal -->
-                    <StackPanel Spacing="0">
-                        <TextBlock Classes="label" Text="Default Terminal"/>
-                        <ComboBox ItemsSource="{Binding Terminals}"
-                                  SelectedItem="{Binding SelectedTerminal}"
-                                  PlaceholderText="No terminals found"
-                                  DropDownOpened="OnTerminalDropDownOpened"/>
-                        <TextBlock Text="Searching in application folders…"
-                                   FontSize="11" Opacity="0.5" Margin="2,4,0,0"
-                                   IsVisible="{Binding IsTerminalsLoading}"/>
-                    </StackPanel>
-
-                    <!-- Sticky window -->
-                    <StackPanel Spacing="4">
-                        <CheckBox Content="Sticky window"
-                                  IsChecked="{Binding StickyWindow}"/>
-                        <TextBlock Classes="description"
-                                   Text="When enabled, the window stays visible when it loses focus."/>
-                    </StackPanel>
-
-                    <!-- Keep value when hide -->
-                    <StackPanel Spacing="4">
-                        <CheckBox Content="Keep value when hide"
-                                  IsChecked="{Binding KeepValueWhenHide}"/>
-                        <TextBlock Classes="description"
-                                   Margin="0"
-                                   Text="Preserve the search text when the window hides. Auto-clears after the chosen duration."/>
-                        <StackPanel Orientation="Horizontal" Spacing="8"
-                                    IsVisible="{Binding KeepValueWhenHide}"
-                                    Margin="0,4,0,0">
-                            <TextBlock VerticalAlignment="Center" Text="Keep value for"/>
-                            <ComboBox ItemsSource="{Binding KeepValuePresets}"
-                                      SelectedItem="{Binding SelectedKeepValuePreset}">
-                                <ComboBox.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:KeepValuePreset">
-                                        <TextBlock Text="{Binding Label}"/>
-                                    </DataTemplate>
-                                </ComboBox.ItemTemplate>
-                            </ComboBox>
-                            <Border BorderThickness="1"
-                                    CornerRadius="4"
-                                    BorderBrush="#868686"
-                                    IsVisible="{Binding IsCustomDuration}"
-                                    Classes.invalid="{Binding !IsCustomDurationTextValid}">
-                                <Border.Styles>
-                                    <Style Selector="Border.invalid">
-                                        <Setter Property="BorderBrush" Value="#FF3B30"/>
-                                    </Style>
-                                </Border.Styles>
-                                <TextBox BorderThickness="0"
-                                         Background="Transparent"
-                                         Text="{Binding CustomDurationText}"
-                                         Width="80"
-                                         Watermark="e.g. 2m"/>
-                            </Border>
-                        </StackPanel>
-                    </StackPanel>
-                </StackPanel>
+                <settings:SettingsGeneralView IsVisible="{Binding IsGeneralSelected}"/>
 
                 <!-- App Search -->
                 <StackPanel Spacing="16" IsVisible="{Binding IsAppSearchSelected}">
