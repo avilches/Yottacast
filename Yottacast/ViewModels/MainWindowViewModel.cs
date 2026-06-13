@@ -179,12 +179,6 @@ public partial class MainWindowViewModel(
                 _cts = new CancellationTokenSource();
                 _userNavigated = false;
                 _ = SearchAsync(SearchText.Trim(), _cts.Token);
-            } else if (_activeMode != SearchMode.All) {
-                _instantSnapshot = [];
-                _deferredSnapshot = [];
-                var (items, _, _) = globalSearch.SearchInstant("", limit: SearchSourceLimit, _activeMode);
-                _instantSnapshot = items;
-                RefreshResults();
             } else {
                 RefreshEmptyState();
             }
@@ -390,13 +384,7 @@ public partial class MainWindowViewModel(
             _instantSnapshot = [];
             _deferredSnapshot = [];
             SetSearchHint(null);
-            if (_activeMode != SearchMode.All) {
-                var (items, _, _) = globalSearch.SearchInstant("", limit: SearchSourceLimit, _activeMode);
-                _instantSnapshot = items;
-                RefreshResults();
-            } else {
-                RefreshEmptyState();
-            }
+            RefreshEmptyState();
             return;
         }
 
@@ -638,6 +626,14 @@ public partial class MainWindowViewModel(
 
     private void RefreshEmptyState()
     {
+        if (_activeMode != SearchMode.All) {
+            _instantSnapshot = [];
+            _deferredSnapshot = [];
+            var (items, _, _) = globalSearch.SearchInstant("", limit: SearchSourceLimit, _activeMode);
+            _instantSnapshot = items;
+            RefreshResults();
+            return;
+        }
         var results = _emptySources.SelectMany(s => s.GetResults()).ToList();
         Results.Clear();
         foreach (var r in results) Results.Add(r);
