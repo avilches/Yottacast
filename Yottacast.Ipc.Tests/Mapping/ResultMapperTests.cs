@@ -11,7 +11,7 @@ public class ResultMapperTests {
             Score = 0.9,
             Title = "Safari",
             Subtitle = "/Applications/Safari.app",
-            Category = "Applications",
+            Category = "Application",
             Icon = "/Applications/Safari.app",
             BypassLimit = false,
         };
@@ -22,9 +22,22 @@ public class ResultMapperTests {
         Assert.Equal("app", msg.Type);
         Assert.Equal("Safari", msg.Title);
         Assert.Equal("/Applications/Safari.app", msg.Subtitle);
-        Assert.Equal("Applications", msg.Category);
+        Assert.Equal("Application", msg.Category);
         Assert.Equal("/Applications/Safari.app", msg.IconId);
         Assert.Equal(0.9, msg.Score, precision: 5);
+    }
+
+    [Fact]
+    public void Map_ResultItemWithUnknownCategory_Throws() {
+        // An unmapped category must throw loudly rather than be silently labelled "app".
+        var vm = new ResultItemViewModel {
+            Title = "Something",
+            Subtitle = "x",
+            Category = "Clipboard",
+            Icon = "📋",
+        };
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => ResultMapper.Map(vm, "0"));
     }
 
     [Fact]

@@ -59,7 +59,8 @@ public class ClipboardHistorySearch(
             matchScore = AppDefaults.ClipboardHistoryContainsMatchScore;
 
         var ageDays = Math.Max(0, (DateTimeOffset.UtcNow - entry.LastUsedAt).TotalDays);
-        var decay = Math.Exp(-ageDays / AppDefaults.ClipboardHistoryHalfLifeDays);
+        // True half-life decay: the usage bonus halves exactly every ClipboardHistoryHalfLifeDays.
+        var decay = Math.Pow(0.5, ageDays / AppDefaults.ClipboardHistoryHalfLifeDays);
         var usageBonus = Math.Min(Math.Log(entry.UsageCount + 1) * decay, AppDefaults.ClipboardHistoryMaxBonus);
 
         return matchScore + usageBonus;

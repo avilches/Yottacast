@@ -113,21 +113,27 @@ public sealed class WindowsPlatformProvider(ProcessRunner runner, ILogger<Window
         try {
             System.Diagnostics.Process.Start(
                 new ProcessStartInfo(path) { UseShellExecute = true });
-        } catch { }
+        } catch (Exception ex) {
+            logger.LogWarning(ex, "LaunchApp fallo en Windows. path={Path}", path);
+        }
     }
 
     public override void RevealInFileManager(string directoryPath) {
         try {
             System.Diagnostics.Process.Start(
                 new ProcessStartInfo("explorer.exe", $"\"{directoryPath}\"") { UseShellExecute = false });
-        } catch { }
+        } catch (Exception ex) {
+            logger.LogWarning(ex, "RevealInFileManager fallo en Windows. directoryPath={DirectoryPath}", directoryPath);
+        }
     }
 
     public override void OpenFile(string filePath) {
         try {
             System.Diagnostics.Process.Start(
                 new ProcessStartInfo(filePath) { UseShellExecute = true });
-        } catch { }
+        } catch (Exception ex) {
+            logger.LogWarning(ex, "OpenFile fallo en Windows. filePath={FilePath}", filePath);
+        }
     }
 
     // ── Running apps ──────────────────────────────────────────────────────────
@@ -151,11 +157,13 @@ public sealed class WindowsPlatformProvider(ProcessRunner runner, ILogger<Window
     }
 
     public override void QuitApp(int pid) {
-        try { Process.GetProcessById(pid).CloseMainWindow(); } catch { }
+        try { Process.GetProcessById(pid).CloseMainWindow(); }
+        catch (Exception ex) { logger.LogWarning(ex, "QuitApp fallo en Windows. pid={Pid}", pid); }
     }
 
     public override void ForceQuitApp(int pid) {
-        try { Process.GetProcessById(pid).Kill(); } catch { }
+        try { Process.GetProcessById(pid).Kill(); }
+        catch (Exception ex) { logger.LogWarning(ex, "ForceQuitApp fallo en Windows. pid={Pid}", pid); }
     }
 
     // ── File search ───────────────────────────────────────────────────────────
@@ -223,7 +231,9 @@ public sealed class WindowsPlatformProvider(ProcessRunner runner, ILogger<Window
                 ArgumentList = { url },
                 UseShellExecute = false,
             });
-        } catch { }
+        } catch (Exception ex) {
+            logger.LogWarning(ex, "OpenUrl fallo en Windows. url={Url} browser={Browser}", url, browserName);
+        }
     }
 
     // ── Terminal ──────────────────────────────────────────────────────────────
@@ -286,7 +296,9 @@ public sealed class WindowsPlatformProvider(ProcessRunner runner, ILogger<Window
                 Arguments = BuildTerminalArgs(command, terminalName),
                 UseShellExecute = true,
             });
-        } catch { }
+        } catch (Exception ex) {
+            logger.LogWarning(ex, "ExecuteCommand fallo en Windows. command={Command} terminal={Terminal}", command, terminalName);
+        }
     }
 
     /// <summary>

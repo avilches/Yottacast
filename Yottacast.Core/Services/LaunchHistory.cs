@@ -7,8 +7,9 @@ namespace Yottacast.Core.Services;
 /// <summary>
 /// Tracks how often and how recently each item (app or file) has been launched.
 /// Each record stores a launch count and the timestamp of last use.
-/// Bonus scoring uses exponential decay: count × e^(-ageDays / halfLifeDays),
-/// so recently-launched items rank above equally-counted but stale ones.
+/// Bonus scoring uses a true half-life decay: log(count+1) × 0.5^(ageDays / halfLifeDays),
+/// so the bonus halves exactly every halfLifeDays and recently-launched items rank above
+/// equally-counted but stale ones.
 /// The bonus is capped at <see cref="AppDefaults.LaunchHistoryMaxBonus"/> so that
 /// frequently-used apps cannot escape their score band (stay below Calculator/Emoji).
 /// The file is written atomically (temp file + File.Move) to avoid corruption.
@@ -48,7 +49,7 @@ public class LaunchHistory(string filePath, ILogger<LaunchHistory> logger, Func<
     private (double Bonus, int Count, double AgeDays) BonusInfo(string itemPath) {
         if (!_data.TryGetValue(itemPath, out var rec)) return (0, 0, 0);
         var ageDays = Math.Max(0, (Now - rec.LastUsedAt).TotalDays);
-        var decay = Math.Exp(-ageDays / AppDefaults.LaunchHistoryHalfLifeDays);
+        var decay = Math.Pow(0.5, ageDays / AppDefaults.LaunchHistoryHalfLifeDays);
         var bonus = Math.Min(Math.Log(rec.Count + 1) * decay, AppDefaults.LaunchHistoryMaxBonus);
         return (bonus, rec.Count, ageDays);
     }

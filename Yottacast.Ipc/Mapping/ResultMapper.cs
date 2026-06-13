@@ -70,10 +70,14 @@ public static class ResultMapper {
     }
 
     private static string DetermineType(ResultItemViewModel item) => item.Category switch {
-        "Applications" => "app",
+        "Application" or "Applications" => "app",
         "Files" or "Documents" => "file",
         "Web" or "Web Search" => "web",
-        _ => "app",
+        // Throw instead of silently labelling unknown categories as "app" with an invalid IconId.
+        // If a newly-registered daemon source produces a category not handled here (e.g. Clipboard,
+        // Date), this surfaces the missing mapping loudly instead of mislabelling the result.
+        _ => throw new ArgumentOutOfRangeException(nameof(item), item.Category,
+            "No IPC result type mapping for this category. Add a case in ResultMapper.DetermineType."),
     };
 
     private static EmojiCellMessage MapEmojiCell(EmojiCellViewModel cell) {

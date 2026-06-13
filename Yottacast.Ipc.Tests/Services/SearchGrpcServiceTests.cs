@@ -23,6 +23,7 @@ public class SearchGrpcServiceTests {
         new() {
             Title = title,
             Score = 1.0,
+            Category = "Application",
             Actions = [
                 new ResultAction {
                     Label = "Copy",
@@ -109,6 +110,7 @@ public class SearchGrpcServiceTests {
         ResultItemViewModel GatedItem(string title, string copyText) => new() {
             Title = title,
             Score = 1.0,
+            Category = "Application",
             Actions = [
                 new ResultAction {
                     Label = "Copy",

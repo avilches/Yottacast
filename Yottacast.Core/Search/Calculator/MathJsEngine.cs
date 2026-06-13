@@ -519,14 +519,18 @@ public sealed class MathJsEngine : IDisposable {
     }
 
     /// <summary>
-    /// Hot-updates format and currency settings without restarting the engine.
+    /// Hot-updates only the settings that can be changed without restarting the engine:
+    /// the large-number decimal count and the default currency pair.
+    /// <see cref="FormatConfig.SmallNumberSigFigs"/> and <see cref="FormatConfig.BasePrecision"/>
+    /// are NOT applied here — they are baked in at construction (see <see cref="Initialize"/>)
+    /// and require recreating the engine via <see cref="MathJsEngineProvider.RecreateAsync"/> to change.
     /// Safe to call from any thread; uses the same lock as <see cref="Evaluate"/>.
     /// </summary>
-    public void UpdateConfig(FormatConfig config) {
+    public void UpdateConfig(int largeNumberDecimals, string currencyA, string currencyB) {
         lock (_lock) {
             if (_engine == null) return;
-            _engine.Evaluate($"_FMT_LARGE_DECIMALS = {config.LargeNumberDecimals};");
-            _engine.Evaluate($"_defaultCurrencyPair = ['{config.CurrencyA.ToUpperInvariant()}', '{config.CurrencyB.ToUpperInvariant()}'];");
+            _engine.Evaluate($"_FMT_LARGE_DECIMALS = {largeNumberDecimals};");
+            _engine.Evaluate($"_defaultCurrencyPair = ['{currencyA.ToUpperInvariant()}', '{currencyB.ToUpperInvariant()}'];");
         }
     }
 

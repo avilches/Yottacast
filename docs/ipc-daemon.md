@@ -82,7 +82,7 @@ El daemon registra en su DI un subconjunto distinto al de la GUI. Solo expone es
 
 > **Estado: incompleto** - el daemon no registra varias fuentes que si tiene la GUI (`LocalPathSearch`, `UrlSearch`, `DateSearch`, `NewlyInstalledAppsSource`, `SystemSettingsSearch`). Cualquier cliente IPC ve menos resultados que la GUI Avalonia. Verificar en `Yottacast.Ipc/Program.cs` (registro de `IInstantSearchSource`/`IDeferredSearchSource`) frente a `Yottacast/App.axaml.cs` -> `BuildServices`.
 
-> **Bug conocido** - `ResultMapper.DetermineType` clasifica el `type` de un `ResultItemViewModel` por su `Category` y tiene un fallback silencioso a `"app"` para cualquier categoria no contemplada. Un resultado de una fuente futura con categoria nueva se etiqueta erroneamente como `"app"`, lo que ademas hace que su `icon_id` se rellene con el subtitulo (path) en vez del icono real. Verificar en `Yottacast.Ipc/Mapping/ResultMapper.cs` -> `DetermineType`.
+`ResultMapper.DetermineType` clasifica el `type` de un `ResultItemViewModel` por su `Category` (`Application` -> `app`, `Files`/`Documents` -> `file`, `Web`/`Web Search` -> `web`). Una categoria no contemplada lanza `ArgumentOutOfRangeException` en vez de etiquetarse silenciosamente como `"app"`: si una fuente futura (p.ej. Clipboard o Date) se registra en el daemon sin anadir su mapeo, el fallo es ruidoso y se detecta en desarrollo en vez de devolver un `type`/`icon_id` erroneos. Verificar en `Yottacast.Ipc/Mapping/ResultMapper.cs` -> `DetermineType`.
 
 ### SettingsService
 

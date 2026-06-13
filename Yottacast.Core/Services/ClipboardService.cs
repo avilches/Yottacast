@@ -18,9 +18,18 @@ public class ClipboardService(ILogger<ClipboardService> logger)
     }
 
     public void CopyText(string text) {
-        _copy?.Invoke(text);
+        if (_copy is null) {
+            logger.LogWarning("CopyText llamado antes de Initialize; ignorado.");
+            return;
+        }
+        _copy.Invoke(text);
     }
 
-    public Task<string?> ReadTextAsync() =>
-        _read?.Invoke() ?? Task.FromResult<string?>(null);
+    public Task<string?> ReadTextAsync() {
+        if (_read is null) {
+            logger.LogWarning("ReadTextAsync llamado antes de Initialize; devuelve null.");
+            return Task.FromResult<string?>(null);
+        }
+        return _read.Invoke();
+    }
 }

@@ -82,12 +82,12 @@ score = matchScore + usageBonus
 | El texto contiene la query | 3.0 |
 
 ```
-usageBonus = min(log(usageCount + 1) × e^(-ageDays / halfLifeDays), maxBonus)
+usageBonus = min(log(usageCount + 1) × 0.5^(ageDays / halfLifeDays), maxBonus)
 ```
 
 - `halfLifeDays = AppDefaults.ClipboardHistoryHalfLifeDays` (30 días)
 - `maxBonus = AppDefaults.ClipboardHistoryMaxBonus` (0.5)
-- El bonus decae exponencialmente con la edad de la última vez que se usó la entrada (`LastUsedAt`).
+- El bonus decae con una half-life real: se reduce a la mitad cada `halfLifeDays` desde la última vez que se usó la entrada (`LastUsedAt`).
 
 **Formato en UI:**
 - `Title`: texto de la entrada con saltos de línea sustituidos por `·`, truncado a 120 caracteres con `…`.

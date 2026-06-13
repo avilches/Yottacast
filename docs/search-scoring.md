@@ -205,7 +205,7 @@ El bonus maximo (1.0) esta calibrado para que incluso la app mas usada no salga 
 - 2 lanzamientos: ln(3) ≈ +1.0 (ya alcanza el cap)
 - ≥2 lanzamientos: el cap de 1.0 domina mientras el item siga reciente
 
-> **Bug conocido (discrepancia de documentacion en el codigo)** - La constante `AppDefaults.LaunchHistoryHalfLifeDays` se documenta en su XML-doc como "half-life: after this many days without use, the bonus is halved", pero el factor de decaimiento real es `e^(-ageDays / 30)`. Eso NO es una half-life de 30 dias: el bonus se reduce a la mitad cuando `ageDays = 30 × ln(2) ≈ 20.8 dias`. A los 30 dias el decaimiento es `e^-1 ≈ 0.37` (no 0.5). El nombre de la constante y su comentario inducen a error; la formula es la fuente de verdad. La misma observacion aplica a `EmojiHalfLifeDays` y `ClipboardHistoryHalfLifeDays`, que usan la misma forma `e^(-age/30)`.
+El factor de decaimiento es una half-life real: `0.5^(ageDays / halfLifeDays)`, de modo que el bonus se reduce exactamente a la mitad cada `halfLifeDays` (30 dias por defecto). La misma forma se usa en `EmojiHalfLifeDays` y `ClipboardHistoryHalfLifeDays`, de modo que las tres constantes de half-life se comportan como prometen su nombre y su XML-doc.
 
 Los datos se persisten en `AppPaths.LaunchHistoryFile` (JSON atomico: fichero temporal + `File.Move`).
 
