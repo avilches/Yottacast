@@ -13,6 +13,7 @@
   <ItemGroup>
     <Folder Include="Models\" />
     <AvaloniaResource Include="Assets\**" Exclude="Assets\AppIcon.png" />
+    <AvaloniaResource Include="Views\Settings\SettingsResources.axaml" />
     <None Include="Assets\AppIcon.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>Assets\AppIcon.png</Link>
