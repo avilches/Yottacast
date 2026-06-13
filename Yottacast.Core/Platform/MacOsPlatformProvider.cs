@@ -28,7 +28,15 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
 
     // ── Defaults ──────────────────────────────────────────────────────────────
 
-    public override List<string> DefaultAppDirectories() => ["/Applications", "$HOME/Applications", "/System/Applications", "/System/Applications/Utilities"];
+    // System-level directories where macOS keeps application bundles. Shared between the default
+    // app-scan directories and the Cryptex path resolver so both stay in sync. These are real
+    // absolute paths (usable with Directory.Exists); the per-user "$HOME/Applications" location is
+    // not included here because it is only a placeholder string in DefaultAppDirectories (expanded
+    // downstream) and would never resolve a Cryptex bundle.
+    private static readonly string[] SystemAppDirectories = ["/Applications", "/System/Applications", "/System/Applications/Utilities"];
+
+    public override List<string> DefaultAppDirectories() =>
+        [SystemAppDirectories[0], "$HOME/Applications", .. SystemAppDirectories[1..]];
 
     public override List<string> DefaultSearchFolders() {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
@@ -341,52 +349,6 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
         }
     }
 
-    private double PixelMeanAbsDiff(IntPtr tiff1, IntPtr tiff2) {
-        var rep1 = ObjcMsgSendArg(ObjcGetClass("NSBitmapImageRep"), SelRegisterName("imageRepWithData:"), tiff1);
-        var rep2 = ObjcMsgSendArg(ObjcGetClass("NSBitmapImageRep"), SelRegisterName("imageRepWithData:"), tiff2);
-        if (rep1 == IntPtr.Zero || rep2 == IntPtr.Zero) return double.MaxValue;
-
-        var bpr = (int)ObjcMsgSendNint(rep1, SelRegisterName("bytesPerRow"));
-        var h = (int)ObjcMsgSendNint(rep1, SelRegisterName("pixelsHigh"));
-        var bpr2 = (int)ObjcMsgSendNint(rep2, SelRegisterName("bytesPerRow"));
-        var h2 = (int)ObjcMsgSendNint(rep2, SelRegisterName("pixelsHigh"));
-        if (bpr != bpr2 || h != h2) return double.MaxValue;
-
-        var total = bpr * h;
-        var ptr1 = ObjcMsgSend(rep1, SelRegisterName("bitmapData"));
-        var ptr2 = ObjcMsgSend(rep2, SelRegisterName("bitmapData"));
-        if (ptr1 == IntPtr.Zero || ptr2 == IntPtr.Zero) return double.MaxValue;
-
-        var b1 = new byte[total];
-        var b2 = new byte[total];
-        Marshal.Copy(ptr1, b1, 0, total);
-        Marshal.Copy(ptr2, b2, 0, total);
-
-        long diff = 0;
-        for (var i = 0; i < total; i++)
-            diff += Math.Abs(b1[i] - b2[i]);
-        return (double)diff / total;
-    }
-
-    private static IntPtr RenderToTiff(IntPtr nsImage, int size) {
-        var alloc = ObjcMsgSend(ObjcGetClass("NSImage"), SelRegisterName("alloc"));
-        if (alloc == IntPtr.Zero) return IntPtr.Zero;
-        var small = ObjcMsgSendSizeReturn(alloc, SelRegisterName("initWithSize:"),
-            new NSSize { Width = size, Height = size });
-        if (small == IntPtr.Zero) return IntPtr.Zero;
-        ObjcMsgSend(small, SelRegisterName("lockFocus"));
-        // Composite onto white so alpha differences don't affect pixel comparison
-        var white = ObjcMsgSend(ObjcGetClass("NSColor"), SelRegisterName("whiteColor"));
-        ObjcMsgSend(white, SelRegisterName("setFill"));
-        NSRectFill(new NSRect { X = 0, Y = 0, Width = size, Height = size });
-        ObjcMsgSendRectVoid(nsImage, SelRegisterName("drawInRect:"),
-            new NSRect { X = 0, Y = 0, Width = size, Height = size });
-        ObjcMsgSend(small, SelRegisterName("unlockFocus"));
-        var tiff = ObjcMsgSend(small, SelRegisterName("TIFFRepresentation"));
-        CfRelease(small);
-        return tiff;
-    }
-
     public override string? GetDefaultAppPath(string filePath) {
         try {
             var cfPath = CfStringCreateWithCString(IntPtr.Zero, filePath, 0x08000100);
@@ -531,9 +493,6 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
     [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
     private static extern nint ObjcMsgSendNint(IntPtr receiver, IntPtr selector);
 
-    [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
-    private static extern void ObjcMsgSendSize(IntPtr receiver, IntPtr selector, NSSize size);
-
     [StructLayout(LayoutKind.Sequential)]
     private struct NSSize {
         public double Width;
@@ -559,9 +518,6 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
 
     [DllImport("libobjc.dylib", EntryPoint = "objc_msgSend")]
     private static extern IntPtr ObjcMsgSendArgNint(IntPtr receiver, IntPtr selector, nint index);
-
-    [DllImport("/System/Library/Frameworks/AppKit.framework/AppKit")]
-    private static extern void NSRectFill(NSRect rect);
 
     [DllImport("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation",
         EntryPoint = "CFStringCreateWithCString")]
@@ -650,7 +606,7 @@ public sealed class MacOsPlatformProvider(ILogger<MacOsPlatformProvider> logger)
         const string cryptexPrefix = "/System/Volumes/Preboot/Cryptexes/App";
         if (!bundlePath.StartsWith(cryptexPrefix, StringComparison.Ordinal)) return bundlePath;
         var appName = Path.GetFileName(bundlePath);
-        foreach (var dir in new[] { "/Applications", "/System/Applications", "/System/Applications/Utilities" }) {
+        foreach (var dir in SystemAppDirectories) {
             var candidate = $"{dir}/{appName}";
             if (Directory.Exists(candidate)) return candidate;
         }

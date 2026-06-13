@@ -32,7 +32,6 @@ public partial class MainWindow : Window {
     private bool _positionDirty;
     private (Point Origin, BaseResultItemViewModel Vm)? _dragCandidate;
     private long _dragCandidateTicks;
-    private bool _longPressActivated;
     private CancellationTokenSource? _dragTimerCts;
     private PointerEventArgs? _lastDragPointerArgs;
     private Point _rightClickPos;
@@ -771,7 +770,6 @@ public partial class MainWindow : Window {
     private void CancelDragTimer() {
         _dragTimerCts?.Cancel();
         _dragTimerCts = null;
-        _longPressActivated = false;
     }
 
     private void StartDragLongPressTimer(PointerEventArgs triggerEvent, BaseResultItemViewModel candidateVm) {
@@ -902,7 +900,6 @@ public partial class MainWindow : Window {
                 _dragCandidate = (e.GetPosition(ResultsList), dragVm);
                 _dragCandidateTicks = Environment.TickCount64;
                 _lastDragPointerArgs = e;
-                _longPressActivated = false;
                 StartDragLongPressTimer(e, dragVm);
             } else {
                 _dragCandidate = null;
@@ -947,11 +944,10 @@ public partial class MainWindow : Window {
         bool distanceOk = Math.Abs(dx) >= AppDefaults.DragStartThresholdPx || Math.Abs(dy) >= AppDefaults.DragStartThresholdPx;
         bool timeOk = (Environment.TickCount64 - _dragCandidateTicks) >= AppDefaults.DragMinPressDurationMs;
 
-        if (!_longPressActivated && (!distanceOk || !timeOk))
+        if (!distanceOk || !timeOk)
             return;
 
         CancelDragTimer();
-        _longPressActivated = false;
         await InitiateDragAsync(e, candidate.Vm);
     }
 

@@ -682,11 +682,6 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
         app.Resources[key] = node.GetValue<string>();
     }
 
-    private static void SetInt(Application app, string key, JsonNode? node) {
-        if (node == null) return;
-        app.Resources[key] = node.GetValue<int>();
-    }
-
     private static void SetOpacity(Application app, string key, JsonNode? node) {
         if (node == null) return;
         app.Resources[key] = node.GetValue<double>();
@@ -714,11 +709,6 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
             "Black"      => FontWeight.Black,
             _            => FontWeight.Regular,
         };
-    }
-
-    private static void SetThicknessLeft(Application app, string key, JsonNode? node) {
-        if (node == null) return;
-        app.Resources[key] = new Thickness(node.GetValue<double>(), 0, 0, 0);
     }
 
     // Parses "l,t,r,b" | "h,v" | "uniform" strings or a bare number
