@@ -111,6 +111,37 @@ No hay proyecto de tests de UI, asi que la red de seguridad es manual:
    tabla de motores y su flyout de edicion de URL (WebSearch), filas de ejemplo (Calculator), toggles.
 3. Confirmar navegacion del sidebar (seleccion resaltada) y scroll.
 
+## Revision 2026-06-13 (tras el piloto): enfoque PARCIAL
+
+El piloto (seccion General) revelo que el split no es solo markup: cada seccion con event handlers
+cableados en AXAML arrastra metodos del code-behind del host (`SettingsWindow.axaml.cs`), con
+dependencias de API de `Window` (`StorageProvider`, `Activate()`, `FocusManager`) que en un UserControl
+se resuelven via `TopLevel.GetTopLevel(this)`. WebSearch ademas usa reflection sobre una propiedad
+interna de Avalonia para su flyout, y Calculator cablea handlers con `AddHandler(...)` en el constructor
+del host. Sin tests de UI, propagar eso a las 12 secciones es mas riesgo del que justifica una mejora de
+mantenibilidad.
+
+Decision del usuario: **split parcial**.
+- **Se extraen (10):** General, AppSearch, FileSearch, FileEditor, Clipboard, Emoji, Dictionary,
+  DateSearch, History, Permissions.
+- **Se quedan en el host:** WebSearch y Calculator (code-behind enredado).
+
+Implicaciones:
+- Cada seccion extraida con handlers **mueve** (corta) sus metodos del host code-behind al code-behind de
+  su UserControl, ajustando los accesos de `Window` a `TopLevel.GetTopLevel(this)`. El helper
+  `PickFolderAsync` se duplica en AppSearch y FileSearch (privado en cada vista).
+- Los **overrides** de captura global de hotkey (`OnKeyDown`/`OnKeyUp`/`OnPointerPressed`,
+  `IsModifierKey`) se quedan en el host: operan a nivel ventana leyendo el VM, y siguen funcionando
+  aunque General/Clipboard esten en UserControls.
+- Como WebSearch y Calculator permanecen en el host, **el host conserva su `Window.Styles` y sus iconos
+  inline** (los usan esas dos secciones y el sidebar). No se limpian estilos/recursos del host: la
+  limpieza final solo elimina del host code-behind los metodos ya movidos que queden huerfanos.
+- Hay duplicacion aceptable: los estilos/iconos compartidos viven en `SettingsStyles.axaml` /
+  `SettingsResources.axaml` (para las vistas) y tambien inline en el host (para WebSearch/Calculator/
+  sidebar). Es el coste del enfoque parcial.
+- Localizar cada seccion por su `IsVisible="{Binding IsXxxSelected}"` (los numeros de linea cambian con
+  cada extraccion).
+
 ## Fuera de alcance (YAGNI)
 
 - No se trocea ni se modifica el ViewModel ni el code-behind.

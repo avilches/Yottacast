@@ -10,6 +10,45 @@
 
 ---
 
+## REVISION 2026-06-13: enfoque PARCIAL (sustituye el alcance original)
+
+Tras ejecutar el piloto (Task 3, General), se confirmo que el split arrastra code-behind. Decision del
+usuario: **split parcial**. Cambios respecto al plan original de abajo:
+
+- **NO se extraen** WebSearch (Task 5) ni Calculator (Task 8): se quedan en el host por su code-behind
+  enredado (flyout+reflection; `AddHandler` en constructor). Esas tareas quedan ANULADAS.
+- **Sí se extraen** (10): General (hecho), AppSearch, FileSearch, FileEditor, Clipboard, Emoji,
+  Dictionary, DateSearch, History, Permissions.
+- **Patron revisado de extraccion por seccion:**
+  1. Localizar la seccion por su `IsVisible="{Binding IsXxxSelected}"` (NO por numero de linea; cambian).
+  2. Crear `Settings<X>View.axaml` + `.axaml.cs` (UserControl con `x:Class`, se auto-incluye; NO tocar
+     csproj). Cabecera con `x:DataType="vm:SettingsWindowViewModel"`, `ResourceInclude` de
+     `SettingsResources.axaml` y `StyleInclude` de `SettingsStyles.axaml`. Raiz = el StackPanel de la
+     seccion SIN su `IsVisible`. Anadir xmlns extra que el markup use (p.ej. `svc`).
+  3. **Mover (cortar) del host code-behind** los event handlers que ese markup referencia, al code-behind
+     del UserControl, cambiando accesos de `Window` por `TopLevel.GetTopLevel(this)`
+     (`StorageProvider`, `Activate()`, `FocusManager`). Duplicar `PickFolderAsync` donde haga falta.
+  4. En el host AXAML, reemplazar el bloque por `<settings:Settings<X>View IsVisible="{Binding IsXxxSelected}"/>`.
+  5. `dotnet build Yottacast.sln` -> 0 errores. Commit.
+- **Handlers por seccion** (del host code-behind, a mover): AppSearch -> `OnAddAppDirectoryClicked`,
+  `OnAddCommonAppDirectoriesClicked`, `OnRemoveAppDirectoryClicked`, `PickFolderAsync`. FileSearch ->
+  `OnAddSearchFolderClicked`, `OnAddCommonFoldersClicked`, `OnRemoveSearchFolderClicked`,
+  `PickFolderAsync`. FileEditor -> `OnAddExtensionClick`, `OnRemoveExtensionClick`. Clipboard ->
+  `OnClipboardHotkeyPointerPressed`. Emoji/Dictionary/DateSearch/History/Permissions -> ninguno (solo
+  markup).
+- **Se quedan en el host code-behind:** overrides `OnKeyDown`/`OnKeyUp`/`OnPointerPressed`, `IsModifierKey`,
+  todo el code-behind de WebSearch y Calculator, `OnDecimalPlacesTextInputting` + el `AddHandler` del
+  constructor.
+- **Limpieza final (Task 15 revisada):** SOLO borrar del host code-behind los metodos ya movidos que
+  queden huerfanos (incluidos los 2 de General que el piloto dejo duplicados:
+  `OnHotkeyAreaPointerPressed`, `OnTerminalDropDownOpened`, y `PickFolderAsync` si ya no se usa). NO tocar
+  `Window.Styles` ni `Window.Resources` del host (los usan WebSearch/Calculator/sidebar). NO es codigo
+  muerto preexistente `OnCancelHotkeyCaptureClicked` (no usado en ningun AXAML; dejar como esta, ajeno al
+  split).
+
+El detalle de abajo (tabla de rangos, Tasks 1-16) queda como referencia; donde contradiga esta revision,
+manda esta revision.
+
 ## Notas transversales (leer antes de empezar)
 
 - **Sin tests automatizados de UI.** Cada tarea verifica con `dotnet build Yottacast.sln` (valida sintaxis AXAML y compiled bindings) y, en los checkpoints marcados, con `cd Yottacast && dotnet run` + revision visual de la(s) seccion(es) afectada(s).
