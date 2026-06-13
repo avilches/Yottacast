@@ -116,7 +116,10 @@ La aplicacion permite buscar archivos del usuario mediante un motor de busqueda 
 - **Linux**: el post-filtrado de carpetas y tokens adicionales ocurre despues del limite nativo de `plocate`/`locate`,
   por lo que el numero de resultados entregados puede ser menor que `maxResults`.
 
-> **Bug conocido (Linux)** - a diferencia de macOS y Windows, `LinuxPlatformProvider.SearchFilesAsync()` no descarta el caso de query sin tokens utiles antes de acceder a `tokens[0]`. Una query compuesta solo de comillas o espacios produce un array de tokens vacio y lanza `IndexOutOfRangeException`. macOS y Windows si protegen ese caso (Windows hace un early-return con `string.IsNullOrEmpty(safeQuery)`).
+Las tres plataformas descartan las queries que quedan vacias tras sanear (solo comillas o espacios) con un
+early-return antes de acceder a los tokens, de modo que una busqueda asi nunca lanza ni invoca el backend nativo.
+En Linux la query se sanea eliminando comillas y recortando espacios (`string.IsNullOrEmpty(safeQuery)`), igual que
+en Windows.
 
 > **Verificar en:** `MacOsPlatformProvider.SearchFilesAsync()`, `WindowsPlatformProvider.SearchFilesAsync()`,
 `LinuxPlatformProvider.SearchFilesAsync()`, `SpotlightInterop.Query()`.
