@@ -157,9 +157,10 @@ public partial class App : Application {
             _ = pluginService.StartAsync();
 
             globalSearch.Start();
-            var clipboardStore = _services.GetRequiredService<ClipboardHistoryStore>();
-            _ = clipboardStore.LoadAsync();
-            SetupClipboardMonitor(_services);
+            // Load the persisted clipboard history before starting the monitor. Otherwise the first
+            // poll (within ClipboardMonitorIntervalMs) could Add() the current clipboard text, and
+            // then LoadAsync would replace _entries wholesale, discarding that entry.
+            _ = LoadClipboardThenStartMonitorAsync(_services);
             _ = ShowWhenInstantReadyAsync(globalSearch, desktop);
             return;
         }
@@ -372,10 +373,27 @@ public partial class App : Application {
     private static KeyCode KeyNameToKeyCode(string name) =>
         KeyNameMap.TryGetValue(name, out var code) ? code : KeyCode.VcUndefined;
 
+    private async Task LoadClipboardThenStartMonitorAsync(IServiceProvider services)
+    {
+        var store = services.GetRequiredService<ClipboardHistoryStore>();
+        await store.LoadAsync().ConfigureAwait(false);
+        SetupClipboardMonitor(services);
+    }
+
     private void SetupClipboardMonitor(IServiceProvider services)
     {
         var settings = services.GetRequiredService<UserSettings>();
         var store    = services.GetRequiredService<ClipboardHistoryStore>();
+
+        // Wire the user-configured limits into the store, both at startup and whenever settings change.
+        void ApplyLimitsFromSettings()
+        {
+            store.MaxEntries = settings.ClipboardHistoryMaxEntries;
+            store.MaxDays    = settings.ClipboardHistoryMaxDays;
+            store.ApplyLimitsNow();
+        }
+
+        ApplyLimitsFromSettings();
 
         void StartMonitor()
         {
@@ -406,6 +424,7 @@ public partial class App : Application {
 
         settings.SearchSettingsChanged += () =>
         {
+            ApplyLimitsFromSettings();
             if (settings.ClipboardSearchVisibility != SearchSourceVisibility.Disabled)
                 StartMonitor();
             else
@@ -475,6 +494,8 @@ public partial class App : Application {
                             }
                         } else {
                             AppHandler.Instance.ShowWindow(window);
+                            if (window.DataContext is MainWindowViewModel vm)
+                                vm.OnWindowShow();
                         }
                     } finally {
                         _isToggling = false;

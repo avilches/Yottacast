@@ -103,10 +103,12 @@ internal abstract class AppHandler {
     // ── Action hotkey helpers ─────────────────────────────────────────────────
 
     /// <summary>
-    /// The platform's Meta key modifier (Cmd on macOS, Ctrl on Windows/Linux).
+    /// The platform's "command" key modifier: Cmd (Meta) on macOS, Ctrl on Windows/Linux.
+    /// Use this instead of hardcoding <see cref="KeyModifiers.Meta"/> when matching action
+    /// shortcuts (e.g. Cmd/Ctrl+Enter, Cmd/Ctrl+double-click) so they work on every platform.
     /// Derived from CopyShortcut which already encodes the platform-specific modifier.
     /// </summary>
-    protected KeyModifiers MetaKeyModifier => CopyShortcut.Modifiers;
+    public KeyModifiers MetaKeyModifier => CopyShortcut.Modifiers;
 
     /// <summary>
     /// Returns true if the KeyEventArgs match the given ActionHotkey,
@@ -118,6 +120,7 @@ internal abstract class AppHandler {
             ActionModifiers.Meta      => MetaKeyModifier,
             ActionModifiers.Shift     => KeyModifiers.Shift,
             ActionModifiers.MetaShift => MetaKeyModifier | KeyModifiers.Shift,
+            ActionModifiers.MetaAlt   => MetaKeyModifier | KeyModifiers.Alt,
             _                         => KeyModifiers.None,
         };
         return e.Key == key && e.KeyModifiers == mods;

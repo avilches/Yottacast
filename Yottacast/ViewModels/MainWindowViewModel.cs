@@ -193,7 +193,7 @@ public partial class MainWindowViewModel(
     public bool FilesModeActive     => _activeMode == SearchMode.Files;
     public bool ClipboardModeActive => _activeMode == SearchMode.Clipboard;
 
-    public string CycleShortcutText => $"{MetaSymbol}F  cycle";
+    public string CycleShortcutText => $"{MetaSymbol}{AppHandler.Instance.AltSymbol}←→  cycle";
 
     public string ActiveModeName => _activeMode switch {
         SearchMode.Files     => "Files",
@@ -226,11 +226,30 @@ public partial class MainWindowViewModel(
         ActiveMode = idx >= modes.Count - 1 ? SearchMode.All : modes[idx + 1];
     }
 
+    public void CycleModeBack() {
+        var modes = AvailableModes;
+        if (modes.Count == 0) return;
+        if (_activeMode == SearchMode.All) {
+            ActiveMode = modes[modes.Count - 1];
+            return;
+        }
+        var idx = -1;
+        for (var i = 0; i < modes.Count; i++) {
+            if (modes[i] == _activeMode) { idx = i; break; }
+        }
+        ActiveMode = idx <= 0 ? SearchMode.All : modes[idx - 1];
+    }
+
     public void ResetMode() => ActiveMode = SearchMode.All;
 
     public void ActivateMode(SearchMode mode) {
         if (AvailableModes.Contains(mode))
             ActiveMode = mode;
+    }
+
+    public void OnWindowShow() {
+        if (string.IsNullOrEmpty(SearchText))
+            ResetMode();
     }
 
     public bool UserNavigated => _userNavigated;

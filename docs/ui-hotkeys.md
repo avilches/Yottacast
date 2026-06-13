@@ -33,10 +33,11 @@ Invariantes:
 - Como mecanismo de respaldo, la ventana principal tambien marca `e.Handled = true` al detectar `Space + Alt` en su handler de teclado, evitando que macOS emita un beep cuando la supresion a nivel OS no esta disponible.
 - El hook global usa `SimpleGlobalHook` (sincrono). Esto es deliberado: `TaskPoolGlobalHook` ejecuta handlers en otros threads donde `e.SuppressEvent = true` no tiene efecto.
 - El handler usa un flag `_isToggling` para ignorar pulsaciones mientras el toggle anterior esta en curso. Esto evita encolar multiples operaciones show/hide antes de que macOS procese la anterior, lo que puede dejar el NSWindow en un estado donde `makeKeyWindow` ya no funciona.
+- Al mostrar la ventana, si `SearchText` está vacío, el modo de búsqueda se resetea siempre a `SearchMode.All`. Si `SearchText` no está vacío, el modo activo se preserva.
 
 La combinacion de teclas configurable se almacena como `HotkeyConfig` (record con flags `Alt`, `Ctrl`, `Shift`, `Meta` y `KeyName`). La comparacion contra el evento del hook usa un diccionario estatico `KeyNameMap` que cubre A-Z, 0-9, F1-F12 y teclas especiales (Space, Enter, Tab, Backspace, Delete, Escape). Cualquier tecla no incluida en el mapa se trata como `KeyCode.VcUndefined` y nunca coincidira.
 
-> **Verificar en:** `App.axaml.cs` (`RegisterGlobalHotKey`, `BuildKeyNameMap`, handler `Deactivated`), `UserSettings.StickyWindow`, `UserSettings.ParsedHotkey`, `HotkeyConfig` en `Yottacast.Core/Platform/HotkeyConfig.cs`
+> **Verificar en:** `App.axaml.cs` (`RegisterGlobalHotKey`, `BuildKeyNameMap`, handler `Deactivated`), `MainWindowViewModel.OnWindowShow()`, `UserSettings.StickyWindow`, `UserSettings.ParsedHotkey`, `HotkeyConfig` en `Yottacast.Core/Platform/HotkeyConfig.cs`
 
 ---
 
@@ -77,9 +78,7 @@ Invariantes:
 
 ### Flechas izquierda/derecha
 
-Las teclas izquierda y derecha se interceptan en la fase **tunnel** antes de que lleguen al TextBox. Si el item seleccionado tiene un handler `OnLeft`/`OnRight`, se invoca. El contrato esperado: si el item consume la tecla, el cursor del TextBox no deberia moverse.
-
-> **Bug conocido** - En `OnTunnelKeyDown` (`MainWindow.axaml.cs`, switch de navegacion de grid), los casos `Key.Left`/`Key.Right` invocan `onLeft()`/`onRight()` pero **no** asignan `e.Handled`, a diferencia de `Key.Up`/`Key.Down` que hacen `e.Handled = onUp()`/`onDown()`. Aunque `OnLeft`/`OnRight` son `Func<bool>?` (devuelven un bool que indica si consumieron la tecla), ese valor se descarta. Resultado: al navegar horizontalmente dentro de un grid (p. ej. el de emojis), la tecla tambien llega al TextBox y el caret del SearchBox se mueve.
+Las teclas izquierda y derecha se interceptan en la fase **tunnel** antes de que lleguen al TextBox. Si el item seleccionado tiene un handler `OnLeft`/`OnRight`, se invoca y se asigna `e.Handled` a su valor de retorno (`e.Handled = onLeft()`/`onRight()`), igual que `Key.Up`/`Key.Down`. Como `OnLeft`/`OnRight` son `Func<bool>?`, si el item consume la tecla (`true`) esta no llega al TextBox y el caret del SearchBox no se mueve.
 
 > **Verificar en:** `MainWindow.axaml.cs` (`OnTunnelKeyDown` switch de navegacion de grid, `OnKeyDown`, `SelectNext`), `MainWindowViewModel.cs` (`NotifyUserNavigated`, `RefreshResults`, `OnSearchTextChanged`), `BaseResultItemViewModel` (`OnLeft`, `OnRight`, `OnUp`, `OnDown`, todos `Func<bool>?`)
 
@@ -94,13 +93,12 @@ Al pulsar Enter o hacer click/tap sobre un resultado seleccionado:
 3. Se oculta la ventana.
 4. Si el item tiene `PasteAfterActivate = true`, ademas se devuelve el foco a la app anterior (`AppHandler.OnHide`) y se simula un pegado (`SimulatePasteAsync`).
 
-**Cmd+Enter (ejecutar sin cerrar)**: con la accion `Enter` disponible, `Cmd+Enter` ejecuta la accion sin ocultar la ventana (`AsKeepOpen()`). Lo mismo aplica a `Cmd+doble-click` (ver seccion de raton).
+**Ejecutar sin cerrar**: con la accion `Enter` disponible, `Cmd+Enter` (macOS) / `Ctrl+Enter` (Windows/Linux) ejecuta la accion sin ocultar la ventana (`AsKeepOpen()`). Lo mismo aplica al `Cmd/Ctrl+doble-click` (ver seccion de raton).
 
 Invariantes:
 
 - `PasteAfterActivate` solo lo usan items de tipo emoji. Tras copiar el emoji al portapapeles, el launcher se oculta y lo pega automaticamente en la app destino.
-
-> **Bug conocido** - El detector de `Cmd+Enter` en `OnKeyDown` (case `Key.Return`) y el de `Cmd+doble-click` en `OnResultsDoubleTapped` comprueban `KeyModifiers.Meta` **hardcodeado**, en vez de pasar por `AppHandler.MatchesHotkey` (que resuelve `Meta` a Cmd en macOS y a Ctrl en Windows/Linux). En macOS funciona porque la tecla Cmd es `Meta`. En Windows/Linux estos dos atajos concretos exigen la tecla Meta/Super fisica en vez de Ctrl, por lo que el atajo "ejecutar sin cerrar" no responde a `Ctrl+Enter` / `Ctrl+doble-click`.
+- El detector de `Cmd/Ctrl+Enter` en `OnKeyDown` (case `Key.Return`) y el de `Cmd/Ctrl+doble-click` en `OnResultsDoubleTapped` comprueban el modificador via `AppHandler.Instance.MetaKeyModifier` (Cmd = Meta en macOS, Ctrl en Windows/Linux), nunca con `KeyModifiers.Meta` hardcodeado.
 
 > **Estado: incompleto** - `SimulatePasteAsync` solo lo overridean `MacAppHandler` (Cmd+V) y `WindowsAppHandler` (Ctrl+V). En Linux se hereda el no-op de la clase base (`AppHandler.SimulatePasteAsync => Task.CompletedTask`), por lo que el paste automatico de emoji no funciona en Linux.
 
@@ -220,6 +218,7 @@ Si el usuario pulsa el mismo hotkey que ya tenia, el hook global detecta que Set
 | Escape                       | Ventana principal       | Cancelar busqueda / limpiar / ocultar     |
 | Flecha arriba / abajo        | Ventana principal       | Navegar resultados (circular)             |
 | Flecha izquierda / derecha   | Ventana principal       | Delegada al item si tiene handler         |
+| Cmd+Opt+← / Cmd+Opt+→       | Ventana principal       | Navegar modos (All / Files / Clipboard)   |
 | Enter                        | Ventana principal       | Activar resultado seleccionado            |
 | Cmd+, (macOS)                | Ventana principal       | Abrir preferencias                        |
 | Cmd+C / Ctrl+C              | Ventana principal       | Copiar valor del resultado seleccionado (sin cerrar) |

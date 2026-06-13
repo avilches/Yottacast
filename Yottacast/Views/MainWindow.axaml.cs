@@ -125,11 +125,27 @@ public partial class MainWindow : Window {
         // Show empty state immediately (pending apps, etc.) without waiting for clipboard
         vm.OnWindowShown(null);
 
-        // Then read clipboard and refresh if it contains something useful
-        var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
-        var text = clipboard != null ? await clipboard.GetTextAsync() : null;
-        if (!string.IsNullOrEmpty(text))
-            vm.OnWindowShown(text);
+        // Then read clipboard and refresh if it contains something useful.
+        // Fire-and-forget from OnPropertyChanged: swallow and log any failure so an
+        // unobserved exception can never crash the app or be lost silently.
+        try {
+            var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+            var text = clipboard != null ? await clipboard.GetTextAsync() : null;
+            if (!string.IsNullOrEmpty(text))
+                vm.OnWindowShown(text);
+        } catch (Exception ex) {
+            _logger.LogWarning(ex, "Failed to read clipboard on window shown");
+        }
+    }
+
+    // Wraps the fire-and-forget paste simulation so an exception from the OS keyboard
+    // injection can never go unobserved (it would otherwise be lost silently).
+    private async Task SimulatePasteSafeAsync() {
+        try {
+            await AppHandler.Instance.SimulatePasteAsync();
+        } catch (Exception ex) {
+            _logger.LogWarning(ex, "Failed to simulate paste after activating result");
+        }
     }
 
     private void ApplyPositionOnShow() {
@@ -352,7 +368,7 @@ public partial class MainWindow : Window {
             Hide();
             AppHandler.Instance.OnHide();
             if (action.PasteAfterClose)
-                _ = AppHandler.Instance.SimulatePasteAsync();
+                _ = SimulatePasteSafeAsync();
         } else {
             if (result != null && action.RegainFocusAfterExecute)
                 vm.RecordLaunch(result);
@@ -483,13 +499,26 @@ public partial class MainWindow : Window {
             return;
         }
 
+        // ── Cmd+Option+Right/Left: ciclar modo de búsqueda ──────────────────────
+        // Checked before grid nav to prevent Left/Right reaching the switch below.
+        if (AppHandler.Instance.MatchesHotkey(e, ActionHotkey.MetaAltRight)) {
+            vm.CycleMode();
+            e.Handled = true;
+            return;
+        }
+        if (AppHandler.Instance.MatchesHotkey(e, ActionHotkey.MetaAltLeft)) {
+            vm.CycleModeBack();
+            e.Handled = true;
+            return;
+        }
+
         // ── Grid navigation (OnLeft/OnRight/OnUp/OnDown) ────────────────────────
         switch (e.Key) {
             case Key.Left when vm.SelectedResult?.OnLeft is { } onLeft:
-                onLeft();
+                e.Handled = onLeft();
                 break;
             case Key.Right when vm.SelectedResult?.OnRight is { } onRight:
-                onRight();
+                e.Handled = onRight();
                 break;
             case Key.Up when vm.SelectedResult?.OnUp is { } onUp:
                 e.Handled = onUp();
@@ -505,13 +534,6 @@ public partial class MainWindow : Window {
                 SelectDelta(vm, +GetVisiblePageSize());
                 e.Handled = true;
                 break;
-        }
-
-        // ── Cmd+F: ciclar modo de búsqueda ──────────────────────────────────────
-        if (AppHandler.Instance.MatchesHotkey(e, ActionHotkey.MetaF)) {
-            vm.CycleMode();
-            e.Handled = true;
-            return;
         }
 
         // ── Cmd+P: toggle preview ────────────────────────────────────────────────
@@ -659,8 +681,8 @@ public partial class MainWindow : Window {
                     var enterAction = vm.SelectedResult?.Actions
                         .FirstOrDefault(a => a.Hotkey == ActionHotkey.Enter);
                     if (enterAction != null) {
-                        if (e.KeyModifiers.HasFlag(KeyModifiers.Meta)) {
-                            // Cmd+Enter: execute without closing the search window
+                        if (e.KeyModifiers.HasFlag(AppHandler.Instance.MetaKeyModifier)) {
+                            // Cmd/Ctrl+Enter: execute without closing the search window
                             ExecuteActionWithContext(vm, enterAction.AsKeepOpen());
                         } else {
                             ExecuteActionWithContext(vm, enterAction);
@@ -836,7 +858,7 @@ public partial class MainWindow : Window {
         var enterAction = vm.SelectedResult?.Actions.FirstOrDefault(a => a.Hotkey == ActionHotkey.Enter);
         if (enterAction == null) return;
 
-        if (_lastClickModifiers.HasFlag(KeyModifiers.Meta)) {
+        if (_lastClickModifiers.HasFlag(AppHandler.Instance.MetaKeyModifier)) {
             ExecuteActionWithContext(vm, enterAction.AsKeepOpen());
         } else {
             ExecuteActionWithContext(vm, enterAction);

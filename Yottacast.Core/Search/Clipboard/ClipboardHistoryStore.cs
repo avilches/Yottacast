@@ -7,6 +7,7 @@ namespace Yottacast.Core.Search.Clipboard;
 public class ClipboardHistoryStore(string filePath, ILogger<ClipboardHistoryStore> logger, Func<DateTimeOffset>? clock = null)
 {
     private readonly Lock _lock = new();
+    private readonly SemaphoreSlim _saveGate = new(1, 1);
     private List<ClipboardHistoryEntry> _entries = [];
     private CancellationTokenSource? _debounceCts;
 
@@ -58,6 +59,9 @@ public class ClipboardHistoryStore(string filePath, ILogger<ClipboardHistoryStor
         if (removed)
         {
             EntriesChanged?.Invoke();
+            // Cancel any pending debounced save from a prior Add/RecordUsage so it doesn't race
+            // with this immediate flush (both would write filePath + ".tmp" concurrently).
+            CancelPendingSave();
             _ = FlushAsync();
         }
     }
@@ -113,12 +117,39 @@ public class ClipboardHistoryStore(string filePath, ILogger<ClipboardHistoryStor
         await SaveAsync(snapshot).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Re-applies <see cref="MaxEntries"/> / <see cref="MaxDays"/> to the current entries immediately
+    /// (e.g. after the user changes the limits in Settings). Trims and persists if anything changed.
+    /// </summary>
+    public void ApplyLimitsNow()
+    {
+        int before, after;
+        lock (_lock)
+        {
+            before = _entries.Count;
+            ApplyLimits();
+            after = _entries.Count;
+        }
+        if (after != before)
+        {
+            EntriesChanged?.Invoke();
+            ScheduleSave();
+        }
+    }
+
     private void ApplyLimits()
     {
         var cutoff = Now.AddDays(-MaxDays);
         _entries.RemoveAll(e => e.CopiedAt < cutoff);
         if (_entries.Count > MaxEntries)
             _entries.RemoveRange(MaxEntries, _entries.Count - MaxEntries);
+    }
+
+    private void CancelPendingSave()
+    {
+        var prev = Interlocked.Exchange(ref _debounceCts, null);
+        prev?.Cancel();
+        prev?.Dispose();
     }
 
     private void ScheduleSave()
@@ -139,6 +170,9 @@ public class ClipboardHistoryStore(string filePath, ILogger<ClipboardHistoryStor
 
     private async Task SaveAsync(List<ClipboardHistoryEntry> entries)
     {
+        // Serialize all writes so concurrent saves (a debounced Add and an immediate Remove flush)
+        // never write the shared "*.tmp" file at the same time, which could fail or leave a stale snapshot.
+        await _saveGate.WaitAsync().ConfigureAwait(false);
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
@@ -151,6 +185,10 @@ public class ClipboardHistoryStore(string filePath, ILogger<ClipboardHistoryStor
         catch (Exception ex)
         {
             logger.LogWarning("ClipboardHistoryStore: save failed: {Message}", ex.Message);
+        }
+        finally
+        {
+            _saveGate.Release();
         }
     }
 
