@@ -61,6 +61,15 @@ public partial class EditorPanelViewModel(FileEditorService fileEditorService) :
         Content = text;
     }
 
+    public void LoadTextContent(string text) {
+        FilePath = "";
+        FileName = "";
+        Mode = EditorMode.Preview;
+        ShowUnsavedDialog = false;
+        _originalContent = text;
+        Content = text;
+    }
+
     public void LoadEdit(string path, bool autoSave) {
         FilePath = path;
         FileName = Path.GetFileName(path);
