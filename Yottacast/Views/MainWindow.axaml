@@ -508,56 +508,68 @@
                                             Orientation="Vertical"
                                             VerticalAlignment="Center"
                                             Spacing="2">
-                                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                        <controls:HighlightTextBlock x:CompileBindings="False"
+                                    <Grid VerticalAlignment="Center">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <controls:HighlightTextBlock Grid.Column="0"
+                                                                     x:CompileBindings="False"
                                                                      Text="{Binding Title}"
                                                                      Ranges="{Binding TitleRanges}"
                                                                      Foreground="{DynamicResource Theme.Results.Title.Color}"
                                                                      FontSize="{DynamicResource Theme.Results.Title.Size}"
-                                                                     FontWeight="Medium"/>
-                                        <Border Classes="running-tag-border"
-                                                IsVisible="{Binding RunningTag, Converter={x:Static ObjectConverters.IsNotNull}}"
-                                                Background="{DynamicResource Theme.Results.Tag.Running.Background}"
-                                                BorderBrush="{DynamicResource Theme.Results.Tag.Running.BorderColor}"
-                                                BorderThickness="1"
-                                                CornerRadius="{DynamicResource Theme.Results.Tag.CornerRadius}"
-                                                Padding="5,1"
-                                                VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding RunningTag}"
-                                                       Classes="running-tag-text"
-                                                       Foreground="{DynamicResource Theme.Results.Tag.Running.Color}"
-                                                       FontSize="10"
-                                                       FontWeight="Medium"/>
-                                        </Border>
-                                        <Border Classes="info-tag-border"
-                                                IsVisible="{Binding InfoTag, Converter={x:Static ObjectConverters.IsNotNull}}"
-                                                Background="{DynamicResource Theme.Results.Tag.Info.Background}"
-                                                BorderBrush="{DynamicResource Theme.Results.Tag.Info.BorderColor}"
-                                                BorderThickness="1"
-                                                CornerRadius="{DynamicResource Theme.Results.Tag.CornerRadius}"
-                                                Padding="5,1"
-                                                VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding InfoTag}"
-                                                       Classes="info-tag-text"
-                                                       Foreground="{DynamicResource Theme.Results.Tag.Info.Color}"
-                                                       FontSize="10"
-                                                       FontWeight="Medium"/>
-                                        </Border>
-                                        <Border Classes="error-tag-border"
-                                                IsVisible="{Binding ErrorTag, Converter={x:Static ObjectConverters.IsNotNull}}"
-                                                Background="{DynamicResource Theme.Results.Tag.Error.Background}"
-                                                BorderBrush="{DynamicResource Theme.Results.Tag.Error.BorderColor}"
-                                                BorderThickness="1"
-                                                CornerRadius="{DynamicResource Theme.Results.Tag.CornerRadius}"
-                                                Padding="5,1"
-                                                VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding ErrorTag}"
-                                                       Classes="error-tag-text"
-                                                       Foreground="{DynamicResource Theme.Results.Tag.Error.Color}"
-                                                       FontSize="10"
-                                                       FontWeight="Medium"/>
-                                        </Border>
-                                    </StackPanel>
+                                                                     FontWeight="Medium"
+                                                                     TextTrimming="CharacterEllipsis"/>
+                                        <StackPanel Grid.Column="1"
+                                                    Orientation="Horizontal"
+                                                    Spacing="6"
+                                                    Margin="6,0,0,0"
+                                                    VerticalAlignment="Center">
+                                            <Border Classes="running-tag-border"
+                                                    IsVisible="{Binding RunningTag, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                                    Background="{DynamicResource Theme.Results.Tag.Running.Background}"
+                                                    BorderBrush="{DynamicResource Theme.Results.Tag.Running.BorderColor}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="{DynamicResource Theme.Results.Tag.CornerRadius}"
+                                                    Padding="5,1"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding RunningTag}"
+                                                           Classes="running-tag-text"
+                                                           Foreground="{DynamicResource Theme.Results.Tag.Running.Color}"
+                                                           FontSize="10"
+                                                           FontWeight="Medium"/>
+                                            </Border>
+                                            <Border Classes="info-tag-border"
+                                                    IsVisible="{Binding InfoTag, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                                    Background="{DynamicResource Theme.Results.Tag.Info.Background}"
+                                                    BorderBrush="{DynamicResource Theme.Results.Tag.Info.BorderColor}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="{DynamicResource Theme.Results.Tag.CornerRadius}"
+                                                    Padding="5,1"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding InfoTag}"
+                                                           Classes="info-tag-text"
+                                                           Foreground="{DynamicResource Theme.Results.Tag.Info.Color}"
+                                                           FontSize="10"
+                                                           FontWeight="Medium"/>
+                                            </Border>
+                                            <Border Classes="error-tag-border"
+                                                    IsVisible="{Binding ErrorTag, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                                    Background="{DynamicResource Theme.Results.Tag.Error.Background}"
+                                                    BorderBrush="{DynamicResource Theme.Results.Tag.Error.BorderColor}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="{DynamicResource Theme.Results.Tag.CornerRadius}"
+                                                    Padding="5,1"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding ErrorTag}"
+                                                           Classes="error-tag-text"
+                                                           Foreground="{DynamicResource Theme.Results.Tag.Error.Color}"
+                                                           FontSize="10"
+                                                           FontWeight="Medium"/>
+                                            </Border>
+                                        </StackPanel>
+                                    </Grid>
                                     <controls:HighlightTextBlock x:CompileBindings="False"
                                                                  Text="{Binding Subtitle}"
                                                                  Ranges="{Binding SubtitleRanges}"

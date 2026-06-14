@@ -540,6 +540,11 @@ public partial class MainWindow : Window {
 
         // ── Cmd+P: toggle preview ────────────────────────────────────────────────
         if (AppHandler.Instance.MatchesHotkey(e, ActionHotkey.MetaP)) {
+            // Clipboard preview is always active — Cmd+P is a no-op for clipboard items
+            if (vm.SelectedResult is ClipboardResultItemViewModel) {
+                e.Handled = true;
+                return;
+            }
             if (vm.IsEditorOpen && vm.EditorPanel.IsPreviewMode) {
                 vm.EditorPanel.RequestClose();
                 e.Handled = true;

@@ -271,6 +271,8 @@ public partial class MainWindowViewModel(
 
     public void Initialize() {
         EditorPanel.CloseRequested = () => {
+            // Clipboard preview is always active — close button is a no-op for clipboard items
+            if (SelectedResult is ClipboardResultItemViewModel) return;
             if (_isPreviewEnabled && EditorPanel.IsEditMode) {
                 // El usuario abrió preview primero y luego cambió a edit → restaurar preview
                 EditorPanel.LoadPreview(EditorPanel.FilePath);

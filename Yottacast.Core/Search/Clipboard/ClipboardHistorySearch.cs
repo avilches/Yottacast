@@ -42,10 +42,10 @@ public class ClipboardHistorySearch(
                 .Select((e, i) => BuildResult(e, score: AppDefaults.ClipboardHistoryUnfilteredBaseScore - i))
                 .ToList();
 
+        // Filtered: preserve date order (entries are already date-sorted by the store)
         return entries
             .Where(e => e.Text.Contains(query, StringComparison.OrdinalIgnoreCase))
-            .Select(e => BuildResult(e, ComputeScore(e, query)))
-            .OrderByDescending(r => r.Score)
+            .Select((e, i) => BuildResult(e, score: AppDefaults.ClipboardHistoryUnfilteredBaseScore - i))
             .Take(limit < 0 ? int.MaxValue : limit)
             .ToList();
     }
@@ -70,8 +70,8 @@ public class ClipboardHistorySearch(
 
     private ClipboardResultItemViewModel BuildResult(ClipboardHistoryEntry entry, double score)
     {
+        // Replace newlines — visual truncation is handled by AXAML TextTrimming
         var displayText = entry.Text.Replace('\n', '·').Replace('\r', '·');
-        if (displayText.Length > 60) displayText = displayText[..60] + "…";
 
         var subtitle = FormatRelativeTime(entry.CopiedAt);
         var capturedText = entry.Text;
@@ -81,7 +81,7 @@ public class ClipboardHistorySearch(
             FullText = capturedText,
             Title    = displayText,
             Subtitle = subtitle,
-            Category = "Clipboard",
+            Category = "",
             Score    = score,
             Actions  =
             [

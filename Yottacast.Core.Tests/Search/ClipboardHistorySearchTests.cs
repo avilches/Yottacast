@@ -116,7 +116,7 @@ public class ClipboardHistorySearchTests
     }
 
     [Fact]
-    public void Score_UsageBonus_IncreasesScore()
+    public void Score_NotAffectedByUsageCount()
     {
         var (search, store, _) = Build();
         store.Add("hello");
@@ -124,7 +124,8 @@ public class ClipboardHistorySearchTests
         store.RecordUsage("hello");
         store.RecordUsage("hello");
         var scoresAfter = search.Search("hello", 10).Select(r => r.Score).ToList();
-        Assert.True(scoresAfter[0] > scoresBefore[0]);
+        // Ordering is by date; usage count does not affect score
+        Assert.Equal(scoresBefore[0], scoresAfter[0]);
     }
 
     [Fact]
@@ -183,13 +184,14 @@ public class ClipboardHistorySearchTests
     }
 
     [Fact]
-    public void Result_LongText_TruncatedTo60Chars()
+    public void Result_LongText_NotTruncatedInTitle()
     {
         var (search, store, _) = Build();
         var longText = new string('a', 200);
         store.Add(longText);
         var result = search.Search(new string('a', 5), 10).First();
-        Assert.True(result.Title.Length <= 62); // 60 chars + "…"
+        // Truncation is handled by AXAML TextTrimming; Title keeps the full single-line text
+        Assert.Equal(longText, result.Title);
     }
 
     [Fact]
