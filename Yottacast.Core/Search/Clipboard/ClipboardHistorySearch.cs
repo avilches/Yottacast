@@ -68,16 +68,17 @@ public class ClipboardHistorySearch(
         return matchScore + usageBonus;
     }
 
-    private ResultItemViewModel BuildResult(ClipboardHistoryEntry entry, double score)
+    private ClipboardResultItemViewModel BuildResult(ClipboardHistoryEntry entry, double score)
     {
         var displayText = entry.Text.Replace('\n', '·').Replace('\r', '·');
-        if (displayText.Length > 120) displayText = displayText[..120] + "…";
+        if (displayText.Length > 60) displayText = displayText[..60] + "…";
 
         var subtitle = FormatRelativeTime(entry.CopiedAt);
         var capturedText = entry.Text;
 
-        return new ResultItemViewModel
+        return new ClipboardResultItemViewModel
         {
+            FullText = capturedText,
             Title    = displayText,
             Subtitle = subtitle,
             Category = "Clipboard",

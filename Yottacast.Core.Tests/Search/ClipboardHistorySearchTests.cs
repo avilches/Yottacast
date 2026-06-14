@@ -183,13 +183,33 @@ public class ClipboardHistorySearchTests
     }
 
     [Fact]
-    public void Result_LongText_TruncatedTo120Chars()
+    public void Result_LongText_TruncatedTo60Chars()
     {
         var (search, store, _) = Build();
         var longText = new string('a', 200);
         store.Add(longText);
         var result = search.Search(new string('a', 5), 10).First();
-        Assert.True(result.Title.Length <= 122);
+        Assert.True(result.Title.Length <= 62); // 60 chars + "…"
+    }
+
+    [Fact]
+    public void Result_IsClipboardResultItemViewModel()
+    {
+        var (search, store, _) = Build();
+        store.Add("hello");
+        var result = search.Search("hello", 10).First();
+        Assert.IsType<ClipboardResultItemViewModel>(result);
+    }
+
+    [Fact]
+    public void Result_FullTextIsUntruncated()
+    {
+        var (search, store, _) = Build();
+        var longText = new string('a', 200);
+        store.Add(longText);
+        var result = search.Search(new string('a', 5), 10).First();
+        var clipResult = Assert.IsType<ClipboardResultItemViewModel>(result);
+        Assert.Equal(longText, clipResult.FullText);
     }
 
     [Fact]
