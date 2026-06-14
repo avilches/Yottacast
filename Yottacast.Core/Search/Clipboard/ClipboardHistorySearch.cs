@@ -33,6 +33,8 @@ public class ClipboardHistorySearch(
 
     public IReadOnlyList<BaseResultItemViewModel> Search(string query, int limit)
     {
+        if (query.StartsWith(':')) return [];
+
         var entries = store.GetAll();
         if (string.IsNullOrEmpty(query))
             return entries

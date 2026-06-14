@@ -191,4 +191,24 @@ public class ClipboardHistorySearchTests
         var result = search.Search(new string('a', 5), 10).First();
         Assert.True(result.Title.Length <= 122);
     }
+
+    [Fact]
+    public void Search_EmojiQuery_ReturnsEmpty()
+    {
+        var (search, store, _) = Build();
+        store.Add("hello");
+        store.Add(":smile text");
+        var results = search.Search(":smile", 10);
+        Assert.Empty(results);
+    }
+
+    [Fact]
+    public void Search_EmojiQueryJustColon_ReturnsEmpty()
+    {
+        var (search, store, _) = Build();
+        store.Add("hello");
+        store.Add(": some emoji");
+        var results = search.Search(":", 10);
+        Assert.Empty(results);
+    }
 }
