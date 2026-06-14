@@ -510,8 +510,15 @@ public partial class MainWindowViewModel(
         OnPropertyChanged(nameof(HasOptionsMenu));
         if (!HasOptionsMenu) CloseOptionsMenu();
 
-        if (!IsEditorOpen && !_isPreviewEnabled) return;
         if (EditorPanel.IsEditMode) return; // buscador pausado: no cambiar fichero mientras se edita
+
+        if (value is ClipboardResultItemViewModel clip) {
+            EditorPanel.LoadTextContent(clip.FullText);
+            IsEditorOpen = true;
+            return;
+        }
+
+        if (!IsEditorOpen && !_isPreviewEnabled) return;
 
         if (value is FileResultItemViewModel { ItemPath: { } path }) {
             if (fileEditorService.IsTextContent(path)) {
