@@ -672,8 +672,10 @@ public partial class MainWindow : Window {
 
             case Key.Up:
                 if (e.KeyModifiers.HasFlag(KeyModifiers.Control)) {
-                    vm.NavigateHistoryBack();
-                    SearchBox.CaretIndex = int.MaxValue;
+                    if (!e.Handled) {
+                        vm.NavigateHistoryBack();
+                        SearchBox.CaretIndex = int.MaxValue;
+                    }
                 } else if (!vm.UserNavigated) {
                     vm.NavigateHistoryBack();
                     SearchBox.CaretIndex = int.MaxValue;
