@@ -160,6 +160,10 @@
             <Setter Property="Opacity" Value="0"/>
             <Setter Property="IsHitTestVisible" Value="False"/>
         </Style>
+        <!-- Clipboard-only mode: compact single-line items -->
+        <Style Selector="ListBox.clipboard-mode ListBoxItem">
+            <Setter Property="MinHeight" Value="38"/>
+        </Style>
         <!-- Conversion with navigable cells: suppress ListBoxItem selection background -->
         <Style Selector="ListBoxItem.conv-navigable:selected /template/ ContentPresenter">
             <Setter Property="Background" Value="Transparent"/>
@@ -428,6 +432,7 @@
                          Padding="{DynamicResource Theme.Results.Padding}"
                          Background="{DynamicResource Theme.Results.Background}"
                          IsVisible="{Binding HasResults}"
+                         Classes.clipboard-mode="{Binding ClipboardModeActive}"
                          ScrollViewer.VerticalScrollBarVisibility="Auto"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                          ScrollViewer.AllowAutoHide="True">
@@ -573,6 +578,7 @@
                                     <controls:HighlightTextBlock x:CompileBindings="False"
                                                                  Text="{Binding Subtitle}"
                                                                  Ranges="{Binding SubtitleRanges}"
+                                                                 IsVisible="{Binding !DataContext.ClipboardModeActive, ElementName=RootWindow}"
                                                                  Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
                                                                  FontSize="{DynamicResource Theme.Results.Subtitle.Size}"
                                                                  TextTrimming="CharacterEllipsis"/>

@@ -36,10 +36,10 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*,Auto">
+    <Grid RowDefinitions="Auto,*,Auto,Auto">
 
         <!-- Separator vertical izquierdo -->
-        <Border Grid.RowSpan="3"
+        <Border Grid.RowSpan="4"
                 Width="1"
                 HorizontalAlignment="Left"
                 Background="{DynamicResource Theme.Divider.Color}"/>
@@ -70,7 +70,7 @@
                                   ShowLineNumbers="False"
                                   FontFamily="Cascadia Code, Fira Code, Menlo, Consolas, monospace"
                                   FontSize="13"
-                                  WordWrap="False"
+                                  WordWrap="{Binding WordWrap}"
                                   Background="Transparent"/>
             </Border>
             <!-- Markdown renderizado: solo para .md en modo Preview -->
@@ -100,8 +100,21 @@
             </StackPanel>
         </Border>
 
+        <!-- ── Clipboard preview status bar: words, chars, copied time ── -->
+        <Border Grid.Row="3"
+                IsVisible="{Binding ClipboardStatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                Background="{DynamicResource Theme.Editor.Footer.Background}"
+                BorderBrush="{DynamicResource Theme.Editor.Footer.Border}"
+                BorderThickness="0,1,0,0"
+                Padding="{DynamicResource Theme.Editor.Footer.Padding}">
+            <TextBlock Text="{Binding ClipboardStatusText}"
+                       FontSize="{DynamicResource Theme.Editor.Footer.Size}"
+                       VerticalAlignment="Center"
+                       Foreground="{DynamicResource Theme.Editor.Footer.Color}"/>
+        </Border>
+
         <!-- ── Unsaved changes dialog ── -->
-        <Grid Grid.RowSpan="3"
+        <Grid Grid.RowSpan="4"
               x:Name="DialogOverlay"
               IsVisible="{Binding ShowUnsavedDialog}"
               Background="#60000000">

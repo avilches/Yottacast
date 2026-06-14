@@ -141,6 +141,19 @@ public class ClipboardHistorySearchTests
     }
 
     [Fact]
+    public void Result_HasPreviewAction_WithMetaPHotkey()
+    {
+        var (search, store, _) = Build();
+        store.Add("hello");
+        var result = search.Search("hello", 10).First();
+        var preview = result.Actions.FirstOrDefault(a => a.Hotkey == ActionHotkey.MetaP);
+        Assert.NotNull(preview);
+        Assert.True(preview.ShowInFooter);
+        Assert.False(preview.ShowInMenu);
+        Assert.False(preview.ClosesWindow);
+    }
+
+    [Fact]
     public void Result_HasDeleteAction_WithDeleteHotkey()
     {
         var (search, store, _) = Build();
@@ -212,6 +225,26 @@ public class ClipboardHistorySearchTests
         var result = search.Search(new string('a', 5), 10).First();
         var clipResult = Assert.IsType<ClipboardResultItemViewModel>(result);
         Assert.Equal(longText, clipResult.FullText);
+    }
+
+    [Fact]
+    public void Result_CopiedAt_IsNonEmpty()
+    {
+        var (search, store, _) = Build();
+        store.Add("hello");
+        var result = search.Search("hello", 10).First();
+        var clipResult = Assert.IsType<ClipboardResultItemViewModel>(result);
+        Assert.NotEmpty(clipResult.CopiedAt);
+    }
+
+    [Fact]
+    public void Result_Subtitle_ContainsFromClipboard()
+    {
+        var (search, store, _) = Build();
+        store.Add("hello");
+        var result = search.Search("hello", 10).First();
+        var clipResult = Assert.IsType<ClipboardResultItemViewModel>(result);
+        Assert.StartsWith("From clipboard,", clipResult.Subtitle);
     }
 
     [Fact]

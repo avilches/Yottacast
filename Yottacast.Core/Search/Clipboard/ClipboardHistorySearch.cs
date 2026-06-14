@@ -73,12 +73,14 @@ public class ClipboardHistorySearch(
         // Replace newlines — visual truncation is handled by AXAML TextTrimming
         var displayText = entry.Text.Replace('\n', '·').Replace('\r', '·');
 
-        var subtitle = FormatRelativeTime(entry.CopiedAt);
+        var subtitle = $"From clipboard, {FormatRelativeTime(entry.CopiedAt)}";
+        var copiedAt = FormatAbsoluteTime(entry.CopiedAt);
         var capturedText = entry.Text;
 
         return new ClipboardResultItemViewModel
         {
             FullText = capturedText,
+            CopiedAt = copiedAt,
             Title    = displayText,
             Subtitle = subtitle,
             Category = "",
@@ -101,6 +103,16 @@ public class ClipboardHistorySearch(
                         clipboard.CopyText(capturedText);
                         store.RecordUsage(capturedText);
                     },
+                },
+                new()
+                {
+                    Label        = "Preview",
+                    Hotkey       = ActionHotkey.MetaP,
+                    ShowInFooter = true,
+                    ShowInMenu   = false,
+                    ClosesMenu   = false,
+                    ClosesWindow = false,
+                    Execute      = () => { },  // handled by keyboard handler / ExecuteAction
                 },
                 new()
                 {
@@ -130,5 +142,14 @@ public class ClipboardHistorySearch(
         if (diff.TotalDays < 2)     return "yesterday";
         if (diff.TotalDays < 7)     return $"{(int)diff.TotalDays} days ago";
         return time.LocalDateTime.ToString("d MMM");
+    }
+
+    private static string FormatAbsoluteTime(DateTimeOffset time)
+    {
+        var local = time.LocalDateTime;
+        var today = DateTime.Today;
+        if (local.Date == today) return $"Today {local:H:mm}";
+        if (local.Date == today.AddDays(-1)) return $"Yesterday {local:H:mm}";
+        return local.ToString("d MMM, H:mm");
     }
 }

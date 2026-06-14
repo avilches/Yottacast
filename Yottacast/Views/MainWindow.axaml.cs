@@ -344,10 +344,16 @@ public partial class MainWindow : Window {
 
         // Editor hotkeys have no-op Execute; dispatch the real logic here
         if (action.Hotkey == ActionHotkey.MetaP) {
-            if (!vm.IsEditorOpen && _settings.EnableFileEditor
+            if (vm.IsEditorOpen && vm.EditorPanel.IsPreviewMode) {
+                vm.EditorPanel.RequestClose();
+            } else if (!vm.IsEditorOpen && result is ClipboardResultItemViewModel clipRes) {
+                vm.EditorPanel.LoadTextContent(clipRes.FullText, clipRes.CopiedAt);
+                vm.IsEditorOpen = true;
+            } else if (!vm.IsEditorOpen
                 && result is FileResultItemViewModel { ItemPath: { } pPath }
-                && _fileEditorService.IsTextContent(pPath))
+                && _fileEditorService.IsTextContent(pPath)) {
                 vm.OpenPreview(pPath);
+            }
         } else if (action.Hotkey == ActionHotkey.MetaE) {
             if (vm.IsEditorOpen && vm.EditorPanel.IsPreviewMode) {
                 var check = _fileEditorService.CanOpen(vm.EditorPanel.FilePath, _settings.FileEditorExtensions);
@@ -538,20 +544,20 @@ public partial class MainWindow : Window {
                 break;
         }
 
-        // ── Cmd+P: toggle preview ────────────────────────────────────────────────
+        // ── Cmd+P: toggle preview (clipboard and text files) ────────────────────
         if (AppHandler.Instance.MatchesHotkey(e, ActionHotkey.MetaP)) {
-            // Clipboard preview is always active — Cmd+P is a no-op for clipboard items
-            if (vm.SelectedResult is ClipboardResultItemViewModel) {
-                e.Handled = true;
-                return;
-            }
             if (vm.IsEditorOpen && vm.EditorPanel.IsPreviewMode) {
                 vm.EditorPanel.RequestClose();
                 e.Handled = true;
                 return;
             }
+            if (!vm.IsEditorOpen && vm.SelectedResult is ClipboardResultItemViewModel clipResult) {
+                vm.EditorPanel.LoadTextContent(clipResult.FullText, clipResult.CopiedAt);
+                vm.IsEditorOpen = true;
+                e.Handled = true;
+                return;
+            }
             if (!vm.IsEditorOpen
-                && _settings.EnableFileEditor
                 && vm.SelectedResult is FileResultItemViewModel { ItemPath: { } previewPath }
                 && _fileEditorService.IsTextContent(previewPath)) {
                 vm.OpenPreview(previewPath);

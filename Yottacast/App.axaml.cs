@@ -486,6 +486,11 @@ public partial class App : Application {
                             if (!windowFocused && !settingsFocused) {
                                 // App lost focus → just hide, no OnHide() since we didn't have focus
                                 window.Hide();
+                            } else if (!settingsOpen
+                                && window.DataContext is MainWindowViewModel mainVm
+                                && mainVm.ClipboardModeActive) {
+                                // In clipboard mode, the global hotkey switches to All mode instead of hiding
+                                mainVm.ResetMode();
                             } else {
                                 // App or settings is focused → hide main window
                                 window.Hide();

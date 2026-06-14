@@ -18,6 +18,8 @@ public partial class EditorPanelViewModel(FileEditorService fileEditorService) :
     [ObservableProperty] private string _statusText = "Ln 1, Col 1";
     [ObservableProperty] private string _charCountText = "";
     [ObservableProperty] private EditorMode _mode = EditorMode.Preview;
+    [ObservableProperty] private bool _wordWrap;
+    [ObservableProperty] private string _clipboardStatusText = "";
 
     public bool IsDirty => Content != _originalContent;
     public string TitleText => IsDirty ? $"* {FilePath}" : FilePath;
@@ -59,15 +61,22 @@ public partial class EditorPanelViewModel(FileEditorService fileEditorService) :
         var text = fileEditorService.ReadFile(path);
         _originalContent = text;
         Content = text;
+        WordWrap = false;
+        ClipboardStatusText = "";
     }
 
-    public void LoadTextContent(string text) {
+    public void LoadTextContent(string text, string copiedAt = "") {
         FilePath = "";
         FileName = "";
         Mode = EditorMode.Preview;
         ShowUnsavedDialog = false;
         _originalContent = text;
         Content = text;
+        WordWrap = true;
+        var wordCount = text.Split([' ', '\n', '\t', '\r'], StringSplitOptions.RemoveEmptyEntries).Length;
+        ClipboardStatusText = string.IsNullOrEmpty(copiedAt)
+            ? $"{wordCount} words · {text.Length} chars"
+            : $"{wordCount} words · {text.Length} chars · Copied {copiedAt}";
     }
 
     public void LoadEdit(string path, bool autoSave) {
@@ -79,12 +88,16 @@ public partial class EditorPanelViewModel(FileEditorService fileEditorService) :
         _originalContent = content;
         Content = content;
         ShowUnsavedDialog = false;
+        WordWrap = false;
+        ClipboardStatusText = "";
         OnPropertyChanged(nameof(ShowSaveButton));
     }
 
     public void SwitchToEdit(bool autoSave) {
         IsAutoSave = autoSave;
         Mode = EditorMode.Edit;
+        WordWrap = false;
+        ClipboardStatusText = "";
         // _originalContent remains as set during LoadPreview — dirty tracking from disk content
     }
 

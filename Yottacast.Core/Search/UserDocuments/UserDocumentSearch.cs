@@ -212,7 +212,7 @@ public class UserDocumentSearch(
                                 Execute      = () => clipboard.CopyText(path),
                             },
                         };
-                        if (IsEditableExtension(path)) {
+                        if (IsPreviewableExtension(path)) {
                             actions.Add(new ResultAction {
                                 Label        = "Preview",
                                 Hotkey       = ActionHotkey.MetaP,
@@ -221,6 +221,8 @@ public class UserDocumentSearch(
                                 ClosesMenu   = true,
                                 Execute      = () => { },
                             });
+                        }
+                        if (IsEditableExtension(path)) {
                             actions.Add(new ResultAction {
                                 Label        = "Edit",
                                 Hotkey       = ActionHotkey.MetaE,
@@ -351,11 +353,15 @@ public class UserDocumentSearch(
         });
     }
 
-    private bool IsEditableExtension(string filePath) {
-        if (!settings.EnableFileEditor) return false;
+    private bool IsPreviewableExtension(string filePath) {
         var ext = Path.GetExtension(filePath).TrimStart('.').ToLowerInvariant();
         return !string.IsNullOrEmpty(ext)
             && settings.FileEditorExtensions.Any(e =>
                 e.Equals(ext, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private bool IsEditableExtension(string filePath) {
+        if (!settings.EnableFileEditor) return false;
+        return IsPreviewableExtension(filePath);
     }
 }

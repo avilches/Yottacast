@@ -271,8 +271,6 @@ public partial class MainWindowViewModel(
 
     public void Initialize() {
         EditorPanel.CloseRequested = () => {
-            // Clipboard preview is always active — close button is a no-op for clipboard items
-            if (SelectedResult is ClipboardResultItemViewModel) return;
             if (_isPreviewEnabled && EditorPanel.IsEditMode) {
                 // El usuario abrió preview primero y luego cambió a edit → restaurar preview
                 EditorPanel.LoadPreview(EditorPanel.FilePath);
@@ -515,7 +513,7 @@ public partial class MainWindowViewModel(
         if (EditorPanel.IsEditMode) return; // buscador pausado: no cambiar fichero mientras se edita
 
         if (value is ClipboardResultItemViewModel clip) {
-            EditorPanel.LoadTextContent(clip.FullText);
+            EditorPanel.LoadTextContent(clip.FullText, clip.CopiedAt);
             IsEditorOpen = true;
             return;
         }
