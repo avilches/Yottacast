@@ -8,17 +8,11 @@ Cuando se pregunte "que queda por hacer", esto se revisa **despues** de `docs/PE
 
 ## Clipboard
 
-### C1. El clipboard aparece en modo emoji (`:`) — Bug, pequeno
-Al teclear `:` (modo emoji) siguen saliendo resultados del historial de portapapeles. En modo emoji solo debe verse el grid de emojis, igual que la busqueda web ya se excluye.
-- WebSearch se filtra explicitamente cuando la query empieza por `:` (`WebSearchSource.Search`), pero `ClipboardHistorySearch` no tiene esa guarda: solo decide por `IsActiveIn` (modo All/Clipboard), no por el prefijo `:`.
-- Opciones: que `ClipboardHistorySearch` (y demas instant sources que no apliquen) devuelvan vacio cuando la query empieza por `:`, o centralizar la deteccion de modo emoji en `GlobalSearch.GetActiveSources` para que excluya todo lo que no sea emoji. Preferible centralizar para no repetir la guarda en cada source.
-- Verificar en: `GlobalSearch.GetActiveSources`, `ClipboardHistorySearch.Search`, `EmojiSearch.Search`.
+### C1. ~~El clipboard aparece en modo emoji~~ — HECHO (2026-06-14)
+Guard `if (query.StartsWith(':')) return [];` en `ClipboardHistorySearch.Search`.
 
-### C2. Texto largo se pisa con la categoria "Clipboard" — Bug, pequeno
-Los textos de clipboard son largos y, al renderizarse junto a la etiqueta `Category = "Clipboard"` a la derecha, se solapan o quedan apretados.
-- El titulo se trunca a 120 caracteres (`BuildResult`), pero el layout de 3 columnas (icono / titulo+subtitulo / category) no reserva bien el espacio del category cuando el titulo es ancho.
-- Revisar el trimming del titulo y/o el ancho maximo de la columna de category en el template de `ResultItemViewModel`.
-- Verificar en: `ClipboardHistorySearch.BuildResult`, `MainWindow.axaml` (template de item, columnas icono/title/category).
+### C2. ~~Texto largo se pisa con la categoria "Clipboard"~~ — HECHO (2026-06-14)
+Truncacion reducida a 60 chars + preview lateral siempre visible al seleccionar (C2+C4 combinados).
 
 ### C3. Iconos del clipboard ausentes o incorrectos (salen carpetas) — Bug + Feature, grande
 Los items de clipboard no asignan icono, asi que cae al icono por defecto (a veces una carpeta). Lo deseable: mostrar el icono de la **app de origen** desde la que se copio el contenido.
@@ -27,11 +21,6 @@ Los items de clipboard no asignan icono, asi que cae al icono por defecto (a vec
 - Parte grande: capturar la app frontmost en el momento de la copia (en macOS no viene en el pasteboard; hay que consultar la app activa al detectar el cambio), persistir su identificador en el entry, y resolver su icono via la cache de iconos de apps.
 - Verificar en: `ClipboardHistoryEntry`, `MacClipboardMonitor`, `WindowsClipboardMonitor`, `ClipboardHistorySearch.BuildResult`, cache de iconos de apps.
 
-### C4. Preview del contenido a la derecha — Feature, mediano
-El listado de clipboard deberia mostrar un panel de preview a la derecha con el contenido completo del item seleccionado (util porque el titulo va truncado a 120 chars).
-- Ya existe un panel lateral (`EditorPanelView`) que se abre para ficheros via acciones Preview/Edit; valorar reutilizarlo para mostrar el texto completo del clipboard, o un preview mas ligero.
-- Decidir si el preview es siempre visible en modo clipboard o solo bajo demanda.
-- Verificar en: `EditorPanelView`, `MainWindow.axaml` (panel lateral, `IsEditorOpen`), `ClipboardHistorySearch`.
 
 ### C5. Borrar descoloca la vista — Bug, mediano
 Al borrar un item con Delete, la vista se reordena y el cursor "salta". Lo correcto: el elemento desaparece y el cursor se mantiene en su posicion (pasa a seleccionar el siguiente item en el mismo indice).
@@ -60,11 +49,8 @@ Permitir que el historial de clipboard capture y reproduzca no solo texto sino t
 
 ## Emoji / navegacion
 
-### E1. Ctrl+Abajo no funciona en modo emoji — Bug, pequeno
-En el grid de emojis, Ctrl+Abajo no navega como se espera.
-- Causa: en `MainWindow.axaml.cs` el manejo de `Key.Down` con `Control` se captura para `NavigateHistoryForward()` (historial) ANTES de llegar al `case Key.Down` que invoca el `OnDown` del grid. Con Ctrl pulsado, el grid nunca recibe el evento.
-- Decidir el comportamiento deseado en modo emoji: que Ctrl+Abajo navegue el grid (ignorar historial mientras el resultado seleccionado sea un grid de emojis), o que el historial no se active en modo emoji. Aplicar la guarda correspondiente.
-- Verificar en: `MainWindow.axaml.cs` (handler de teclas, rama Ctrl+Down y rama Key.Down->OnDown), `EmojiGridResultViewModel.SelectDown`.
+### ~~E1. Ctrl+Abajo no funciona en modo emoji~~ — HECHO (2026-06-14)
+Guard `!e.Handled` en `case Key.Down` y `case Key.Up` para respetar lo que el tunnel handler ya procesó.
 
 ---
 
