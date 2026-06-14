@@ -660,8 +660,10 @@ public partial class MainWindow : Window {
 
             case Key.Down:
                 if (e.KeyModifiers.HasFlag(KeyModifiers.Control)) {
-                    vm.NavigateHistoryForward();
-                    SearchBox.CaretIndex = int.MaxValue;
+                    if (!e.Handled) {
+                        vm.NavigateHistoryForward();
+                        SearchBox.CaretIndex = int.MaxValue;
+                    }
                 } else {
                     SelectNext(vm, +1);
                 }
