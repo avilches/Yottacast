@@ -102,6 +102,10 @@ defecto. La busqueda sigue este orden de prioridad:
    el otro miembro del par (ej. cualquier unidad de masa no listada cae al par `kg/lb`).
 3. **Sin resultado**: si no hay par, la expresion se trata como calculo puro.
 
+Algunas unidades electricas (`A`, `V`, `ohm`, `F`, `H`, `C`, `T`, `S`, `mol`) no tienen entrada en `defaultTargets` ni
+caen en ningun `defaultPair`, asi que no generan panel de conversion automatica (sus unicos destinos serian prefijos SI
+sin valor informativo). Siguen funcionando en conversiones explicitas: `10 V to mV` si produce resultado.
+
 Para divisas, el par por defecto es EUR/USD.
 
 > **Verificar en:** `findDefaultTarget()` en `mathjs-helpers.js`; seccion `defaultTargets` y `defaultPairs` en
@@ -257,8 +261,10 @@ evaluar y se restauran en el display:
 
 ### 6.1 Nombre de display (forma corta)
 
-Los nombres de display transforman simbolos internos en formas legibles: `degC` -> `°C`, `degF` -> `°F`, `minute` ->
-`min`. Para unidades compuestas, se aplica el lookup a cada componente: `mi / minute` -> `mi/min`.
+Los nombres de display transforman simbolos internos en formas legibles: `degC` -> `°C`, `degF` -> `°F`, `degR` ->
+`°R`, `minute` -> `min`, `hectare` -> `ha`. Para unidades compuestas, se aplica el lookup a cada componente:
+`mi / minute` -> `mi/min`. Solo afectan la presentacion en la UI y el texto copiado al portapapeles; la evaluacion
+interna siempre usa los simbolos canonicos de math.js.
 
 > **Verificar en:** `DisplayUnit()` en `MathJsEngine.cs`; `displayNames` en `unit-config.json`
 
@@ -514,5 +520,6 @@ Los tests usan `MathJsEngineFixture` (coleccion `"MathJs"`) para compartir una s
 | `MathJsEngineProviderTests.cs`        | Ciclo de vida del provider: null inicial, swap, Dispose      |
 | `MathJsUnitSnapshotTests.cs`          | Snapshot de regresion y casing de unidades                   |
 | `EquationSolverTests.cs`              | Resolución de ecuaciones (NerdamerEngine.TrySolve + CalculatorSearch integración) |
+| `AlgebraSearchTests.cs`               | Modo álgebra simbólica (NerdamerEngine.TryAlgebra: simplify/expand/factor/d-dx/integral + CalculatorSearch routing) |
 
 > **Verificar en:** `Yottacast.Core.Tests/Search/Calculator/` y `Yottacast.Core.Tests/Search/MathJsUnitSnapshotTests.cs`

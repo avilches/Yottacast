@@ -27,11 +27,13 @@ Los resultados se muestran como un unico item de tipo grid en la lista de result
 - Cada seccion renderiza sus celdas en una `UniformGrid` con el numero de columnas y filas de viewport definidos por `EmojiLayoutConfig` (singleton mutable que `ThemeService` actualiza en cada cambio de tema; default `AppDefaults.EmojiColumns`/`EmojiViewportRows`). `EmojiSearch` los lee al construir el grid.
 - Debajo del grid, informacion del emoji seleccionado: nombre, categoria y keywords.
 
-El primer emoji del grid aparece seleccionado inicialmente. El icono y titulo del resultado en la lista se toman del primer emoji del grid. La categoria del resultado siempre es `"Emoji"`, el `ScoreReason` es `"Grid de emojis"` y el score es `5.5`.
+El primer emoji del grid aparece seleccionado inicialmente. El icono y titulo del resultado en la lista se toman del primer emoji del grid. La categoria del resultado siempre es `"Emoji"`, el `ScoreReason` es `"Grid de emojis"` y el score es `AppDefaults.EmojiResultScore`.
 
 **Invariante:** siempre se devuelve exactamente 0 o 1 resultado (nunca multiples items en la lista). Si no hay emojis que coincidan, no se muestra ningun resultado. Si no hay favoritos ni frecuentes, la primera seccion visible es la primera categoria Unicode - no se muestran secciones vacias.
 
-> **Verificar en:** `EmojiSearch.MakeGrid()` -- construccion del `EmojiGridResultViewModel`; `EmojiGridResultView.axaml` -- template AXAML con secciones (`EmojiGridSection`) y panel de informacion; `EmojiGridResultViewModel.VisibleSections` -- agrupacion del viewport en secciones.
+Los gotchas de implementacion del grid (viewport, medicion de filas, sincronizacion del cursor con el scroll) se documentan en `docs/emoji-grid-gotchas.md`.
+
+> **Verificar en:** `EmojiSearch.MakeGrid()` -- construccion del `EmojiGridResultViewModel`; `AppDefaults.EmojiResultScore` -- score del resultado de grid; `EmojiGridResultView.axaml` -- template AXAML con secciones (`EmojiGridSection`) y panel de informacion; `EmojiGridResultViewModel.VisibleSections` -- agrupacion del viewport en secciones.
 
 ---
 

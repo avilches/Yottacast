@@ -2,6 +2,8 @@
 
 Las preferencias del usuario controlan el comportamiento del launcher: que browser y terminal se usan, el atajo de teclado global, las carpetas donde buscar aplicaciones y archivos, los motores de busqueda web, y las fuentes opcionales (calculadora, clipboard, emoji). Se persisten en un fichero JSON que la aplicacion gestiona de forma autonoma.
 
+Documentos relacionados, paralelos a este: `docs/user-settings-browser.md` (navegador preferido), `docs/user-settings-terminal.md` (terminal preferido) y `docs/user-settings-websearch.md` (motores de busqueda web).
+
 ---
 
 ## 1. Almacenamiento y ciclo de vida
@@ -47,7 +49,7 @@ El fichero de preferencias se crea automaticamente en la primera ejecucion y se 
 
 `ClipboardHistoryMaxEntries` y `ClipboardHistoryMaxDays` se persisten y se editan en Settings, y se propagan al `ClipboardHistoryStore` en caliente: en cada `SearchSettingsChanged`, `App.SetupClipboardMonitor` copia ambos valores a `store.MaxEntries` / `store.MaxDays` e invoca `store.ApplyLimitsNow()`, que recorta el historial inmediatamente. Tambien se aplican una vez al arranque. Ver `App.SetupClipboardMonitor` y `ClipboardHistoryStore.ApplyLimitsNow()`.
 
-Las propiedades antiguas booleanas de clipboard fueron sustituidas por `ClipboardSearchVisibility` (enum `Disabled`/`Always`/`ModeOnly`). El campo JSON heredado `enableClipboard` solo se conserva como entrada de migracion en el DTO (`ClipboardHistoryEnabled`, omitido al escribir cuando es el valor por defecto).
+La visibilidad del clipboard se controla con `ClipboardSearchVisibility` (enum `Disabled`/`Always`/`ModeOnly`). Por compatibilidad, `Load()` lee la clave JSON booleana `enableClipboard` (mapeada al campo `ClipboardHistoryEnabled` del DTO) para derivar la visibilidad cuando un fichero la contiene; ese campo se omite al escribir cuando tiene el valor por defecto, de modo que los ficheros nuevos solo persisten `ClipboardSearchVisibility`.
 | EnableWebSearch | `true` | Activa/desactiva la busqueda web; si `false`, `WebSearchSource.Search()` devuelve siempre lista vacia |
 | EnableUrlValidation | `true` | Si `true`, valida via DNS/HTTP las URLs detectadas antes de mostrarlas como resultado abrible |
 | FileSearchOnlySpecificFolders | `false` | Si `true`, solo busca en las carpetas configuradas en `SearchFolders`; si `false`, busca en toda la home |
@@ -213,35 +215,9 @@ La cache de `Discover()` se invalida al cambiar `AppDirectories` en Settings (di
 
 ## 8. Motores de busqueda web
 
-Cada motor de busqueda web tiene su propia configuracion que el usuario puede personalizar:
+La configuracion de los motores de busqueda web (lista de motores, modos `PrefixOnly`/`ShowAlways`, merge con los defaults, UI de la seccion "Web Search" e integracion con plugins WebSearch) se documenta en `docs/user-settings-websearch.md`, paralelo a `docs/user-settings-browser.md` y `docs/user-settings-terminal.md`.
 
-| Campo | Descripcion |
-|---|---|
-| Id | Identificador unico del motor (p.ej. `"google"`) |
-| Enabled | Si el motor aparece en resultados |
-| Mode | `PrefixOnly` (solo se activa con el alias) o `ShowAlways` (aparece siempre) |
-| Prefix | Alias de teclado que activa el motor (p.ej. `"g"` para Google) |
-| QueryUrl | URL personalizada con placeholder `{0}`. `null` significa usar la URL por defecto |
-
-La aplicacion incluye 20 motores preconfigurados en las categorias: General, Shopping, Video, Social, Knowledge, Dev, Entertainment y Maps. Por defecto solo Google usa el modo `ShowAlways`; el resto usa `PrefixOnly`.
-
-Al cargar las preferencias, se fusionan los motores guardados con los predeterminados: las personalizaciones del usuario se conservan y los motores nuevos (anadidos en actualizaciones) aparecen automaticamente con sus defaults.
-
-La UI de edicion (seccion "Web Search" en Settings) agrupa los motores por categoria (General, Shopping, Video, Social, Knowledge, Dev, Entertainment, Maps), cada grupo en su propia tabla estilo lista. Cada fila muestra icono, nombre, prefijo, checkbox Enabled y boton de settings (icono engranaje) que abre un flyout con toggle Mode, editar Prefix y editar QueryUrl. Un checkbox "Show disabled engines" en la parte superior controla si se muestran los motores deshabilitados; si un grupo no tiene ningun motor visible, el grupo entero se oculta. Los motores mantienen siempre su posicion original (no se reordenan al deshabilitar). Los cambios se guardan automaticamente.
-
-**Invariante:** si el campo `Mode` del JSON contiene un valor no reconocido, se interpreta como `PrefixOnly`. El `QueryUrl` solo se escribe en el JSON si tiene un valor no vacio (se omite cuando es `null`, usando la URL por defecto del motor).
-
-### Plugins
-
-Ademas de los motores preconfigurados, el usuario puede instalar motores adicionales como plugins. Un plugin es un fichero JSON en `AppPaths.PluginsDir` (`~/Library/Application Support/Yottacast/plugins/` en macOS) con `"type": "WebSearch"`. `PluginService` los carga al arranque y vigila la carpeta para hot-reload.
-
-Los plugins aparecen en la UI de Settings igual que los motores built-in, pero con un icono de plugin (puzzle piece) junto al nombre. El flyout de cada plugin incluye dos botones adicionales: "Show plugin folder" (abre la carpeta de plugins en el gestor de archivos) y "Edit plugin source" (abre el JSON del plugin con la app por defecto).
-
-Al cargar un plugin nuevo, `UserSettings.EnsurePluginSettings()` crea su entrada en `WebSearchEngines` con defaults (`Enabled=true`, `Mode=PrefixOnly`, `Prefix` del plugin). A partir de ahi, la configuracion del plugin se persiste y personaliza igual que cualquier motor built-in.
-
-Ver `docs/examples/hackernews.json` para un ejemplo de plugin.
-
-> **Verificar en:** `WebSearchEngine`, `WebSearchEngineSettings`, `WebSearchDefaults` en `Yottacast.Core/Search/WebSearch/WebSearchEngine.cs`. Merge en `UserSettings.MergeWebSearchEngines()`. Plugins en `PluginService`, `WebSearchPlugin`. UI en `WebSearchEngineRowViewModel` y `SettingsWindow.axaml.cs`.
+La preferencia `WebSearchEngines` almacena la configuracion por motor; `ShowDisabledWebSearchEngines` controla si la UI muestra los deshabilitados. Ambas se persisten en el JSON como el resto de preferencias (secciones 2 y 10).
 
 ---
 
@@ -249,7 +225,7 @@ Ver `docs/examples/hackernews.json` para un ejemplo de plugin.
 
 ### Secciones
 
-La ventana de Settings se divide en secciones navegables: General, AppSearch, WebSearch, FileSearch, Calculator, Clipboard y Emoji. Cada apertura de la ventana inicia en la seccion General (el ViewModel es transient y se recrea en cada apertura).
+La ventana de Settings se divide en secciones navegables (enum `SettingsSection`): General, AppSearch, WebSearch, FileSearch, FileEditor, Calculator, Clipboard, Emoji, Dictionary, DateSearch, History y Permissions. Cada apertura de la ventana inicia en la seccion General (el ViewModel es transient y se recrea en cada apertura).
 
 La seccion AppSearch incluye el toggle **"Include system settings panels"** (solo visible en macOS). Si esta activo, la busqueda incluye los paneles de System Settings del sistema. Este toggle solo es funcional cuando App Search tambien esta habilitado - si App Search se desactiva, la busqueda de paneles del sistema queda inactiva independientemente del valor de este toggle.
 
@@ -281,7 +257,7 @@ La seccion FileSearch tiene un selector de visibilidad y un checkbox adicional:
 
 Las carpetas configuradas que ya no existen en disco se muestran atenuadas (opacidad reducida) en la lista, para que el usuario las identifique. Siguen guardadas en settings y vuelven a estar activas si el directorio se recrea. El boton "Add common folders" en FileSearch anade las carpetas por defecto de la plataforma que existen en disco en ese momento, sin duplicar las que ya esten en la lista.
 
-> **Verificar en:** `SettingsWindowViewModel` en `Yottacast/ViewModels/SettingsWindowViewModel.cs`. `SearchFolderItem` (mismo archivo). `App.OpenSettings()` en `Yottacast/App.axaml.cs`. Code-behind en `Yottacast/Views/SettingsWindow.axaml.cs`.
+> **Verificar en:** enum `SettingsSection` y `SettingsWindowViewModel` en `Yottacast/ViewModels/SettingsWindowViewModel.cs`. `SearchFolderItem` (mismo archivo). `App.OpenSettings()` en `Yottacast/App.axaml.cs`. Code-behind en `Yottacast/Views/SettingsWindow.axaml.cs`.
 
 ---
 

@@ -2,7 +2,11 @@
 
 Yottacast se ejecuta en macOS, Windows y Linux. La logica especifica de cada sistema operativo esta encapsulada de forma
 que el resto de la aplicacion no necesita saber en que plataforma corre. Este documento describe los comportamientos
-esperados por plataforma y los contratos que deben cumplirse.
+esperados por plataforma y los contratos que deben cumplirse en torno a **ventana, foco, lanzamiento de apps,
+navegadores/terminales, iconos, hotkey global y expansion de rutas**.
+
+El descubrimiento/escaneo de aplicaciones, la busqueda de ficheros y la interoperacion con los motores nativos
+(Spotlight, Windows Search, `plocate`/`locate`) y procesos externos vive en `docs/multi-platform-search.md`.
 
 ---
 
@@ -42,45 +46,7 @@ por defecto.
 
 ---
 
-## 3. Descubrimiento e indexacion de aplicaciones
-
-La aplicacion debe encontrar todas las aplicaciones instaladas en los directorios configurados por el usuario y mantener
-la lista actualizada en tiempo real.
-
-### 3.1 Escaneo inicial
-
-| Plataforma | Que busca                         | Mecanismo                                                                    |
-|------------|-----------------------------------|------------------------------------------------------------------------------|
-| macOS      | Bundles `.app`                    | Spotlight (`kMDItemContentType == 'com.apple.application-bundle'`)           |
-| Windows    | Archivos `.exe` en subdirectorios | Recorrido recursivo del filesystem (hasta `AppDefaults.WindowsAppScanMaxDepth`), añadiendo cada `.exe` que sea lanzable |
-| Linux      | Archivos `.desktop`               | Enumeracion directa (sin subdirectorios)                                     |
-
-**Invariante**: el escaneo en macOS es asincrono (envuelto en `Task.Run` porque Spotlight bloquea el hilo). En Windows y
-Linux el escaneo es sincrono y devuelve `Task.CompletedTask`.
-
-**Invariante**: si `UserSettings.EnableAppSearch` es `false`, `ApplicationSearch.Start()` marca la fuente como ready inmediatamente sin lanzar el escaneo, y `Search()` devuelve siempre una lista vacia.
-
-**Invariante (Windows)**: el escaneo y el watcher comparten el mismo criterio de profundidad y el mismo filtro de ejecutables. El escaneo recorre recursivamente hasta `AppDefaults.WindowsAppScanMaxDepth` (cubre layouts anidados como `Google\Chrome\Application\chrome.exe`) y descarta ejecutables que no son apps lanzables (uninstallers, updaters, crash handlers) segun `AppDefaults.WindowsAppExeExcludeSubstrings`. El watcher aplica el mismo predicado (`WindowsPlatformProvider.IsLaunchableAppExe`) y el mismo limite de profundidad a cada evento, de modo que una app anidada instalada en caliente se trata exactamente igual que en el escaneo inicial. Ver `WindowsPlatformProvider.ScanAppsAsync()` y `CreateAppWatchers()`.
-
-### 3.2 Vigilancia de cambios (watchers)
-
-| Plataforma | Filtro del watcher | Eventos observados                                                          | Subdirectorios |
-|------------|--------------------|-----------------------------------------------------------------------------|----------------|
-| macOS      | `*.app`            | `Created`, `Changed`, `Deleted` (NotifyFilter: `DirectoryName + LastWrite`) | No             |
-| Windows    | `*.exe`            | `Created`, `Deleted` (NotifyFilter: `FileName`); filtra helpers y respeta el limite de profundidad del scan | Si             |
-| Linux      | `*.desktop`        | `Created`, `Deleted` (NotifyFilter: `FileName`)                             | No             |
-
-**Invariante (macOS)**: el evento `Changed` existe a proposito. Cuando un `.app` se copia, el `Created` puede llegar
-antes de que el bundle este completo; el `Changed` detecta cuando se terminan de copiar los archivos internos (el mtime
-del directorio cambia), permitiendo recargar el icono.
-
-> **Verificar en:** `MacOsPlatformProvider.ScanAppsAsync()` / `CreateAppWatchers()`,
-`WindowsPlatformProvider.ScanAppsAsync()` / `CreateAppWatchers()`, `LinuxPlatformProvider.ScanAppsAsync()` /
-`CreateAppWatchers()`.
-
----
-
-## 4. Lanzamiento de aplicaciones
+## 3. Lanzamiento de aplicaciones
 
 | Plataforma | Comando                          | UseShellExecute |
 |------------|----------------------------------|-----------------|
@@ -96,87 +62,9 @@ proceso directamente.
 
 ---
 
-## 5. Busqueda de archivos
+## 4. Navegadores y terminales
 
-La aplicacion permite buscar archivos del usuario mediante un motor de busqueda nativo de cada plataforma.
-
-### 5.1 Estrategia por plataforma
-
-| Plataforma | Motor                                | Tratamiento de la query                                                                                                                                      |
-|------------|--------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| macOS      | Spotlight (via `SpotlightInterop`)   | Escapa comillas simples. Si contiene `*`, usa predicado literal. Si no, parte por espacios y genera clausulas `kMDItemFSName == '*token*'cd` unidas con `&&` |
-| Windows    | Windows Search (ADODB + SystemIndex) | Elimina `'`, `"` y `*`. Genera clausula `CONTAINS(System.FileName, 'token*')` por cada token. El script PowerShell se codifica en Base64 Unicode             |
-| Linux      | `plocate` (preferido) o `locate`     | Solo el primer token se pasa como argumento nativo (`-b -l maxResults *token*`). Tokens adicionales y filtro de carpetas se aplican en .NET                  |
-
-### 5.2 Invariantes
-
-- **macOS**: si alguna carpeta del scope no existe, se omite con un warning. Si no queda ninguna carpeta valida, el
-  scope es el directorio home del usuario.
-- **Windows**: el script se pasa como `-EncodedCommand` (Base64 Unicode) para evitar problemas de escaping en shell.
-- **Linux**: el post-filtrado de carpetas y tokens adicionales ocurre despues del limite nativo de `plocate`/`locate`,
-  por lo que el numero de resultados entregados puede ser menor que `maxResults`.
-
-Las tres plataformas descartan las queries que quedan vacias tras sanear (solo comillas o espacios) con un
-early-return antes de acceder a los tokens, de modo que una busqueda asi nunca lanza ni invoca el backend nativo.
-En Linux la query se sanea eliminando comillas y recortando espacios (`string.IsNullOrEmpty(safeQuery)`), igual que
-en Windows.
-
-> **Verificar en:** `MacOsPlatformProvider.SearchFilesAsync()`, `WindowsPlatformProvider.SearchFilesAsync()`,
-`LinuxPlatformProvider.SearchFilesAsync()`, `SpotlightInterop.Query()`.
-
----
-
-## 6. Spotlight (macOS): interoperacion nativa
-
-`SpotlightInterop` es un wrapper P/Invoke sobre la API `MDQuery` de CoreServices. Es sincronico y bloquea el hilo; los
-llamadores lo envuelven en `Task.Run`.
-
-**Contrato de memoria**:
-
-- `MDQueryGetResultAtIndex` no transfiere ownership (no se libera).
-- `MDItemCopyAttribute` si transfiere ownership (se libera con `CFRelease` en un `finally` interno por cada resultado).
-- Todos los `IntPtr` acumulados (predicado, query, scope refs, scope array, atributo) se liberan en un `finally`
-  externo.
-- Los paths se decodifican desde un buffer UTF-8 de 4096 bytes.
-
-`kCFTypeArrayCallBacks` es una variable global exportada de CoreFoundation; se resuelve una vez en el constructor
-estatico via `NativeLibrary.Load` + `NativeLibrary.GetExport`.
-
-> **Verificar en:** `Yottacast.Core/Platform/SpotlightInterop.cs`.
-
----
-
-## 7. Ejecucion de procesos externos
-
-`ProcessRunner` es el runner generico para lanzar procesos con lectura linea a linea de stdout y stderr.
-
-**Contrato**:
-
-- Las comillas dobles internas de un argumento se escapan siempre con `\"` (tengan o no espacios). Un argumento se
-  entrecomilla con comillas dobles cuando contiene espacios o comillas, para no perder caracteres ni romper el parseo
-  del comando.
-- `cwd` nullable: si es `null`, se usa `Environment.CurrentDirectory`.
-- El callback `onLine` puede devolver `false` para parar la lectura antes del EOF.
-- El proceso siempre se mata con `Kill(entireProcessTree: true)` en un bloque `finally` tras la lectura (garantiza
-  limpieza en cancelacion, early exit por `false`, o finalizacion normal; si el proceso ya termino es un no-op).
-- Resultado: `ProcessResult(Elapsed, ExitCode, Cancelled, Error?, StoppedByCallback)`. `StoppedByCallback` indica
-  terminacion voluntaria porque un callback devolvio `false` (p.ej. limite de resultados alcanzado). `IsSuccess` es
-  `true` cuando `Error is null && !Cancelled && (StoppedByCallback || ExitCode == 0)`: una parada por callback es exito
-  funcional aunque el `ExitCode` sea distinto de 0 (el proceso se mata con `Kill` antes de terminar por su cuenta).
-- Tanto stdout como stderr se drenan en paralelo (`Task.WhenAll`). Cuando cualquier callback devuelve `false`, un
-  `CancellationTokenSource` vinculado cancela ambas lecturas.
-
-**Uso por plataforma**: `WindowsPlatformProvider` y `LinuxPlatformProvider` lo reciben por inyeccion de constructor.
-`MacOsPlatformProvider` no lo usa porque lanza procesos directamente con `System.Diagnostics.Process` y delega en
-`SpotlightInterop`.
-
-> **Verificar en:** `Yottacast.Core/Services/ProcessRunner.cs`.
-
----
-
-## 8. Navegadores y terminales
-
-### 8.1 Descubrimiento de navegadores y terminales
+### 4.1 Descubrimiento de navegadores y terminales
 
 El discovery busca en tres fuentes por orden de prioridad: carpetas de apps del usuario, carpetas por defecto de la plataforma (`DefaultAppDirectories`), y rutas conocidas de la plataforma (`BrowserKnownPaths`/`TerminalKnownPaths`). Las carpetas duplicadas se saltan automaticamente. Los resultados se cachean en memoria y la cache se invalida al cambiar las carpetas de apps en Settings.
 
@@ -192,7 +80,7 @@ El discovery busca en tres fuentes por orden de prioridad: carpetas de apps del 
 
 **Windows Terminal**: la entrada "Windows Terminal" tiene dos rutas: el stub de alias en `%LocalAppData%\Microsoft\WindowsApps\wt.exe` (sin glob, presente cuando el paquete esta instalado) y el glob `C:\Program Files\WindowsApps\Microsoft.WindowsTerminal*\wt.exe` como respaldo. Ambas se resuelven via `ResolveKnownPath`, asi que "Windows Terminal" aparece en el selector y se puede ejecutar.
 
-### 8.3 Ejecucion de comandos en terminal (macOS)
+### 4.3 Ejecucion de comandos en terminal (macOS)
 
 El despacho depende del terminal seleccionado:
 
@@ -205,7 +93,7 @@ El despacho depende del terminal seleccionado:
 
 **Invariante**: los comandos enviados via AppleScript se escapan con `EscapeAppleScript` (escapa `\` y `"`).
 
-### 8.4 Ejecucion de comandos en terminal (Windows)
+### 4.4 Ejecucion de comandos en terminal (Windows)
 
 El ejecutable se resuelve via `ResolveKnownPath` (que expande globs como el de Windows Terminal). Los argumentos varian segun el terminal y se construyen en `WindowsPlatformProvider.BuildTerminalArgs`:
 
@@ -223,12 +111,12 @@ El ejecutable se resuelve via `ResolveKnownPath` (que expande globs como el de W
 
 ---
 
-## 9. Iconos de aplicaciones y archivos
+## 5. Iconos de aplicaciones y archivos
 
 Solo macOS implementa la obtencion de iconos. En Windows y Linux, los metodos devuelven `null` (iconos) o `false` (
 comparacion).
 
-### 9.1 Obtencion del icono (`GetAppIconBytes` / `GetFileIconBytes`)
+### 5.1 Obtencion del icono (`GetAppIconBytes` / `GetFileIconBytes`)
 
 El icono se obtiene via `NSWorkspace iconForFile:` (Objective-C P/Invoke). Se renderiza a 64x64 puntos logicos con el
 patron `lockFocus` / `drawInRect:` / `unlockFocus` y se serializa a PNG via
@@ -237,12 +125,12 @@ patron `lockFocus` / `drawInRect:` / `unlockFocus` y se serializa a PNG via
 **Invariante**: en pantallas Retina (2x) el resultado son 128x128 pixeles fisicos, suficiente para la visualizacion a
 28x28 logicos. `GetFileIconBytes` delega internamente en `GetAppIconBytes` (mismo metodo para ambos).
 
-### 9.2 App por defecto para un archivo (`GetDefaultAppPath`)
+### 5.2 App por defecto para un archivo (`GetDefaultAppPath`)
 
 Crea un `NSURL fileURLWithPath:` y llama `NSWorkspace URLForApplicationToOpenURL:`. Devuelve `null` si el sistema no
 tiene ninguna app registrada para esa extension.
 
-### 9.3 Deteccion de iconos redundantes (`AreIconsSame`)
+### 5.3 Deteccion de iconos redundantes (`AreIconsSame`)
 
 Determina si el icono de un archivo ya incorpora visualmente el logo de la app que lo abre, para evitar badging
 redundante.
@@ -260,12 +148,12 @@ bytes, TIFF o pixeles renderizados produce falsos negativos. La unica aproximaci
 
 ---
 
-## 10. Gestion de ventana y foco (`AppHandler`)
+## 6. Gestion de ventana y foco (`AppHandler`)
 
 `AppHandler` gestiona el ciclo de vida de la ventana principal: que ocurre al mostrarla, al ocultarla, y como simular el
 pegado tras activar un resultado.
 
-### 10.1 Inicializacion
+### 6.1 Inicializacion
 
 | Plataforma | Comportamiento                                                                                   |
 |------------|--------------------------------------------------------------------------------------------------|
@@ -273,7 +161,7 @@ pegado tras activar un resultado.
 | Windows    | No-op                                                                                            |
 | Linux      | No-op                                                                                            |
 
-### 10.2 Mostrar la ventana (`ShowWindow`)
+### 6.2 Mostrar la ventana (`ShowWindow`)
 
 | Plataforma | Comportamiento                                                                                                                                                                                      |
 |------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -290,7 +178,7 @@ Si habia una referencia previa a `_previousApp`, se libera con `objc_release` an
 **Invariante (toggle)**: el hotkey global usa `window.IsVisible` (no `IsActive`) para decidir si ocultar o mostrar,
 porque con la nueva activacion macOS la ventana nunca tiene `IsActive = true`.
 
-### 10.3 Ocultar la ventana (`OnHide`)
+### 6.3 Ocultar la ventana (`OnHide`)
 
 | Plataforma | Comportamiento                                                                                                                   |
 |------------|----------------------------------------------------------------------------------------------------------------------------------|
@@ -300,7 +188,7 @@ porque con la nueva activacion macOS la ventana nunca tiene `IsActive = true`.
 
 **Invariante**: tras ocultar, el usuario debe ver la app que tenia en foco antes de invocar Yottacast.
 
-### 10.4 Simulacion de pegado (`SimulatePasteAsync`)
+### 6.4 Simulacion de pegado (`SimulatePasteAsync`)
 
 Se invoca cuando el usuario activa un resultado con `PasteAfterActivate = true`. Se ejecuta despues de `OnHide()`.
 
@@ -313,7 +201,7 @@ Se invoca cuando el usuario activa un resultado con `PasteAfterActivate = true`.
 **Invariante**: el delay de 150 ms (`AppDefaults.PasteDelayMs`) existe para que la app destino recupere el foco antes de
 recibir el evento de teclado.
 
-### 10.5 Ocultacion del cursor
+### 6.5 Ocultacion del cursor
 
 | Plataforma | Mecanismo                            |
 |------------|--------------------------------------|
@@ -321,25 +209,24 @@ recibir el evento de teclado.
 | Windows    | `ShowCursor` de `user32.dll`         |
 | Linux      | No-op                                |
 
-### 10.6 Atajo para cerrar ventana
+### 6.6 Atajo para cerrar ventana
 
-| Plataforma | Atajo   |
-|------------|---------|
-| macOS      | Cmd+W   |
-| Windows    | Ctrl+F4 |
-| Linux      | Ctrl+W  |
+Cada plataforma define un `KeyModifiers` + `Key` distinto para "cerrar ventana" via `AppHandler.CloseWindowShortcut`
+(Cmd+W en macOS, Ctrl+F4 en Windows, Ctrl+W en Linux). Lo unico especifico de plataforma es la combinacion en si; el
+comportamiento (redirigir a `Hide()`, nunca destruir la ventana) se documenta en `docs/ui-hotkeys.md`.
 
-### 10.7 Modificador de "comando" (`MetaKeyModifier`)
+> **Verificar en:** `AppHandler.CloseWindowShortcut`, `MacAppHandler.cs`, `WindowsAppHandler.cs`, `LinuxAppHandler.cs`.
 
-`AppHandler` expone la propiedad `MetaKeyModifier` con el `KeyModifiers` que representa la tecla de "comando"
-de cada plataforma: `Meta` (Cmd) en macOS, `Control` en Windows/Linux. Se deriva de `CopyShortcut.Modifiers`.
+### 6.7 Modificador de "comando" (`MetaKeyModifier`)
 
-Las Views la usan para detectar atajos de accion sin hardcodear `KeyModifiers.Meta` (que en Windows seria la tecla
-Windows/Super fisica): por ejemplo `Cmd/Ctrl+Enter` y `Cmd/Ctrl+doble-click` para "ejecutar sin cerrar". El resto de
-atajos de accion se resuelven via `AppHandler.MatchesHotkey`, que internamente usa el mismo `MetaKeyModifier`.
+`AppHandler` expone la propiedad `MetaKeyModifier` con el `KeyModifiers` que representa la tecla de "comando" de cada
+plataforma: `Meta` (Cmd) en macOS, `Control` en Windows/Linux. Se deriva de `CopyShortcut.Modifiers`. Existe para que
+las Views no hardcodeen `KeyModifiers.Meta` (que en Windows seria la tecla Windows/Super fisica).
 
-> **Verificar en:** `AppHandler.MetaKeyModifier`, `AppHandler.MatchesHotkey`, `MainWindow.axaml.cs`
-(`OnKeyDown` case `Key.Return`, `OnResultsDoubleTapped`).
+El uso concreto en atajos de accion (`Cmd/Ctrl+Enter`, `Cmd/Ctrl+doble-click`, matching via `AppHandler.MatchesHotkey`)
+se documenta en `docs/ui-hotkeys.md`.
+
+> **Verificar en:** `AppHandler.MetaKeyModifier`, `AppHandler.MatchesHotkey`.
 
 > **Verificar en:** `Yottacast/Services/AppHandler.cs`, `Yottacast/Services/MacAppHandler.cs`,
 `Yottacast/Services/WindowsAppHandler.cs`, `Yottacast/Services/LinuxAppHandler.cs`, `Yottacast.Core/AppDefaults.cs` (
@@ -347,51 +234,26 @@ atajos de accion se resuelven via `AppHandler.MatchesHotkey`, que internamente u
 
 ---
 
-## 11. Hotkey global (SharpHook)
+## 7. Hotkey global (SharpHook): especifico de plataforma
 
-El hotkey global muestra/oculta la ventana principal. La combinacion se configura en `UserSettings.Hotkey` (valor por
-defecto: `"Alt+Space"`) y se parsea con `HotkeyConfig.Parse` al arrancar. Los cambios en la configuracion se reflejan
-inmediatamente, sin reiniciar.
+El hotkey global (mostrar/ocultar la ventana) se captura a nivel de sistema operativo con SharpHook. Aqui solo se
+documenta lo especifico de plataforma; el mapeo de teclas (`KeyNameMap`), el parseo de la combinacion y el matching
+exacto de modificadores se documentan en `docs/ui-hotkeys.md`.
 
-### 11.1 Parseo de la combinacion
+**Captura a nivel de OS**: SharpHook instala un hook global de teclado a nivel del sistema operativo (no a nivel de
+ventana Avalonia), por lo que el hotkey funciona aunque Yottacast no tenga el foco. La supresion del evento
+(`e.SuppressEvent = true`, evitar que la tecla llegue tambien a la app activa) solo tiene efecto si el handler corre en
+el hilo del hook, por eso se usa `SimpleGlobalHook` y no `TaskPoolGlobalHook` (ver `docs/ui-hotkeys.md`).
 
-`HotkeyConfig.Parse` acepta una cadena con modificadores y una tecla separados por `+`. Es case-insensitive.
+**Permiso de Accesibilidad (macOS)**: sin el permiso de Accesibilidad, el hook detecta la tecla pero no la suprime (la
+tecla llega tambien a la app activa). No produce error; se ignora silenciosamente. En Windows y Linux la supresion no
+requiere permiso adicional.
 
-| Alias aceptados                            | Modificador canonico |
-|--------------------------------------------|----------------------|
-| `alt`, `option`, `options`                 | Alt                  |
-| `ctrl`, `control`                          | Ctrl                 |
-| `shift`                                    | Shift                |
-| `meta`, `cmd`, `command`, `win`, `windows` | Meta                 |
-
-**Invariante**: `HotkeyConfig.ToString()` serializa siempre en orden canonico Ctrl, Alt, Shift, Meta, Key,
-independientemente del orden de parseo.
-
-### 11.2 Mapa de teclas (`KeyNameMap`)
-
-Cubre: teclas nombradas (`Space`, `Enter`, `Tab`, `Backspace`, `Delete`, `Escape`), A-Z, 0-9, F1-F12 y teclas de puntuacion (`,`, `.`, `-`, `=`, `;`, `/`, `[`, `]`, `\`, `'`, `` ` ``). Los nombres se
-mapean a los valores de `SharpHook.KeyCode` (quitando el prefijo `Vc`). Un nombre no reconocido produce
-`KeyCode.VcUndefined` y nunca activara el hotkey.
-
-### 11.3 Matching exacto de modificadores
-
-Los cuatro grupos de modificadores (Alt, Ctrl, Shift, Meta) deben coincidir exactamente con la configuracion. Si el
-hotkey es `Alt+Space` y el usuario pulsa `Alt+Cmd+Space`, no se activa.
-
-### 11.4 Gotchas
-
-- **`SimpleGlobalHook` requerido**: se usa `SimpleGlobalHook` (no `TaskPoolGlobalHook`) porque el handler debe correr en
-  el hilo del hook para que `e.SuppressEvent = true` tenga efecto. Con `TaskPoolGlobalHook`, el handler corre en otro
-  thread y la supresion no funciona.
-- **Permiso Accessibility en macOS**: sin este permiso, el hook detecta la tecla pero no la suprime (llega tambien a la
-  app activa). No produce error; se ignora silenciosamente.
-
-> **Verificar en:** `Yottacast/App.axaml.cs` (metodos `RegisterGlobalHotKey`, `BuildKeyNameMap`, `KeyNameToKeyCode`),
-`Yottacast.Core/Platform/HotkeyConfig.cs`.
+> **Verificar en:** `Yottacast/App.axaml.cs` (`RegisterGlobalHotKey`), `Yottacast.Core/Platform/HotkeyConfig.cs`.
 
 ---
 
-## 12. Expansion de rutas (`ExpandPath`)
+## 8. Expansion de rutas (`ExpandPath`)
 
 Metodo estatico en `PlatformProvider`. Convierte rutas con prefijo `$HOME` o `~` al directorio home del usuario.
 
@@ -405,12 +267,3 @@ Metodo estatico en `PlatformProvider`. Convierte rutas con prefijo `$HOME` o `~`
 por defecto usan `$HOME/...` y se expanden con este metodo.
 
 > **Verificar en:** `PlatformProvider.ExpandPath()`.
-
----
-
-## 13. Gotcha: raw string literals con variables PowerShell
-
-Al generar scripts PowerShell en C#, usar `$$"""..."""` en lugar de `$"""..."""` cuando el contenido tiene `$var`. Con
-`$$`, la interpolacion de C# pasa a `{{expr}}` y los `$` sueltos son literales para PowerShell.
-
-> **Verificar en:** `WindowsPlatformProvider.SearchFilesAsync()`.

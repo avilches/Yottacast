@@ -128,7 +128,7 @@ del hook (no se puede usar un pool de hilos asíncrono).
 
 | Tecla                         | Comportamiento                                                                                                                                                                      |
 |-------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Escape** (3 niveles)        | 1) Si hay búsqueda deferred en curso → cancela la búsqueda y limpia el texto. 2) Si hay texto → limpia el texto. 3) Si el texto está vacío → oculta la ventana.                     |
+| **Escape**                    | Tiene siempre una salida y resuelve por contexto: cierra primero lo que esté abierto encima (editor inline, diálogo de cambios sin guardar, menú de opciones), si no cancela la búsqueda deferred en curso, si no limpia el texto, y con el texto ya vacío oculta la ventana. El detalle por contexto está en `docs/ui-hotkeys.md`. |
 | **Enter**                     | Activa el resultado seleccionado, limpia el texto y oculta la ventana. Si el resultado tiene `PasteAfterActivate`, además restaura el foco a la app anterior y simula Cmd+V/Ctrl+V. |
 | **Flechas arriba/abajo**      | Navegación circular por la lista de resultados (del último salta al primero y viceversa).                                                                                           |
 | **Flechas izquierda/derecha** | Capturadas por el resultado seleccionado si lo soporta (ej: grid de emojis). Si no, el TextBox las consume normalmente.                                                             |

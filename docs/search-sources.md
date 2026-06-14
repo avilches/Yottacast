@@ -52,7 +52,7 @@ Yottacast permite lanzar busquedas web en multiples motores directamente desde e
 
 - Las queries que empiezan por `:` (modo emoji) nunca generan resultados web.
 - Cuando un motor con prefijo coincide, los motores `ShowAlways` se ocultan para evitar ruido. Solo se muestran los motores cuyo prefijo fue activado explicitamente.
-- Los resultados de busqueda web no estan sujetos al limite global de resultados (`SearchSourceLimit`). Todos los motores habilitados en modo `ShowAlways` aparecen siempre, independientemente de cuantos sean. Esto se logra marcando los items con `BypassLimit = true`.
+- Todos los motores habilitados en modo `ShowAlways` aparecen siempre, sin que ninguno quede recortado por ser demasiados. Esto se garantiza porque `WebSearchSource.Limit` vale `-1` (`AppDefaults.WebSearchSourceLimit`), es decir, la fuente hereda el limite global (`SearchSourceLimit`, 500) en vez de imponer un tope propio pequeño.
 - Si el usuario ha personalizado la URL de un motor, se usa esa URL. Si no, se usa la URL por defecto del motor. Esto permite actualizar URLs por defecto entre versiones sin sobreescribir personalizaciones.
 - Si falta el icono PNG embebido de un motor, el hueco del icono queda vacio sin error.
 - Motores anadidos en versiones futuras aparecen automaticamente para usuarios existentes (merge de settings al cargar).
@@ -185,7 +185,7 @@ Los resultados instant y deferred se combinan, se ordenan por score descendente 
 
 Cada fuente expone su propio `Limit`. `GlobalSearch` pasa `AppDefaults.SearchSourceLimit` (actualmente 500) como limite global; las fuentes con `Limit = -1` (calculadora, emoji, web, URL, ficheros) heredan ese valor, mientras que las que fijan un tope propio lo respetan (apps: `AppSearchLimit` = 10; rutas locales: 5; system settings: 5). El merge final en `RefreshResults` no aplica ningun tope adicional, asi que la lista visible puede contener mas de 10 elementos. Ver `docs/search-scoring.md` seccion 1.
 
-> **Verificar en:** `MainWindowViewModel.cs` (OnSearchTextChanged, SearchAsync, RefreshResults, OnNewAppInstalled, OnAppCacheChanged), `GlobalSearch.SearchInstant` (uso de `s.Limit`), `AppDefaults.cs` (SearchSourceLimit, SearchDebouncedMs).
+> **Verificar en:** `MainWindowViewModel.cs` (OnSearchTextChanged, SearchAsync, RefreshResults, OnAppCacheChanged), `GlobalSearch.SearchInstant` (uso de `s.Limit`), `AppDefaults.cs` (SearchSourceLimit, SearchDebouncedMs).
 
 ---
 
@@ -205,7 +205,7 @@ Los iconos de apps se gestionan en dos capas: carga (plataforma + cache) y rende
 - El sufijo `_v2` y el mtime en el nombre del fichero invalidan la entrada automaticamente cuando la app se actualiza.
 - `PreloadAsync` deduplica llamadas concurrentes para la misma ruta: ademas de comprobar `_memory`, marca la ruta en un set `_loading` con `TryAdd`, de modo que N llamadas simultaneas lanzan una sola tarea y una sola llamada costosa a la plataforma. La marca se libera en el `finally` de `Load`. `FileIconCache` usa el mismo patron por extension.
 - `Reload` invalida la entrada en memoria y relanza la carga. Se usa cuando una app conocida es re-detectada por el watcher (p. ej. el bundle seguia copiandose al primer evento).
-- Cuando un icono termina de cargarse con bytes no nulos, se dispara `IconLoaded`. La UI se suscribe y re-ejecuta `SearchInstant` en el hilo UI para refrescar los iconos visibles.
+- Cuando un icono termina de cargarse con bytes no nulos, se dispara `IconLoaded`. La UI se suscribe (via `MainWindowViewModel.OnAppCacheChanged`, conectado tanto a `IconLoaded` como a `AppsChanged`) y re-ejecuta `SearchInstant` en el hilo UI para refrescar los iconos visibles.
 - Al escribir un icono nuevo a disco, `LoadFromPlatform` borra los ficheros huerfanos del mismo app (mismo `sha1(ruta)`, distinto mtime o version de cache) antes de escribir el actual. Asi la cache de disco no crece indefinidamente cuando una app se actualiza o cambia la version de cache.
 
 **Invariante:** para una app dada, el directorio de disco contiene como mucho un PNG (el de su mtime y version actuales); los de mtimes/versiones anteriores se eliminan al regenerar el icono.
@@ -267,7 +267,7 @@ Los items dinámicos se cachean 10 s (ver `AppDefaults.SystemSettingsDynamicCach
 
 Al actualizar macOS, ejecutar `tools/verify-settings-anchors.sh` para verificar visualmente que cada anchor navega a la sección correcta. El script abre cada URL con 1 s de delay entre ellas.
 
-> **Verificar en:** `Search/SystemSettings/SystemSettingsSearch.cs` (Start, Search, GetDynamicPanels, Load, TryReadPlist, BuildResult), `Search/SystemSettings/BuiltinPanels.cs`, `Platform/PlatformProvider.cs` (GetCurrentWifiNetworkName, GetActiveVpnNames), `Platform/MacOsPlatformProvider.cs` (GetCurrentWifiNetworkName, GetActiveVpnNames), `AppDefaults.cs` (SystemSettingsDynamicCacheTtl), `Yottacast.Core.Tests/Search/SystemSettingsSearchTests.cs`.
+> **Verificar en:** `Search/SystemSettings/SystemSettingsSearch.cs` (Start, Search, RefreshDynamicCache, Load, TryReadPlist, BuildResult), `Search/SystemSettings/BuiltinPanels.cs`, `Platform/PlatformProvider.cs` (GetCurrentWifiNetworkName, GetActiveVpnNames), `Platform/MacOsPlatformProvider.cs` (GetCurrentWifiNetworkName, GetActiveVpnNames), `AppDefaults.cs` (SystemSettingsDynamicCacheTtl), `Yottacast.Core.Tests/Search/SystemSettingsSearchTests.cs`.
 
 ---
 
@@ -277,21 +277,23 @@ Detecta fechas y rangos de fechas en lenguaje natural dentro de la query y prese
 
 Para fechas simples devuelve 2 celdas: ISO (`yyyy-MM-dd`) y formato largo localizado. Para rangos devuelve 4 celdas: ISO inicio, ISO fin, intervalo ISO 8601 (`inicio/fin`) y el texto original reconocido. El subtítulo muestra la distancia al día actual ("hoy", "mañana", "dentro de N días") o la duración del rango ("N días"). Las teclas ← → navegan entre celdas de forma circular; Enter o Cmd+C copian la celda seleccionada.
 
-El reconocedor admite 11 idiomas configurables (`DateSearchLanguages`). Por defecto están activos español (`es-es`) e inglés (`en-us`). Si ningún idioma detecta una fecha en la query, la fuente devuelve `[]`.
+El reconocedor detecta contra **todos** los idiomas disponibles (`AppDefaults.DateSearchAvailableLanguages`), sin filtrar por idioma del usuario: el primer idioma que reconozca una fecha gana. El idioma de salida y el formato de las celdas se controlan aparte (`AppLanguage`, `DateIsoFormat`, `DateLongFormat`). El unico setting de la fuente es `DateSearchEnabled`.
+
+`DateSearch` implementa `IInstantSearchSource`, pero la deteccion no es sincrona pura: `Search` consulta una cache por query y, si no hay resultado cacheado para la query actual, lanza el reconocimiento en background (`Task.Run`) con cancelacion por query, devolviendo `[]` de inmediato. Al terminar el reconocimiento dispara `ResultChanged`; el ViewModel re-lanza la busqueda para recoger el resultado. El reconocimiento corre en background porque `Microsoft.Recognizers.Text` compila las gramaticas por idioma de forma perezosa en el primer uso (arranque en frio de ~1 s sobre los 11 idiomas).
 
 ### Invariantes
 
 - Si `DateSearchEnabled = false` → devuelve `[]` siempre.
-- Si `DateSearchLanguages` está vacío → devuelve `[]`.
+- Una query de exactamente 4 digitos (p. ej. un ano suelto "2026") no genera resultado.
 - Produce como máximo un resultado por búsqueda.
 - Los errores del reconocedor externo se capturan y loguean sin propagar la excepción.
 
-> **Verificar en:** `Search/Date/DateSearch.cs` (Search, BuildDateViewModel, BuildDateRangeViewModel), `ViewModels/DateSearchResultViewModel.cs` (Cells, SelectedCell, MoveCellLeft, MoveCellRight), `Services/UserSettings.cs` (DateSearchEnabled, DateSearchLanguages), `AppDefaults.cs` (DateSearchScore, DateSearchDefaultLanguages, DateSearchAvailableLanguages), `Yottacast.Core.Tests/Search/Date/DateSearchTests.cs`.
+> **Verificar en:** `Search/Date/DateSearch.cs` (Search, RecognizeInBackground, BuildDateViewModel, BuildDateRangeViewModel, ResultChanged), `ViewModels/DateSearchResultViewModel.cs` (Cells, SelectedCell, MoveCellLeft, MoveCellRight), `Services/UserSettings.cs` (DateSearchEnabled), `AppDefaults.cs` (DateSearchScore, DateSearchAvailableLanguages, DateSearchMinCoverage), `Yottacast.Core.Tests/Search/Date/DateSearchTests.cs`.
 
 ---
 
-## 9. RandomSearch (solo testing)
+## 9. RandomSearch (debug / stress-test)
 
-`RandomSearch` es una fuente deferred de prueba. Esta registrada como singleton en el contenedor DI pero la linea que la conecta como `IDeferredSearchSource` esta comentada en `App.axaml.cs`. Emite hasta 5 resultados con scores aleatorios (0.5 a 1.0) con delays progresivos (200 ms + 50 ms por resultado). Cada snapshot es acumulativo.
+`RandomSearch` es una fuente deferred de diagnostico, registrada y activa como `IDeferredSearchSource` en el contenedor DI. Solo produce resultados cuando la query empieza por el prefijo `/random`; con cualquier otra query no emite nada. Mientras esta activa, durante 10 segundos emite un snapshot acumulativo con resultados de score aleatorio, util para stress-testear el pipeline de streaming y la insercion ordenada de snapshots progresivos en la UI.
 
-> **Verificar en:** `RandomSearch.cs`, `App.axaml.cs` (linea comentada de registro DI).
+> **Verificar en:** `RandomSearch.cs` (SearchAsync, guard `/random`), `App.axaml.cs` (registro DI de `IDeferredSearchSource`).

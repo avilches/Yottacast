@@ -6,13 +6,13 @@ La aplicacion define un unico atajo de teclado global (por defecto `ALT+Space`) 
 
 ### Modo Sticky (default, `StickyWindow = true`)
 
-| Estado de la ventana          | Accion                                           |
-|-------------------------------|--------------------------------------------------|
-| Visible **y** activa (en foco) | Se oculta y devuelve el foco a la app anterior   |
-| Visible pero sin foco         | Se trae al frente y se activa                    |
-| Oculta                        | Se muestra y se activa                           |
+| Estado de la ventana          | Accion                                                              |
+|-------------------------------|--------------------------------------------------------------------|
+| Visible **y** activa (en foco) | Se oculta y devuelve el foco a la app anterior (`OnHide()`)         |
+| Visible pero sin foco         | Se oculta sin restaurar foco (no se trajo al frente)               |
+| Oculta                        | Se muestra y se activa                                              |
 
-En modo sticky la ventana permanece visible cuando pierde el foco: el usuario puede hacer clic en otra app sin que el launcher desaparezca.
+En modo sticky la ventana permanece visible cuando pierde el foco (no se auto-oculta al desactivarse). El hotkey global, sin embargo, siempre oculta la ventana si esta visible, este o no enfocada: cuando esta visible sin foco se hace `Hide()` directo sin `OnHide()` (no habia foco que restaurar); cuando esta visible y enfocada se hace `Hide()` mas `OnHide()` para devolver el foco a la app anterior.
 
 ### Modo no-sticky / Alfred-style (`StickyWindow = false`)
 
@@ -152,6 +152,8 @@ Pulsar `Cmd+,` mientras la ventana principal esta visible abre la ventana de pre
 
 `Cmd+C` (macOS) / `Ctrl+C` (Windows/Linux) copia el valor del resultado seleccionado **sin cerrar la ventana**. Aparece un mensaje breve en el área de `SearchHint` durante 1.5 s.
 
+No existe un handler dedicado al copy. La accion fluye por el loop generico de action-hotkeys al final de `OnTunnelKeyDown`: cada `ResultAction` con `Hotkey` se compara contra el evento y la accion de copia matchea `ActionHotkey.MetaC`. `AppHandler.CopyShortcut` no es un handler sino una propiedad `(KeyModifiers, Key)` (Cmd+C en macOS, Ctrl+C en el resto) de la que se deriva `MetaKeyModifier`. El copy se bloquea si hay texto seleccionado en el SearchBox (para no robar el Cmd+C de copiar texto del campo).
+
 | Tipo | Qué copia | Mensaje |
 |---|---|---|
 | Apps | Path del bundle | "Path copied!" |
@@ -159,13 +161,13 @@ Pulsar `Cmd+,` mientras la ventana principal esta visible abre la ventana de pre
 | Calculadora | Resultado numérico | "Result copied!" |
 | Conversor | Celda seleccionada | "Result copied!" |
 | Diccionario | Primera definición | "Definition copied!" |
-| Emoji | El emoji (sin paste) | "Emoji copied!" |
+| Emoji | El emoji (sin paste) | "Emoji {char} copied!" (ej. "Emoji 😀 copied!") |
 
-> **Verificar en:** `MainWindow.axaml.cs` (`OnTunnelKeyDown`, handler `CopyShortcut`), `MainWindowViewModel.cs` (`ShowCopiedMessage`).
+> **Verificar en:** `MainWindow.axaml.cs` (`OnTunnelKeyDown`, loop generico de action-hotkeys), `AppHandler.cs` (`CopyShortcut`, `MetaKeyModifier`), `ActionHotkey.cs` (`MetaC`), `MainWindowViewModel.cs` (`ShowCopiedMessage`).
 
 ---
 
-## 10. Control del SearchBox segun visibilidad
+## 9. Control del SearchBox segun visibilidad
 
 Cuando la ventana principal se oculta, el SearchBox se desactiva (`IsEnabled = false`). Cuando se muestra de nuevo, se reactiva y recibe el foco automaticamente. Adicionalmente, al ocultar la ventana se desactiva el flag `IsAltPressed` del ViewModel para evitar estados residuales.
 
@@ -173,7 +175,7 @@ Cuando la ventana principal se oculta, el SearchBox se desactiva (`IsEnabled = f
 
 ---
 
-## 11. Ocultacion automatica del cursor del raton
+## 10. Ocultacion automatica del cursor del raton
 
 Mientras el usuario escribe, el cursor del raton se oculta automaticamente para no distraer. Se restaura cuando el usuario mueve el raton a una posicion diferente de la que tenia al ocultarse. El sistema rastrea la posicion en coordenadas de pantalla para distinguir movimientos reales de movimientos sinteticos causados por cambios de tamano de la ventana (cuando aparecen o desaparecen resultados).
 
@@ -182,11 +184,11 @@ Invariantes:
 - Solo las teclas no-modificadoras ocultan el cursor.
 - Si el cursor esta oculto, los eventos de movimiento del raton sobre la lista de resultados no seleccionan items (se ignoran hasta que el cursor se restaure).
 
-> **Verificar en:** `MainWindow.axaml.cs` (`HideCursor`, `ShowCursor`, `TrackOrShowCursor`, `OnResultsPointerMoved`), `AppHandler.cs` (`HideCursor`, `ShowCursor`), `MacAppHandler.cs` (usa `NSCursor.setHiddenUntilMouseMoves`)
+> **Verificar en:** `MainWindow.axaml.cs` (`HideCursor`, `ShowCursor`, `TrackOrShowCursor`, `OnTunnelPointerMoved`, `OnResultsPointerMovedForDrag`, `OnOptionsMenuPointerMoved`), `AppHandler.cs` (`HideCursor`, `ShowCursor`), `MacAppHandler.cs` (usa `NSCursor.setHiddenUntilMouseMoves`)
 
 ---
 
-## 12. Captura de hotkey en preferencias
+## 11. Captura de hotkey en preferencias
 
 El campo hotkey muestra siempre 4 badges de modificadores (⌃/Ctrl, ⌥/Alt, ⇧, ⌘/Meta con simbolos especificos por OS) y el nombre de la tecla. Los badges activos (el modificador forma parte del hotkey guardado) se muestran con opacidad plena; los inactivos, atenuados.
 
@@ -206,7 +208,7 @@ Si el usuario pulsa el mismo hotkey que ya tenia, el hook global detecta que Set
 
 **Auto-reparacion al inicio**: si el hotkey guardado en JSON coincide con una combinacion prohibida (p. ej. el usuario edito el fichero a mano), se reemplaza por `HotkeyConfig.Default` antes de registrar el hook global.
 
-> **Verificar en:** `SettingsWindow.axaml.cs` (`OnKeyDown`, `OnKeyUp`, `OnHotkeyAreaPointerPressed`, `OnPointerPressed`), `SettingsWindowViewModel.cs` (`StartHotkeyCapture`, `CancelHotkeyCapture`, `UpdateCapturingModifiers`, `ProcessKeyCapture`, `BadgeXxxActive`, `HotkeyKeyText`), `AppHandler.cs` (`ForbiddenHotkeys`, `IsForbidden`, `XxxSymbol`), `App.axaml.cs` (auto-repair antes de `RegisterGlobalHotKey`)
+> **Verificar en:** `SettingsWindow.axaml.cs` (`OnKeyDown`, `OnKeyUp`, `OnPointerPressed`), `Yottacast/Views/Settings/SettingsGeneralView.axaml.cs` (`OnHotkeyAreaPointerPressed`), `SettingsWindowViewModel.cs` (`StartHotkeyCapture`, `CancelHotkeyCapture`, `UpdateCapturingModifiers`, `ProcessKeyCapture`, `BadgeXxxActive`, `HotkeyKeyText`), `AppHandler.cs` (`ForbiddenHotkeys`, `IsForbidden`, `XxxSymbol`), `App.axaml.cs` (auto-repair antes de `RegisterGlobalHotKey`)
 
 ---
 

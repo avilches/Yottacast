@@ -115,7 +115,9 @@ Cada entrada del historial expone dos acciones:
 
 `ClipboardHistorySearch` implementa `ISearchModeSource` con `IsActiveIn(mode)`:
 
-| `ClipboardSearchVisibility` | `SearchMode.All` | `SearchMode.Clipboard` |
+La propiedad `ClipboardSearchVisibility` (en `UserSettings`) es de tipo `SearchSourceVisibility`, cuyos valores son `Always` / `ModeOnly` / `Disabled`:
+
+| `ClipboardSearchVisibility` (tipo `SearchSourceVisibility`) | `SearchMode.All` | `SearchMode.Clipboard` |
 |---|---|---|
 | `Always` | activo | inactivo |
 | `ModeOnly` | inactivo | activo |
@@ -135,7 +137,7 @@ La sección Clipboard History en Settings expone:
 
 | Propiedad | Valor por defecto | Descripción |
 |---|---|---|
-| `ClipboardSearchVisibility` | `Disabled` | Visibilidad: `Disabled` (Off), `Always` (modo All), `ModeOnly` (solo modo Clipboard) |
+| `ClipboardSearchVisibility` (tipo `SearchSourceVisibility`) | `Disabled` | Visibilidad: `Disabled` (Off), `Always` (modo All), `ModeOnly` (solo modo Clipboard) |
 | `ClipboardHotkey` | `null` | Hotkey dedicada para activar el modo Clipboard; `null` = sin hotkey dedicada |
 | `ClipboardHistoryMaxEntries` | `200` | Número máximo de entradas a conservar; se aplica al store en caliente |
 | `ClipboardHistoryMaxDays` | `30` | Días máximos que se conserva una entrada; se aplica al store en caliente |
@@ -146,4 +148,4 @@ El monitor de portapapeles solo captura cuando `ClipboardSearchVisibility != Dis
 
 **Nota:** cambiar la hotkey dedicada tiene efecto inmediato - el handler lee `settings.ParsedClipboardHotkey` en cada evento del hook global, sin necesidad de reiniciar.
 
-> **Verificar en:** `UserSettings` - `Yottacast.Core/Services/UserSettings.cs`. `SettingsWindowViewModel` (propiedades `ClipboardSearchVisibility`, `ClipboardHistoryMaxEntries`, `ClipboardHistoryMaxDays`, estado de captura de hotkey) - `Yottacast/ViewModels/SettingsWindowViewModel.cs`. Panel Clipboard History - `Yottacast/Views/SettingsWindow.axaml`.
+> **Verificar en:** `UserSettings` - `Yottacast.Core/Services/UserSettings.cs`. `SearchSourceVisibility` (tipo de `ClipboardSearchVisibility`) - `Yottacast.Core/Search/SearchSourceVisibility.cs`. `SettingsWindowViewModel` (propiedades `ClipboardSearchVisibility`, `ClipboardHistoryMaxEntries`, `ClipboardHistoryMaxDays`, estado de captura de hotkey) - `Yottacast/ViewModels/SettingsWindowViewModel.cs`. Panel Clipboard History - `Yottacast/Views/Settings/SettingsClipboardView.axaml`.

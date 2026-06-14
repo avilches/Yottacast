@@ -95,4 +95,4 @@ La ventana de Settings expone una sección History con los siguientes controles:
 - **Clear history** - elimina todas las entradas del historial y persiste el fichero vacío.
 - **History log** - visor en tiempo real de las entradas guardadas, ordenadas de más reciente a más antigua, con formato `[yyyy-MM-dd HH:mm:ss] "query" → acción`. Se actualiza automáticamente al añadir o borrar entradas mediante el evento `HistoryService.Changed`.
 
-> **Verificar en:** `SettingsWindowViewModel` (propiedades `EnableHistory`, `HistoryMaxItems`, `HistoryDisplayText`, `ClearHistoryCommand`, `OnHistoryChanged`, `BuildHistoryDisplayText`) - `Yottacast/ViewModels/SettingsWindowViewModel.cs`. Panel History - `Yottacast/Views/SettingsWindow.axaml`.
+> **Verificar en:** `SettingsWindowViewModel` (propiedades `EnableHistory`, `HistoryMaxItems`, `HistoryDisplayText`, `ClearHistoryCommand`, `OnHistoryChanged`, `BuildHistoryDisplayText`) - `Yottacast/ViewModels/SettingsWindowViewModel.cs`. Panel History - `Yottacast/Views/Settings/SettingsHistoryView.axaml`.

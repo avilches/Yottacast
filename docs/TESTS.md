@@ -154,10 +154,12 @@ cd Yottacast.Core.Tests && dotnet test   # lógica del Core (search sources, ser
 cd Yottacast.Ipc.Tests   && dotnet test   # mappers IPC (ResultMapper, SettingsMapper)
 ```
 
-`Yottacast.Core.Tests` agrupa sus tests por area en subcarpetas (`Search/`, `Services/`, `Platform/`, `ViewModels/`); cada `CLAUDE.md` de paquete lista los ficheros relevantes de su area. `Yottacast.Ipc.Tests` solo contiene `Mapping/ResultMapperTests.cs` y `Mapping/SettingsMapperTests.cs`.
+`Yottacast.Core.Tests` agrupa sus tests por area en subcarpetas (`Search/`, `Services/`, `Platform/`, `ViewModels/`); cada `CLAUDE.md` de paquete lista los ficheros relevantes de su area. `Yottacast.Ipc.Tests` contiene `Mapping/ResultMapperTests.cs`, `Mapping/SettingsMapperTests.cs` y `Services/SearchGrpcServiceTests.cs`.
 
-### Riesgos y gaps conocidos de la suite
+### Aislamiento de settings
 
-> **Bug conocido** - varios tests llaman `UserSettings.Load(platform)` SIN pasar `settingsPath`, por lo que cargan y reescriben el `settings.json` REAL del usuario (`AppPaths.SettingsFile`), no un fichero temporal. Esto puede mutar la configuracion local al ejecutar los tests. Los tests bien aislados pasan un path temporal (ver `UserSettingsTests`, `HistoryServiceTests`, `SettingsMapperTests`). Verificar en `Yottacast.Core.Tests/Search/*` (ej. `EmojiSearchTests`, `UrlSearchTests`, `SystemSettingsSearchTests`, `UserDocumentSearchTests`) frente a `Yottacast.Core/Services/UserSettings.cs` -> `Load` (default `settingsPath = AppPaths.SettingsFile`).
+Los tests que necesitan un `UserSettings` cargan una instancia aislada con `TestSettings.LoadIsolated()` (en `Yottacast.Core.Tests/TestHelpers.cs`), que pasa un `settingsPath` temporal a `UserSettings.Load`. Asi los tests no leen ni reescriben el `settings.json` real del usuario (`AppPaths.SettingsFile`). Verificar en `Yottacast.Core.Tests/TestHelpers.cs` -> `TestSettings.LoadIsolated` frente a `Yottacast.Core/Services/UserSettings.cs` -> `Load`.
 
-> **Estado: incompleto** - `SettingsMapperTests` cubre el round-trip del enum `FileSearchVisibility` (incluido el caso `ModeOnly`) y verifica por reflexion que el campo huerfano `clipboard_history_enabled` ya no existe en el proto. Pendiente: no ejercita las listas (`WebSearchEngines`, `SearchFolders`, `AppDirectories`, `DictionaryLanguages`). Verificar en `Yottacast.Ipc.Tests/Mapping/SettingsMapperTests.cs`.
+### Cobertura de SettingsMapperTests
+
+`SettingsMapperTests` cubre el round-trip del enum `FileSearchVisibility` (incluido el caso `ModeOnly`), verifica por reflexion que el campo huerfano `clipboard_history_enabled` ya no existe en el proto, y ejercita las listas (`WebSearchEngines`, `SearchFolders`, `AppDirectories`, `DictionaryLanguages`) via `MakeFullySetSettings()`. Verificar en `Yottacast.Ipc.Tests/Mapping/SettingsMapperTests.cs`.

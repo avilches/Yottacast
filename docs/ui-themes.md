@@ -1,5 +1,7 @@
 # UI: Sistema de temas
 
+Para la referencia completa de tokens (cada propiedad del JSON y el recurso Avalonia al que mapea) ver `docs/ui-themes-tokens.md`.
+
 ## Objetivo
 
 Yottacast permite personalizar la apariencia visual de la ventana principal mediante temas definidos en archivos JSON. El sistema garantiza que la aplicacion siempre arranque con un aspecto coherente, incluso si el fichero de tema esta corrupto, ausente o mal configurado.
@@ -65,263 +67,19 @@ El usuario puede cambiar el tema desde la ventana de Settings sin reiniciar la a
 
 ## Formato de un fichero de tema
 
-Cada tema es un fichero `.json` en la carpeta `Themes/` del directorio de la aplicacion. La estructura agrupa propiedades por componente de UI: cada seccion contiene todos los atributos visuales (color, size, fontFamily, cornerRadius, opacity) de sus elementos.
+Cada tema es un fichero `.json` en la carpeta `Themes/` del directorio de la aplicacion. La estructura agrupa propiedades por componente de UI: cada seccion contiene todos los atributos visuales de sus elementos. La referencia completa de cada seccion y cada token (propiedad JSON a recurso Avalonia) vive en `docs/ui-themes-tokens.md`.
 
-| Seccion | Contenido |
-|---|---|
-| `id` | Identificador unico del tema (obligatorio; usado para deduplicacion y resolucion de ruta) |
-| `name` | Nombre para mostrar en el picker |
-| `variant` | `"light"` o `"dark"` (controla el `ThemeVariant` de Avalonia) |
-| `window` | Fondo, ancho, cornerRadius y fontFamily de la ventana |
-| `search` | Texto, placeholder, caret, seleccion, hints (error e info) |
-| `divider` / `spinner` | Color del separador y del spinner de carga |
-| `results` | Fondo del area, barra de seleccion lateral, titulo, subtitulo, categoria, icono, shortcut, seleccion, hover |
-| `calculator` | Expresion, resultado, subtitulo, separador, celda |
-| `converter` | Valor, subtitulo, flecha, hint, celda |
-| `emoji` | Columnas, filas visibles, celda, caracter, nombre, keywords |
-| `noResults` | Titulo y subtitulo cuando no hay resultados |
-| `footer` | Fondo, borde superior y texto del pie |
-| `optionsMenu` | Fondo, borde, cabecera y opciones del menu contextual de resultados |
-| `updateBanner` | Fondo y texto del banner de actualizacion |
-| `preview` | Anchura del panel lateral de preview/editor |
-| `editor` | Cabecera, cuerpo y pie del panel de edicion de ficheros |
-
-Si el valor de `variant` no es `"light"`, se asume `"dark"`.
-
-**Secciones heterogeneas entre temas:** no todos los ficheros contienen todas las secciones. `editor` solo existe en `dark-default.json`; el resto de temas no lo definen y `ThemeService` cae a los valores hardcodeados de `ApplyBuiltinDefault()` para los tokens `Theme.Editor.*`. `optionsMenu`, `preview` y las demas secciones estan presentes en los cinco temas built-in. Cualquier seccion ausente se omite sin error y conserva el valor previo (ver "Comportamiento silencioso ante valores invalidos").
-
-No existe ninguna seccion `escBadge` ni tokens `Theme.Esc.*`: el indicador de actividad durante la busqueda diferida es un spinner controlado por la seccion `spinner`, no un badge tematizable.
+**Secciones heterogeneas entre temas:** no todos los ficheros contienen todas las secciones. `editor` solo existe en `dark-default.json`; el resto de temas no lo definen y `ThemeService` cae a los valores hardcodeados de `ApplyBuiltinDefault()` para los tokens `Theme.Editor.*`. Cualquier seccion ausente se omite sin error y conserva el valor previo (ver "Comportamiento silencioso ante valores invalidos").
 
 > **Verificar en:**
 > - `ThemeService.Apply()` -- lectura del JSON y asignacion de tokens.
-> - Cualquier fichero en `Yottacast/Themes/*.json` como referencia de estructura.
-
----
-
-## Tokens de tema disponibles
-
-### Window
-
-| JSON path | Recurso Avalonia |
-|---|---|
-| `window.background` | `Theme.Window.Background` |
-| `window.width` | `Theme.Window.Width` |
-| `window.cornerRadius` | `Theme.Window.CornerRadius` |
-| `window.fontFamily` | `Theme.Window.FontFamily` |
-
-### Search
-
-| JSON path | Recurso Avalonia |
-|---|---|
-| `search.background` | `Theme.Search.Background` |
-| `search.text.color` | `Theme.Search.Color` |
-| `search.text.size` | `Theme.Search.Size` |
-| `search.text.fontFamily` | `Theme.Search.FontFamily` |
-| `search.placeholder.color` | `Theme.Search.Placeholder` |
-| `search.caret.color` | `Theme.Search.Caret` |
-| `search.selection.color` | `Theme.Search.Selection` |
-| `search.hint.error.color` | `Theme.Search.Hint.Error` |
-| `search.hint.info.color` | `Theme.Search.Hint.Info` |
-
-### Divider / Spinner
-
-| JSON path | Recurso Avalonia |
-|---|---|
-| `divider.color` | `Theme.Divider.Color` |
-| `spinner.color` | `Theme.Spinner.Color` |
-
-### Results
-
-| JSON path | Recurso Avalonia |
-|---|---|
-| `results.background` | `Theme.Results.Background` |
-| `results.padding` | `Theme.Results.Padding` |
-| `results.selectionBar.color` | `Theme.Results.SelectionBar.Color` |
-| `results.selectionBar.width` | `Theme.Results.SelectionBar.Thickness` |
-| `results.cornerRadius` | `Theme.Results.CornerRadius` |
-| `results.title.color` | `Theme.Results.Title.Color` |
-| `results.title.size` | `Theme.Results.Title.Size` |
-| `results.subtitle.color` | `Theme.Results.Subtitle.Color` |
-| `results.subtitle.size` | `Theme.Results.Subtitle.Size` |
-| `results.category.color` | `Theme.Results.Category.Color` |
-| `results.category.size` | `Theme.Results.Category.Size` |
-| `results.icon.cornerRadius` | `Theme.Results.Icon.CornerRadius` |
-| `results.shortcut.color` | `Theme.Results.Shortcut.Color` |
-| `results.shortcut.background` | `Theme.Results.Shortcut.Background` |
-| `results.shortcut.size` | `Theme.Results.Shortcut.Size` |
-| `results.shortcut.cornerRadius` | `Theme.Results.Shortcut.CornerRadius` |
-| `results.selection.background` | `Theme.Results.Selection.Background` |
-| `results.selection.color` | `Theme.Results.Selection.Color` |
-| `results.matchHighlight.style` | `Theme.Results.MatchHighlight.Style` |
-| `results.matchHighlight.color` | `Theme.Results.MatchHighlight.Color` |
-| `results.matchHighlight.backgroundOpacity` | `Theme.Results.MatchHighlight.BackgroundOpacity` |
-
-#### Detalle: Match Highlight
-
-El token `matchHighlight` controla como se resaltan los caracteres de titulo y subtitulo que coinciden con la query del usuario. Los autores de temas pueden elegir entre tres estilos visuales:
-
-| Estilo | Descripcion |
-|---|---|
-| `foreground` | Los caracteres coincidentes adoptan un color distinto y peso medio. El texto no-coincidente mantiene su estilo. Utiles para queries con pocos caracteres donde el cambio de color es sutil |
-| `background` | Los caracteres coincidentes reciben un relleno semi-transparente de fondo usando el color del tema y la opacidad especificada. El color del texto permanece igual. Proporciona un contraste visual mas fuerte |
-| `underline` | Los caracteres coincidentes se muestran en negrita con un subrayado en el color accent del tema. Util para temas donde el cambio de color podria resultar en contraste insuficiente |
-
-El campo `color` se interpreta segun el `style`:
-- En `foreground`: es el color del texto de los caracteres coincidentes
-- En `background`: es el color del relleno de fondo (aplicado con la opacidad especificada)
-- En `underline`: se ignora (siempre usa el accent color del tema)
-
-El campo `backgroundOpacity` (0.0–1.0) solo se usa en estilo `background` y controla la transparencia del relleno. Valores tipicos: 0.15 para un highlight sutil, 0.4 para un highlight fuerte.
-
-**Nota:** El highlight es parte del contrato de tema, permitiendo que autores de temas personalizados creen estilos visuales coherentes con su diseno.
-
-#### Tags (pills inline en el título)
-
-| JSON path | Recurso Avalonia |
-|---|---|
-| `results.tags.cornerRadius` | `Theme.Results.Tag.CornerRadius` |
-| `results.tags.running.color` | `Theme.Results.Tag.Running.Color` |
-| `results.tags.running.background` | `Theme.Results.Tag.Running.Background` |
-| `results.tags.running.borderColor` | `Theme.Results.Tag.Running.BorderColor` |
-| `results.tags.info.color` | `Theme.Results.Tag.Info.Color` |
-| `results.tags.info.background` | `Theme.Results.Tag.Info.Background` |
-| `results.tags.info.borderColor` | `Theme.Results.Tag.Info.BorderColor` |
-
-El estilo filled (fondo tintado, borde transparente) u outline (fondo transparente, borde con color) se controla combinando `background` y `borderColor`: filled pone `background` con alpha y `borderColor: "Transparent"`; outline hace lo contrario. `dark-default` usa filled; `dark-macos` usa outline.
-
-### Calculator
-
-| JSON path | Recurso Avalonia |
-|---|---|
-| `calculator.fontFamily` | `Theme.Calc.FontFamily` |
-| `calculator.expression.color` | `Theme.Calc.Expression.Color` |
-| `calculator.expression.size` | `Theme.Calc.Expression.Size` |
-| `calculator.expression.fontWeight` | `Theme.Calc.Expression.FontWeight` |
-| `calculator.result.color` | `Theme.Calc.Result.Color` |
-| `calculator.result.size` | `Theme.Calc.Result.Size` |
-| `calculator.result.fontWeight` | `Theme.Calc.Result.FontWeight` |
-| `calculator.subtitle.color` | `Theme.Calc.Subtitle.Color` |
-| `calculator.subtitle.size` | `Theme.Calc.Subtitle.Size` |
-| `calculator.subtitle.opacity` | `Theme.Calc.Subtitle.Opacity` |
-| `calculator.separator.color` | `Theme.Calc.Separator.Color` |
-| `calculator.cell.cornerRadius` | `Theme.Calc.Cell.CornerRadius` |
-
-### Converter
-
-| JSON path | Recurso Avalonia |
-|---|---|
-| `converter.fontFamily` | `Theme.Conv.FontFamily` |
-| `converter.value.color` | `Theme.Conv.Value.Color` |
-| `converter.value.size` | `Theme.Conv.Value.Size` |
-| `converter.subtitle.color` | `Theme.Conv.Subtitle.Color` |
-| `converter.subtitle.size` | `Theme.Conv.Subtitle.Size` |
-| `converter.subtitle.opacity` | `Theme.Conv.Subtitle.Opacity` |
-| `converter.arrow.color` | `Theme.Conv.Arrow.Color` |
-| `converter.cell.cornerRadius` | `Theme.Conv.Cell.CornerRadius` |
-
-### Emoji
-
-| JSON path | Recurso Avalonia |
-|---|---|
-| `emoji.columns` | `Theme.Emoji.Columns` |
-| `emoji.cell.size` | `Theme.Emoji.Cell.Size` |
-| `emoji.cell.cornerRadius` | `Theme.Emoji.Cell.CornerRadius` |
-| `emoji.char.size` | `Theme.Emoji.Char.Size` |
-| `emoji.char.fontFamily` | `Theme.Emoji.Char.FontFamily` |
-| `emoji.keywords.color` | `Theme.Emoji.Keywords.Color` |
-| `emoji.keywords.size` | `Theme.Emoji.Keywords.Size` |
-| `emoji.keywords.opacity` | `Theme.Emoji.Keywords.Opacity` |
-| `emoji.sectionHeader.color` | `Theme.Emoji.SectionHeader.Color` |
-| `emoji.sectionHeader.size` | `Theme.Emoji.SectionHeader.Size` |
-| `emoji.sectionHeader.opacity` | `Theme.Emoji.SectionHeader.Opacity` |
-| `emoji.favorite.color` | `Theme.Emoji.Favorite.Color` |
-| `emoji.favorite.size` | `Theme.Emoji.Favorite.Size` |
-| `emoji.favorite.opacity` | `Theme.Emoji.Favorite.Opacity` |
-| `emoji.usageCount.color` | `Theme.Emoji.UsageCount.Color` |
-| `emoji.usageCount.size` | `Theme.Emoji.UsageCount.Size` |
-| `emoji.usageCount.opacity` | `Theme.Emoji.UsageCount.Opacity` |
-
-### No Results
-
-| JSON path | Recurso Avalonia |
-|---|---|
-| `noResults.title.color` | `Theme.NoResults.Title.Color` |
-| `noResults.title.size` | `Theme.NoResults.Title.Size` |
-| `noResults.subtitle.color` | `Theme.NoResults.Subtitle.Color` |
-| `noResults.subtitle.size` | `Theme.NoResults.Subtitle.Size` |
-
-### Footer
-
-| JSON path | Recurso Avalonia |
-|---|---|
-| `footer.background` | `Theme.Footer.Background` |
-| `footer.border` | `Theme.Footer.Border` |
-| `footer.text.color` | `Theme.Footer.Color` |
-| `footer.text.size` | `Theme.Footer.Size` |
-
-### Options Menu
-
-| JSON path | Recurso Avalonia |
-|---|---|
-| `optionsMenu.background` | `Theme.Menu.Background` |
-| `optionsMenu.border.color` | `Theme.Menu.Border.Color` |
-| `optionsMenu.border.radius` | `Theme.Menu.Border.Radius` |
-| `optionsMenu.header.color` | `Theme.Menu.Header.Color` |
-| `optionsMenu.header.size` | `Theme.Menu.Header.Size` |
-| `optionsMenu.header.background` | `Theme.Menu.Header.Background` |
-| `optionsMenu.header.padding` | `Theme.Menu.Header.Padding` |
-| `optionsMenu.header.margin` | `Theme.Menu.Header.Margin` |
-| `optionsMenu.option.color` | `Theme.Menu.Option.Color` |
-| `optionsMenu.option.size` | `Theme.Menu.Option.Size` |
-| `optionsMenu.option.padding` | `Theme.Menu.Option.Padding` |
-| `optionsMenu.option.cornerRadius` | `Theme.Menu.Option.CornerRadius` |
-| `optionsMenu.optionSelected.background` | `Theme.Menu.OptionSelected.Background` |
-| `optionsMenu.optionSelected.color` | `Theme.Menu.OptionSelected.Color` |
-
-### Editor
-
-Presente solo en `dark-default.json`; el resto de temas dejan que estos tokens tomen su valor de `ApplyBuiltinDefault()`.
-
-| JSON path | Recurso Avalonia |
-|---|---|
-| `editor.header.background` | `Theme.Editor.Header.Background` |
-| `editor.header.color` | `Theme.Editor.Header.Color` |
-| `editor.header.size` | `Theme.Editor.Header.Size` |
-| `editor.header.padding` | `Theme.Editor.Header.Padding` |
-| `editor.header.margin` | `Theme.Editor.Header.Margin` |
-| `editor.header.fontFamily` | `Theme.Editor.Header.FontFamily` |
-| `editor.body.background` | `Theme.Editor.Body.Background` |
-| `editor.footer.background` | `Theme.Editor.Footer.Background` |
-| `editor.footer.border` | `Theme.Editor.Footer.Border` |
-| `editor.footer.color` | `Theme.Editor.Footer.Color` |
-| `editor.footer.size` | `Theme.Editor.Footer.Size` |
-| `editor.footer.padding` | `Theme.Editor.Footer.Padding` |
-
-### Update Banner
-
-| JSON path | Recurso Avalonia |
-|---|---|
-| `updateBanner.background` | `Theme.Update.Background` |
-| `updateBanner.text.color` | `Theme.Update.Color` |
-| `updateBanner.text.size` | `Theme.Update.Size` |
-
-### Preview Panel
-
-| JSON path | Recurso Avalonia |
-|---|---|
-| `preview.width` | `Theme.Preview.Width` |
-
-Anchura en píxeles del panel lateral de preview/editor (columna derecha). Si el campo está ausente en el JSON, se usa el valor de `AppDefaults.EditorWidth` (680 px).
-
-> **Verificar en:**
-> - `ThemeService.Apply()` -- mapeo token JSON a recurso Avalonia.
-> - `ThemeService.ApplyBuiltinDefault()` -- lista canonica de todos los tokens con sus valores por defecto.
+> - `docs/ui-themes-tokens.md` -- referencia de todas las secciones y tokens.
 
 ---
 
 ## Fallback incorporado
 
-Existe un fallback hardcodeado que replica exactamente el tema `dark-default.json`. Este fallback se activa en cualquiera de estos casos:
+Existe un fallback hardcodeado (`ApplyBuiltinDefault()`) que produce un tema oscuro funcional sin leer ningun fichero. No es una copia exacta de `dark-default.json`: ambos comparten origen pero han divergido en algunos valores (por ejemplo el estilo, color y opacidad de `matchHighlight`, o el ancho de ventana). El fallback garantiza un arranque coherente; el tema JSON puede diferir en detalles visuales. Este fallback se activa en cualquiera de estos casos:
 
 - El fichero de tema no existe en disco.
 - El JSON no se puede parsear.
@@ -354,7 +112,7 @@ Reglas de deduplicacion y resolucion:
 
 Al escanear, `ThemeService` construye un diccionario `id → path` que cubre todos los temas. Todas las operaciones posteriores (aplicar, vigilar cambios) resuelven la ruta del fichero a traves de este diccionario - el nombre del fichero no interviene en ninguna operacion posterior al escaneo.
 
-La carpeta de temas se resuelve relativa al directorio del ejecutable (`AppContext.BaseDirectory`), no al directorio de trabajo actual.
+La carpeta de temas se resuelve relativa al directorio del ejecutable (`AppContext.BaseDirectory`), no al directorio de trabajo actual. En ejecucion desde un build de desarrollo (cuando `BaseDirectory` esta dentro de `bin/`), `ThemesFolder` prefiere la carpeta `Themes/` del source tree (`../../../Themes` respecto al ejecutable) si existe y contiene `dark-default.json`, de modo que editar un tema en el repo recargue en caliente sin recompilar. En el resto de casos usa `Themes/` bajo `BaseDirectory`.
 
 Los ficheros JSON se copian al directorio de salida del build con `CopyToOutputDirectory=PreserveNewest`.
 
@@ -415,14 +173,4 @@ ThemeService se suscribe al evento `PluginsChanged` del `PluginService` central 
 > - `ThemeService.AvailableThemes()` -- escaneo de plugins con filtro `theme.*.json` y validacion de `id`.
 > - `SettingsWindowViewModel.OnThemesChanged()` -- actualizacion del picker.
 
----
-
-## Temas incluidos
-
-| Fichero | Variante |
-|---|---|
-| `dark-default.json` | dark |
-| `dark-raycast.json` | dark |
-| `dark-macos.json` | dark |
-| `light-blue.json` | light |
-| `light-gray.json` | light |
+La lista de temas incluidos (built-in) y su variante esta en `docs/ui-themes-tokens.md`.

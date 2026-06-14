@@ -62,12 +62,18 @@ Cuando el usuario activa un resultado de tipo Web Search, se abre la URL constru
 **Invariantes:**
 
 - Si `ActiveBrowser` devuelve `null`, la accion retorna sin hacer nada. El usuario no ve un error ni una excepcion.
-- Las excepciones durante el lanzamiento del proceso se capturan silenciosamente (`catch { }`). El usuario nunca ve un dialogo de error del sistema.
+- Las excepciones durante el lanzamiento del proceso nunca llegan al usuario como dialogo de error del sistema. El tratamiento depende de la plataforma: en macOS se capturan en silencio (`catch { }`); en Windows se capturan y se registran via `logger.LogWarning` para diagnostico, sin propagar; en Linux la apertura es un no-op que registra un warning.
 - El metodo `OpenUrl` de `BrowserDiscovery` delega en la implementacion de plataforma, pasando el nombre del navegador (no la ruta del ejecutable).
+
+### Apertura en segundo plano
+
+`BrowserDiscovery.OpenUrlInBackground(url, browser)` abre la URL sin robar el foco al usuario, delegando en `PlatformProvider.OpenUrlInBackground`. En macOS usa `open -g -a <browserName> <url>` (la flag `-g` evita activar la app del navegador). Sirve para abrir resultados sin que el navegador pase a primer plano. Comparte el mismo tratamiento de errores por plataforma que `OpenUrl`.
 
 > **Verificar en:**
 > - `Yottacast.Core/Search/WebSearch/WebSearchSource.cs` -- callback `OnActivate`
-> - `Yottacast.Core/Services/BrowserDiscovery.cs` -- metodo `OpenUrl()`
+> - `Yottacast.Core/Services/BrowserDiscovery.cs` -- metodos `OpenUrl()` y `OpenUrlInBackground()`
+> - `Yottacast.Core/Platform/MacOsPlatformProvider.cs` -- `OpenUrl()` (`catch {}`) y `OpenUrlInBackground()` (`open -g`)
+> - `Yottacast.Core/Platform/WindowsPlatformProvider.cs` -- `OpenUrl()` (`logger.LogWarning` en el catch)
 
 ---
 
@@ -97,9 +103,9 @@ Cuando el usuario activa un resultado de tipo Web Search, se abre la URL constru
 |---|---|
 | Lista de navegadores conocidos | Vacia |
 | Busqueda | No hay navegadores conocidos |
-| Apertura de URL | No-op (metodo vacio) |
+| Apertura de URL | No-op que registra un warning |
 
-> **Estado: incompleto (Linux)** - `LinuxPlatformProvider.KnownBrowserNames` esta vacio y `OpenUrl()` tiene cuerpo vacio. El descubrimiento devuelve siempre lista vacia y la auto-reparacion no puede operar: `ActiveBrowser` resuelve siempre a `null`, asi que activar un resultado Web Search no abre nada en Linux. Ver `Yottacast.Core/Platform/LinuxPlatformProvider.cs`.
+> **Estado: incompleto (Linux)** - `LinuxPlatformProvider.KnownBrowserNames` esta vacio y `OpenUrl()` es un no-op que registra un warning (`logger.LogWarning`, no abre nada). El descubrimiento devuelve siempre lista vacia y la auto-reparacion no puede operar: `ActiveBrowser` resuelve siempre a `null`, asi que activar un resultado Web Search no abre nada en Linux. Ver `Yottacast.Core/Platform/LinuxPlatformProvider.cs`.
 
 > **Verificar en:**
 > - `Yottacast.Core/Platform/MacOsPlatformProvider.cs` -- seccion Browser

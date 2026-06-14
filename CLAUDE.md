@@ -214,6 +214,7 @@ mas.
 - **PENDING (trabajo aplazado)**: cuando algo quede pendiente y el usuario diga que no lo quiere hacer ahora, meterlo en `docs/PENDING.md`.
 - `docs/PENDING.md` es el indice del trabajo aplazado y referencia todos los ficheros de la carpeta `docs/pending/`. Al anadir un documento de plan a `docs/pending/`, anadir su entrada en `docs/PENDING.md`.
 - **Cuando el usuario pregunte "que queda por hacer"**: responder primero con lo de `docs/PENDING.md` (y su carpeta `docs/pending/`) y despues con los TODOs de `docs/TODO.md`.
+- **Handoffs**: al revisar lo pendiente, mirar tambien si hay varios documentos de handoff por si el usuario quiere continuar con alguno. Listarlos junto con PENDING y TODO, y ofrecer al usuario la opcion de limpiarlos (borrar los obsoletos), unificarlos (fusionar varios en uno) o moverlos a `docs/PENDING.md`/`docs/pending/` o a `docs/TODO.md` segun corresponda.
 
 ## Documentacion
 
@@ -255,8 +256,13 @@ Si un fichero de doc empieza a ser demasiado grande, sugiere dividirlo en dos.
   merge por slots, flujo completo de busqueda con debounce.
 - `docs/search-calculator.md` — Motor de calculo (math.js en Jint), conversiones de unidades, formato de resultados,
   seleccion automatica vs manual, clasificacion de errores (cuando ignorar la query vs mostrar hint), deteccion de
-  unidades sueltas y expresiones invalidas.
+  unidades sueltas y expresiones invalidas. Es la fuente unica del comportamiento de la calculadora; el catalogo de
+  unidades aceptadas y bloqueadas vive en `docs/unit-catalog.md`.
+- `docs/unit-catalog.md` — Catalogo de referencia de unidades soportadas por categoria y unidades bloqueadas con sus
+  motivos. Solo referencia de datos: el comportamiento se documenta en `docs/search-calculator.md`.
 - `docs/search-emoji.md` — Modo emoji (prefijo `:`), grid navegable, carga de datos, cache compacta, paste automatico.
+- `docs/emoji-grid-gotchas.md` — Gotchas de implementacion del grid de emoji: alineacion section-row, padding de
+  placeholders, viewport y secciones visibles. Capa de bajo nivel complementaria a `docs/search-emoji.md`.
 - `docs/search-files.md` — Busqueda de documentos del usuario, indexacion nativa (Spotlight/Windows Search), resultados
   progresivos.
 - `docs/search-file-icons.md` — Cache de iconos de ficheros: niveles de cache (memoria+disco), clave por extension,
@@ -280,15 +286,22 @@ Si un fichero de doc empieza a ser demasiado grande, sugiere dividirlo en dos.
 - `docs/plugin-system.md` — Sistema de plugins: PluginService, formato de plugins WebSearch y temas, FileSystemWatcher,
   iconos, evento PluginsChanged.
 - `docs/release-workflow.md` — Versionado, migraciones, comprobacion de actualizaciones, flujo de publicacion.
-- `docs/multi-platform.md` — Diferencias por OS: PlatformProvider (Core) y AppHandler (UI), P/Invoke, escaneo de apps,
-  paste simulado.
+- `docs/multi-platform.md` — Diferencias por OS en ventana/foco/plataforma: PlatformProvider (Core) y AppHandler (UI),
+  P/Invoke, aislamiento, lanzamiento de apps, navegadores/terminales, iconos, hotkey global SharpHook, paste simulado.
+- `docs/multi-platform-search.md` — Diferencias por OS en busqueda y proceso: escaneo de apps (Spotlight/recursion
+  Windows/.desktop), busqueda de ficheros, SpotlightInterop, ProcessRunner, gotcha de PowerShell.
 - `docs/logging.md` — Politica de logging, niveles por componente, rotacion de ficheros.
+- `docs/TESTS.md` — Tests manuales de verificacion en runtime (plugins WebSearch, ShowAlways, recarga de settings) y
+  descripcion de la suite automatizada xUnit. Complementa la regla de Tests de este `CLAUDE.md`.
 
 **Settings y UI:**
 
-- `docs/user-settings.md` — Persistencia JSON, auto-reparacion, migraciones de settings, propiedades del modelo.
+- `docs/user-settings.md` — Persistencia JSON, auto-reparacion, migraciones de settings, propiedades del modelo,
+  secciones de la ventana de Settings.
 - `docs/user-settings-browser.md` — Descubrimiento de navegadores, auto-reparacion, lanzamiento de URLs por plataforma.
 - `docs/user-settings-terminal.md` — Descubrimiento de terminales, ejecucion de comandos, escaping por plataforma.
+- `docs/user-settings-websearch.md` — Motores de busqueda web: configuracion por motor, modos ShowAlways/prefix, merge
+  con defaults, integracion con plugins WebSearch.
 - `docs/ui-themes.md` — Temas JSON, deteccion dark/light, hot-swap, estructura de un tema. IMPORTANTE: los themes JSON
   solo aplican al buscador, no a Settings. La ventana de Settings esta troceada en UserControls por seccion bajo
   `Yottacast/Views/Settings/` (General, AppSearch, FileSearch, FileEditor, Clipboard, Emoji, Dictionary, DateSearch,
@@ -300,11 +313,17 @@ Si un fichero de doc empieza a ser demasiado grande, sugiere dividirlo en dos.
   `SettingsStyles.axaml` y en `SettingsGeneralView.axaml`/`SettingsClipboardView.axaml`). Si se pide un cambio de
   fuente/color/estilo en Settings: buscar primero en `SettingsStyles.axaml` (estilos compartidos) y en el
   `Settings<Seccion>View.axaml` correspondiente (o en `SettingsWindow.axaml` para WebSearch/Calculator/sidebar); para
-  los colores de tema nativos del OS, en `ApplySettingsTheme()` del `AppHandler`.
+  los colores de tema nativos del OS, en `ApplySettingsTheme()` del `AppHandler`. La referencia completa de tokens de
+  tema (JSON → recurso Avalonia) vive en `docs/ui-themes-tokens.md`.
+- `docs/ui-themes-tokens.md` — Referencia canonica de tokens de tema: tabla token JSON → recurso Avalonia por seccion,
+  match highlight, lista de temas incluidos. Complemento de `docs/ui-themes.md` (comportamiento).
 - `docs/ui-drag-drop.md` — Drag-and-drop de resultados al sistema operativo (Finder, editores). Contrato `GetDragPayload` y disparo desde `MainWindow.axaml.cs`.
 - `docs/ui-hotkeys.md` — Hotkey global configurable, supresion a nivel de OS, mapa de teclas soportadas.
-- `docs/ui-main-window.md` — Layout de la ventana, bindings, indicadores de busqueda, banner de actualizacion.
-- `docs/unit-catalog.md` — Catalogo de unidades soportadas por la calculadora.
+- `docs/ui-main-window.md` — Ciclo de vida y layout de la ventana, posicionamiento, arrastre, decay timer, ocultacion
+  del cursor, banner de actualizacion. El detalle de las fases de busqueda, ordenacion, footer hints y score debug esta
+  en `docs/ui-main-window-search.md`.
+- `docs/ui-main-window-search.md` — Comportamiento de busqueda dentro de la ventana: fases instant/deferred, ordenacion,
+  auto-seleccion, web search en la lista, footer hints, score debug y hint de busqueda.
 
 ## Gotchas (Avalonia / transversales)
 

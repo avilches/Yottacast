@@ -57,6 +57,7 @@ Cada `ResultAction` tiene:
 | Campo | Tipo | Descripcion |
 |---|---|---|
 | `Label` | `string` | Texto mostrado en overlay y footer |
+| `LabelProvider` | `Func<string>?` | Label dinamico. Si no es null, su retorno sustituye a `Label` en footer y overlay. Usado cuando el texto depende de metadatos resueltos de forma asincrona (p. ej. "Open in Preview" cuando se conoce la app por defecto de la extension) |
 | `Hotkey` | `ActionHotkey?` | Atajo de teclado. Null = solo accesible via overlay |
 | `ShowInFooter` | `bool` | Muestra hint en la barra inferior (solo si Hotkey != null) |
 | `ShowInMenu` | `bool` | Incluye en el overlay de opciones (Tab) |
@@ -65,9 +66,10 @@ Cada `ResultAction` tiene:
 | `PasteAfterClose` | `bool` | Simula Cmd+V tras cerrar (solo si ClosesWindow = true) |
 | `RequiresRefresh` | `bool` | Llama a RefreshSearch() tras Execute(). Usado por EmojiSearch favorito |
 | `HintProvider` | `Func<string?>?` | Mensaje en SearchHint tras ejecutar. Solo visible si no cierra la ventana |
+| `RegainFocusAfterExecute` | `bool` | Si es true, la ventana recupera el foco tras ejecutar (con un retardo corto). Para variantes "keep-open" de launch/open donde el OS pasa el foco a la app lanzada y se quiere devolver a Yottacast |
 | `Execute` | `Action` | Callback de la accion |
 
-`ActionHotkey` usa `ActionModifiers.Meta` como modificador agnostico de plataforma (resuelve a Cmd en macOS y Ctrl en Windows).
+`ActionHotkey` es un record `(string Key, ActionModifiers Modifiers)`. `Key` sigue los nombres del enum `Key` de Avalonia (`"C"`, `"F"`, `"Return"`, `"Tab"`...). El enum `ActionModifiers` es `None`, `Meta`, `Shift`, `MetaShift`, `MetaAlt`: `Meta` es el modificador agnostico de plataforma que resuelve a Cmd en macOS y Ctrl en Windows/Linux; `MetaShift` y `MetaAlt` lo combinan con Shift/Alt. La capa de UI traduce estos modificadores a `KeyModifiers` reales al comparar con el evento de teclado. Constantes predefinidas habituales: `Enter`, `MetaEnter`, `MetaC`, `MetaShiftF`.
 
 ### Navegacion interna
 
@@ -94,7 +96,7 @@ El cableado de estos callbacks con los eventos de teclado (fase tunnel, marcado 
 |---|---|---|
 | `GetDragPayload` | `Func<DragPayload?>?` | Si no es null, el item es arrastrable. La vista invoca este callback al iniciar el drag y traduce el `DragPayload` a un `IDataObject` de la plataforma. Devolver null cancela el drag. Se lee en el hilo UI. Ver `docs/ui-drag-drop.md` |
 
-> **Verificar en:** `Yottacast.Core/ViewModels/BaseResultItemViewModel.cs`, `Yottacast.Core/ViewModels/ResultAction.cs`, `Yottacast.Core/ViewModels/ActionHotkey.cs`, `Yottacast.Core/ViewModels/DragPayload.cs`, `Yottacast.Core/ViewModels/MainWindowViewModel.cs` (`RefreshResults`)
+> **Verificar en:** `Yottacast.Core/ViewModels/BaseResultItemViewModel.cs`, `Yottacast.Core/ViewModels/ResultAction.cs`, `Yottacast.Core/ViewModels/ActionHotkey.cs`, `Yottacast.Core/ViewModels/DragPayload.cs`, `Yottacast/ViewModels/MainWindowViewModel.cs` (`RefreshResults`)
 
 ---
 

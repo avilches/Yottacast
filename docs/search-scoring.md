@@ -15,7 +15,7 @@ El score final de cada item es `score_base + bonus_de_uso`, donde el bonus lo ap
 - Cada fuente instant expone su propio `IInstantSearchSource.Limit`. Si vale `-1`, hereda el limite global pasado a `SearchInstant`, que es `AppDefaults.SearchSourceLimit` (actualmente 500, no 10). Las fuentes deferred no exponen `Limit`: reciben directamente el limite global por parametro en `SearchAsync`. Solo `AppSearchLimit` (10), `LocalPathSearchLimit` (5) y `SystemSettingsSearchLimit` (5) imponen topes pequeños; calculadora, emoji, web, URL y ficheros usan `-1` o el limite global.
 - Tras mezclar, `MainWindowViewModel.RefreshResults()` no aplica ningun tope adicional: la lista visible muestra todos los resultados ordenados, limitada en la practica solo por los limites por fuente y por `SearchSourceLimit`. No hay un tope fijo de elementos visibles.
 - Si hay un resultado de calculadora o conversor y el usuario no ha navegado con las teclas, ese resultado queda seleccionado automaticamente, independientemente de su posicion en la lista.
-- Se deduplican los resultados de fichero cuya **ruta** (`ItemPath`) es exactamente la de una app presente (categoria "Application"), para no mostrar dos veces el mismo bundle (p. ej. la app Safari y el fichero `/Applications/Safari.app`). La dedup es por ruta, no por nombre: un documento distinto que solo comparte nombre con una app (p. ej. `~/Desktop/Safari.txt`) tiene otra ruta y **siempre se conserva**. La logica vive en `GlobalSearch` (`AppResultPaths`, `RemoveFilesDuplicatingApps`, `DeduplicateFilesAgainstApps`) y la aplican por igual la GUI (sobre la lista mezclada en `RefreshResults`) y el daemon IPC (filtrando cada snapshot deferred contra las rutas de app del instant, que el cliente recibe por separado).
+- Se deduplican los resultados de fichero cuya **ruta** (`ItemPath`) coincide con la de una app presente, de modo que el mismo bundle nunca puntua dos veces y compite por orden una sola vez. La dedup es por ruta, no por nombre. El mecanismo completo (helpers, paridad GUI/IPC) esta descrito en `docs/search-sources.md` seccion 4 (Deduplicacion fichero-vs-app).
 
 > **Verificar en:** `GlobalSearch.SearchInstant()`, `GlobalSearch.SearchSourcesAsync()`, `GlobalSearch.DeduplicateFilesAgainstApps()`, `MainWindowViewModel.RefreshResults()`, `SearchGrpcService.SearchDeferred()`
 
@@ -190,7 +190,7 @@ Cada vez que el usuario activa un item (app o archivo), `LaunchHistory` registra
 
 ```
 ageDays = max(0, (ahora - ultimoUso).TotalDays)
-decay   = e^(-ageDays / LaunchHistoryHalfLifeDays)   // LaunchHistoryHalfLifeDays = 30
+decay   = 0.5^(ageDays / LaunchHistoryHalfLifeDays)   // LaunchHistoryHalfLifeDays = 30
 bonus   = min(ln(count + 1) × decay, LaunchHistoryMaxBonus)   // MaxBonus = 1.0
 ```
 
@@ -221,6 +221,7 @@ La siguiente tabla resume los scores base por fuente, de mayor a menor prioridad
 |---|---|---|
 | 10.0 | LocalPath / URL | Intencion explicita del usuario |
 | 7.0 | Calculadora / Conversor / Ecuaciones | Score fijo. Siempre domina salvo ruta/URL |
+| 6.0 | Fechas (DateSearch) | Score fijo `AppDefaults.DateSearchScore`. Por debajo de calculadora, por encima de emoji |
 | 5.5 | Emoji (grilla) | Score fijo de la grilla como item global |
 | 3.6–4.4 (+bonus) | Aplicaciones | NameMatcher × 4 con floor 3.6; exact name = 4.4; max 5.4 con LaunchHistory |
 | 4.01 | Calculadora (álgebra simbólica) | Por debajo de match exacto de app (4.4); una app con 1+ uso supera el álgebra vía LaunchHistory bonus |
@@ -238,7 +239,7 @@ La siguiente tabla resume los scores base por fuente, de mayor a menor prioridad
 - Cualquier app que matchea (score > 0) aparece por encima de cualquier archivo, excepto cuando el fichero es match exacto nombre+extension (3.85 > floor de apps 3.6).
 - Typing el nombre exacto de una app ("pycharm") da el score mas alto de esa app (4.4), por encima de sus iniciales ("PC" → 4.0).
 
-> **Verificar en:** `CalculatorSearch.cs` (score 7), `EmojiSearch.cs` (score 5.5), `LocalPathSearch.cs` y `UrlSearch.cs` (score 10.0), `WebSearchSource.cs` (scores 0.4 y 3.8), `DictionarySource.cs` (scores 0.3 y 3.7), `ApplicationSearch.cs` (multiplicador ×4), `SystemSettingsSearch.cs` (multiplicador ×4), `UserDocumentSearch.cs` (multiplicador ×3.5), `LaunchHistory.cs` (bonus)
+> **Verificar en:** `CalculatorSearch.cs` (score 7), `DateSearch.cs` (`AppDefaults.DateSearchScore`, 6.0), `EmojiSearch.cs` (score 5.5), `LocalPathSearch.cs` y `UrlSearch.cs` (score 10.0), `WebSearchSource.cs` (scores 0.4 y 3.8), `DictionarySource.cs` (scores 0.3 y 3.7), `ApplicationSearch.cs` (multiplicador ×4), `SystemSettingsSearch.cs` (multiplicador ×4), `UserDocumentSearch.cs` (multiplicador ×3.5), `LaunchHistory.cs` (bonus)
 
 ---
 
@@ -269,19 +270,11 @@ Posicionarse sobre el badge del score muestra un tooltip multi-linea con dos blo
 
 ---
 
-## 14. Flujo de busqueda en dos fases
+## 13. Flujo de busqueda en dos fases
 
-La busqueda se ejecuta en dos fases para dar respuesta inmediata al usuario:
+El detalle del flujo en dos fases (fase instantanea sin delay + fase diferida tras debounce, omision de la fase diferida en modo emoji, cancelacion por keystroke, indicador de busqueda activa) esta descrito en `docs/search-sources.md` secciones 4 y 5. Aqui solo importa su consecuencia para el scoring:
 
-1. **Fase instantanea** (sin delay): consulta fuentes en memoria (aplicaciones, emojis, calculadora, busqueda web). Los resultados aparecen al instante.
-2. **Fase diferida** (tras 250 ms de debounce): consulta fuentes de disco (archivos). Los resultados se van intercalando con los instantaneos a medida que llegan.
+**Invariante:**
+- Los resultados diferidos (archivos) se intercalan por score con los instantaneos a medida que llegan, pero nunca desplazan a un instantaneo de mayor score: el orden lo decide siempre el score base + bonus, no el momento de llegada.
 
-En modo emoji (query empieza por `:`), la fase diferida se omite por completo.
-
-**Invariantes:**
-- Cada cambio de texto cancela la busqueda anterior.
-- Los resultados instantaneos siempre aparecen sin delay.
-- Los resultados diferidos nunca desplazan a los instantaneos de mayor score.
-- Mientras la fase diferida esta en curso, se muestra un indicador de busqueda activa.
-
-> **Verificar en:** `MainWindowViewModel.SearchAsync()`, `GlobalSearch.cs` (metodos `SearchInstant` y `SearchDeferredAsync`)
+> **Verificar en:** `MainWindowViewModel.SearchAsync()`, `MainWindowViewModel.RefreshResults()`, `GlobalSearch.cs` (`SearchInstant`, `SearchDeferredAsync`)

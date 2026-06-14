@@ -35,7 +35,12 @@ Se muestran hasta 5 definiciones por entrada (ver `AppDefaults.DictionaryMaxDefi
 
 ## Accion al activar
 
-Al pulsar Enter sobre un resultado, se abre la página de Wiktionary del idioma correspondiente (`https://{langCode}.wiktionary.org/wiki/{word}`) en el navegador configurado por el usuario.
+Cada resultado de diccionario expone dos acciones:
+
+| Acción | Hotkey | Comportamiento |
+|---|---|---|
+| **Open in Wiktionary** | Enter | Abre la página de Wiktionary del idioma correspondiente (`https://{langCode}.wiktionary.org/wiki/{word}`) en el navegador configurado por el usuario. |
+| **Copy definition** | Cmd+C (`ActionHotkey.MetaC`) | Copia el texto de la definición al portapapeles (vía `ClipboardService.CopyText`), sin abrir el navegador. |
 
 ## Fuentes de datos: local vs API
 
@@ -91,4 +96,4 @@ En la ventana de Settings, la seccion "Dictionary" permite:
 
 El icono de los resultados es un PNG embebido (`Search/Dictionary/Icons/wiktionary.png`), cargado una sola vez al inicializar la source.
 
-> **Verificar en:** `DictionarySource.cs` (Start, ConvertInBackground, SearchAsync, BuildDefsFromLocal), `LocalDictionaryDb.cs` (Lookup, Exists), `LocalDictionaryConverter.cs` (ConvertAsync), `DictionaryApi.cs` - clase `DictionaryApiClient` (LookupAsync, StripHtml, IsFormOfDefinition), `DictionaryResultViewModel.cs`, `DictionaryResultItemView.axaml`, `UserSettings.cs` (EnableDictionary, DictionaryPrefix, DictionaryShowAlways, DictionaryLanguages), `AppDefaults.cs` (DictionaryTimeoutSeconds, DictionaryDefaultPrefix, DictionaryAvailableLanguages, DictionaryDefaultLanguages, KaikkiLanguages), `AppPaths.cs` (DictionaryDir, DictionaryDb, DictionaryJsonl), `SettingsWindowViewModel.cs` (DictionaryLanguageItem, DictionaryLanguages). Tests: `LocalDictionaryTests.cs`.
+> **Verificar en:** `DictionarySource.cs` (Start, ConvertInBackground, SearchAsync, BuildDefsFromLocal), `LocalDictionaryDb.cs` (Lookup, Exists), `LocalDictionaryConverter.cs` (ConvertAsync), `DictionaryApi.cs` - clase `DictionaryApiClient` (LookupAsync, StripHtml, IsFormOfDefinition), `DictionaryResultViewModel.cs`, `DictionaryResultItemView.axaml`, `UserSettings.cs` (EnableDictionary, DictionaryPrefix, DictionaryShowAlways, DictionaryLanguages), `AppDefaults.cs` (DictionaryTimeoutSeconds, DictionaryDefaultPrefix, DictionaryAvailableLanguages, DictionaryDefaultLanguages, KaikkiLanguages), `AppPaths.cs` (DictionaryDir, DictionaryDb, DictionaryJsonl), `SettingsWindowViewModel.cs` (DictionaryLanguageItem, DictionaryLanguages), panel Dictionary - `Yottacast/Views/Settings/SettingsDictionaryView.axaml`. Tests: `LocalDictionaryTests.cs`.

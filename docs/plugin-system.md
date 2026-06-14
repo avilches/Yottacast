@@ -67,7 +67,14 @@ Consumidores:
 
 ### Campos del record WebSearchPlugin
 
-El plugin se carga como `WebSearchPlugin` (record en `Yottacast.Core/Search/WebSearch/WebSearchPlugin.cs`). Ademas de los campos JSON, incluye `SourceFilePath` (ruta absoluta al fichero JSON de origen).
+El plugin se carga como `WebSearchPlugin` (record en `Yottacast.Core/Search/WebSearch/WebSearchPlugin.cs`). Ademas de los campos JSON listados arriba (`Id`, `Name`, `QueryUrl`, `IconUrl`, `DefaultPrefix`, `ShowAlwaysPattern`), el record tiene dos campos que NO provienen del JSON del plugin de usuario:
+
+| Campo | Origen | Descripcion |
+|---|---|---|
+| `SourceFilePath` | Lo asigna `PluginService` al cargar | Ruta absoluta al fichero JSON de origen |
+| `Group` | No se deserializa del JSON; queda `""` para plugins de usuario | Grupo del motor en la UI de Settings (p.ej. `"general"`, `"dev"`). `PluginService.PluginFileData` no lee ninguna clave `group`, asi que siempre vale `""`; la UI de Settings trata el grupo vacio como "general" al agrupar los motores |
+
+> **Verificar en:** record `WebSearchPlugin` en `Yottacast.Core/Search/WebSearch/WebSearchPlugin.cs`. `PluginService.PluginFileData` (campos deserializados) en `Yottacast.Core/Services/PluginService.cs`. Agrupacion (`Group` vacio -> "general") en `BuildWebSearchGroups()` de `Yottacast/ViewModels/SettingsWindowViewModel.cs`.
 
 ### Gestion de iconos
 

@@ -29,7 +29,7 @@ Los resultados se cachean en memoria. La cache se invalida al cambiar las carpet
 - En Windows, `TerminalKnownPaths` contiene rutas absolutas a ejecutables conocidos. "Windows Terminal" aporta el stub de alias `%LocalAppData%\Microsoft\WindowsApps\wt.exe` (sin glob) y, como respaldo, el glob `Microsoft.WindowsTerminal*\wt.exe`, que `ResolveKnownPath` expande a la version instalada.
 - En Linux, las listas de terminales conocidos estan vacias. `Discover()` devuelve lista vacia.
 
-> **Estado: incompleto (Linux)** - `LinuxPlatformProvider.KnownTerminalNames` esta vacio y `ExecuteCommand()` es un no-op. La auto-reparacion no puede operar (`ActiveTerminal` siempre resuelve a `null`) y ejecutar comandos en terminal no hace nada en Linux.
+> **Estado: incompleto (Linux)** - `LinuxPlatformProvider.KnownTerminalNames` esta vacio y `ExecuteCommand()` es un no-op que registra un warning (`logger.LogWarning`). La auto-reparacion no puede operar (`ActiveTerminal` siempre resuelve a `null`) y ejecutar comandos en terminal no hace nada en Linux.
 
 > **Verificar en:**
 > - `TerminalDiscovery.Discover()`, `TerminalDiscovery.InvalidateCache()` en `Yottacast.Core/Services/TerminalDiscovery.cs`
@@ -90,7 +90,7 @@ Los argumentos se construyen en `WindowsPlatformProvider.BuildTerminalArgs`. El 
 
 ### Linux
 
-No implementado. El metodo `ExecuteCommand` tiene cuerpo vacio (no-op).
+No implementado. El metodo `ExecuteCommand` es un no-op que registra un warning (`logger.LogWarning`); no ejecuta nada.
 
 > **Verificar en:**
 > - `MacOsPlatformProvider.ExecuteCommand()` en `Yottacast.Core/Platform/MacOsPlatformProvider.cs`
