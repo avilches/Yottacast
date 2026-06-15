@@ -10,6 +10,7 @@ Los resultados de busqueda se representan mediante una jerarquia de ViewModels. 
 BaseResultItemViewModel (abstracta)
   +-- ResultItemViewModel            (apps, ficheros, web search, system settings)
   |     +-- FileResultItemViewModel  (fichero/directorio: ItemPath obligatorio)
+  |     +-- ClipboardResultItemViewModel (entrada del historial de portapapeles)
   |     +-- EmojiGridResultViewModel (grid de emojis con viewport y secciones)
   +-- CalculatorResultItemViewModel  (resultado de calculo simple)
   +-- ConversionResultItemViewModel  (conversion de unidades con 3 celdas)
@@ -122,6 +123,23 @@ Extiende `BaseResultItemViewModel`. Es el tipo mas comun, usado por apps, ficher
 `IconBytes` y `BadgeIconBytes` son propiedades `set`-able. Las fuentes los establecen tras la carga asincrona. En la capa de UI (Avalonia), `PathToAppIconConverter` convierte `byte[]` a `Bitmap` con un `ConditionalWeakTable` para evitar memory leaks.
 
 > **Verificar en:** `Yottacast.Core/ViewModels/ResultItemViewModel.cs`, `Yottacast/Converters/PathToAppIconConverter.cs`
+
+---
+
+## 3b. ClipboardResultItemViewModel
+
+Extiende `ResultItemViewModel`. Representa una entrada del historial de portapapeles.
+
+| Propiedad | Tipo | Descripcion |
+|---|---|---|
+| `FullText` | `string` | Texto completo original (con saltos de línea), sin truncar. Se usa como contenido del panel de preview |
+| `CopiedAt` | `string` | Hora de copia formateada para la barra de estado del preview (ej. `"Today 16:45"`, `"Yesterday 09:00"`, `"2 Jun, 14:30"`) |
+| `ScoreDisplayText` | `string` | Siempre vacío: los items de portapapeles no muestran score de debug |
+| `ScoreTooltipText` | `string` | Siempre vacío |
+
+Los items de portapapeles usan el DataTemplate estándar de `ResultItemViewModel` (icono + título + subtítulo). En modo solo portapapeles el subtítulo se oculta en la lista y la información de tiempo aparece en la barra de estado del panel de preview.
+
+> **Verificar en:** `Yottacast.Core/ViewModels/ClipboardResultItemViewModel.cs`. Creación en `ClipboardHistorySearch.BuildResult()`. Comportamiento del preview en `docs/search-clipboard.md`, sección 7.
 
 ---
 

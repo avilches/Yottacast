@@ -67,44 +67,27 @@ La ruta está centralizada en `AppPaths.ClipboardHistoryFile`.
 
 `ClipboardHistorySearch` implementa `IInstantSearchSource` y `ISearchModeSource`. Las entradas se filtran y ordenan en memoria sin I/O.
 
-**Con query vacía:** se devuelven todas las entradas en orden de recencia (score = `1000 - índice`), respetando el límite de `limit` si se especifica.
+**Con query vacía:** se devuelven todas las entradas en orden de recencia (`score = ClipboardHistoryUnfilteredBaseScore - índice`), respetando el límite de `limit` si se especifica.
 
-**Con query no vacía:** se filtran las entradas que contienen la query (case-insensitive) y se ordenan por score descendente:
-
-```
-score = matchScore + usageBonus
-```
-
-| Tipo de coincidencia | `matchScore` |
-|---|---|
-| Texto exacto | 4.0 |
-| El texto empieza por la query | 3.5 |
-| El texto contiene la query | 3.0 |
-
-```
-usageBonus = min(log(usageCount + 1) × 0.5^(ageDays / halfLifeDays), maxBonus)
-```
-
-- `halfLifeDays = AppDefaults.ClipboardHistoryHalfLifeDays` (30 días)
-- `maxBonus = AppDefaults.ClipboardHistoryMaxBonus` (0.5)
-- El bonus decae con una half-life real: se reduce a la mitad cada `halfLifeDays` desde la última vez que se usó la entrada (`LastUsedAt`).
+**Con query no vacía:** se filtran las entradas que contienen la query (case-insensitive) y se preserva el orden de recencia del store (las más recientes primero). El score sigue siendo `ClipboardHistoryUnfilteredBaseScore - índice` sobre la sublista filtrada; el orden de fecha no se altera.
 
 **Formato en UI:**
-- `Title`: texto de la entrada con saltos de línea sustituidos por `·`, truncado a 120 caracteres con `…`.
-- `Subtitle`: tiempo relativo desde la copia ("just now", "5 min ago", "3h ago", "yesterday", "5 days ago", o fecha corta).
-- `Category`: `"Clipboard"`.
+- `Title`: texto de la entrada con saltos de línea sustituidos por `·`. No hay truncación en C#; el truncado visual lo gestiona AXAML con `TextTrimming="CharacterEllipsis"`.
+- `Subtitle`: `"From clipboard, {tiempo relativo}"` (ej. `"From clipboard, 3h ago"`). En modo solo portapapeles el subtítulo no se muestra en la lista; la información aparece en la barra de estado del panel de preview.
+- `Category`: vacío (`""`). Los items de portapapeles no muestran categoría ni score de debug en la columna derecha (`ScoreDisplayText` y `ScoreTooltipText` devuelven `""`).
 
-> **Verificar en:** `ClipboardHistorySearch.Search()`, `ComputeScore()`, `BuildResult()` - `Yottacast.Core/Search/Clipboard/ClipboardHistorySearch.cs`.
+> **Verificar en:** `ClipboardHistorySearch.Search()`, `BuildResult()` - `Yottacast.Core/Search/Clipboard/ClipboardHistorySearch.cs`. `ClipboardResultItemViewModel` - `Yottacast.Core/ViewModels/ClipboardResultItemViewModel.cs`.
 
 ---
 
 ## 4. Acciones
 
-Cada entrada del historial expone dos acciones:
+Cada entrada del historial expone tres acciones:
 
 | Acción | Hotkey | Comportamiento |
 |---|---|---|
 | **Paste** | Enter | Copia el texto al portapapeles, registra uso (`RecordUsage`), cierra la ventana y simula Cmd+V / Ctrl+V en la app anterior (`PasteAfterClose = true`) |
+| **Preview** | Cmd+P | Abre o cierra el panel de preview para este item. La acción tiene `Execute = () => {}` (no-op); la lógica real la gestiona el handler de teclado en `MainWindow.axaml.cs` |
 | **Delete** | Supr | Elimina la entrada del historial (`store.Remove`), sin cerrar la ventana; la lista se refresca automáticamente vía `EntriesChanged → ResultChanged` |
 
 > **Verificar en:** acciones en `ClipboardHistorySearch.BuildResult()`. Comportamiento de `PasteAfterClose` en `AppHandler`. `store.Remove()` dispara `EntriesChanged` que propaga `ResultChanged` a `MainWindowViewModel`.
@@ -149,3 +132,28 @@ El monitor de portapapeles solo captura cuando `ClipboardSearchVisibility != Dis
 **Nota:** cambiar la hotkey dedicada tiene efecto inmediato - el handler lee `settings.ParsedClipboardHotkey` en cada evento del hook global, sin necesidad de reiniciar.
 
 > **Verificar en:** `UserSettings` - `Yottacast.Core/Services/UserSettings.cs`. `SearchSourceVisibility` (tipo de `ClipboardSearchVisibility`) - `Yottacast.Core/Search/SearchSourceVisibility.cs`. `SettingsWindowViewModel` (propiedades `ClipboardSearchVisibility`, `ClipboardHistoryMaxEntries`, `ClipboardHistoryMaxDays`, estado de captura de hotkey) - `Yottacast/ViewModels/SettingsWindowViewModel.cs`. Panel Clipboard History - `Yottacast/Views/Settings/SettingsClipboardView.axaml`.
+
+---
+
+## 7. Panel de preview
+
+Al seleccionar cualquier item de portapapeles, el panel de preview se abre automáticamente mostrando el texto completo. El texto siempre wrappea (sin scroll horizontal).
+
+**Barra de estado:** en la parte inferior del panel se muestra el número de palabras, el número de caracteres y la hora exacta de copia (ej. `"42 words · 287 chars · Copied Today 16:45"`). Esta información no se muestra en el item de la lista; solo aparece en la barra de estado del preview.
+
+**Cmd+P como toggle:** Cmd+P cierra el panel si está abierto, o lo abre si está cerrado, tanto para items de portapapeles como para ficheros de texto. Si el usuario cierra con Cmd+P y luego navega a un nuevo item de portapapeles, el panel se reabre automáticamente.
+
+**Cierre por selección nula:** navegar a un resultado que no es de portapapeles ni fichero de texto cierra el panel.
+
+> **Verificar en:** `EditorPanelViewModel.LoadTextContent()` (wordWrap, clipboardStatusText) - `Yottacast.Core/ViewModels/EditorPanelViewModel.cs`. `EditorPanelView.axaml` (Row 3 clipboard status bar). `MainWindowViewModel.OnSelectedResultChanged()` - auto-apertura del preview. Handler Cmd+P unificado en `MainWindow.axaml.cs`.
+
+---
+
+## 8. Comportamiento en modo solo portapapeles
+
+Cuando `ClipboardSearchVisibility = ModeOnly` y el usuario activa el modo Clipboard (`SearchMode.Clipboard`):
+
+- **Lista de resultados:** el subtítulo (`"From clipboard, …"`) no se muestra; los items son de una sola línea con altura compacta (MinHeight reducido a 38px en lugar de 52px).
+- **Hotkey global:** si el usuario pulsa la hotkey global de la app con la ventana visible y en modo Clipboard, en vez de ocultar la ventana se cambia al modo All. Esto permite salir rápidamente al modo normal sin perder el foco.
+
+> **Verificar en:** `MainWindow.axaml` (estilo `ListBox.clipboard-mode`, binding `Classes.clipboard-mode`, binding `IsVisible` del subtítulo). `App.axaml.cs` (bloque de hotkey global: `mainVm.ClipboardModeActive → mainVm.ResetMode()`).

@@ -96,11 +96,14 @@ Los hints del lado derecho son contextuales: solo se muestran cuando hay resulta
 Por tanto, los textos exactos los aportan las propias fuentes en las `Actions` de cada item. Ejemplos de etiquetas reales por fuente:
 
 - **Apps**: accion por defecto `"Open"` o `"Bring to Front"` (segun si la app esta en ejecucion), mas `"Copy path"`.
-- **Archivos / documentos**: `"Open"`, `"Copy path"`, `"Preview"`, `"Edit"`.
+- **Archivos / documentos**: `"Open"`, `"Copy path"`, `"Preview"` (siempre para extensiones de texto), `"Edit"` (solo si `enableFileEditor = true`).
+- **Portapapeles**: `"Paste"`, `"Preview"` (Cmd+P), `"Delete"`.
 - **Calculadora / Conversor / Fecha**: el Enter es `"Close and paste"`, mas `"Copy result"` / `"Copy value"` / `"Copy date"`.
 - **Emoji**: Enter `"Close and paste"`, mas `"Copy"` y `"Favorite"`.
 - **Diccionario**: `"Open in Wiktionary"` y `"Copy definition"`.
 - **Busqueda web**: `"Open search in {browser}"`.
+
+Cuando el panel de preview o edicion esta abierto en **modo edicion**, los hints del footer cambian a los del editor (`"⌘S Save"` si hay cambios, `"⌘P Preview"`, `"Esc Close"`), sustituyendo temporalmente los hints del resultado. En modo preview, los hints del resultado siguen visibles.
 
 `FooterHints` es una propiedad observable del ViewModel que se actualiza en cada cambio de resultado seleccionado.
 
