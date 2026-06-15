@@ -8,12 +8,6 @@ Cuando se pregunte "que queda por hacer", esto se revisa **despues** de `docs/PE
 
 ## Clipboard
 
-### C1. ~~El clipboard aparece en modo emoji~~ — HECHO (2026-06-14)
-Guard `if (query.StartsWith(':')) return [];` en `ClipboardHistorySearch.Search`.
-
-### C2. ~~Texto largo se pisa con la categoria "Clipboard"~~ — HECHO (2026-06-14)
-Truncacion reducida a 60 chars + preview lateral siempre visible al seleccionar (C2+C4 combinados).
-
 ### C3. Iconos del clipboard ausentes o incorrectos (salen carpetas) — Bug + Feature, grande
 Los items de clipboard no asignan icono, asi que cae al icono por defecto (a veces una carpeta). Lo deseable: mostrar el icono de la **app de origen** desde la que se copio el contenido.
 - Hoy `ClipboardHistoryEntry` solo guarda `Text`, `CopiedAt`, `UsageCount`, `LastUsedAt`: no captura la app de origen, y los monitores (`MacClipboardMonitor`, `WindowsClipboardMonitor`) solo leen texto plano.
@@ -28,29 +22,11 @@ Al borrar un item con Delete, la vista se reordena y el cursor "salta". Lo corre
 - Fix: tras borrar, seleccionar el item que queda en el mismo indice (o el ultimo si era el final), en vez de la heuristica actual por titulo/subtitulo.
 - Verificar en: `ClipboardHistoryStore.Remove`, `MainWindowViewModel.OnClipboardHistoryResultChanged`, `MainWindowViewModel.RefreshResults`.
 
-### C6. Revisar el decay del scoring vs orden por fecha — Feature (decision), pequeno
-Con query vacia el historial se ordena por recencia pura (`score = 1000 - indice`); el decay (`usageBonus` con half-life de 30 dias) solo influye cuando hay query. Hay que decidir si el decay aporta algo o si conviene ordenar siempre por fecha de insercion/uso.
-- Analizar si el `usageBonus` cambia el orden de forma util en busquedas reales o si domina siempre el `matchScore`. Si no aporta, simplificar a orden por fecha.
-- Verificar en: `ClipboardHistorySearch.ComputeScore`, `AppDefaults` (`ClipboardHistoryHalfLifeDays`, `ClipboardHistoryMaxBonus`, scores de match).
-
-### C7. Etiqueta "Text from clipboard, Nh ago" al mezclar con resultados normales — Feature, pequeno
-Cuando un item de clipboard aparece mezclado con resultados de otras fuentes, deberia identificarse claramente, p.ej. `Text from clipboard, 19h ago`.
-- Hoy el item solo lleva `Subtitle` con tiempo relativo ("3h ago") y `Category = "Clipboard"`; no hay un texto unificado tipo "Text from clipboard, Nh ago". (El `InfoTag = "from clipboard"` solo lo pone la otra fuente `ClipboardSearch` del empty state, no el historial).
-- Definir el formato y donde mostrarlo (subtitle o InfoTag) cuando el modo es mixto vs modo clipboard puro.
-- Verificar en: `ClipboardHistorySearch.BuildResult`, `MainWindow.axaml` (subtitle / InfoTag).
-
 ### C8. Guardar otros tipos de contenido (ficheros, imagenes/graficos) — Feature, grande
 Permitir que el historial de clipboard capture y reproduzca no solo texto sino tambien ficheros e imagenes.
 - Hoy todo es texto plano: se persiste en un unico JSON (`clipboard-history.json`, limite 200 entradas / 30 dias). Los monitores solo leen `NSStringPboardType` / `CF_UNICODETEXT`.
 - Decisiones de diseno a resolver: el texto seguiria en el JSON; las imagenes/ficheros no caben inline en el JSON (tamano), habria que guardarlos como blobs en disco (p.ej. carpeta de cache con un id) y referenciarlos desde el entry. Definir formato del entry polimorfico (texto / fichero / imagen), limites de tamano, y como se hace el "paste" de cada tipo.
 - Verificar en: `ClipboardHistoryEntry`, `ClipboardHistoryStore` (persistencia JSON), `MacClipboardMonitor`/`WindowsClipboardMonitor`, `AppPaths` (nueva ruta de blobs).
-
----
-
-## Emoji / navegacion
-
-### ~~E1. Ctrl+Abajo no funciona en modo emoji~~ — HECHO (2026-06-14)
-Guard `!e.Handled` en `case Key.Down` y `case Key.Up` para respetar lo que el tunnel handler ya procesó.
 
 ---
 
