@@ -175,7 +175,7 @@ public partial class MainWindowViewModel(
             if (_activeMode == value) return;
 
             // Save current snapshots for the mode we're leaving (non-empty query only)
-            var currentQuery = SearchText.Trim();
+            var currentQuery = SearchText?.Trim() ?? "";
             if (!string.IsNullOrEmpty(currentQuery))
                 _modeSnapshots[_activeMode] = (_instantSnapshot, _deferredSnapshot, currentQuery);
 
@@ -201,7 +201,7 @@ public partial class MainWindowViewModel(
                     _cts?.Cancel();
                     _cts = new CancellationTokenSource();
                     _userNavigated = false;
-                    _ = SearchAsync(SearchText.Trim(), _cts.Token);
+                    _ = SearchAsync(SearchText?.Trim() ?? "", _cts.Token);
                 }
             } else {
                 _cts?.Cancel();
