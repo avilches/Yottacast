@@ -155,6 +155,12 @@ public partial class MainWindowViewModel(
 
     private IReadOnlyList<BaseResultItemViewModel> _instantSnapshot = [];
     private IReadOnlyList<BaseResultItemViewModel> _deferredSnapshot = [];
+
+    // Per-mode result cache: preserves search results when cycling between modes so that
+    // switching back doesn't re-run a slow file search from scratch.
+    private readonly Dictionary<SearchMode, (IReadOnlyList<BaseResultItemViewModel> Instant,
+                                              IReadOnlyList<BaseResultItemViewModel> Deferred,
+                                              string Query)> _modeSnapshots = new();
     private bool _userNavigated;
     private bool _pendingResultsRefresh;
     private int _historyNavIndex = -1;
@@ -167,6 +173,12 @@ public partial class MainWindowViewModel(
         get => _activeMode;
         private set {
             if (_activeMode == value) return;
+
+            // Save current snapshots for the mode we're leaving (non-empty query only)
+            var currentQuery = SearchText.Trim();
+            if (!string.IsNullOrEmpty(currentQuery))
+                _modeSnapshots[_activeMode] = (_instantSnapshot, _deferredSnapshot, currentQuery);
+
             _activeMode = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(ShowModePill));
@@ -174,12 +186,25 @@ public partial class MainWindowViewModel(
             OnPropertyChanged(nameof(AllModeActive));
             OnPropertyChanged(nameof(FilesModeActive));
             OnPropertyChanged(nameof(ClipboardModeActive));
+
             if (!string.IsNullOrWhiteSpace(SearchText)) {
-                _cts?.Cancel();
-                _cts = new CancellationTokenSource();
-                _userNavigated = false;
-                _ = SearchAsync(SearchText.Trim(), _cts.Token);
+                // Restore cached results if available and non-empty for this mode+query
+                if (_modeSnapshots.TryGetValue(_activeMode, out var cached)
+                    && cached.Query == currentQuery
+                    && (cached.Instant.Count > 0 || cached.Deferred.Count > 0)) {
+                    _cts?.Cancel();
+                    _instantSnapshot = cached.Instant;
+                    _deferredSnapshot = cached.Deferred;
+                    _userNavigated = false;
+                    RefreshResults();
+                } else {
+                    _cts?.Cancel();
+                    _cts = new CancellationTokenSource();
+                    _userNavigated = false;
+                    _ = SearchAsync(SearchText.Trim(), _cts.Token);
+                }
             } else {
+                _cts?.Cancel();
                 RefreshEmptyState();
             }
         }
@@ -372,7 +397,13 @@ public partial class MainWindowViewModel(
     }
 
     private void OnClipboardHistoryResultChanged() {
-        Dispatcher.UIThread.Post(RefreshSearch);
+        Dispatcher.UIThread.Post(() => {
+            _modeSnapshots.Remove(SearchMode.Clipboard);
+            if (string.IsNullOrWhiteSpace(SearchText))
+                RefreshEmptyState();
+            else
+                RefreshSearch();
+        });
     }
 
     private async Task CheckForUpdateAsync() {
@@ -699,6 +730,7 @@ public partial class MainWindowViewModel(
         var merged = GlobalSearch.DeduplicateFilesAgainstApps(sorted);
 
         var previousSelected = SelectedResult;
+        var previousIndex = previousSelected != null ? Results.IndexOf(previousSelected) : -1;
         Results.Clear();
         foreach (var item in merged) Results.Add(item);
         HasResults = Results.Count > 0;
@@ -721,6 +753,10 @@ public partial class MainWindowViewModel(
                     x.Title == previousSelected.Title &&
                     (prevSubtitle == null || (x as ResultItemViewModel)?.Subtitle == prevSubtitle));
             }
+            // Index fallback: item was deleted; select the item now at the same position
+            // (or the last one if it was the final item in the list).
+            if (chosen == null && previousIndex >= 0)
+                chosen = merged.ElementAtOrDefault(previousIndex) ?? merged.LastOrDefault();
             chosen ??= Results.FirstOrDefault();
         } else {
             chosen = Results.FirstOrDefault();

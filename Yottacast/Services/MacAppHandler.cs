@@ -17,6 +17,7 @@ internal sealed class MacAppHandler : AppHandler {
     private readonly MacPermissionsService _permissions = new();
 
     public override PermissionsService Permissions => _permissions;
+    public override bool BackspaceActsAsDelete => true;
 
     // NSApplicationActivationPolicyAccessory = 1: no Dock icon, no menu bar shown.
     public override void OnFrameworkInitializationCompleted() {

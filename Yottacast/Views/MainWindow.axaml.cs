@@ -38,6 +38,7 @@ public partial class MainWindow : Window {
     private bool _menuOpenedByKeyboard;
     private bool _isEditorPreviewSplit;
     private bool _wasInEditMode;
+    private string? _searchTextAtTunnelKey;
 
     // Required by Avalonia's XAML resource loader; the app always uses the parameterized constructor.
     public MainWindow() : this(null!, null!, null!) { }
@@ -58,6 +59,11 @@ public partial class MainWindow : Window {
         // Intercept LEFT/RIGHT in the tunnel phase so items with OnLeft/OnRight
         // can capture them before the TextBox moves its cursor.
         AddHandler(KeyDownEvent, OnTunnelKeyDown, RoutingStrategies.Tunnel);
+        // Delete/Back on SearchBox: intercept at the SearchBox level in the tunnel phase so
+        // the event is handled before TextBox's bubble class-handler can mark it as Handled.
+        // Without this, TextBox consumes Delete/Back even on an empty field, and the Window
+        // handlers never get a chance to fire the Delete action on the selected clipboard item.
+        SearchBox.AddHandler(KeyDownEvent, OnSearchBoxDeleteHandler, RoutingStrategies.Tunnel);
         AddHandler(PointerMovedEvent, OnTunnelPointerMoved, RoutingStrategies.Tunnel);
         ResultsList.AddHandler(Gestures.DoubleTappedEvent, OnResultsDoubleTapped, RoutingStrategies.Bubble);
         ResultsList.AddHandler(PointerPressedEvent, OnResultsPointerPressed, RoutingStrategies.Tunnel);
@@ -431,6 +437,10 @@ public partial class MainWindow : Window {
         var vm = DataContext as MainWindowViewModel;
         if (vm is null) return;
 
+        // Capture before any processing — OnKeyDown (bubble) uses this to detect if
+        // Key.Delete / Key.Back arrived on an already-empty field vs. one the TextBox emptied.
+        _searchTextAtTunnelKey = vm.SearchText;
+
         // Hide cursor on typing; not in Edit mode (user needs to see the text cursor)
         bool isEditMode = vm.IsEditorOpen && vm.EditorPanel.IsEditMode;
         if (!isEditMode && e.Key is not (Key.LeftAlt or Key.RightAlt or Key.LeftCtrl or Key.RightCtrl
@@ -591,7 +601,18 @@ public partial class MainWindow : Window {
         // ── Generic action hotkeys (excluding Enter, handled in OnKeyDown) ───────
         foreach (var action in vm.SelectedResult?.Actions ?? []) {
             if (action.Hotkey == null || action.Hotkey == ActionHotkey.Enter) continue;
-            if (!AppHandler.Instance.MatchesHotkey(e, action.Hotkey)) continue;
+
+            var matches = AppHandler.Instance.MatchesHotkey(e, action.Hotkey);
+            // On macOS, ⌫ (Key.Back) with an empty search field acts as the Delete action.
+            // (Key.Delete is forward-delete / Fn+⌫, not easily accessible on Mac keyboards.)
+            if (!matches
+                && AppHandler.Instance.BackspaceActsAsDelete
+                && action.Hotkey == ActionHotkey.Delete
+                && e.Key == Key.Back && e.KeyModifiers == KeyModifiers.None
+                && string.IsNullOrEmpty(vm.SearchText))
+                matches = true;
+
+            if (!matches) continue;
 
             // Block Meta+key (e.g. ⌘C) when text is selected in SearchBox
             if (action.Hotkey.Modifiers == ActionModifiers.Meta
@@ -602,6 +623,25 @@ public partial class MainWindow : Window {
             e.Handled = true;
             return;
         }
+    }
+
+    private void OnSearchBoxDeleteHandler(object? sender, KeyEventArgs e) {
+        if (DataContext is not MainWindowViewModel vm) return;
+        if (vm.IsEditorOpen && vm.EditorPanel.IsEditMode) return;
+        if (vm.IsOptionsMenuOpen) return;
+        if (e.KeyModifiers != KeyModifiers.None) return;
+        if (!string.IsNullOrEmpty(vm.SearchText)) return;
+
+        bool isDelete = e.Key == Key.Delete;
+        bool isBack   = e.Key == Key.Back && AppHandler.Instance.BackspaceActsAsDelete;
+        if (!isDelete && !isBack) return;
+
+        var deleteAction = vm.SelectedResult?.Actions
+            .FirstOrDefault(a => a.Hotkey == ActionHotkey.Delete);
+        if (deleteAction == null) return;
+
+        ExecuteActionWithContext(vm, deleteAction);
+        e.Handled = true;
     }
 
     protected override void OnKeyDown(KeyEventArgs e) {
@@ -716,6 +756,27 @@ public partial class MainWindow : Window {
                 (Application.Current as App)?.OpenSettings();
                 e.Handled = true;
                 break;
+
+            // Delete key: fires the Delete action on the selected result when the search
+            // field is empty. Handled here (bubble phase) because TextBox may consume
+            // Key.Delete in its own OnKeyDown before the tunnel handler can act.
+            // _searchTextAtTunnelKey captures the pre-keystroke value so that the case
+            // where TextBox just emptied the field (user deleted the last char) is not
+            // confused with "field was already empty → user wants to delete the item".
+            case Key.Delete when e.KeyModifiers == KeyModifiers.None:
+            case Key.Back when e.KeyModifiers == KeyModifiers.None
+                           && AppHandler.Instance.BackspaceActsAsDelete
+                           && string.IsNullOrEmpty(_searchTextAtTunnelKey): {
+                if (string.IsNullOrEmpty(_searchTextAtTunnelKey)) {
+                    var deleteAction = vm.SelectedResult?.Actions
+                        .FirstOrDefault(a => a.Hotkey == ActionHotkey.Delete);
+                    if (deleteAction != null) {
+                        ExecuteActionWithContext(vm, deleteAction);
+                        e.Handled = true;
+                    }
+                }
+                break;
+            }
         }
     }
 

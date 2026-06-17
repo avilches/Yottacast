@@ -157,6 +157,12 @@ internal abstract class AppHandler {
     /// <summary>True on macOS: System Settings panels can be opened via URL scheme.</summary>
     public virtual bool SupportsSystemSettingsSearch => false;
 
+    /// <summary>
+    /// True on macOS, where ⌫ (Key.Back) with an empty search field should trigger the Delete action.
+    /// On Windows/Linux, Key.Delete is the accessible delete key.
+    /// </summary>
+    public virtual bool BackspaceActsAsDelete => false;
+
     /// <summary>OS-level permissions service. Noop on platforms that don't expose any (Windows, Linux).</summary>
     public virtual PermissionsService Permissions => NoopPermissionsService.Instance;
 
