@@ -10,7 +10,7 @@ namespace Yottacast.Controls;
 
 /// <summary>
 /// A TextBlock that highlights character ranges in its text using the active theme's
-/// match-highlight style (foreground color, background chip, or bold+underline).
+/// match-highlight colors: a text color (foreground) and a background fill.
 /// When Ranges is null or empty, renders as a plain TextBlock.
 /// </summary>
 public class HighlightTextBlock : TextBlock {
@@ -60,10 +60,9 @@ public class HighlightTextBlock : TextBlock {
             return;
         }
 
-        var res     = Application.Current?.Resources;
-        var style   = res?["Theme.Results.MatchHighlight.Style"]             as string ?? "foreground";
-        var hlBrush = res?["Theme.Results.MatchHighlight.Color"]             as IBrush;
-        var bgOp    = res?["Theme.Results.MatchHighlight.BackgroundOpacity"] is double d ? d : 0.22;
+        var res    = Application.Current?.Resources;
+        var fgBrush = res?["Theme.Results.MatchHighlight.Color"]      as IBrush;
+        var bgBrush = res?["Theme.Results.MatchHighlight.Background"] as IBrush;
 
         // Build a boolean coverage map
         var covered = new bool[text.Length];
@@ -82,27 +81,9 @@ public class HighlightTextBlock : TextBlock {
 
             var run = new Run { Text = text[pos..end] };
 
-            if (isHl && hlBrush != null) {
-                switch (style) {
-                    case "background":
-                        if (hlBrush is SolidColorBrush scb)
-                            run.Background = new SolidColorBrush(scb.Color, bgOp);
-                        break;
-                    case "underline":
-                        run.FontWeight = FontWeight.Bold;
-                        run.TextDecorations = new TextDecorationCollection {
-                            new() {
-                                Location        = TextDecorationLocation.Underline,
-                                Stroke          = hlBrush,
-                                StrokeThickness = 1.5
-                            }
-                        };
-                        break;
-                    default: // "foreground"
-                        run.Foreground = hlBrush;
-                        run.FontWeight = FontWeight.SemiBold;
-                        break;
-                }
+            if (isHl) {
+                if (fgBrush != null) run.Foreground = fgBrush;
+                if (bgBrush != null) run.Background = bgBrush;
             }
 
             inlines.Add(run);

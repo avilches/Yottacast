@@ -7,7 +7,7 @@
     "background": "#1C1C1E",
     "width": 710,
     "cornerRadius": 16,
-    "fontFamily": "SF Pro Text, Lucida Grande, Segoe UI, Inter"
+    "fontFamily": "SF Pro Text, Arial, Lucida Grande, Segoe UI, Inter"
   },
 
   "search": {
@@ -16,7 +16,7 @@
       "cornerRadius": 0,
       "margin": "8,8",
       "padding": "2,-8",
-      "border": { "color": "#FF0000", "thickness": "1" }
+      "border": { "color": "#FF0000", "thickness": "0" }
     },
     "text":        { "color": "#F2F2F7", "size": 17, "fontFamily": "SF Pro Text, Lucida Grande, Segoe UI, Inter" },
     "placeholder": { "color": "#636366" },
@@ -35,6 +35,15 @@
     }
   },
 
+  "groups": {
+    "height": 18,
+    "padding": "6,4",
+    "margin": "0,0,6,0",
+    "text": { "size": 10, "fontFamily": "SF Pro Text, Lucida Grande, Segoe UI, Inter" },
+    "normal":   { "text": { "color": "#60606A" }, "cornerRadius": 12, "border": { "color": "Transparent", "thickness": "1" } },
+    "selected": { "text": { "color": "#B2B2B7" }, "cornerRadius": 12, "border": { "color": "#B2B2B7", "thickness": "1" } }
+  },
+
   "divider": { "color": "#38383A" },
   "spinner": { "color": "#636366" },
 
@@ -44,19 +53,18 @@
     "padding": 8,
     "cornerRadius": 10,
     "selectionBar": { "color": "#0A84FF", "width": 4 },
-    "title":    { "color": "#F2F2F7", "size": 14 },
+    "title":    { "color": "#F2F2F7", "size": 16 },
     "subtitle": { "color": "#8E8E93", "size": 12 },
-    "category": { "color": "#70707A", "size": 12 },
+    "category": { "color": "#70707A", "size": 10 },
     "icon":     { "cornerRadius": 8 },
-    "shortcut": { "color": "#8E8E93", "background": "#3A3A3C", "size": 12, "cornerRadius": 6 },
-    "selection": { "background": "#0A84FF", "color": "#FFFFFF" },
+    "shortcut": { "color": "#8E8E93", "background": "#FF3A3C", "size": 12, "cornerRadius": 6 },
+    "selection": { "background": "#0A84FF", "color": "#FFFFFF", "subtitleColor": "#CCFFFFFF" },
     "matchHighlight": {
-      "style": "foreground",
-      "color": "#0A84FF",
-      "backgroundOpacity": 0.22
+      "color": "#000000",
+      "background": "#BA9752"
     },
     "tags": {
-      "cornerRadius": 4,
+      "cornerRadius": 8,
       "running": {
         "color": "#30D158",
         "background": "Transparent",
@@ -73,20 +81,12 @@
   },
 
   "calculator": {
-    "fontFamily": "SF Pro Text, Lucida Grande, Segoe UI, Inter",
-    "expression": { "color": "#F2F2F7", "size": 20, "fontWeight": "Medium" },
-    "result":     { "color": "#F2F2F7", "size": 20, "fontWeight": "Medium" },
+    "fontFamily": "avares://Yottacast/Assets/Fonts#Geist Mono, SF Mono, Menlo, Consolas, monospace",
+    "expression": { "color": "#F2F2F7", "size": 23, "fontWeight": "Medium" },
+    "result":     { "color": "#F2F2F7", "size": 23, "fontWeight": "Medium" },
     "subtitle":   { "color": "#F2F2F7", "size": 13, "opacity": 0.55 },
     "separator":  { "color": "#F2F2F7" },
     "cell":       { "cornerRadius": 6 }
-  },
-
-  "converter": {
-    "fontFamily": "SF Pro Text, Lucida Grande, Segoe UI, Inter",
-    "value":    { "color": "#F2F2F7", "size": 20 },
-    "subtitle": { "color": "#F2F2F7", "size": 13, "opacity": 0.55 },
-    "arrow":    { "color": "#F2F2F7" },
-    "cell":     { "cornerRadius": 6 }
   },
 
   "emoji": {

@@ -4,7 +4,7 @@
              x:Class="Yottacast.Views.Results.ConversionResultItemView"
              x:DataType="viewModels:ConversionResultItemViewModel">
     <Grid ColumnDefinitions="*" RowDefinitions="*,Auto" MinHeight="68"
-          TextElement.FontFamily="{DynamicResource Theme.Conv.FontFamily}">
+          TextElement.FontFamily="{DynamicResource Theme.Calc.FontFamily}">
 
         <!-- 2-cell layout: From → To (when math.js did NOT simplify the from) -->
         <Grid Grid.Row="0" Grid.Column="0"
@@ -13,19 +13,19 @@
               VerticalAlignment="Center"
               Margin="0,8">
             <!-- From -->
-            <Border Grid.Column="0" CornerRadius="{DynamicResource Theme.Conv.Cell.CornerRadius}" Padding="6,4"
+            <Border Grid.Column="0" CornerRadius="{DynamicResource Theme.Calc.Cell.CornerRadius}" Padding="6,4"
                     HorizontalAlignment="Stretch">
                 <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
                     <TextBlock Text="{Binding FromShort}"
-                               Foreground="{DynamicResource Theme.Conv.Value.Color}"
-                               FontSize="{DynamicResource Theme.Conv.Value.Size}"
+                               Foreground="{DynamicResource Theme.Calc.Expression.Color}"
+                               FontSize="{DynamicResource Theme.Calc.Expression.Size}"
                                FontWeight="Medium"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"/>
                     <TextBlock Text="{Binding FromLong}"
-                               Foreground="{DynamicResource Theme.Conv.Subtitle.Color}"
-                               FontSize="{DynamicResource Theme.Conv.Subtitle.Size}"
-                               Opacity="{DynamicResource Theme.Conv.Subtitle.Opacity}"
+                               Foreground="{DynamicResource Theme.Calc.Subtitle.Color}"
+                               FontSize="{DynamicResource Theme.Calc.Subtitle.Size}"
+                               Opacity="{DynamicResource Theme.Calc.Subtitle.Opacity}"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"
                                IsVisible="{Binding FromLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>
@@ -33,11 +33,11 @@
             </Border>
             <!-- Arrow -->
             <TextBlock Grid.Column="1" Text="→"
-                       Foreground="{DynamicResource Theme.Conv.Arrow.Color}"
+                       Foreground="{DynamicResource Theme.Calc.Separator.Color}"
                        VerticalAlignment="Center"
                        Margin="8,0"/>
             <!-- To -->
-            <Border Grid.Column="2" CornerRadius="{DynamicResource Theme.Conv.Cell.CornerRadius}" Padding="6,4"
+            <Border Grid.Column="2" CornerRadius="{DynamicResource Theme.Calc.Cell.CornerRadius}" Padding="6,4"
                     HorizontalAlignment="Stretch"
                     Classes.conv-cell-selected="{Binding IsToHighlighted}">
                 <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
@@ -48,9 +48,9 @@
                                HorizontalAlignment="Center"
                                TextAlignment="Center"/>
                     <TextBlock Text="{Binding ToLong}"
-                               Foreground="{DynamicResource Theme.Conv.Subtitle.Color}"
-                               FontSize="{DynamicResource Theme.Conv.Subtitle.Size}"
-                               Opacity="{DynamicResource Theme.Conv.Subtitle.Opacity}"
+                               Foreground="{DynamicResource Theme.Calc.Subtitle.Color}"
+                               FontSize="{DynamicResource Theme.Calc.Subtitle.Size}"
+                               Opacity="{DynamicResource Theme.Calc.Subtitle.Opacity}"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"
                                IsVisible="{Binding ToLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>
@@ -65,19 +65,19 @@
               VerticalAlignment="Center"
               Margin="0,8">
             <!-- OrigFrom (context only, not navigable) -->
-            <Border Grid.Column="0" CornerRadius="{DynamicResource Theme.Conv.Cell.CornerRadius}" Padding="6,4"
+            <Border Grid.Column="0" CornerRadius="{DynamicResource Theme.Calc.Cell.CornerRadius}" Padding="6,4"
                     HorizontalAlignment="Stretch">
                 <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
                     <TextBlock Text="{Binding FromShort}"
-                               Foreground="{DynamicResource Theme.Conv.Value.Color}"
-                               FontSize="{DynamicResource Theme.Conv.Value.Size}"
+                               Foreground="{DynamicResource Theme.Calc.Expression.Color}"
+                               FontSize="{DynamicResource Theme.Calc.Expression.Size}"
                                FontWeight="Medium"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"/>
                     <TextBlock Text="{Binding FromLong}"
-                               Foreground="{DynamicResource Theme.Conv.Subtitle.Color}"
-                               FontSize="{DynamicResource Theme.Conv.Subtitle.Size}"
-                               Opacity="{DynamicResource Theme.Conv.Subtitle.Opacity}"
+                               Foreground="{DynamicResource Theme.Calc.Subtitle.Color}"
+                               FontSize="{DynamicResource Theme.Calc.Subtitle.Size}"
+                               Opacity="{DynamicResource Theme.Calc.Subtitle.Opacity}"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"
                                IsVisible="{Binding FromLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>
@@ -85,24 +85,24 @@
             </Border>
             <!-- Arrow 1 -->
             <TextBlock Grid.Column="1" Text="→"
-                       Foreground="{DynamicResource Theme.Conv.Arrow.Color}"
+                       Foreground="{DynamicResource Theme.Calc.Separator.Color}"
                        VerticalAlignment="Center"
                        Margin="8,0"/>
             <!-- NormFrom -->
-            <Border Grid.Column="2" CornerRadius="{DynamicResource Theme.Conv.Cell.CornerRadius}" Padding="6,4"
+            <Border Grid.Column="2" CornerRadius="{DynamicResource Theme.Calc.Cell.CornerRadius}" Padding="6,4"
                     HorizontalAlignment="Stretch"
                     Classes.conv-cell-selected="{Binding IsNormFromHighlighted}">
                 <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
                     <TextBlock Text="{Binding NormFromShort}"
-                               Foreground="{DynamicResource Theme.Conv.Value.Color}"
-                               FontSize="{DynamicResource Theme.Conv.Value.Size}"
+                               Foreground="{DynamicResource Theme.Calc.Expression.Color}"
+                               FontSize="{DynamicResource Theme.Calc.Expression.Size}"
                                FontWeight="Medium"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"/>
                     <TextBlock Text="{Binding NormFromLong}"
-                               Foreground="{DynamicResource Theme.Conv.Subtitle.Color}"
-                               FontSize="{DynamicResource Theme.Conv.Subtitle.Size}"
-                               Opacity="{DynamicResource Theme.Conv.Subtitle.Opacity}"
+                               Foreground="{DynamicResource Theme.Calc.Subtitle.Color}"
+                               FontSize="{DynamicResource Theme.Calc.Subtitle.Size}"
+                               Opacity="{DynamicResource Theme.Calc.Subtitle.Opacity}"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"
                                IsVisible="{Binding NormFromLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>
@@ -110,11 +110,11 @@
             </Border>
             <!-- Arrow 2 -->
             <TextBlock Grid.Column="3" Text="→"
-                       Foreground="{DynamicResource Theme.Conv.Arrow.Color}"
+                       Foreground="{DynamicResource Theme.Calc.Separator.Color}"
                        VerticalAlignment="Center"
                        Margin="8,0"/>
             <!-- To -->
-            <Border Grid.Column="4" CornerRadius="{DynamicResource Theme.Conv.Cell.CornerRadius}" Padding="6,4"
+            <Border Grid.Column="4" CornerRadius="{DynamicResource Theme.Calc.Cell.CornerRadius}" Padding="6,4"
                     HorizontalAlignment="Stretch"
                     Classes.conv-cell-selected="{Binding IsToHighlighted}">
                 <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
@@ -125,9 +125,9 @@
                                HorizontalAlignment="Center"
                                TextAlignment="Center"/>
                     <TextBlock Text="{Binding ToLong}"
-                               Foreground="{DynamicResource Theme.Conv.Subtitle.Color}"
-                               FontSize="{DynamicResource Theme.Conv.Subtitle.Size}"
-                               Opacity="{DynamicResource Theme.Conv.Subtitle.Opacity}"
+                               Foreground="{DynamicResource Theme.Calc.Subtitle.Color}"
+                               FontSize="{DynamicResource Theme.Calc.Subtitle.Size}"
+                               Opacity="{DynamicResource Theme.Calc.Subtitle.Opacity}"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"
                                IsVisible="{Binding ToLong, Converter={x:Static ObjectConverters.IsNotNull}}"/>
@@ -138,14 +138,14 @@
         <!-- Rate date + stale indicator -->
         <StackPanel Grid.Row="1" Orientation="Vertical" Spacing="1" Margin="0,0,0,4" HorizontalAlignment="Center">
             <TextBlock Text="{Binding RatesDateText}"
-                       Foreground="{DynamicResource Theme.Conv.Subtitle.Color}"
-                       FontSize="{DynamicResource Theme.Conv.Subtitle.Size}"
+                       Foreground="{DynamicResource Theme.Calc.Subtitle.Color}"
+                       FontSize="{DynamicResource Theme.Calc.Subtitle.Size}"
                        Opacity="0.5"
                        HorizontalAlignment="Center"
                        IsVisible="{Binding RatesDateText, Converter={x:Static ObjectConverters.IsNotNull}}"/>
             <TextBlock Text="&#x26A0; Exchange rates may be outdated"
-                       Foreground="{DynamicResource Theme.Conv.Subtitle.Color}"
-                       FontSize="{DynamicResource Theme.Conv.Subtitle.Size}"
+                       Foreground="{DynamicResource Theme.Calc.Subtitle.Color}"
+                       FontSize="{DynamicResource Theme.Calc.Subtitle.Size}"
                        Opacity="0.6"
                        HorizontalAlignment="Center"
                        IsVisible="{Binding RatesAreStale}"/>

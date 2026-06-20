@@ -52,17 +52,26 @@
         </Style>
         <!-- Mode chip styles -->
         <Style Selector="Border.mode-chip">
-            <Setter Property="CornerRadius" Value="12"/>
-            <Setter Property="Padding" Value="10,4"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Opacity" Value="0.35"/>
+            <Setter Property="Height" Value="{DynamicResource Theme.Groups.Height}"/>
+            <Setter Property="Padding" Value="{DynamicResource Theme.Groups.Padding}"/>
+            <Setter Property="Margin" Value="{DynamicResource Theme.Groups.Margin}"/>
+            <Setter Property="CornerRadius" Value="{DynamicResource Theme.Groups.Normal.CornerRadius}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Theme.Groups.Normal.BorderColor}"/>
+            <Setter Property="BorderThickness" Value="{DynamicResource Theme.Groups.Normal.BorderThickness}"/>
+        </Style>
+        <Style Selector="Border.mode-chip TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource Theme.Groups.Normal.Color}"/>
+            <Setter Property="FontSize" Value="{DynamicResource Theme.Groups.Size}"/>
+            <Setter Property="FontFamily" Value="{DynamicResource Theme.Groups.FontFamily}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
         <Style Selector="Border.mode-chip.active">
-            <Setter Property="BorderBrush" Value="{DynamicResource Theme.Search.Color}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="CornerRadius" Value="{DynamicResource Theme.Groups.Selected.CornerRadius}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Theme.Groups.Selected.BorderColor}"/>
+            <Setter Property="BorderThickness" Value="{DynamicResource Theme.Groups.Selected.BorderThickness}"/>
         </Style>
         <Style Selector="Border.mode-chip.active TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource Theme.Groups.Selected.Color}"/>
             <Setter Property="FontWeight" Value="Medium"/>
         </Style>
         <!-- Spinner pulse animation -->
@@ -103,6 +112,14 @@
         <!-- Keep text visible on selection -->
         <Style Selector="ListBoxItem:selected TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource Theme.Results.Selection.Color}"/>
+        </Style>
+        <!-- Subtitle (a HighlightTextBlock, not matched by the generic TextBlock selector above).
+             Its color lives in styles, not a local value, so the :selected trigger can override it. -->
+        <Style Selector="controls|HighlightTextBlock.result-subtitle">
+            <Setter Property="Foreground" Value="{DynamicResource Theme.Results.Subtitle.Color}"/>
+        </Style>
+        <Style Selector="ListBoxItem:selected controls|HighlightTextBlock.result-subtitle">
+            <Setter Property="Foreground" Value="{DynamicResource Theme.Results.Selection.SubtitleColor}"/>
         </Style>
         <!-- Options menu ListBoxItems: compact, themed -->
         <Style Selector="ListBox.menu-list ListBoxItem">
@@ -307,23 +324,23 @@
                     IsVisible="{Binding ShowModePill}"
                     Padding="12,0,12,6"
                     Tapped="OnModePillTapped">
-                <StackPanel Orientation="Horizontal" Spacing="6">
+                <StackPanel Orientation="Horizontal">
                     <Border x:Name="AllModePill"
                             Classes="mode-chip"
                             Classes.active="{Binding AllModeActive}">
-                        <TextBlock Text="All" FontSize="12"/>
+                        <TextBlock Text="All"/>
                     </Border>
                     <Border x:Name="FilesModePill"
                             Classes="mode-chip"
                             Classes.active="{Binding FilesModeActive}"
                             IsVisible="{Binding HasFilesMode}">
-                        <TextBlock Text="Files" FontSize="12"/>
+                        <TextBlock Text="Files"/>
                     </Border>
                     <Border x:Name="ClipboardModePill"
                             Classes="mode-chip"
                             Classes.active="{Binding ClipboardModeActive}"
                             IsVisible="{Binding HasClipboardMode}">
-                        <TextBlock Text="Clipboard" FontSize="12"/>
+                        <TextBlock Text="Clipboard"/>
                     </Border>
                 </StackPanel>
             </Border>
@@ -508,29 +525,34 @@
                                     </Border>
                                 </Grid>
 
-                                <!-- Title + subtitle -->
-                                <StackPanel Grid.Column="1"
-                                            Orientation="Vertical"
-                                            VerticalAlignment="Center"
-                                            Spacing="2">
-                                    <Grid VerticalAlignment="Center">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <controls:HighlightTextBlock Grid.Column="0"
-                                                                     x:CompileBindings="False"
+                                <!-- Title + subtitle (tags live in their own centered column so they line up with the category) -->
+                                <Grid Grid.Column="1"
+                                      ColumnDefinitions="*,Auto"
+                                      VerticalAlignment="Center">
+                                    <StackPanel Grid.Column="0"
+                                                Orientation="Vertical"
+                                                VerticalAlignment="Center"
+                                                Spacing="2">
+                                        <controls:HighlightTextBlock x:CompileBindings="False"
                                                                      Text="{Binding Title}"
                                                                      Ranges="{Binding TitleRanges}"
                                                                      Foreground="{DynamicResource Theme.Results.Title.Color}"
                                                                      FontSize="{DynamicResource Theme.Results.Title.Size}"
                                                                      FontWeight="Medium"
                                                                      TextTrimming="CharacterEllipsis"/>
-                                        <StackPanel Grid.Column="1"
-                                                    Orientation="Horizontal"
-                                                    Spacing="6"
-                                                    Margin="6,0,0,0"
-                                                    VerticalAlignment="Center">
+                                        <controls:HighlightTextBlock x:CompileBindings="False"
+                                                                     Classes="result-subtitle"
+                                                                     Text="{Binding Subtitle}"
+                                                                     Ranges="{Binding SubtitleRanges}"
+                                                                     IsVisible="{Binding !DataContext.ClipboardModeActive, ElementName=RootWindow}"
+                                                                     FontSize="{DynamicResource Theme.Results.Subtitle.Size}"
+                                                                     TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1"
+                                                Orientation="Horizontal"
+                                                Spacing="6"
+                                                Margin="6,0,0,0"
+                                                VerticalAlignment="Center">
                                             <Border Classes="running-tag-border"
                                                     IsVisible="{Binding RunningTag, Converter={x:Static ObjectConverters.IsNotNull}}"
                                                     Background="{DynamicResource Theme.Results.Tag.Running.Background}"
@@ -575,14 +597,6 @@
                                             </Border>
                                         </StackPanel>
                                     </Grid>
-                                    <controls:HighlightTextBlock x:CompileBindings="False"
-                                                                 Text="{Binding Subtitle}"
-                                                                 Ranges="{Binding SubtitleRanges}"
-                                                                 IsVisible="{Binding !DataContext.ClipboardModeActive, ElementName=RootWindow}"
-                                                                 Foreground="{DynamicResource Theme.Results.Subtitle.Color}"
-                                                                 FontSize="{DynamicResource Theme.Results.Subtitle.Size}"
-                                                                 TextTrimming="CharacterEllipsis"/>
-                                </StackPanel>
 
                                 <!-- Category (normal) / Score (alt-debug) + shortcut -->
                                 <StackPanel Grid.Column="2"

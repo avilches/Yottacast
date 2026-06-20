@@ -16,7 +16,7 @@
       "cornerRadius": 0,
       "margin": "0",
       "padding": "18,12",
-      "border": { "color": "#5E8FFF", "thickness": "0,0,0,1" }
+      "border": { "color": "#2A2A30", "thickness": "0,0,0,1" }
     },                          
     "text":        { "color": "#FFFFFF", "size": 18, "fontFamily": "SF Pro Text, Lucida Grande, Segoe UI, Inter" },
     "placeholder": { "color": "#505055" },
@@ -34,6 +34,15 @@
     }
   },
 
+  "groups": {
+    "height": 24,
+    "padding": "10,4",
+    "margin": "0,4,6,0",
+    "text": { "size": 12, "fontFamily": "SF Pro Text, Lucida Grande, Segoe UI, Inter" },
+    "normal":   { "text": { "color": "#606068" }, "cornerRadius": 12, "border": { "color": "Transparent", "thickness": "1" } },
+    "selected": { "text": { "color": "#FFFFFF" }, "cornerRadius": 12, "border": { "color": "#FFFFFF", "thickness": "1" } }
+  },
+
   "divider": { "color": "#2A2A30" },
   "spinner": { "color": "#505055" },
 
@@ -48,11 +57,10 @@
     "category": { "color": "#606068", "size": 12 },
     "icon":     { "cornerRadius": 8 },
     "shortcut": { "color": "#505055", "background": "#252529", "size": 12, "cornerRadius": 5 },
-    "selection": { "background": "#2C5AF0", "color": "#FFFFFF" },
+    "selection": { "background": "#2C5AF0", "color": "#FFFFFF", "subtitleColor": "#CCFFFFFF" },
     "matchHighlight": {
-      "style": "background",
-      "color": "#6EFFFF",
-      "backgroundOpacity": 1.22
+      "color": "#FFFFFF",
+      "background": "#662C5AF0"
     },
     "tags": {
       "cornerRadius": 4,
@@ -72,20 +80,12 @@
   },
 
   "calculator": {
-    "fontFamily": "SF Pro Text, Lucida Grande, Segoe UI, Inter",
+    "fontFamily": "avares://Yottacast/Assets/Fonts#Geist Mono, SF Mono, Menlo, Consolas, monospace",
     "expression": { "color": "#EAEAEE", "size": 20, "fontWeight": "Medium" },
     "result":     { "color": "#EAEAEE", "size": 20, "fontWeight": "Medium" },
     "subtitle":   { "color": "#EAEAEE", "size": 13, "opacity": 0.55 },
     "separator":  { "color": "#EAEAEE" },
     "cell":       { "cornerRadius": 6 }
-  },
-
-  "converter": {
-    "fontFamily": "SF Pro Text, Lucida Grande, Segoe UI, Inter",
-    "value":    { "color": "#EAEAEE", "size": 20 },
-    "subtitle": { "color": "#EAEAEE", "size": 13, "opacity": 0.55 },
-    "arrow":    { "color": "#EAEAEE" },
-    "cell":     { "cornerRadius": 6 }
   },
 
   "emoji": {

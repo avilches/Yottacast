@@ -603,14 +603,6 @@ public partial class MainWindow : Window {
             if (action.Hotkey == null || action.Hotkey == ActionHotkey.Enter) continue;
 
             var matches = AppHandler.Instance.MatchesHotkey(e, action.Hotkey);
-            // On macOS, ⌫ (Key.Back) with an empty search field acts as the Delete action.
-            // (Key.Delete is forward-delete / Fn+⌫, not easily accessible on Mac keyboards.)
-            if (!matches
-                && AppHandler.Instance.BackspaceActsAsDelete
-                && action.Hotkey == ActionHotkey.Delete
-                && e.Key == Key.Back && e.KeyModifiers == KeyModifiers.None
-                && string.IsNullOrEmpty(vm.SearchText))
-                matches = true;
 
             if (!matches) continue;
 
@@ -632,9 +624,7 @@ public partial class MainWindow : Window {
         if (e.KeyModifiers != KeyModifiers.None) return;
         if (!string.IsNullOrEmpty(vm.SearchText)) return;
 
-        bool isDelete = e.Key == Key.Delete;
-        bool isBack   = e.Key == Key.Back && AppHandler.Instance.BackspaceActsAsDelete;
-        if (!isDelete && !isBack) return;
+        if (e.Key != Key.Delete) return;
 
         var deleteAction = vm.SelectedResult?.Actions
             .FirstOrDefault(a => a.Hotkey == ActionHotkey.Delete);
@@ -763,10 +753,7 @@ public partial class MainWindow : Window {
             // _searchTextAtTunnelKey captures the pre-keystroke value so that the case
             // where TextBox just emptied the field (user deleted the last char) is not
             // confused with "field was already empty → user wants to delete the item".
-            case Key.Delete when e.KeyModifiers == KeyModifiers.None:
-            case Key.Back when e.KeyModifiers == KeyModifiers.None
-                           && AppHandler.Instance.BackspaceActsAsDelete
-                           && string.IsNullOrEmpty(_searchTextAtTunnelKey): {
+            case Key.Delete when e.KeyModifiers == KeyModifiers.None: {
                 if (string.IsNullOrEmpty(_searchTextAtTunnelKey)) {
                     var deleteAction = vm.SelectedResult?.Actions
                         .FirstOrDefault(a => a.Hotkey == ActionHotkey.Delete);

@@ -36,6 +36,15 @@
     }
   },
 
+  "groups": {
+    "height": 24,
+    "padding": "10,4",
+    "margin": "0,0,6,0",
+    "text": { "size": 12, "fontFamily": "SF Pro Text, Lucida Grande, Segoe UI, Inter" },
+    "normal":   { "text": { "color": "#64748B" }, "cornerRadius": 12, "border": { "color": "Transparent", "thickness": "0" } },
+    "selected": { "text": { "color": "#1E293B" }, "cornerRadius": 12, "border": { "color": "#1E293B", "thickness": "1" } }
+  },
+
   "divider": { "color": "#E2E8F0" },
   "spinner": { "color": "#94A3B8" },
 
@@ -50,29 +59,20 @@
     "category": { "color": "#94A3B8", "size": 11 },
     "icon":     { "cornerRadius": 8 },
     "shortcut": { "color": "#64748B", "background": "#DBEAFE", "size": 11, "cornerRadius": 5 },
-    "selection": { "background": "#2563EB", "color": "#FFFFFF" },
+    "selection": { "background": "#2563EB", "color": "#FFFFFF", "subtitleColor": "#CCFFFFFF" },
     "matchHighlight": {
-      "style": "foreground",
-      "color": "#2563EB",
-      "backgroundOpacity": 0.22
+      "color": "#1E293B",
+      "background": "#8093C5FD"
     }
   },
 
   "calculator": {
-    "fontFamily": "SF Pro Text, Lucida Grande, Segoe UI, Inter",
+    "fontFamily": "avares://Yottacast/Assets/Fonts#Geist Mono, SF Mono, Menlo, Consolas, monospace",
     "expression": { "color": "#1E293B", "size": 20, "fontWeight": "Medium" },
     "result":     { "color": "#1E293B", "size": 20, "fontWeight": "Medium" },
     "subtitle":   { "color": "#1E293B", "size": 13, "opacity": 0.55 },
     "separator":  { "color": "#1E293B" },
     "cell":       { "cornerRadius": 6 }
-  },
-
-  "converter": {
-    "fontFamily": "SF Pro Text, Lucida Grande, Segoe UI, Inter",
-    "value":    { "color": "#1E293B", "size": 20 },
-    "subtitle": { "color": "#1E293B", "size": 13, "opacity": 0.55 },
-    "arrow":    { "color": "#1E293B" },
-    "cell":     { "cornerRadius": 6 }
   },
 
   "emoji": {

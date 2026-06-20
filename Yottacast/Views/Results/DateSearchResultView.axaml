@@ -4,7 +4,7 @@
              x:Class="Yottacast.Views.Results.DateSearchResultView"
              x:DataType="viewModels:DateSearchResultViewModel">
     <Grid ColumnDefinitions="*" RowDefinitions="*,Auto" MinHeight="68"
-          TextElement.FontFamily="{DynamicResource Theme.Conv.FontFamily}">
+          TextElement.FontFamily="{DynamicResource Theme.Calc.FontFamily}">
 
         <!-- Row 0: cells row — fills full width uniformly -->
         <ItemsControl Grid.Row="0"
@@ -18,13 +18,13 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="viewModels:DateCellItem">
-                    <Border CornerRadius="{DynamicResource Theme.Conv.Cell.CornerRadius}"
+                    <Border CornerRadius="{DynamicResource Theme.Calc.Cell.CornerRadius}"
                                 Padding="6,4"
                                 HorizontalAlignment="Stretch"
                                 Classes.conv-cell-selected="{Binding IsSelected}">
                             <TextBlock Text="{Binding Value}"
-                                       Foreground="{DynamicResource Theme.Conv.Value.Color}"
-                                       FontSize="{DynamicResource Theme.Conv.Value.Size}"
+                                       Foreground="{DynamicResource Theme.Calc.Result.Color}"
+                                       FontSize="{DynamicResource Theme.Calc.Result.Size}"
                                        FontWeight="Medium"
                                        HorizontalAlignment="Center"
                                        TextAlignment="Center"
@@ -37,9 +37,9 @@
         <!-- Row 1: subtitle for the selected cell — always in layout to avoid shifting cells -->
         <TextBlock Grid.Row="1"
                    Text="{Binding SelectedCellSubtitle}"
-                   Foreground="{DynamicResource Theme.Conv.Subtitle.Color}"
-                   FontSize="{DynamicResource Theme.Conv.Subtitle.Size}"
-                   Opacity="{DynamicResource Theme.Conv.Subtitle.Opacity}"
+                   Foreground="{DynamicResource Theme.Calc.Subtitle.Color}"
+                   FontSize="{DynamicResource Theme.Calc.Subtitle.Size}"
+                   Opacity="{DynamicResource Theme.Calc.Subtitle.Opacity}"
                    HorizontalAlignment="Center"
                    TextAlignment="Center"
                    TextWrapping="Wrap"

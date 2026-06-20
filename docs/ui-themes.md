@@ -79,7 +79,7 @@ Cada tema es un fichero `.json` en la carpeta `Themes/` del directorio de la apl
 
 ## Fallback incorporado
 
-Existe un fallback hardcodeado (`ApplyBuiltinDefault()`) que produce un tema oscuro funcional sin leer ningun fichero. No es una copia exacta de `dark-default.json`: ambos comparten origen pero han divergido en algunos valores (por ejemplo el estilo, color y opacidad de `matchHighlight`, o el ancho de ventana). El fallback garantiza un arranque coherente; el tema JSON puede diferir en detalles visuales. Este fallback se activa en cualquiera de estos casos:
+Existe un fallback hardcodeado (`ApplyBuiltinDefault()`) que produce un tema oscuro funcional sin leer ningun fichero. No es una copia exacta de `dark-default.json`: ambos comparten origen pero han divergido en algunos valores (por ejemplo el ancho de ventana). El fallback garantiza un arranque coherente; el tema JSON puede diferir en detalles visuales. Este fallback se activa en cualquiera de estos casos:
 
 - El fichero de tema no existe en disco.
 - El JSON no se puede parsear.

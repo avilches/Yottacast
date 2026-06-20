@@ -228,6 +228,30 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
                 SetHintStyle(app, "Info",  hint?["info"]);
             }
 
+            // ── Groups (mode chips: All / Files / Clipboard) ──
+            var groups = json["groups"];
+            if (groups != null) {
+                SetDouble(app,     "Theme.Groups.Height",     groups["height"]);
+                SetThickness(app,  "Theme.Groups.Padding",    groups["padding"]);
+                SetThickness(app,  "Theme.Groups.Margin",     groups["margin"]);
+                SetDouble(app,     "Theme.Groups.Size",       groups["text"]?["size"]);
+                SetFontFamily(app, "Theme.Groups.FontFamily", groups["text"]?["fontFamily"]);
+                var gNormal = groups["normal"];
+                if (gNormal != null) {
+                    SetBrush(app,        "Theme.Groups.Normal.Color",           gNormal["text"]?["color"]);
+                    SetCornerRadius(app, "Theme.Groups.Normal.CornerRadius",    gNormal["cornerRadius"]);
+                    SetBrush(app,        "Theme.Groups.Normal.BorderColor",     gNormal["border"]?["color"]);
+                    SetThickness(app,    "Theme.Groups.Normal.BorderThickness", gNormal["border"]?["thickness"]);
+                }
+                var gSelected = groups["selected"];
+                if (gSelected != null) {
+                    SetBrush(app,        "Theme.Groups.Selected.Color",           gSelected["text"]?["color"]);
+                    SetCornerRadius(app, "Theme.Groups.Selected.CornerRadius",    gSelected["cornerRadius"]);
+                    SetBrush(app,        "Theme.Groups.Selected.BorderColor",     gSelected["border"]?["color"]);
+                    SetThickness(app,    "Theme.Groups.Selected.BorderThickness", gSelected["border"]?["thickness"]);
+                }
+            }
+
             // ── Divider / Spinner ──
             SetBrush(app, "Theme.Divider.Color", json["divider"]?["color"]);
             SetBrush(app, "Theme.Spinner.Color", json["spinner"]?["color"]);
@@ -267,13 +291,14 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
                 if (sel != null) {
                     SetBrush(app, "Theme.Results.Selection.Background", sel["background"]);
                     SetBrush(app, "Theme.Results.Selection.Color",      sel["color"]);
+                    // Subtitle on a selected item: falls back to the selection text color when the theme omits it.
+                    SetBrush(app, "Theme.Results.Selection.SubtitleColor", sel["subtitleColor"] ?? sel["color"]);
                 }
 
                 var mh = results["matchHighlight"];
                 if (mh != null) {
-                    SetString(app, "Theme.Results.MatchHighlight.Style",            mh["style"]);
-                    SetBrush(app,  "Theme.Results.MatchHighlight.Color",            mh["color"]);
-                    SetDouble(app, "Theme.Results.MatchHighlight.BackgroundOpacity", mh["backgroundOpacity"]);
+                    SetBrush(app, "Theme.Results.MatchHighlight.Color",      mh["color"]);
+                    SetBrush(app, "Theme.Results.MatchHighlight.Background", mh["background"]);
                 }
 
                 var tags = results["tags"];
@@ -310,19 +335,6 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
                 SetOpacity(app,    "Theme.Calc.Subtitle.Opacity",  calc["subtitle"]?["opacity"]);
                 SetBrush(app,      "Theme.Calc.Separator.Color",   calc["separator"]?["color"]);
                 SetCornerRadius(app, "Theme.Calc.Cell.CornerRadius", calc["cell"]?["cornerRadius"]);
-            }
-
-            // ── Converter ──
-            var conv = json["converter"];
-            if (conv != null) {
-                SetFontFamily(app, "Theme.Conv.FontFamily",        conv["fontFamily"]);
-                SetBrush(app,      "Theme.Conv.Value.Color",       conv["value"]?["color"]);
-                SetDouble(app,     "Theme.Conv.Value.Size",        conv["value"]?["size"]);
-                SetBrush(app,      "Theme.Conv.Subtitle.Color",    conv["subtitle"]?["color"]);
-                SetDouble(app,     "Theme.Conv.Subtitle.Size",     conv["subtitle"]?["size"]);
-                SetOpacity(app,    "Theme.Conv.Subtitle.Opacity",  conv["subtitle"]?["opacity"]);
-                SetBrush(app,      "Theme.Conv.Arrow.Color",       conv["arrow"]?["color"]);
-                SetCornerRadius(app, "Theme.Conv.Cell.CornerRadius", conv["cell"]?["cornerRadius"]);
             }
 
             // ── Emoji ──
@@ -470,6 +482,21 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
         SetHintStyleDefaults(app, "Error", "#FF3B30");
         SetHintStyleDefaults(app, "Info",  "#9A9AA4");
 
+        // ── Groups (mode chips) ──
+        app.Resources["Theme.Groups.Height"]                  = 24.0;
+        app.Resources["Theme.Groups.Padding"]                 = new Thickness(10, 4, 10, 4);
+        app.Resources["Theme.Groups.Margin"]                  = new Thickness(0, 0, 6, 0);
+        app.Resources["Theme.Groups.Size"]                    = 12.0;
+        app.Resources["Theme.Groups.FontFamily"]              = new FontFamily("SF Pro Text, Segoe UI, Inter");
+        app.Resources["Theme.Groups.Normal.Color"]            = B("#70707A");
+        app.Resources["Theme.Groups.Normal.CornerRadius"]     = new CornerRadius(12);
+        app.Resources["Theme.Groups.Normal.BorderColor"]      = new SolidColorBrush(Colors.Transparent);
+        app.Resources["Theme.Groups.Normal.BorderThickness"]  = new Thickness(0);
+        app.Resources["Theme.Groups.Selected.Color"]          = B("#FFFFFF");
+        app.Resources["Theme.Groups.Selected.CornerRadius"]   = new CornerRadius(12);
+        app.Resources["Theme.Groups.Selected.BorderColor"]    = B("#FFFFFF");
+        app.Resources["Theme.Groups.Selected.BorderThickness"] = new Thickness(1);
+
         // ── Divider / Spinner ──
         app.Resources["Theme.Divider.Color"] = B("#2A2A30");
         app.Resources["Theme.Spinner.Color"] = B("#505055");
@@ -495,9 +522,9 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
         app.Resources["Theme.Results.Shortcut.CornerRadius"]     = new CornerRadius(5);
         app.Resources["Theme.Results.Selection.Background"] = B("#2C5AF0");
         app.Resources["Theme.Results.Selection.Color"]     = B("#FFFFFF");
-        app.Resources["Theme.Results.MatchHighlight.Style"]            = "foreground";
-        app.Resources["Theme.Results.MatchHighlight.Color"]            = B("#5E8FFF");
-        app.Resources["Theme.Results.MatchHighlight.BackgroundOpacity"] = 0.22;
+        app.Resources["Theme.Results.Selection.SubtitleColor"] = B("#CCFFFFFF");
+        app.Resources["Theme.Results.MatchHighlight.Color"]      = B("#FFFFFF");
+        app.Resources["Theme.Results.MatchHighlight.Background"] = B("#662C5AF0");
 
         // ── Result Tags (pills) ──
         app.Resources["Theme.Results.Tag.CornerRadius"]          = new CornerRadius(4);
@@ -515,7 +542,7 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
         app.Resources["Theme.Results.Tag.Error.BorderColor"]            = new SolidColorBrush(Colors.Transparent);
 
         // ── Calculator ──
-        app.Resources["Theme.Calc.FontFamily"]        = new FontFamily("SF Pro Text, Segoe UI, Inter");
+        app.Resources["Theme.Calc.FontFamily"]        = new FontFamily("avares://Yottacast/Assets/Fonts#Geist Mono, SF Mono, Menlo, Consolas, monospace");
         app.Resources["Theme.Calc.Expression.Color"]       = B("#EAEAEE");
         app.Resources["Theme.Calc.Expression.Size"]        = 20.0;
         app.Resources["Theme.Calc.Expression.FontWeight"]  = FontWeight.Medium;
@@ -527,16 +554,6 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
         app.Resources["Theme.Calc.Subtitle.Opacity"]  = 0.55;
         app.Resources["Theme.Calc.Separator.Color"]   = B("#EAEAEE");
         app.Resources["Theme.Calc.Cell.CornerRadius"]  = new CornerRadius(6);
-
-        // ── Converter ──
-        app.Resources["Theme.Conv.FontFamily"]        = new FontFamily("SF Pro Text, Segoe UI, Inter");
-        app.Resources["Theme.Conv.Value.Color"]       = B("#EAEAEE");
-        app.Resources["Theme.Conv.Value.Size"]        = 20.0;
-        app.Resources["Theme.Conv.Subtitle.Color"]    = B("#EAEAEE");
-        app.Resources["Theme.Conv.Subtitle.Size"]     = 13.0;
-        app.Resources["Theme.Conv.Subtitle.Opacity"]  = 0.55;
-        app.Resources["Theme.Conv.Arrow.Color"]       = B("#EAEAEE");
-        app.Resources["Theme.Conv.Cell.CornerRadius"]  = new CornerRadius(6);
 
         // ── Emoji ──
         app.Resources["Theme.Emoji.Columns"]          = AppDefaults.EmojiColumns;

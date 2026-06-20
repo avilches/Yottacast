@@ -15,10 +15,10 @@ Cada tema es un fichero `.json`. La estructura agrupa propiedades por componente
 | `variant` | `"light"` o `"dark"` (controla el `ThemeVariant` de Avalonia) |
 | `window` | Fondo, ancho, cornerRadius y fontFamily de la ventana |
 | `search` | Fondo, marco del input, texto, placeholder, caret, seleccion, hints (error e info) |
+| `groups` | Mode chips (All / Files / Clipboard): altura, texto, padding, margin, borde y cornerRadius por estado (normal / seleccionado) |
 | `divider` / `spinner` | Color del separador y del spinner de carga |
 | `results` | Fondo del area, altura maxima, barra de seleccion lateral, titulo, subtitulo, categoria, icono, shortcut, seleccion, highlight, tags |
-| `calculator` | Expresion, resultado, subtitulo, separador, celda |
-| `converter` | Valor, subtitulo, flecha, celda |
+| `calculator` | Estilo unico de todos los resultados de calculo (calculadora, conversor, fechas, algebra): expresion, resultado, subtitulo, separador, celda |
 | `emoji` | Celda, caracter, keywords, cabecera de seccion, favorito, contador de uso |
 | `noResults` | Titulo y subtitulo cuando no hay resultados |
 | `footer` | Fondo, borde superior y texto del pie |
@@ -36,6 +36,32 @@ No existe ninguna seccion `escBadge` ni tokens `Theme.Esc.*`: el indicador de ac
 > **Verificar en:**
 > - `ThemeService.Apply()` -- lectura del JSON y asignacion de tokens.
 > - Cualquier fichero en `Yottacast/Themes/*.json` como referencia de estructura.
+
+---
+
+## Valores `fontFamily`: fuentes de sistema y embebidas
+
+Cualquier token `*.fontFamily` acepta dos formas, intercambiables y combinables:
+
+- **Cadena de familias de sistema**, separadas por coma, en orden de preferencia (ej. `"SF Pro Text, Lucida Grande, Segoe UI, Inter"`). Avalonia usa la primera que exista en el SO; el resto son fallback. Asi es como los temas resuelven el texto general (SF Pro en macOS, Inter como ultimo recurso fuera de macOS).
+- **URI de fuente embebida**: `avares://Yottacast/Assets/Fonts#<Familia>`. El nombre tras `#` debe coincidir con el **nombre interno** de la familia (nombre del fichero es irrelevante). Tras el `#` se pueden anadir fallbacks de sistema por coma: `avares://Yottacast/Assets/Fonts#Geist Mono, SF Mono, Menlo, Consolas, monospace`.
+
+Las fuentes embebidas viven en `Yottacast/Assets/Fonts/` y se compilan dentro del ensamblado por el glob `<AvaloniaResource Include="Assets\**" />` del `.csproj` (no requiere registro extra). Estan embebidas:
+
+| Fichero | Familia (`#`) | Uso |
+|---|---|---|
+| `GeistMono-Variable.ttf` | `Geist Mono` | Fuente de los resultados de calculo (`calculator.fontFamily` en los 5 temas y el fallback `Theme.Calc.FontFamily`). Reservada tambien para futuros sources de tipo dev (UUID, hash, etc.). |
+| `JetBrainsMono-Variable.ttf` | `JetBrains Mono` | Embebida y disponible; no asignada a ningun token por defecto. |
+
+Inter sigue disponible como ultimo fallback de las cadenas de sistema via el paquete `Avalonia.Fonts.Inter` (registrado con `.WithInterFont()` en `Program.cs`); no se referencia por URI.
+
+Ambas monos son fuentes variables (un solo `.ttf` cubre todos los pesos); el `fontWeight` del tema selecciona el peso sobre el eje `wght`. Las licencias OFL se envian junto a los `.ttf` (`Geist-OFL.txt`, `JetBrainsMono-OFL.txt`).
+
+> **Verificar en:**
+> - `ThemeService.SetFontFamily()` -- construccion del `FontFamily` desde la cadena del JSON.
+> - `Yottacast/Assets/Fonts/` -- ficheros embebidos y licencias.
+> - `Yottacast/Yottacast.csproj` -- glob `AvaloniaResource Include="Assets\**"`.
+> - `Program.cs` -- `.WithInterFont()`.
 
 ---
 
@@ -87,6 +113,28 @@ El bloque `search.hint` contiene dos sub-bloques, `error` e `info`, con la misma
 
 `horizontalAlignment` acepta `left` / `center` / `right` (cualquier otro valor cae a `stretch`). `textAlignment` acepta `center` / `right` (cualquier otro valor cae a `left`).
 
+### Groups
+
+Estilo de los mode chips bajo la barra de busqueda (las pills **All / Files / Clipboard**, clase `mode-chip` en `MainWindow.axaml`). `text.size` y `text.fontFamily` son compartidos por ambos estados; el color del texto, el borde y el cornerRadius se definen por separado en `normal` y `selected`. La diferenciacion visual entre estados se controla solo con color de texto y borde (sin opacity).
+
+| JSON path | Recurso Avalonia |
+|---|---|
+| `groups.height` | `Theme.Groups.Height` |
+| `groups.padding` | `Theme.Groups.Padding` |
+| `groups.margin` | `Theme.Groups.Margin` |
+| `groups.text.size` | `Theme.Groups.Size` |
+| `groups.text.fontFamily` | `Theme.Groups.FontFamily` |
+| `groups.normal.text.color` | `Theme.Groups.Normal.Color` |
+| `groups.normal.cornerRadius` | `Theme.Groups.Normal.CornerRadius` |
+| `groups.normal.border.color` | `Theme.Groups.Normal.BorderColor` |
+| `groups.normal.border.thickness` | `Theme.Groups.Normal.BorderThickness` |
+| `groups.selected.text.color` | `Theme.Groups.Selected.Color` |
+| `groups.selected.cornerRadius` | `Theme.Groups.Selected.CornerRadius` |
+| `groups.selected.border.color` | `Theme.Groups.Selected.BorderColor` |
+| `groups.selected.border.thickness` | `Theme.Groups.Selected.BorderThickness` |
+
+`margin` se aplica a cada chip individual (el espaciado entre chips). El chip seleccionado anade ademas `FontWeight="Medium"` (no tematizable, fijo en el AXAML).
+
 ### Divider / Spinner
 
 | JSON path | Recurso Avalonia |
@@ -117,28 +165,24 @@ El bloque `search.hint` contiene dos sub-bloques, `error` e `info`, con la misma
 | `results.shortcut.cornerRadius` | `Theme.Results.Shortcut.CornerRadius` |
 | `results.selection.background` | `Theme.Results.Selection.Background` |
 | `results.selection.color` | `Theme.Results.Selection.Color` |
-| `results.matchHighlight.style` | `Theme.Results.MatchHighlight.Style` |
+| `results.selection.subtitleColor` | `Theme.Results.Selection.SubtitleColor` |
 | `results.matchHighlight.color` | `Theme.Results.MatchHighlight.Color` |
-| `results.matchHighlight.backgroundOpacity` | `Theme.Results.MatchHighlight.BackgroundOpacity` |
+| `results.matchHighlight.background` | `Theme.Results.MatchHighlight.Background` |
 
 `results.maxHeight` fija la altura maxima del area de resultados (en pixeles) y ademas alimenta el calculo del numero de filas visibles del grid de emojis (ver "Emoji" mas abajo).
 
 #### Detalle: Match Highlight
 
-El token `matchHighlight` controla como se resaltan los caracteres de titulo y subtitulo que coinciden con la query del usuario. Los autores de temas pueden elegir entre tres estilos visuales:
+El token `matchHighlight` controla como se resaltan los caracteres de titulo y subtitulo que coinciden con la query del usuario. Tiene exactamente dos campos, ambos colores:
 
-| Estilo | Descripcion |
+| Campo | Descripcion |
 |---|---|
-| `foreground` | Los caracteres coincidentes adoptan un color distinto y peso medio. El texto no-coincidente mantiene su estilo. Utiles para queries con pocos caracteres donde el cambio de color es sutil |
-| `background` | Los caracteres coincidentes reciben un relleno semi-transparente de fondo usando el color del tema y la opacidad especificada. El color del texto permanece igual. Proporciona un contraste visual mas fuerte |
-| `underline` | Los caracteres coincidentes se muestran en negrita con un subrayado en el color accent del tema. Util para temas donde el cambio de color podria resultar en contraste insuficiente |
+| `color` | Color del texto de los caracteres coincidentes (foreground del run resaltado) |
+| `background` | Color de relleno de fondo de los caracteres coincidentes |
 
-El campo `color` se interpreta segun el `style`:
-- En `foreground`: es el color del texto de los caracteres coincidentes
-- En `background`: es el color del relleno de fondo (aplicado con la opacidad especificada)
-- En `underline`: se ignora (siempre usa el accent color del tema)
+Ambos colores se aplican siempre a los caracteres que coinciden: el texto toma `color` y el fondo toma `background`. Para conseguir un chip semi-transparente, usar un color de fondo con canal alfa en formato `#AARRGGBB` (alfa primero; ej. `#662C5AF0` es azul al ~40%). El texto no-coincidente conserva su estilo normal.
 
-El campo `backgroundOpacity` (0.0–1.0) solo se usa en estilo `background` y controla la transparencia del relleno. Valores tipicos: 0.15 para un highlight sutil, 0.4 para un highlight fuerte.
+No existe ningun campo `style`: no hay variantes `foreground` / `background` / `underline` ni subrayado. Tampoco existe `backgroundOpacity` (la transparencia se expresa en el propio `background` via canal alfa).
 
 **Nota:** El highlight es parte del contrato de tema, permitiendo que autores de temas personalizados creen estilos visuales coherentes con su diseno.
 
@@ -166,6 +210,10 @@ El estilo filled (fondo tintado, borde transparente) u outline (fondo transparen
 
 ### Calculator
 
+La seccion `calculator` es el estilo unico compartido por todos los resultados de tipo calculo: la calculadora simple, la conversion de unidades/divisas, el algebra simbolica y la busqueda de fechas. No existe una seccion `converter` separada; el conversor, las fechas y el algebra leen estos mismos tokens `Theme.Calc.*`.
+
+Mapeo por componente: las celdas de entrada del conversor (`From` / `NormFrom`) usan `Theme.Calc.Expression.*`; el resultado del conversor (`To`) y las celdas de fecha/algebra usan `Theme.Calc.Result.*`; las flechas `→` entre celdas usan `Theme.Calc.Separator.Color` (el mismo token que el `=` de la calculadora); los subtitulos contextuales usan `Theme.Calc.Subtitle.*` y las celdas `Theme.Calc.Cell.CornerRadius`. Como `expression` y `result` suelen definirse identicos en los temas incluidos, la distincion solo se nota en temas que los diferencien.
+
 | JSON path | Recurso Avalonia |
 |---|---|
 | `calculator.fontFamily` | `Theme.Calc.FontFamily` |
@@ -180,19 +228,6 @@ El estilo filled (fondo tintado, borde transparente) u outline (fondo transparen
 | `calculator.subtitle.opacity` | `Theme.Calc.Subtitle.Opacity` |
 | `calculator.separator.color` | `Theme.Calc.Separator.Color` |
 | `calculator.cell.cornerRadius` | `Theme.Calc.Cell.CornerRadius` |
-
-### Converter
-
-| JSON path | Recurso Avalonia |
-|---|---|
-| `converter.fontFamily` | `Theme.Conv.FontFamily` |
-| `converter.value.color` | `Theme.Conv.Value.Color` |
-| `converter.value.size` | `Theme.Conv.Value.Size` |
-| `converter.subtitle.color` | `Theme.Conv.Subtitle.Color` |
-| `converter.subtitle.size` | `Theme.Conv.Subtitle.Size` |
-| `converter.subtitle.opacity` | `Theme.Conv.Subtitle.Opacity` |
-| `converter.arrow.color` | `Theme.Conv.Arrow.Color` |
-| `converter.cell.cornerRadius` | `Theme.Conv.Cell.CornerRadius` |
 
 ### Emoji
 
