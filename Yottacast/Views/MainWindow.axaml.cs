@@ -448,6 +448,31 @@ public partial class MainWindow : Window {
             HideCursor();
         }
 
+        // ── Escape: full cascade in tunnel phase ────────────────────────────────
+        // TextBox (SearchBox) and AvaloniaEdit consume Escape in their bubble class-handlers,
+        // preventing OnKeyDown (bubble) from ever seeing it — same root cause as Delete/Back.
+        // Moving the full cascade here (tunnel) fires before any child class-handler can swallow it.
+        if (e.Key == Key.Escape) {
+            if (vm.IsOptionsMenuOpen) {
+                vm.CloseOptionsMenu();
+            } else if (vm.IsEditorOpen && !vm.ClipboardModeActive) {
+                // In clipboard mode the preview auto-manages with selection — skip closing it.
+                if (vm.EditorPanel.ShowUnsavedDialog)
+                    vm.EditorPanel.CancelUnsavedDialog();
+                else
+                    vm.EditorPanel.RequestClose();
+            } else if (vm.IsSearching) {
+                vm.CancelDeferredSearch();
+                vm.CleanAndSaveHistory(null);
+            } else if (!string.IsNullOrEmpty(vm.SearchText)) {
+                vm.CleanAndSaveHistory(null);
+            } else {
+                Hide();
+            }
+            e.Handled = true;
+            return;
+        }
+
         // ── Overlay navigation (when options menu is open) ──────────────────────
         if (vm.IsOptionsMenuOpen) {
             switch (e.Key) {
@@ -464,7 +489,6 @@ public partial class MainWindow : Window {
                         ExecuteActionWithContext(vm, menuAction);
                     e.Handled = true;
                     return;
-                case Key.Escape:
                 case Key.Tab:
                     vm.CloseOptionsMenu();
                     e.Handled = true;
@@ -476,15 +500,7 @@ public partial class MainWindow : Window {
 
         // ── Editor Edit mode: only intercept editor hotkeys; let everything else reach AvaloniaEdit ──
         if (isEditMode) {
-            // Esc must be caught in tunnel phase — AvaloniaEdit would otherwise consume it
-            if (e.Key == Key.Escape) {
-                if (vm.EditorPanel.ShowUnsavedDialog)
-                    vm.EditorPanel.CancelUnsavedDialog();
-                else
-                    vm.EditorPanel.RequestClose();
-                e.Handled = true;
-                return;
-            }
+            // Escape already handled above by the tunnel cascade block.
             // When the unsaved-changes modal is open, ⌘E means save-and-close
             if (vm.EditorPanel.ShowUnsavedDialog) {
                 if (AppHandler.Instance.MatchesHotkey(e, ActionHotkey.MetaE)) {
