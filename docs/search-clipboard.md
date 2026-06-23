@@ -153,7 +153,7 @@ Al seleccionar cualquier item de portapapeles, el panel de preview se abre autom
 
 Cuando `ClipboardSearchVisibility = ModeOnly` y el usuario activa el modo Clipboard (`SearchMode.Clipboard`):
 
-- **Lista de resultados:** el subtítulo (`"From clipboard, …"`) no se muestra; los items son de una sola línea con altura compacta (MinHeight reducido a 38px en lugar de 52px).
+- **Lista de resultados:** el subtítulo (`"From clipboard, …"`) no se muestra y el icono se oculta; los items son de una sola línea con altura ajustada al texto (se anula el `MinHeight` del Grid de fila y el `ListBoxItem` baja a una altura compacta, en lugar de la altura por defecto dominada por el icono de 40px).
 - **Hotkey global:** si el usuario pulsa la hotkey global de la app con la ventana visible y en modo Clipboard, en vez de ocultar la ventana se cambia al modo All. Esto permite salir rápidamente al modo normal sin perder el foco.
 
 > **Verificar en:** `MainWindow.axaml` (estilo `ListBox.clipboard-mode`, binding `Classes.clipboard-mode`, binding `IsVisible` del subtítulo). `App.axaml.cs` (bloque de hotkey global: `mainVm.ClipboardModeActive → mainVm.ResetMode()`).

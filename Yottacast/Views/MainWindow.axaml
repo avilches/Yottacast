@@ -177,9 +177,15 @@
             <Setter Property="Opacity" Value="0"/>
             <Setter Property="IsHitTestVisible" Value="False"/>
         </Style>
-        <!-- Clipboard-only mode: compact single-line items -->
+        <!-- Clipboard-only mode: compact single-line items.
+             The icon box is hidden and the row's MinHeight is dropped so the item
+             collapses to a single text line instead of the 44px icon-driven height. -->
         <Style Selector="ListBox.clipboard-mode ListBoxItem">
-            <Setter Property="MinHeight" Value="38"/>
+            <Setter Property="MinHeight" Value="24"/>
+            <Setter Property="Margin" Value="0"/>
+        </Style>
+        <Style Selector="ListBox.clipboard-mode Grid.result-row">
+            <Setter Property="MinHeight" Value="0"/>
         </Style>
         <!-- Conversion with navigable cells: suppress ListBoxItem selection background -->
         <Style Selector="ListBoxItem.conv-navigable:selected /template/ ContentPresenter">
@@ -486,13 +492,15 @@
 
                         <!-- Standard template (apps, files, etc.) -->
                         <DataTemplate x:DataType="viewModels:ResultItemViewModel">
-                            <Grid ColumnDefinitions="Auto,*,Auto" MinHeight="44">
+                            <Grid ColumnDefinitions="Auto,*,Auto" MinHeight="44" Classes="result-row">
 
-                                <!-- Icon box (with optional badge overlay) -->
+                                <!-- Icon box (with optional badge overlay).
+                                     Hidden in clipboard-only mode so the row collapses to a single text line. -->
                                 <Grid Grid.Column="0"
                                       Width="40" Height="40"
                                       VerticalAlignment="Center"
-                                      Margin="0,0,12,0">
+                                      Margin="0,0,12,0"
+                                      IsVisible="{Binding !DataContext.ClipboardModeActive, ElementName=RootWindow}">
 
                                     <Border Classes="icon-box"
                                             CornerRadius="{DynamicResource Theme.Results.Icon.CornerRadius}"
