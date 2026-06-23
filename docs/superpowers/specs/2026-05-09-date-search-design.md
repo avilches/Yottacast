@@ -16,6 +16,11 @@ DateSearch se comporta como la calculadora: no requiere prefijo. Se activa con c
 
 La detección usa **Microsoft.Recognizers.Text.DateTime**, que admite expresiones absolutas ("3 de mayo de 2025"), relativas ("mañana", "next week") y rangos ("del lunes al viernes"). El reconocedor devuelve tipos `datetimeV2.date`, `datetimeV2.datetime`, `datetimeV2.daterange` y `datetimeV2.datetimerange`; cualquier otro tipo se ignora.
 
+Para evitar falsos positivos, la fuente filtra dos clases de entrada antes y después del reconocimiento:
+
+- **Entradas puramente numéricas**: una query sin ninguna letra (p. ej. "134.2", "12.5", "2025") se descarta sin lanzar el reconocedor, porque es entrada de calculadora/número, no una fecha. La única forma todo-dígitos que sí se acepta es una fecha ISO completa `yyyy-MM-dd`.
+- **Nombre de mes o día de la semana suelto**: un mes solo ("dec", "diciembre") o un día de la semana solo ("monday", "lunes") produce un rango/fecha indefinido que el usuario no llegó a especificar; se suprime. Las formas cualificadas ("3 de mayo", "next monday", "diciembre 2025") conservan día/año concretos en su `timex` y sí se muestran. La detección se hace sobre el `timex` del reconocedor: se suprime cuando es `XXXX-MM` (mes indefinido) o `XXXX-WXX-N` (día de semana indefinido).
+
 ---
 
 ## 2. Resultado: fecha simple
@@ -52,7 +57,7 @@ Cuando se reconoce un rango (inicio + fin), la fuente produce **un único result
 | 2 (ISO rango) | `yyyy-MM-dd/yyyy-MM-dd` — formato de intervalo ISO 8601 |
 | 3 (Original) | El texto reconocido tal como lo escribió el usuario |
 
-El subtítulo muestra la duración del rango: `N días` (calculado como `fin - inicio + 1`).
+El subtítulo muestra la duración del rango en días. El reconocedor reporta el día final de forma **inclusiva** para rangos explícitos "de X a Y" (`timex` en forma de tupla, p. ej. `(...,...,P4D)`) pero **exclusiva** —primer día del periodo siguiente— para rangos de periodo completo (mes/año, p. ej. `2025-12`). Por eso la duración suma el día final solo en el primer caso: "del 1 al 5 de junio" son 5 días, y "diciembre 2025" son 31 días (no 32).
 
 El icono es 📅 y la categoría `Date Range`.
 
@@ -84,7 +89,9 @@ Esto permite detectar "3 de mayo" (español) y "next Monday" (inglés) con la mi
 | Propiedad | Tipo | Valor por defecto | Descripción |
 |---|---|---|---|
 | `DateSearchEnabled` | `bool` | `true` | Toggle global de la fuente |
-| `DateSearchLanguages` | `List<string>` | `["es-es", "en-us"]` | Idiomas activos para el reconocedor |
+| `DateSearchLanguages` | `List<string>` | `["es-es", "en-us"]` | Idiomas activos para el reconocedor (default en `AppDefaults.DateSearchDefaultLanguages`) |
+
+La detección se ejecuta **solo** contra los idiomas de `DateSearchLanguages`, no contra los 11 disponibles. Mantener la lista corta es deliberado: cada idioma extra amplía los falsos positivos (p. ej. el japonés interpreta "134.2" como el año 0134). La ventana de Settings aún no expone un selector de idiomas; el valor por defecto (es/en) cubre el caso común y la lista se persiste para cuando se añada el selector.
 
 Los 11 idiomas disponibles son (código → nombre en UI): `es-es` Español, `en-us` English, `fr-fr` Français, `de-de` Deutsch, `it-it` Italiano, `nl-nl` Nederlands, `pt-br` Português, `zh-cn` 中文, `ja-jp` 日本語, `ko-kr` 한국어, `tr-tr` Türkçe.
 

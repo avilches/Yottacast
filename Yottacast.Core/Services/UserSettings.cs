@@ -73,6 +73,7 @@ public class UserSettings {
     public bool DictionaryShowAlways { get; set; } = false;
     public List<string> DictionaryLanguages { get; set; } = new(AppDefaults.DictionaryDefaultLanguages);
     public bool DateSearchEnabled { get; set; } = true;
+    public List<string> DateSearchLanguages { get; set; } = new(AppDefaults.DateSearchDefaultLanguages);
     public string DateIsoFormat { get; set; } = AppDefaults.DateIsoFormat;
     public string DateLongFormat { get; set; } = AppDefaults.DateLongFormat;
     public bool EnableHistory { get; set; } = true;
@@ -213,6 +214,7 @@ public class UserSettings {
         [JsonPropertyName("enableSystemSettings")] public bool EnableSystemSettings { get; init; } = true;
         [JsonPropertyName("dictionaryLanguages")] public List<string>? DictionaryLanguages { get; init; }
         [JsonPropertyName("dateSearchEnabled")] public bool DateSearchEnabled { get; init; } = true;
+        [JsonPropertyName("dateSearchLanguages")] public List<string>? DateSearchLanguages { get; init; }
         [JsonPropertyName("dateIsoFormat")] public string DateIsoFormat { get; init; } = AppDefaults.DateIsoFormat;
         [JsonPropertyName("dateLongFormat")] public string DateLongFormat { get; init; } = AppDefaults.DateLongFormat;
         [JsonPropertyName("enableHistory")] public bool EnableHistory { get; init; } = true;
@@ -291,6 +293,7 @@ public class UserSettings {
                     DictionaryShowAlways = data.DictionaryShowAlways,
                     DictionaryLanguages = data.DictionaryLanguages is { Count: > 0 } ? data.DictionaryLanguages : new(AppDefaults.DictionaryDefaultLanguages),
                     DateSearchEnabled = data.DateSearchEnabled,
+                    DateSearchLanguages = data.DateSearchLanguages is { Count: > 0 } ? data.DateSearchLanguages : new(AppDefaults.DateSearchDefaultLanguages),
                     DateIsoFormat = string.IsNullOrWhiteSpace(data.DateIsoFormat) ? AppDefaults.DateIsoFormat : data.DateIsoFormat,
                     DateLongFormat = string.IsNullOrWhiteSpace(data.DateLongFormat) ? AppDefaults.DateLongFormat : data.DateLongFormat,
                     EnableHistory = data.EnableHistory,
@@ -417,6 +420,7 @@ public class UserSettings {
                 DictionaryShowAlways = DictionaryShowAlways,
                 DictionaryLanguages = DictionaryLanguages,
                 DateSearchEnabled = DateSearchEnabled,
+                DateSearchLanguages = DateSearchLanguages,
                 DateIsoFormat = DateIsoFormat,
                 DateLongFormat = DateLongFormat,
                 EnableHistory = EnableHistory,

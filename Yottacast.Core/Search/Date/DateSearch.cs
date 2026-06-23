@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Recognizers.Text.DateTime;
 using Yottacast.Core.Services;
@@ -18,6 +19,15 @@ namespace Yottacast.Core.Search.Date;
 public class DateSearch(UserSettings settings, ClipboardService clipboard, ILogger<DateSearch> logger)
     : IInstantSearchSource
 {
+    // A query without any letters is number/calculator input (e.g. "134.2", "12.5"), not a date.
+    // The only all-digits form we still treat as a date is a full ISO date.
+    private static readonly Regex IsoDateRegex = new(@"^\d{4}-\d{2}-\d{2}$", RegexOptions.Compiled);
+    // Indefinite timex shapes the recognizer emits for a bare month ("dec" -> XXXX-12) or a bare
+    // weekday ("monday" -> XXXX-WXX-1). These carry no day/week the user actually typed, so they
+    // are too noisy to surface on their own; qualified forms ("3 de mayo", "next monday") keep a
+    // concrete day/year in their timex and are not matched here.
+    private static readonly Regex BareIndefiniteTimex = new(@"^XXXX-\d{2}$|^XXXX-WXX-\d$", RegexOptions.Compiled);
+
     private readonly Lock _lock = new();
     private string? _currentQuery;
     private IReadOnlyList<BaseResultItemViewModel> _currentResult = [];
@@ -43,7 +53,8 @@ public class DateSearch(UserSettings settings, ClipboardService clipboard, ILogg
     {
         if (!settings.DateSearchEnabled) return [];
         if (string.IsNullOrWhiteSpace(query)) return [];
-        if (query.Length == 4 && query.All(char.IsDigit)) return [];
+        if (settings.DateSearchLanguages.Count == 0) return [];
+        if (!query.Any(char.IsLetter) && !IsoDateRegex.IsMatch(query.Trim())) return [];
 
         lock (_lock) {
             if (_currentQuery == query) return _currentResult;
@@ -59,9 +70,9 @@ public class DateSearch(UserSettings settings, ClipboardService clipboard, ILogg
 
     private void RecognizeInBackground(string query, CancellationToken ct) {
         try {
-            // Detect against ALL available languages; first match wins.
-            var recognized = AppDefaults.DateSearchAvailableLanguages
-                .SelectMany(l => DateTimeRecognizer.RecognizeDateTime(query, l.Code))
+            // Detect against the user-configured languages; first match wins.
+            var recognized = settings.DateSearchLanguages
+                .SelectMany(code => DateTimeRecognizer.RecognizeDateTime(query, code))
                 .DistinctBy(r => r.Text)
                 .FirstOrDefault(r => r.TypeName is "datetimeV2.date" or "datetimeV2.daterange"
                                                  or "datetimeV2.datetime" or "datetimeV2.datetimerange"
@@ -93,6 +104,9 @@ public class DateSearch(UserSettings settings, ClipboardService clipboard, ILogg
         if (valuesObj is not List<Dictionary<string, string>> valuesList || valuesList.Count == 0) return [];
 
         var values = valuesList[0];
+
+        // Drop bare month / weekday matches ("dec", "monday") — too noisy to surface alone.
+        if (values.TryGetValue("timex", out var timex) && BareIndefiniteTimex.IsMatch(timex)) return [];
 
         return recognized.TypeName switch {
             "datetimeV2.date" or "datetimeV2.datetime" =>
@@ -171,7 +185,12 @@ public class DateSearch(UserSettings settings, ClipboardService clipboard, ILogg
 
         var isoStart = start.ToString(settings.DateIsoFormat);
         var isoEnd   = end.ToString(settings.DateIsoFormat);
-        var duration = (end.Date - start.Date).Days + 1;
+        // The recognizer reports the end day inclusive for explicit "X to Y" ranges (timex tuple,
+        // e.g. "(...,...,P4D)") but exclusive — first day of the next period — for whole-period
+        // ranges (month/year, e.g. "2025-12"). Only add the inclusive day in the former case, so a
+        // whole month reads as 31 days, not 32.
+        var inclusiveEnd = values.TryGetValue("timex", out var timex) && timex.StartsWith('(');
+        var duration = (end.Date - start.Date).Days + (inclusiveEnd ? 1 : 0);
 
         var rangeCell    = $"From {isoStart} to {isoEnd}";
         var durationCell = $"{duration} days";

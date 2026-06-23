@@ -109,6 +109,92 @@ public class DateSearchTests
         Assert.Empty(results);
     }
 
+    // ── 5b. Bare numbers are not dates ─────────────────────────────────────────
+    // "134.2"/"12.5" are calculator/number input. Detection runs only against the configured
+    // languages (es/en), which do not parse them, and a no-letter guard rejects them outright.
+
+    [Theory]
+    [InlineData("134.2")]
+    [InlineData("12.5")]
+    [InlineData("134")]
+    [InlineData("2025")]
+    public void Search_WithBareNumber_ReturnsEmpty(string query)
+    {
+        var search  = BuildSearch(out _);
+        var results = search.Search(query, 5);
+
+        Assert.Empty(results); // rejected synchronously before recognition even runs
+    }
+
+    // ── 5c. ISO date with no letters is still accepted ─────────────────────────
+
+    [Fact]
+    public void Search_WithIsoDate_ReturnsResult()
+    {
+        var search  = BuildSearch(out _);
+        var results = SearchAndWait(search, "2025-12-01", 5);
+
+        // The ISO cell itself is dropped because it duplicates the typed text, but the date is
+        // still recognized and surfaces as a Date result (e.g. long form + relative distance).
+        var vm = Assert.IsType<DateSearchResultViewModel>(Assert.Single(results));
+        Assert.Equal("Date", vm.Category);
+    }
+
+    // ── 5d. Bare month / weekday names are suppressed ──────────────────────────
+    // A lone month ("dec") or weekday ("lunes") yields an indefinite range/date the user did not
+    // really type; it should not surface. Qualified forms keep working (see other tests).
+
+    [Theory]
+    [InlineData("dec")]
+    [InlineData("diciembre")]
+    [InlineData("lunes")]
+    [InlineData("monday")]
+    public void Search_WithBareMonthOrWeekday_ReturnsEmpty(string query)
+    {
+        var search  = BuildSearch(out _);
+        var results = SearchAndWait(search, query, 5);
+
+        Assert.Empty(results);
+    }
+
+    // ── 5e. No configured languages → no detection ─────────────────────────────
+
+    [Fact]
+    public void Search_WithNoLanguages_ReturnsEmpty()
+    {
+        var search  = BuildSearch(out _, s => s.DateSearchLanguages = []);
+        var results = search.Search("3 de mayo", 5);
+
+        Assert.Empty(results);
+    }
+
+    // ── 5f. Whole-period range duration is not off by one ──────────────────────
+    // A month+year range ("diciembre 2025") spans 31 days; the recognizer's exclusive end must
+    // not add a phantom day (the "32 days" bug).
+
+    [Fact]
+    public void Search_WithWholeMonthRange_ReportsExactDuration()
+    {
+        var search  = BuildSearch(out _);
+        var results = SearchAndWait(search, "diciembre 2025", 5);
+        var vm      = Assert.IsType<DateSearchResultViewModel>(Assert.Single(results));
+
+        Assert.Contains("31 days", vm.Cells);
+        Assert.DoesNotContain("32 days", vm.Cells);
+    }
+
+    // ── 5g. Explicit day range counts both endpoints inclusively ───────────────
+
+    [Fact]
+    public void Search_WithExplicitDayRange_CountsInclusiveDuration()
+    {
+        var search  = BuildSearch(out _);
+        var results = SearchAndWait(search, "del 1 al 5 de junio", 5);
+        var vm      = Assert.IsType<DateSearchResultViewModel>(Assert.Single(results));
+
+        Assert.Contains("5 days", vm.Cells); // 1st through 5th inclusive
+    }
+
     // ── 6. Subtitles count matches cells count ────────────────────────────────
 
     [Fact]

@@ -159,6 +159,10 @@ public static class AppDefaults {
     public const int DictionaryMaxDefinitionsPerItem = 5;
     /// Default languages enabled for dictionary lookups.
     public static readonly List<string> DictionaryDefaultLanguages = ["en"];
+    /// Default languages enabled for date recognition (subset of DateSearchAvailableLanguages).
+    /// Kept small on purpose: every extra language widens false positives (e.g. Japanese parses
+    /// "134.2" as the year 0134), so detection runs only against these unless the user opts in.
+    public static readonly List<string> DateSearchDefaultLanguages = ["es-es", "en-us"];
     /// All languages available for date recognition (locale codes recognized by Microsoft.Recognizers.Text).
     public static readonly (string Code, string Name)[] DateSearchAvailableLanguages = [
         ("es-es", "Español"),
