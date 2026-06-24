@@ -265,4 +265,55 @@ public class DateSearchTests
         vm.MoveCellLeft();
         Assert.Equal(vm.Cells.Count - 1, vm.SelectedCell);
     }
+
+    // ── 10. Numeric dates are parsed synchronously ─────────────────────────────
+
+    [Theory]
+    [InlineData("2025-12-24")]
+    [InlineData("24-12-2025")]
+    public void Search_WithNumericDate_ReturnsResultSynchronously(string query)
+    {
+        var search  = BuildSearch(out _);
+        var results = search.Search(query, 5); // no wait on ResultChanged — must be synchronous
+
+        var vm = Assert.IsType<DateSearchResultViewModel>(Assert.Single(results));
+        Assert.Equal("Date", vm.Category);
+    }
+
+    // ── 11. Ambiguous numeric date respects configured order ───────────────────
+
+    [Fact]
+    public void Search_AmbiguousNumericDate_DayFirst_UsesDayMonth()
+    {
+        var search  = BuildSearch(out _, s => s.DateNumericOrder = DateNumericOrder.DayFirst);
+        var results = search.Search("04-03-2015", 5);
+
+        var vm = Assert.IsType<DateSearchResultViewModel>(Assert.Single(results));
+        Assert.Contains("2015-03-04", vm.Cells[0]); // day 4, month 3
+        Assert.Contains("DD/MM/YYYY", vm.CellSubtitles);
+    }
+
+    [Fact]
+    public void Search_AmbiguousNumericDate_MonthFirst_UsesMonthDay()
+    {
+        var search  = BuildSearch(out _, s => s.DateNumericOrder = DateNumericOrder.MonthFirst);
+        var results = search.Search("04-03-2015", 5);
+
+        var vm = Assert.IsType<DateSearchResultViewModel>(Assert.Single(results));
+        Assert.Contains("2015-04-03", vm.Cells[0]); // month 4, day 3
+        Assert.Contains("MM/DD/YYYY", vm.CellSubtitles);
+    }
+
+    // ── 12. Non-date numbers still empty synchronously ─────────────────────────
+
+    [Theory]
+    [InlineData("134.2")]
+    [InlineData("12.5")]
+    public void Search_WithNonDateNumber_ReturnsEmptySynchronously(string query)
+    {
+        var search  = BuildSearch(out _);
+        var results = search.Search(query, 5);
+
+        Assert.Empty(results);
+    }
 }

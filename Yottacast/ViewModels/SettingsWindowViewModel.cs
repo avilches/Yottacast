@@ -14,6 +14,7 @@ using Yottacast.Core;
 using Yottacast.Core.Platform;
 using Yottacast.Core.Search;
 using Yottacast.Core.Search.Calculator;
+using Yottacast.Core.Search.Date;
 using Yottacast.Core.Search.WebSearch;
 using Yottacast.Core.Services;
 using Yottacast.Services;
@@ -26,6 +27,11 @@ public enum SettingsSection {
 
 /// <summary>Item shown in the currency-pair ComboBox. Code is the ISO code; Label is "EUR - Euro" (or just "EUR").</summary>
 public record CurrencyOption(string Code, string Label) {
+    public override string ToString() => Label;
+}
+
+/// <summary>Item shown in the ambiguous-numeric-date-order ComboBox. Value is the resolution order; Label is human-readable.</summary>
+public record DateNumericOrderOption(string Label, DateNumericOrder Value) {
     public override string ToString() => Label;
 }
 
@@ -328,9 +334,24 @@ public partial class SettingsWindowViewModel : ViewModelBase {
     public static readonly string[] DateIsoFormatOptions  = ["yyyy-MM-dd", "dd/MM/yyyy", "MM/dd/yyyy", "yyyyMMdd", "dd.MM.yyyy", "d/M/yyyy", "M/d/yyyy", "d MMM yyyy", "MMM d, yyyy"];
     public static readonly string[] DateLongFormatOptions = ["d MMMM yyyy (dddd)", "MMMM d, yyyy (dddd)", "dddd, d MMMM yyyy", "dddd, MMMM d, yyyy", "d MMMM yyyy", "MMMM d, yyyy"];
 
+    public static readonly DateNumericOrderOption[] DateNumericOrderOptions = [
+        new("Day first — 04/03/2025 is 4 March", DateNumericOrder.DayFirst),
+        new("Month first — 04/03/2025 is March 4", DateNumericOrder.MonthFirst),
+    ];
+
+    [ObservableProperty] private DateNumericOrderOption? _selectedDateNumericOrder;
+
     partial void OnEnableDateSearchChanged(bool value)  { _settings.DateSearchEnabled = value;  _settings.Save(); _logger.LogInformation("Settings: DateSearchEnabled = {Value}", value);   _settings.NotifySearchSettingsChanged(); }
     partial void OnDateIsoFormatChanged(string value)   { _settings.DateIsoFormat     = value;  _settings.Save(); _logger.LogInformation("Settings: DateIsoFormat = \"{Value}\"", value);  _settings.NotifySearchSettingsChanged(); }
     partial void OnDateLongFormatChanged(string value)  { _settings.DateLongFormat    = value;  _settings.Save(); _logger.LogInformation("Settings: DateLongFormat = \"{Value}\"", value); _settings.NotifySearchSettingsChanged(); }
+
+    partial void OnSelectedDateNumericOrderChanged(DateNumericOrderOption? value) {
+        if (value is null) return;
+        _settings.DateNumericOrder = value.Value;
+        _settings.Save();
+        _logger.LogInformation("Settings: DateNumericOrder = {Value}", value.Value);
+        _settings.NotifySearchSettingsChanged();
+    }
 
     // ── System Settings config ───────────────────────────────────────────────
     [ObservableProperty] private bool _enableSystemSettings;
@@ -527,6 +548,7 @@ public partial class SettingsWindowViewModel : ViewModelBase {
         _enableDateSearch    = settings.DateSearchEnabled;
         _dateIsoFormat       = settings.DateIsoFormat;
         _dateLongFormat      = settings.DateLongFormat;
+        _selectedDateNumericOrder = DateNumericOrderOptions.FirstOrDefault(o => o.Value == settings.DateNumericOrder) ?? DateNumericOrderOptions[0];
         _enableSystemSettings                 = settings.EnableSystemSettings;
         _dictionaryPrefix                = settings.DictionaryPrefix;
         _dictionaryShowAlways            = settings.DictionaryShowAlways;

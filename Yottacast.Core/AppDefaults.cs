@@ -1,3 +1,6 @@
+using System.Globalization;
+using Yottacast.Core.Search.Date;
+
 namespace Yottacast.Core;
 
 /// <summary>
@@ -119,6 +122,17 @@ public static class AppDefaults {
     public const string DateIsoFormat = "yyyy-MM-dd";
     /// Default format string for the long date cell in date search results.
     public const string DateLongFormat = "d MMMM yyyy (dddd)";
+
+    /// Default order for ambiguous numeric dates, inferred from the OS culture's short date pattern
+    /// (US-style "M/d/yyyy" -> MonthFirst; most of Europe "d/M/yyyy" -> DayFirst).
+    public static DateNumericOrder DefaultDateNumericOrder()
+    {
+        foreach (var ch in CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern) {
+            if (ch is 'd') return DateNumericOrder.DayFirst;
+            if (ch is 'M') return DateNumericOrder.MonthFirst;
+        }
+        return DateNumericOrder.DayFirst;
+    }
 
     // ── Search — result scores ────────────────────────────────────────────────
     // Scores that rank results across sources. Higher wins. Kept here so the relative

@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using Yottacast.Core.Platform;
 using Yottacast.Core.Search;
+using Yottacast.Core.Search.Date;
 using Yottacast.Core.Search.WebSearch;
 
 namespace Yottacast.Core.Services;
@@ -74,6 +75,7 @@ public class UserSettings {
     public List<string> DictionaryLanguages { get; set; } = new(AppDefaults.DictionaryDefaultLanguages);
     public bool DateSearchEnabled { get; set; } = true;
     public List<string> DateSearchLanguages { get; set; } = new(AppDefaults.DateSearchDefaultLanguages);
+    public DateNumericOrder DateNumericOrder { get; set; } = AppDefaults.DefaultDateNumericOrder();
     public string DateIsoFormat { get; set; } = AppDefaults.DateIsoFormat;
     public string DateLongFormat { get; set; } = AppDefaults.DateLongFormat;
     public bool EnableHistory { get; set; } = true;
@@ -215,6 +217,7 @@ public class UserSettings {
         [JsonPropertyName("dictionaryLanguages")] public List<string>? DictionaryLanguages { get; init; }
         [JsonPropertyName("dateSearchEnabled")] public bool DateSearchEnabled { get; init; } = true;
         [JsonPropertyName("dateSearchLanguages")] public List<string>? DateSearchLanguages { get; init; }
+        [JsonPropertyName("dateNumericOrder")] public string? DateNumericOrder { get; init; }
         [JsonPropertyName("dateIsoFormat")] public string DateIsoFormat { get; init; } = AppDefaults.DateIsoFormat;
         [JsonPropertyName("dateLongFormat")] public string DateLongFormat { get; init; } = AppDefaults.DateLongFormat;
         [JsonPropertyName("enableHistory")] public bool EnableHistory { get; init; } = true;
@@ -294,6 +297,8 @@ public class UserSettings {
                     DictionaryLanguages = data.DictionaryLanguages is { Count: > 0 } ? data.DictionaryLanguages : new(AppDefaults.DictionaryDefaultLanguages),
                     DateSearchEnabled = data.DateSearchEnabled,
                     DateSearchLanguages = data.DateSearchLanguages is { Count: > 0 } ? data.DateSearchLanguages : new(AppDefaults.DateSearchDefaultLanguages),
+                    DateNumericOrder = Enum.TryParse<DateNumericOrder>(data.DateNumericOrder, ignoreCase: true, out var dno)
+                        ? dno : AppDefaults.DefaultDateNumericOrder(),
                     DateIsoFormat = string.IsNullOrWhiteSpace(data.DateIsoFormat) ? AppDefaults.DateIsoFormat : data.DateIsoFormat,
                     DateLongFormat = string.IsNullOrWhiteSpace(data.DateLongFormat) ? AppDefaults.DateLongFormat : data.DateLongFormat,
                     EnableHistory = data.EnableHistory,
@@ -421,6 +426,7 @@ public class UserSettings {
                 DictionaryLanguages = DictionaryLanguages,
                 DateSearchEnabled = DateSearchEnabled,
                 DateSearchLanguages = DateSearchLanguages,
+                DateNumericOrder = DateNumericOrder.ToString(),
                 DateIsoFormat = DateIsoFormat,
                 DateLongFormat = DateLongFormat,
                 EnableHistory = EnableHistory,

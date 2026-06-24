@@ -3,6 +3,7 @@ using System.Threading;
 using Xunit;
 using Yottacast.Core.Platform;
 using Yottacast.Core.Search;
+using Yottacast.Core.Search.Date;
 using Yottacast.Core.Search.UserDocuments;
 using Yottacast.Core.Services;
 
@@ -1242,6 +1243,58 @@ public class UserSettingsTests : IDisposable {
     public void Load_EmptyJson_EnableCalculatorDefaultsTrue() {
         File.WriteAllText(_settingsFile, "{}");
         Assert.True(Load().EnableCalculator);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // DateNumericOrder persistence and repair
+    // ══════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void DateNumericOrder_DefaultsToPlatformInferredValue() {
+        var settings = Load();
+
+        Assert.Equal(AppDefaults.DefaultDateNumericOrder(), settings.DateNumericOrder);
+    }
+
+    [Fact]
+    public void DateNumericOrder_SaveAndLoad_RoundTrips() {
+        var settings = Load();
+        settings.DateNumericOrder = DateNumericOrder.MonthFirst;
+        settings.Save();
+
+        WaitForSettingsFile("dateNumericOrder");
+        var reloaded = Load();
+
+        Assert.Equal(DateNumericOrder.MonthFirst, reloaded.DateNumericOrder);
+    }
+
+    [Fact]
+    public void DateNumericOrder_MissingFromJson_DefaultsToPlatformInferredValue() {
+        WriteSettingsJson("""
+            {
+                "browser": "",
+                "terminal": ""
+            }
+            """);
+
+        var settings = Load();
+
+        Assert.Equal(AppDefaults.DefaultDateNumericOrder(), settings.DateNumericOrder);
+    }
+
+    [Fact]
+    public void DateNumericOrder_InvalidValueInJson_RepairsToPlatformInferredValue() {
+        WriteSettingsJson("""
+            {
+                "browser": "",
+                "terminal": "",
+                "dateNumericOrder": "Bogus"
+            }
+            """);
+
+        var settings = Load();
+
+        Assert.Equal(AppDefaults.DefaultDateNumericOrder(), settings.DateNumericOrder);
     }
 
     /// <summary>Platform provider with configurable default search folders (no browsers/terminals).</summary>

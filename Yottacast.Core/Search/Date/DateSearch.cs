@@ -19,9 +19,6 @@ namespace Yottacast.Core.Search.Date;
 public class DateSearch(UserSettings settings, ClipboardService clipboard, ILogger<DateSearch> logger)
     : IInstantSearchSource
 {
-    // A query without any letters is number/calculator input (e.g. "134.2", "12.5"), not a date.
-    // The only all-digits form we still treat as a date is a full ISO date.
-    private static readonly Regex IsoDateRegex = new(@"^\d{4}-\d{2}-\d{2}$", RegexOptions.Compiled);
     // Indefinite timex shapes the recognizer emits for a bare month ("dec" -> XXXX-12) or a bare
     // weekday ("monday" -> XXXX-WXX-1). These carry no day/week the user actually typed, so they
     // are too noisy to surface on their own; qualified forms ("3 de mayo", "next monday") keep a
@@ -53,8 +50,24 @@ public class DateSearch(UserSettings settings, ClipboardService clipboard, ILogg
     {
         if (!settings.DateSearchEnabled) return [];
         if (string.IsNullOrWhiteSpace(query)) return [];
+
+        // Numeric dates ("2025-12-24", "24-12-2025") are parsed synchronously, independent of the
+        // configured languages and the recognizer's cold start. A letterless query that is not a
+        // valid numeric date stays calculator/number input.
+        if (!query.Any(char.IsLetter)) {
+            var parsed = NumericDateParser.TryParse(query, settings.DateNumericOrder);
+            IReadOnlyList<BaseResultItemViewModel> numericResult =
+                parsed is { } p ? BuildNumericDateViewModel(query, p, settings, clipboard) : [];
+            lock (_lock) {
+                _cts?.Cancel();
+                _cts = null;
+                _currentQuery = query;
+                _currentResult = numericResult;
+            }
+            return numericResult;
+        }
+
         if (settings.DateSearchLanguages.Count == 0) return [];
-        if (!query.Any(char.IsLetter) && !IsoDateRegex.IsMatch(query.Trim())) return [];
 
         lock (_lock) {
             if (_currentQuery == query) return _currentResult;
@@ -125,17 +138,29 @@ public class DateSearch(UserSettings settings, ClipboardService clipboard, ILogg
     {
         if (!values.TryGetValue("value", out var valueStr)) return [];
         if (!DateTime.TryParse(valueStr, CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)) return [];
+        return BuildDateResult(recognizedText, date, isoSubtitle: "", settings, clipboard);
+    }
 
+    private static IReadOnlyList<BaseResultItemViewModel> BuildNumericDateViewModel(
+        string query, NumericDateParser.Result parsed,
+        UserSettings settings, ClipboardService clipboard)
+        => BuildDateResult(query, parsed.Date, NumericDateParser.FormatLabel(parsed.Format), settings, clipboard);
+
+    private static IReadOnlyList<BaseResultItemViewModel> BuildDateResult(
+        string recognizedText, DateTime date, string isoSubtitle,
+        UserSettings settings, ClipboardService clipboard)
+    {
         var isoDate  = date.ToString(settings.DateIsoFormat);
         var longDate = date.ToString(settings.DateLongFormat, CultureInfo.InvariantCulture);
         var diff     = (date.Date - DateTime.Today).Days;
         var relDate  = FormatRelative(diff);
 
-        // Drop any cell whose value duplicates what the user already typed.
-        var allCells = new[] { isoDate, longDate, relDate };
-        var cells    = allCells.Where(c => !c.Equals(recognizedText, StringComparison.OrdinalIgnoreCase))
-                               .ToArray();
-        var subtitles = new string[cells.Length]; // all empty — no subtitle adds value for single dates
+        // (cell, subtitle) pairs; drop any cell that duplicates what the user already typed.
+        var pairs = new[] { (Cell: isoDate, Subtitle: isoSubtitle), (Cell: longDate, Subtitle: ""), (Cell: relDate, Subtitle: "") }
+            .Where(p => !p.Cell.Equals(recognizedText, StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        var cells     = pairs.Select(p => p.Cell).ToArray();
+        var subtitles = pairs.Select(p => p.Subtitle).ToArray();
 
         DateSearchResultViewModel vm = null!;
         vm = new DateSearchResultViewModel {

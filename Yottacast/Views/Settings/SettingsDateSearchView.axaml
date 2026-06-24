@@ -46,6 +46,21 @@
                           Width="260"
                           HorizontalAlignment="Left"/>
             </StackPanel>
+            <StackPanel Spacing="4">
+                <TextBlock Classes="label" Text="Ambiguous numeric dates"/>
+                <TextBlock Classes="description"
+                           Text="How to read a numeric date when day and month are both 12 or less (e.g. 04/03/2025). Unambiguous dates like 24/12/2025 are unaffected."/>
+                <ComboBox ItemsSource="{x:Static vm:SettingsWindowViewModel.DateNumericOrderOptions}"
+                          SelectedItem="{Binding SelectedDateNumericOrder}"
+                          Width="320"
+                          HorizontalAlignment="Left">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:DateNumericOrderOption">
+                            <TextBlock Text="{Binding Label}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </StackPanel>
         </StackPanel>
     </StackPanel>
 </UserControl>
