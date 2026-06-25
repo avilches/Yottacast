@@ -156,6 +156,8 @@ Estilo de los mode chips bajo la barra de busqueda (las pills **All / Files / Cl
 | `results.title.size` | `Theme.Results.Title.Size` |
 | `results.subtitle.color` | `Theme.Results.Subtitle.Color` |
 | `results.subtitle.size` | `Theme.Results.Subtitle.Size` |
+| `results.clipboardMode.titleSize` | `Theme.Results.ClipboardMode.Title.Size` |
+| `results.clipboardMode.rowHeight` | `Theme.Results.ClipboardMode.RowHeight` |
 | `results.category.color` | `Theme.Results.Category.Color` |
 | `results.category.size` | `Theme.Results.Category.Size` |
 | `results.icon.cornerRadius` | `Theme.Results.Icon.CornerRadius` |
@@ -170,6 +172,8 @@ Estilo de los mode chips bajo la barra de busqueda (las pills **All / Files / Cl
 | `results.matchHighlight.background` | `Theme.Results.MatchHighlight.Background` |
 
 `results.maxHeight` fija la altura maxima del area de resultados (en pixeles) y ademas alimenta el calculo del numero de filas visibles del grid de emojis (ver "Emoji" mas abajo).
+
+El bloque `results.clipboardMode` controla la fila compacta de una sola linea del modo solo-portapapeles (`SearchMode.Clipboard`): `titleSize` es el tamano de fuente del titulo en ese modo y `rowHeight` (pixeles) es el `MinHeight` de la fila (`Grid.result-row`), que fija el alto del item. La altura se controla desde la fila interna y NO desde el `Padding` del item a proposito: el item seleccionado sobreescribe su `Padding` con `Theme.Results.SelectionBar.ContentPadding` (para compensar la barra lateral), asi que un padding por item no afectaria a la fila seleccionada; el `MinHeight` del Grid interno aplica por igual a filas seleccionadas y no seleccionadas. Solo aplican cuando la lista tiene la clase `clipboard-mode`; en el resto de modos rigen `results.title.size` y la altura normal de fila. Si el bloque se omite en un tema, ambos caen a los valores de `ApplyBuiltinDefault()` (13 y 26). Ver `docs/search-clipboard.md` seccion 8.
 
 #### Detalle: Match Highlight
 

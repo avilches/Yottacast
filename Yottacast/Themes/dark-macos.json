@@ -55,6 +55,7 @@
     "selectionBar": { "color": "#0A84FF", "width": 4 },
     "title":    { "color": "#F2F2F7", "size": 16 },
     "subtitle": { "color": "#8E8E93", "size": 12 },
+    "clipboardMode": { "titleSize": 14, "rowHeight": 28 },
     "category": { "color": "#70707A", "size": 10 },
     "icon":     { "cornerRadius": 8 },
     "shortcut": { "color": "#8E8E93", "background": "#FF3A3C", "size": 12, "cornerRadius": 6 },

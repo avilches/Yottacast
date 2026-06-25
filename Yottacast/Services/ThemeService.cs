@@ -279,6 +279,11 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
                 SetDouble(app, "Theme.Results.Title.Size",      results["title"]?["size"]);
                 SetBrush(app,  "Theme.Results.Subtitle.Color",  results["subtitle"]?["color"]);
                 SetDouble(app, "Theme.Results.Subtitle.Size",   results["subtitle"]?["size"]);
+                var clipMode = results["clipboardMode"];
+                if (clipMode != null) {
+                    SetDouble(app, "Theme.Results.ClipboardMode.Title.Size", clipMode["titleSize"]);
+                    SetDouble(app, "Theme.Results.ClipboardMode.RowHeight",  clipMode["rowHeight"]);
+                }
                 SetBrush(app,  "Theme.Results.Category.Color",  results["category"]?["color"]);
                 SetDouble(app, "Theme.Results.Category.Size",   results["category"]?["size"]);
                 SetCornerRadius(app, "Theme.Results.Icon.CornerRadius", results["icon"]?["cornerRadius"]);
@@ -513,6 +518,9 @@ public sealed class ThemeService(ILogger<ThemeService> logger, EmojiLayoutConfig
         app.Resources["Theme.Results.Title.Size"]                = 14.0;
         app.Resources["Theme.Results.Subtitle.Color"]            = B("#9A9AA4");
         app.Resources["Theme.Results.Subtitle.Size"]             = 12.0;
+        // Clipboard-only mode: compact single-line rows (title font size + row height).
+        app.Resources["Theme.Results.ClipboardMode.Title.Size"]  = 13.0;
+        app.Resources["Theme.Results.ClipboardMode.RowHeight"]   = 26.0;
         app.Resources["Theme.Results.Category.Color"]            = B("#606068");
         app.Resources["Theme.Results.Category.Size"]             = 12.0;
         app.Resources["Theme.Results.Icon.CornerRadius"]         = new CornerRadius(8);

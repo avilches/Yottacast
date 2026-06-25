@@ -118,6 +118,14 @@
         <Style Selector="controls|HighlightTextBlock.result-subtitle">
             <Setter Property="Foreground" Value="{DynamicResource Theme.Results.Subtitle.Color}"/>
         </Style>
+        <!-- Result title size lives in a style (not a local value) so clipboard-mode can shrink it -->
+        <Style Selector="controls|HighlightTextBlock.result-title">
+            <Setter Property="FontSize" Value="{DynamicResource Theme.Results.Title.Size}"/>
+        </Style>
+        <!-- Row MinHeight lives in a style (not a local value) so clipboard-mode can drop it to 0 -->
+        <Style Selector="Grid.result-row">
+            <Setter Property="MinHeight" Value="44"/>
+        </Style>
         <Style Selector="ListBoxItem:selected controls|HighlightTextBlock.result-subtitle">
             <Setter Property="Foreground" Value="{DynamicResource Theme.Results.Selection.SubtitleColor}"/>
         </Style>
@@ -181,11 +189,30 @@
              The icon box is hidden and the row's MinHeight is dropped so the item
              collapses to a single text line instead of the 44px icon-driven height. -->
         <Style Selector="ListBox.clipboard-mode ListBoxItem">
-            <Setter Property="MinHeight" Value="24"/>
+            <Setter Property="MinHeight" Value="0"/>
             <Setter Property="Margin" Value="0"/>
         </Style>
-        <Style Selector="ListBox.clipboard-mode Grid.result-row">
+        <!-- Fluent's ListBoxItem ControlTheme sets its own MinHeight on the inner
+             ContentPresenter; override it to 0 so the row hugs the text line. -->
+        <Style Selector="ListBox.clipboard-mode ListBoxItem /template/ ContentPresenter">
             <Setter Property="MinHeight" Value="0"/>
+        </Style>
+        <!-- Row height is driven from the inner Grid (not the item Padding) so it applies
+             equally to selected rows, whose Padding is overridden by the selection-bar ContentPadding. -->
+        <Style Selector="ListBox.clipboard-mode Grid.result-row">
+            <Setter Property="MinHeight" Value="{DynamicResource Theme.Results.ClipboardMode.RowHeight}"/>
+        </Style>
+        <Style Selector="ListBox.clipboard-mode Grid.result-icon">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
+        <!-- Hide the subtitle in clipboard-mode. Done via this style (not a per-item
+             ElementName binding, which does not resolve from inside the DataTemplate
+             namescope) so the empty line never reserves vertical space. -->
+        <Style Selector="ListBox.clipboard-mode controls|HighlightTextBlock.result-subtitle">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
+        <Style Selector="ListBox.clipboard-mode controls|HighlightTextBlock.result-title">
+            <Setter Property="FontSize" Value="{DynamicResource Theme.Results.ClipboardMode.Title.Size}"/>
         </Style>
         <!-- Conversion with navigable cells: suppress ListBoxItem selection background -->
         <Style Selector="ListBoxItem.conv-navigable:selected /template/ ContentPresenter">
@@ -492,15 +519,16 @@
 
                         <!-- Standard template (apps, files, etc.) -->
                         <DataTemplate x:DataType="viewModels:ResultItemViewModel">
-                            <Grid ColumnDefinitions="Auto,*,Auto" MinHeight="44" Classes="result-row">
+                            <Grid ColumnDefinitions="Auto,*,Auto" Classes="result-row">
 
                                 <!-- Icon box (with optional badge overlay).
-                                     Hidden in clipboard-only mode so the row collapses to a single text line. -->
+                                     Hidden in clipboard-only mode (via ListBox.clipboard-mode style)
+                                     so the row collapses to a single text line. -->
                                 <Grid Grid.Column="0"
+                                      Classes="result-icon"
                                       Width="40" Height="40"
                                       VerticalAlignment="Center"
-                                      Margin="0,0,12,0"
-                                      IsVisible="{Binding !DataContext.ClipboardModeActive, ElementName=RootWindow}">
+                                      Margin="0,0,12,0">
 
                                     <Border Classes="icon-box"
                                             CornerRadius="{DynamicResource Theme.Results.Icon.CornerRadius}"
@@ -542,17 +570,16 @@
                                                 VerticalAlignment="Center"
                                                 Spacing="2">
                                         <controls:HighlightTextBlock x:CompileBindings="False"
+                                                                     Classes="result-title"
                                                                      Text="{Binding Title}"
                                                                      Ranges="{Binding TitleRanges}"
                                                                      Foreground="{DynamicResource Theme.Results.Title.Color}"
-                                                                     FontSize="{DynamicResource Theme.Results.Title.Size}"
                                                                      FontWeight="Medium"
                                                                      TextTrimming="CharacterEllipsis"/>
                                         <controls:HighlightTextBlock x:CompileBindings="False"
                                                                      Classes="result-subtitle"
                                                                      Text="{Binding Subtitle}"
                                                                      Ranges="{Binding SubtitleRanges}"
-                                                                     IsVisible="{Binding !DataContext.ClipboardModeActive, ElementName=RootWindow}"
                                                                      FontSize="{DynamicResource Theme.Results.Subtitle.Size}"
                                                                      TextTrimming="CharacterEllipsis"/>
                                     </StackPanel>
