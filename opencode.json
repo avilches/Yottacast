@@ -1,0 +1,14 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  // Los ficheros que el CLAUDE.md de la raíz importa con una arroba, en cadena. Este
+  // fichero existe porque opencode NO expande esos imports: lee el CLAUDE.md pero se queda
+  // solo con su cuerpo, así que sin esta lista no vería nada de lo que hay detrás de cada
+  // uno. Claude Code y omp no necesitan esto, ellos sí los expanden.
+  //
+  // Al añadir un import allí hay que añadirlo aquí, y comprobarlo con
+  // `bash ~/Hub/dotfiles/scripts/link-agent-instructions.sh --check`
+  "instructions": [
+    ".memory/MEMORY.md"
+  ]
+}

@@ -36,7 +36,12 @@ desktop.ini
 
 # Runtime user data (symlinks to local dirs)
 user-data/
+# El settings.local.json es local de cada maquina y no se versiona. El settings.json
+# compartido si, porque lleva "autoMemoryEnabled": false, que es lo que evita que
+# Claude escriba la memoria del proyecto fuera de git (ver .memory/ y el CLAUDE.md
+# global). Sin la excepcion, ese ajuste no viajaria con el repo.
 **/.claude/settings*
+!**/.claude/settings.json
 
 # kaikki dictionary build artifacts (large files, generated)
 tools/kaikki/cache/
