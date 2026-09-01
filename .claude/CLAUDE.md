@@ -8,8 +8,9 @@
      No lo conviertas en symlink al de la raíz: entonces omp resolvería los imports contra
      .claude/ y perdería todo lo importado (medido el 2026-08-22).
 
-     Y ojo: esto solo funciona si omp se arranca en la raíz del repositorio. Desde un
-     subdirectorio no encuentra este fichero y se queda sin las instrucciones del proyecto.
+     Y ojo: esto solo funciona si omp se arranca en un directorio que tenga su propio
+     .claude/CLAUDE.md, porque no sube por el árbol. Desde un subdirectorio sin puente no
+     encuentra nada, ni siquiera el CLAUDE.md que tenga al lado. Si vas a trabajar dentro de
+     un subdirectorio concreto, dale su propio puente importando los CLAUDE.md de arriba.
 
-     La explicación completa, con la matriz de qué lee cada agente, está en la sección
-     "Los tres agentes leen las mismas instrucciones" del CLAUDE.md de ~/Hub/dotfiles. -->
+     La explicación completa está en ~/Hub/dotfiles/docs/AGENTES.md. -->
